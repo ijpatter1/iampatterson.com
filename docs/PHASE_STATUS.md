@@ -18,7 +18,7 @@
 - ⬜ GA4 configured via sGTM (needs GA4 Measurement ID)
 - ⬜ BigQuery event sink receiving raw event stream from sGTM (needs GCP project)
 - ✅ 2026-03-26, session-2026-03-26-001 — Basic SEO and performance optimization
-- ⬜ Deployed to production (needs Vercel or Cloud Run setup)
+- ⬜ Deployed to production on Vercel
 
 ---
 

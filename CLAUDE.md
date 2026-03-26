@@ -12,7 +12,7 @@ This is the consulting website for Patterson Consulting **and** a live, interact
 - **Data:** BigQuery (raw → staging → marts via Dataform), background data generator on Cloud Run
 - **BI:** Looker Studio and/or Metabase on Dataform mart tables
 - **AI:** BigQuery managed AI functions (AI.CLASSIFY, AI.IF), RAG pipeline for narrative reporting
-- **Hosting:** Vercel (Next.js) or Cloud Run. GCP for all backend services
+- **Hosting:** Vercel (Next.js frontend), GCP Cloud Run (backend services — WebSocket, data generator)
 - **Package Manager:** npm
 - **Testing:** Jest + React Testing Library (components), Playwright (E2E), custom integration tests for event pipeline
 

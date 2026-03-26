@@ -168,13 +168,18 @@ This raw table is the starting point for the Dataform transformation pipeline in
 
 ### Deployment
 
-**Next.js app:** Vercel (primary option) or Cloud Run
-- Vercel is simpler for Next.js — zero config, automatic preview deployments, edge functions
-- Cloud Run is the fallback if Vercel limitations emerge (e.g., WebSocket support for Phase 2)
+**Next.js app:** Vercel
+
+Vercel is the deliberate choice for the frontend, not just a convenience. Most clients will host their websites on platforms like Vercel, Netlify, Shopify, or WordPress — not on GCP. By hosting the consulting site on Vercel while running the measurement infrastructure on GCP, the site demonstrates that the stack works seamlessly across the provider boundary that real clients will have. The cross-origin event pipeline (browser on Vercel → sGTM on Stape → Pub/Sub on GCP → WebSocket on Cloud Run → back to the browser) is the same architecture clients experience. If a prospect asks "does this work with our site on Vercel?" the answer is "you're looking at it."
 
 **sGTM:** Stape managed hosting with custom domain
 
-**BigQuery, Pub/Sub, Cloud Run (pipeline):** Google Cloud Platform project
+**Backend services (all on GCP):**
+- Cloud Run — WebSocket/SSE service (Phase 2), background data generator (Phase 4)
+- BigQuery — raw event storage, Dataform transformations, AI functions
+- Pub/Sub — real-time event routing from sGTM to WebSocket service
+- Dataform — transformation pipeline (raw → staging → marts)
+- Cloud Storage — AI access layer exports
 
 ---
 

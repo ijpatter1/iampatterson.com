@@ -20,7 +20,7 @@ iampatterson.com is simultaneously a consulting site for Patterson Consulting an
 6. GA4 configured via sGTM
 7. BigQuery event sink receiving raw event stream from sGTM
 8. Basic SEO and performance optimization
-9. Deployed to production (likely Vercel for Next.js, or Cloud Run)
+9. Deployed to production on Vercel
 
 **Why this is Phase 1:** Everything downstream depends on the site existing and the core instrumentation working. This phase also gives you a live consulting site immediately, even before the demos are built.
 
