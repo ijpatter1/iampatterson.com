@@ -55,6 +55,26 @@ describe('CookiebotConsentListener', () => {
     expect(mockTrackConsentUpdate).toHaveBeenCalledWith(false, false, false);
   });
 
+  it('does not fire when Cookiebot global is absent', () => {
+    const CookiebotConsentListener = getComponent();
+    delete (window as Record<string, unknown>).Cookiebot;
+    render(<CookiebotConsentListener />);
+    act(() => {
+      window.dispatchEvent(new Event('CookiebotOnAccept'));
+    });
+    expect(mockTrackConsentUpdate).not.toHaveBeenCalled();
+  });
+
+  it('does not fire when Cookiebot.consent is undefined', () => {
+    const CookiebotConsentListener = getComponent();
+    (window as Record<string, unknown>).Cookiebot = {};
+    render(<CookiebotConsentListener />);
+    act(() => {
+      window.dispatchEvent(new Event('CookiebotOnAccept'));
+    });
+    expect(mockTrackConsentUpdate).not.toHaveBeenCalled();
+  });
+
   it('removes event listeners on unmount', () => {
     const removeSpy = jest.spyOn(window, 'removeEventListener');
     const CookiebotConsentListener = getComponent();

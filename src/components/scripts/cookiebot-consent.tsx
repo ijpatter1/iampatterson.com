@@ -14,7 +14,7 @@ interface CookiebotGlobal {
 
 function handleConsentChange() {
   const cb = (window as unknown as { Cookiebot?: CookiebotGlobal }).Cookiebot;
-  if (!cb) return;
+  if (!cb?.consent) return;
   trackConsentUpdate(cb.consent.statistics, cb.consent.marketing, cb.consent.preferences);
 }
 

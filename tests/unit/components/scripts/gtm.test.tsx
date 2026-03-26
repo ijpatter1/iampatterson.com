@@ -96,6 +96,27 @@ describe('GtmScript', () => {
     const { container } = render(<GtmScript />);
     expect(container.innerHTML).toBe('');
   });
+
+  it('strips protocol prefix from sGTM URL to avoid double-protocol', () => {
+    process.env.NEXT_PUBLIC_GTM_ID = 'GTM-TEST123';
+    process.env.NEXT_PUBLIC_SGTM_URL = 'https://io.example.com';
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { GtmScript } = require('@/components/scripts/gtm');
+    const { container } = render(<GtmScript />);
+    const gtmScript = container.querySelector('#gtm-script');
+    expect(gtmScript?.textContent).toContain('https://io.example.com/gtm.js');
+    expect(gtmScript?.textContent).not.toContain('https://https://');
+  });
+
+  it('strips trailing slash from sGTM URL', () => {
+    process.env.NEXT_PUBLIC_GTM_ID = 'GTM-TEST123';
+    process.env.NEXT_PUBLIC_SGTM_URL = 'io.example.com/';
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { GtmScript } = require('@/components/scripts/gtm');
+    const { container } = render(<GtmScript />);
+    const gtmScript = container.querySelector('#gtm-script');
+    expect(gtmScript?.textContent).toContain('https://io.example.com/gtm.js');
+  });
 });
 
 describe('GtmNoscript', () => {

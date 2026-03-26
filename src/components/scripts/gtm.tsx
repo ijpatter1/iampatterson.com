@@ -3,7 +3,9 @@
 import Script from 'next/script';
 
 function getHost(sgtmUrl?: string): string {
-  return sgtmUrl ? `https://${sgtmUrl}` : 'https://www.googletagmanager.com';
+  if (!sgtmUrl) return 'https://www.googletagmanager.com';
+  const cleaned = sgtmUrl.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+  return `https://${cleaned}`;
 }
 
 function getGtmScriptUrl(sgtmUrl?: string): string {
