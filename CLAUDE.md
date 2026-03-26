@@ -265,6 +265,7 @@ When building UI, read the frontend-design skill at `/mnt/skills/public/frontend
 - `docs/PHASE_STATUS.md` — living tracker of phase completion
 - `docs/sessions/` — session handoff artifacts with detailed state from prior work sessions
 - `.claude/agents/evaluator.md` — QA/evaluator subagent for post-feature evaluation
+- `docs/CONTENT_GUIDE.md` — all site copy, organized by page and section. Use this as the source of truth for page content, demo product listings, form fields, flip-the-card annotations, and voice/tone. Do not invent placeholder copy — use the content guide
 - `.claude/commands/` — session workflow commands (`/start-phase`, `/evaluate`, `/handoff`, `/status`)
 - `.claude/settings.json` — project-level permissions and hooks (committed to git, shared)
 - `.claude/settings.local.json` — personal permission overrides (gitignored). Use this for machine-specific settings like additional Bash commands you need, extra allowed domains, or environment-specific paths. Local scope overrides project scope

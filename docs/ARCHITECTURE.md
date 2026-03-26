@@ -66,6 +66,8 @@ src/app/
 - Server Components by default. Only add `'use client'` when the component needs browser APIs, state, or event handlers
 - The data layer push helper (`src/lib/events/push.ts`) is a client-side utility — components that fire events must be Client Components
 - Layout.tsx loads GTM and Cookiebot scripts via `<Script>` component with appropriate loading strategies (`afterInteractive` for GTM, `beforeInteractive` for Cookiebot if consent is needed before GTM fires)
+- **Progressive nav activation:** The global nav includes Home, Services, About, Contact, and a Demos dropdown. In Phase 1, the Demos dropdown is hidden or disabled (no demo routes exist yet). It activates when Phase 6 ships the demo front-ends. The flip-the-card toggle is also hidden until Phase 3. See `docs/CONTENT_GUIDE.md` for the full nav structure
+- **Content source:** All page copy, headings, CTAs, form fields, and product listings come from `docs/CONTENT_GUIDE.md`. Do not invent placeholder content — the content guide is the source of truth
 
 ### Data Layer Specification
 
@@ -93,9 +95,12 @@ interface BaseEvent {
 | `scroll_depth` | 25%, 50%, 75%, 100% scroll thresholds | `depth_percentage`, `depth_pixels` |
 | `click_nav` | Navigation link click | `link_text`, `link_url` |
 | `click_cta` | CTA button click | `cta_text`, `cta_location` |
-| `form_start` | First interaction with contact form | `form_name` |
-| `form_submit` | Contact form submission | `form_name`, `form_success` |
+| `form_field_focus` | User focuses a form field | `form_name`, `field_name` |
+| `form_start` | First interaction with any form (fires once per form per session) | `form_name` |
+| `form_submit` | Form submission | `form_name`, `form_success` |
 | `consent_update` | Cookiebot consent change | `consent_analytics`, `consent_marketing`, `consent_preferences` |
+
+**Note:** Demo pages (Phase 6) add business-model-specific events (e.g., `product_view`, `add_to_cart`, `purchase`, `trial_signup`, `form_complete`). See `docs/CONTENT_GUIDE.md` for the full event specifications per demo.
 
 **Push helper:**
 
