@@ -11,13 +11,14 @@
 
 - ✅ 2026-03-26, session-2026-03-26-001 — Next.js project scaffolded with TypeScript (strict) and Tailwind CSS
 - ✅ 2026-03-26, session-2026-03-26-001 — Site structure: homepage, services overview (the four tiers), about/background, contact
-- ⬜ Cookiebot deployed and integrated with GTM consent mode
-- ⬜ Client-side GTM container configured with a clean data layer specification (schema defined, not yet wired to GTM)
-- ⬜ sGTM container on Stape with custom domain and same-origin setup
-- ⬜ GA4 configured via sGTM
-- ⬜ BigQuery event sink receiving raw event stream from sGTM
+- ✅ 2026-03-26, session-2026-03-26-001 — Data layer event schema defined and wired into all UI components (page_view, scroll_depth, click_nav, click_cta, form events)
+- ⬜ Cookiebot deployed and integrated with GTM consent mode (needs Cookiebot ID)
+- ⬜ Client-side GTM container configured (needs GTM container ID)
+- ⬜ sGTM container on Stape with custom domain and same-origin setup (needs Stape account)
+- ⬜ GA4 configured via sGTM (needs GA4 Measurement ID)
+- ⬜ BigQuery event sink receiving raw event stream from sGTM (needs GCP project)
 - ✅ 2026-03-26, session-2026-03-26-001 — Basic SEO and performance optimization
-- ⬜ Deployed to production (likely Vercel for Next.js, or Cloud Run)
+- ⬜ Deployed to production (needs Vercel or Cloud Run setup)
 
 ---
 
