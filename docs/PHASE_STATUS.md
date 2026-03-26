@@ -1,7 +1,7 @@
 # Phase Status Tracker
 
 > **Current Phase: 1 — Foundation**
-> Last updated: YYYY-MM-DD, session-YYYY-MM-DD-NNN (update with actual date and session reference)
+> Last updated: 2026-03-26, session-2026-03-26-001
 
 ---
 
@@ -9,14 +9,14 @@
 
 *Goal: A functioning Next.js site with basic consulting content, Cookiebot, client-side GTM, and sGTM deployed.*
 
-- ⬜ Next.js project scaffolded with TypeScript (strict) and Tailwind CSS
-- ⬜ Site structure: homepage, services overview (the four tiers), about/background, contact
+- ✅ 2026-03-26, session-2026-03-26-001 — Next.js project scaffolded with TypeScript (strict) and Tailwind CSS
+- ✅ 2026-03-26, session-2026-03-26-001 — Site structure: homepage, services overview (the four tiers), about/background, contact
 - ⬜ Cookiebot deployed and integrated with GTM consent mode
-- ⬜ Client-side GTM container configured with a clean data layer specification
+- ⬜ Client-side GTM container configured with a clean data layer specification (schema defined, not yet wired to GTM)
 - ⬜ sGTM container on Stape with custom domain and same-origin setup
 - ⬜ GA4 configured via sGTM
 - ⬜ BigQuery event sink receiving raw event stream from sGTM
-- ⬜ Basic SEO and performance optimization
+- ✅ 2026-03-26, session-2026-03-26-001 — Basic SEO and performance optimization
 - ⬜ Deployed to production (likely Vercel for Next.js, or Cloud Run)
 
 ---
