@@ -124,7 +124,7 @@ describe('useEventStream connection lifecycle', () => {
     expect(result.current.status).toBe('connected');
   });
 
-  it('transitions to disconnected on error', () => {
+  it('transitions to reconnecting on first error (not disconnected)', () => {
     const { result } = renderHook(() => useEventStream({ url: 'http://localhost:8080/events' }));
     act(() => {
       MockEventSource.instances[0].simulateOpen();
@@ -132,8 +132,73 @@ describe('useEventStream connection lifecycle', () => {
     act(() => {
       MockEventSource.instances[0].simulateError();
     });
-    expect(result.current.status).toBe('disconnected');
+    expect(result.current.status).toBe('reconnecting');
     expect(result.current.error).toBeTruthy();
+  });
+
+  it('transitions to disconnected after max retries exhausted', () => {
+    jest.useFakeTimers();
+    const { result } = renderHook(() =>
+      useEventStream({ url: 'http://localhost:8080/events', maxRetries: 2 }),
+    );
+
+    // First error → reconnecting (retry 1)
+    act(() => {
+      MockEventSource.instances[0].simulateError();
+    });
+    expect(result.current.status).toBe('reconnecting');
+
+    // Advance timer for retry 1
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+    // Second error → reconnecting (retry 2)
+    act(() => {
+      MockEventSource.instances[MockEventSource.instances.length - 1].simulateError();
+    });
+    expect(result.current.status).toBe('reconnecting');
+
+    // Advance timer for retry 2
+    act(() => {
+      jest.advanceTimersByTime(2000);
+    });
+    // Third error → exhausted, disconnected
+    act(() => {
+      MockEventSource.instances[MockEventSource.instances.length - 1].simulateError();
+    });
+    expect(result.current.status).toBe('disconnected');
+    expect(result.current.error).toContain('max retries');
+
+    jest.useRealTimers();
+  });
+
+  it('resets retry count after successful reconnection', () => {
+    jest.useFakeTimers();
+    const { result } = renderHook(() =>
+      useEventStream({ url: 'http://localhost:8080/events', maxRetries: 2 }),
+    );
+
+    // First error → reconnecting
+    act(() => {
+      MockEventSource.instances[0].simulateError();
+    });
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    // Reconnection succeeds
+    act(() => {
+      MockEventSource.instances[MockEventSource.instances.length - 1].simulateOpen();
+    });
+    expect(result.current.status).toBe('connected');
+
+    // Another error → should start retry count from 0 again
+    act(() => {
+      MockEventSource.instances[MockEventSource.instances.length - 1].simulateError();
+    });
+    expect(result.current.status).toBe('reconnecting');
+
+    jest.useRealTimers();
   });
 
   it('closes the EventSource on unmount', () => {
@@ -142,6 +207,25 @@ describe('useEventStream connection lifecycle', () => {
     expect(es.closed).toBe(false);
     unmount();
     expect(es.closed).toBe(true);
+  });
+
+  it('cancels pending retry on unmount', () => {
+    jest.useFakeTimers();
+    const { unmount } = renderHook(() => useEventStream({ url: 'http://localhost:8080/events' }));
+
+    act(() => {
+      MockEventSource.instances[0].simulateError();
+    });
+    const instanceCountBeforeUnmount = MockEventSource.instances.length;
+    unmount();
+
+    // Advance past retry delay — no new EventSource should be created
+    act(() => {
+      jest.advanceTimersByTime(5000);
+    });
+    expect(MockEventSource.instances.length).toBe(instanceCountBeforeUnmount);
+
+    jest.useRealTimers();
   });
 
   it('does not connect when disabled', () => {

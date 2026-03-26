@@ -6,7 +6,7 @@ import type { PipelineEvent } from '@/lib/events/pipeline-schema';
 import { isPipelineEvent } from '@/lib/events/pipeline-schema';
 import { readSessionCookie } from '@/lib/events/session';
 
-type ConnectionStatus = 'connecting' | 'connected' | 'disconnected';
+type ConnectionStatus = 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
 
 export interface UseEventStreamOptions {
   /** URL of the Cloud Run SSE endpoint. */
@@ -15,6 +15,8 @@ export interface UseEventStreamOptions {
   maxBufferSize?: number;
   /** Set to false to prevent connecting. Default: true. */
   enabled?: boolean;
+  /** Maximum reconnection attempts before giving up. Default: 5. */
+  maxRetries?: number;
 }
 
 export interface UseEventStreamReturn {
@@ -32,6 +34,7 @@ export function useEventStream({
   url,
   maxBufferSize = 100,
   enabled = true,
+  maxRetries = 5,
 }: UseEventStreamOptions): UseEventStreamReturn {
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [events, setEvents] = useState<PipelineEvent[]>([]);
@@ -56,41 +59,68 @@ export function useEventStream({
     const separator = url.includes('?') ? '&' : '?';
     const fullUrl = `${url}${separator}session_id=${encodeURIComponent(sessionId)}`;
 
-    setStatus('connecting');
-    setError(null);
+    let retryCount = 0;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let es: EventSource | null = null;
+    let closed = false;
 
-    const es = new EventSource(fullUrl);
+    function connect(): void {
+      if (closed) return;
 
-    es.onopen = () => {
-      setStatus('connected');
+      setStatus(retryCount === 0 ? 'connecting' : 'reconnecting');
       setError(null);
-    };
 
-    es.onmessage = (event: MessageEvent) => {
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(event.data as string);
-      } catch {
-        return;
-      }
-      if (!isPipelineEvent(parsed)) return;
+      es = new EventSource(fullUrl);
 
-      setEvents((prev) => {
-        const next = [parsed, ...prev];
-        return next.length > bufferSizeRef.current ? next.slice(0, bufferSizeRef.current) : next;
-      });
-    };
+      es.onopen = () => {
+        retryCount = 0;
+        setStatus('connected');
+        setError(null);
+      };
 
-    es.onerror = () => {
-      setStatus('disconnected');
-      setError('EventSource connection failed');
-      es.close();
-    };
+      es.onmessage = (event: MessageEvent) => {
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(event.data as string);
+        } catch {
+          return;
+        }
+        if (!isPipelineEvent(parsed)) return;
+
+        setEvents((prev) => {
+          const next = [parsed, ...prev];
+          return next.length > bufferSizeRef.current ? next.slice(0, bufferSizeRef.current) : next;
+        });
+      };
+
+      es.onerror = () => {
+        es?.close();
+        es = null;
+
+        if (closed) return;
+
+        retryCount++;
+        if (retryCount > maxRetries) {
+          setStatus('disconnected');
+          setError('EventSource connection failed after max retries');
+          return;
+        }
+
+        setStatus('reconnecting');
+        setError('Connection lost, retrying...');
+        const delay = Math.min(1000 * Math.pow(2, retryCount - 1), 30000);
+        retryTimer = setTimeout(connect, delay);
+      };
+    }
+
+    connect();
 
     return () => {
-      es.close();
+      closed = true;
+      if (retryTimer) clearTimeout(retryTimer);
+      es?.close();
     };
-  }, [url, enabled]);
+  }, [url, enabled, maxRetries]);
 
   return { status, events, error, clearEvents };
 }

@@ -163,6 +163,27 @@ describe('isPipelineEvent', () => {
     expect(isPipelineEvent(validEvent({ routing: 'not-array' as never }))).toBe(false);
   });
 
+  it('returns false when routing element is missing destination', () => {
+    const badRouting = [{ status: 'sent', timestamp: '2026-03-26T12:00:00.000Z' }];
+    expect(isPipelineEvent(validEvent({ routing: badRouting as never }))).toBe(false);
+  });
+
+  it('returns false when routing element has invalid status', () => {
+    const badRouting = [
+      { destination: 'ga4', status: 'unknown', timestamp: '2026-03-26T12:00:00.000Z' },
+    ];
+    expect(isPipelineEvent(validEvent({ routing: badRouting as never }))).toBe(false);
+  });
+
+  it('returns false when routing element is missing timestamp', () => {
+    const badRouting = [{ destination: 'ga4', status: 'sent' }];
+    expect(isPipelineEvent(validEvent({ routing: badRouting as never }))).toBe(false);
+  });
+
+  it('returns false when routing contains a non-object element', () => {
+    expect(isPipelineEvent(validEvent({ routing: ['garbage'] as never }))).toBe(false);
+  });
+
   it('returns false when consent is missing a required field', () => {
     const event = validEvent();
     const badConsent = { ...event.consent } as Record<string, unknown>;

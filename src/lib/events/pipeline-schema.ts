@@ -65,6 +65,19 @@ export interface PipelineEvent {
   routing: RoutingResult[];
 }
 
+const ROUTING_STATUSES = new Set<string>(['sent', 'blocked_consent', 'error']);
+
+function isRoutingResult(value: unknown): value is RoutingResult {
+  if (typeof value !== 'object' || value === null) return false;
+  const obj = value as Record<string, unknown>;
+  return (
+    typeof obj.destination === 'string' &&
+    typeof obj.status === 'string' &&
+    ROUTING_STATUSES.has(obj.status) &&
+    typeof obj.timestamp === 'string'
+  );
+}
+
 const CONSENT_KEYS: readonly (keyof ConsentState)[] = [
   'analytics_storage',
   'ad_storage',
@@ -100,6 +113,7 @@ export function isPipelineEvent(data: unknown): data is PipelineEvent {
     typeof obj.parameters === 'object' &&
     obj.parameters !== null &&
     Array.isArray(obj.routing) &&
+    (obj.routing as unknown[]).every(isRoutingResult) &&
     isConsentState(obj.consent)
   );
 }

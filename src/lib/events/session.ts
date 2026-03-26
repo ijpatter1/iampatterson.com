@@ -17,7 +17,8 @@ export const SESSION_COOKIE_MAX_AGE = 1800;
 /** Write the session cookie. */
 export function setSessionCookie(id: string): void {
   if (typeof document === 'undefined') return;
-  document.cookie = `${SESSION_COOKIE_NAME}=${encodeURIComponent(id)}; Path=/; SameSite=Lax; Max-Age=${SESSION_COOKIE_MAX_AGE}`;
+  const secure = globalThis.location?.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = `${SESSION_COOKIE_NAME}=${encodeURIComponent(id)}; Path=/; SameSite=Lax; Max-Age=${SESSION_COOKIE_MAX_AGE}${secure}`;
 }
 
 /** Read the session ID from the cookie, or null if not set. */
