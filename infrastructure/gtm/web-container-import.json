@@ -938,7 +938,7 @@
           "type": "MAP"
         },
         "consentSettings": {
-          "consentStatus": "NEEDED"
+          "consentStatus": "NOT_NEEDED"
         }
       },
       {
@@ -1013,7 +1013,7 @@
           "type": "MAP"
         },
         "consentSettings": {
-          "consentStatus": "NEEDED"
+          "consentStatus": "NOT_NEEDED"
         }
       },
       {
@@ -1088,7 +1088,7 @@
           "type": "MAP"
         },
         "consentSettings": {
-          "consentStatus": "NEEDED"
+          "consentStatus": "NOT_NEEDED"
         }
       },
       {
@@ -1163,7 +1163,7 @@
           "type": "MAP"
         },
         "consentSettings": {
-          "consentStatus": "NEEDED"
+          "consentStatus": "NOT_NEEDED"
         }
       },
       {
@@ -1238,7 +1238,7 @@
           "type": "MAP"
         },
         "consentSettings": {
-          "consentStatus": "NEEDED"
+          "consentStatus": "NOT_NEEDED"
         }
       },
       {
@@ -1298,7 +1298,7 @@
           "type": "MAP"
         },
         "consentSettings": {
-          "consentStatus": "NEEDED"
+          "consentStatus": "NOT_NEEDED"
         }
       },
       {
@@ -1373,7 +1373,7 @@
           "type": "MAP"
         },
         "consentSettings": {
-          "consentStatus": "NEEDED"
+          "consentStatus": "NOT_NEEDED"
         }
       },
       {
