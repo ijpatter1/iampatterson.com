@@ -3,41 +3,57 @@
     "name": "event_name",
     "type": "STRING",
     "mode": "REQUIRED",
-    "description": "Snake_case event name (page_view, click_nav, etc.)"
+    "description": "Snake_case event name from sGTM (page_view, click_nav, etc.)"
   },
   {
-    "name": "event_timestamp",
-    "type": "TIMESTAMP",
-    "mode": "REQUIRED",
-    "description": "Client-side ISO 8601 timestamp"
+    "name": "timestamp",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Client-side ISO 8601 timestamp (event parameter from data layer)"
   },
   {
     "name": "received_timestamp",
-    "type": "TIMESTAMP",
+    "type": "INT64",
     "mode": "REQUIRED",
-    "description": "Server-side timestamp when sGTM received the event"
+    "description": "Server-side epoch milliseconds when sGTM processed the event"
   },
   {
     "name": "session_id",
     "type": "STRING",
-    "mode": "REQUIRED",
-    "description": "Session identifier from first-party cookie"
+    "mode": "NULLABLE",
+    "description": "Session identifier from first-party cookie (event parameter)"
   },
   {
     "name": "client_id",
     "type": "STRING",
     "mode": "NULLABLE",
-    "description": "GA4 client ID from cookie"
+    "description": "GA4 client ID from cookie (sGTM Common Event Data)"
   },
-  { "name": "page_path", "type": "STRING", "mode": "REQUIRED", "description": "URL pathname" },
-  { "name": "page_title", "type": "STRING", "mode": "REQUIRED", "description": "Document title" },
-
+  {
+    "name": "page_location",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Full page URL (sGTM Common Event Data)"
+  },
+  {
+    "name": "page_path",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "URL pathname (sGTM Common Event Data)"
+  },
+  {
+    "name": "page_title",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Document title (sGTM Common Event Data)"
+  },
   {
     "name": "page_referrer",
     "type": "STRING",
     "mode": "NULLABLE",
-    "description": "Referrer URL (page_view events)"
+    "description": "Full referrer URL (sGTM Common Event Data)"
   },
+
   {
     "name": "depth_percentage",
     "type": "INT64",
@@ -115,30 +131,12 @@
     "name": "user_agent",
     "type": "STRING",
     "mode": "NULLABLE",
-    "description": "Raw user agent string from sGTM"
+    "description": "User agent string (sGTM Common Event Data)"
   },
   {
-    "name": "ip_address",
+    "name": "ip_override",
     "type": "STRING",
     "mode": "NULLABLE",
-    "description": "Client IP for geo enrichment (anonymized in processing)"
-  },
-  {
-    "name": "geo_country",
-    "type": "STRING",
-    "mode": "NULLABLE",
-    "description": "Country from IP geo lookup"
-  },
-  {
-    "name": "geo_region",
-    "type": "STRING",
-    "mode": "NULLABLE",
-    "description": "Region/state from IP geo lookup"
-  },
-  {
-    "name": "geo_city",
-    "type": "STRING",
-    "mode": "NULLABLE",
-    "description": "City from IP geo lookup"
+    "description": "Client IP (sGTM Common Event Data, anonymized in Dataform staging)"
   }
 ]

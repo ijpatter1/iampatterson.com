@@ -47,10 +47,9 @@ else
   bq --project_id="${PROJECT}" mk \
     --table \
     --schema="${SCHEMA_FILE}" \
-    --time_partitioning_field="event_timestamp" \
     --time_partitioning_type="DAY" \
     --clustering_fields="event_name,session_id" \
-    --description="Raw event data from sGTM — all event types in a flat schema" \
+    --description="Raw event data from sGTM — ingestion-time partitioned, clustered by event_name and session_id" \
     "${PROJECT}:${DATASET}.${TABLE}"
   echo "Table created."
 fi

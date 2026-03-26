@@ -163,8 +163,18 @@ export function pushEvent(event: BaseEvent & Record<string, unknown>): void {
 
 **Dataset:** `iampatterson_raw`
 **Table:** `events_raw`
+**Tag:** Stape "Write to BigQuery" community template (`docs/template.tpl`)
+**Setup:** `infrastructure/bigquery/setup.sh` (idempotent)
 
-The sGTM BigQuery tag writes every event directly to this table. Schema matches the data layer event shape with additional server-side enrichment from sGTM (IP-based geo, user agent parsing, timestamp normalization).
+The sGTM BigQuery tag uses "All Event Data" mode — `getAllEventData()` writes the full sGTM event object. Column names align with sGTM's Common Event Data model (`page_location`, `ip_override`, etc.) and our custom event parameters (`session_id`, `cta_text`, etc.). Fields not matching a BQ column are silently dropped (`ignoreUnknownValues: true`).
+
+**Schema design decisions:**
+- `received_timestamp` is INT64 (epoch ms from the tag's `getTimestampMillis()`) — convert to TIMESTAMP in Dataform staging
+- `timestamp` is the client-side ISO string passed as an event parameter from the data layer
+- Only `event_name` and `received_timestamp` are REQUIRED — all event parameters are NULLABLE to avoid insert failures
+- Ingestion-time partitioned (daily), clustered by `event_name` and `session_id`
+- Geo fields (`geo_country`, etc.) are not in the raw table — derive from `ip_override` in Dataform staging
+- `page_location` (full URL) and `page_path` (pathname) are both stored as sGTM provides both
 
 This raw table is the starting point for the Dataform transformation pipeline in Phase 5.
 
