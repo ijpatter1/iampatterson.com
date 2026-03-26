@@ -16,7 +16,7 @@
 - ✅ 2026-03-26, session-2026-03-26-002 — Client-side GTM container configured with sGTM same-origin transport (code-side complete; GTM ID configured)
 - 🔶 sGTM container on Stape with custom domain — code points to io.iampatterson.com, DNS propagation pending (~72 hours)
 - 🔶 GA4 configured via sGTM — Measurement ID known (G-9M2G3RLHWF), sGTM GA4 tag must be configured in Stape UI
-- 🔶 BigQuery event sink — setup script ready (`infrastructure/bigquery/setup.sh`), sGTM BigQuery tag must be configured in Stape UI
+- 🔶 BigQuery event sink — setup script ready (`infrastructure/bigquery/setup.sh`), schema aligned with sGTM `getAllEventData()`. sGTM BigQuery tag must be configured in Stape UI, table must be created via setup script
 - ✅ 2026-03-26, session-2026-03-26-001 — Basic SEO and performance optimization
 - 🔶 Deployed to production on Vercel — vercel.json ready, repo needs to be connected to Vercel and env vars set
 
