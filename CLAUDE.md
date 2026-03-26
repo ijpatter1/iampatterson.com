@@ -18,7 +18,7 @@ This is the consulting website for Patterson Consulting **and** a live, interact
 
 ## Current Phase
 
-**Phase 1 — Foundation**
+**Phase 2 — Real-Time Event Pipeline** (code complete, pending infrastructure deployment)
 
 See `docs/REQUIREMENTS.md` for the full 9-phase development plan.
 See `docs/ARCHITECTURE.md` for technical architecture details.
