@@ -1,7 +1,7 @@
 # Phase Status Tracker
 
 > **Current Phase: 1 — Foundation**
-> Last updated: 2026-03-26, session-2026-03-26-002
+> Last updated: 2026-03-26, session-2026-03-26-002 (all Phase 1 deliverables complete)
 
 ---
 
@@ -14,11 +14,11 @@
 - ✅ 2026-03-26, session-2026-03-26-001 — Data layer event schema defined and wired into all UI components (page_view, scroll_depth, click_nav, click_cta, form events)
 - ✅ 2026-03-26, session-2026-03-26-002 — Cookiebot CMP integrated with Consent Mode v2 defaults and consent_update event handler (code-side complete; Cookiebot ID configured)
 - ✅ 2026-03-26, session-2026-03-26-002 — Client-side GTM container configured with sGTM same-origin transport (code-side complete; GTM ID configured)
-- 🔶 sGTM container on Stape with custom domain — code points to io.iampatterson.com, DNS verified
-- 🔶 GA4 configured via sGTM — Measurement ID known (G-9M2G3RLHWF), sGTM GA4 tag must be configured in Stape UI
-- 🔶 BigQuery event sink — setup script ready (`infrastructure/bigquery/setup.sh`), schema aligned with sGTM `getAllEventData()`. sGTM BigQuery tag must be configured in Stape UI, table must be created via setup script
+- ✅ 2026-03-26, session-2026-03-26-002 — sGTM container on Stape with custom domain (io.iampatterson.com), DNS verified, GA4 forwarding tag active
+- ✅ 2026-03-26, session-2026-03-26-002 — GA4 configured via sGTM (G-9M2G3RLHWF), GA4 forwarding tag with all event/user params
+- ✅ 2026-03-26, session-2026-03-26-002 — BigQuery event sink configured: "Write to BigQuery" tag in sGTM writing to `iampatterson.iampatterson_raw.events_raw` with "All Event Data" mode
 - ✅ 2026-03-26, session-2026-03-26-001 — Basic SEO and performance optimization
-- 🔶 Deployed to production on Vercel — vercel.json ready, repo needs to be connected to Vercel and env vars set
+- ✅ 2026-03-26, session-2026-03-26-002 — Deployed to production on Vercel at https://iampatterson-com.vercel.app/
 - ⬜ Web GTM container config spec (`infrastructure/gtm/web-container.json`) — GA4 config tag, event tags for all 8 Phase 1 events, data layer triggers, consent-aware firing
 - ⬜ sGTM container config spec (`infrastructure/gtm/server-container.json`) — GA4 forwarding tag, BigQuery write tag, triggers for all Phase 1 events
 
