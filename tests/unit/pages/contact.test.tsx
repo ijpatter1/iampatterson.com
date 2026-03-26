@@ -7,6 +7,11 @@ import userEvent from '@testing-library/user-event';
 import ContactPage from '@/app/contact/page';
 
 // Mock the track module
+const mockPush = jest.fn();
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ push: mockPush }),
+}));
+
 jest.mock('@/lib/events/track', () => ({
   trackFormStart: jest.fn(),
   trackFormFieldFocus: jest.fn(),
@@ -21,6 +26,7 @@ const mockTrackFormSubmit = trackFormSubmit as jest.Mock;
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockPush.mockClear();
 });
 
 describe('ContactPage', () => {
@@ -86,7 +92,7 @@ describe('ContactPage', () => {
     expect(mockTrackFormStart).toHaveBeenCalledTimes(1);
   });
 
-  it('fires form_submit and shows success message on submission', async () => {
+  it('fires form_submit and redirects to /contact/thanks on submission', async () => {
     const user = userEvent.setup();
     render(<ContactPage />);
     await user.type(screen.getByLabelText(/name/i), 'Test User');
@@ -94,7 +100,6 @@ describe('ContactPage', () => {
     await user.type(screen.getByLabelText(/message/i), 'Hello');
     await user.click(screen.getByRole('button', { name: /send/i }));
     expect(mockTrackFormSubmit).toHaveBeenCalledWith('contact', true);
-    expect(screen.getByText(/message sent/i)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /send/i })).not.toBeInTheDocument();
+    expect(mockPush).toHaveBeenCalledWith('/contact/thanks');
   });
 });

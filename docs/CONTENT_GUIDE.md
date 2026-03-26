@@ -216,6 +216,16 @@ If you're not sure where to start, that's fine. Most engagements begin with a co
 
 **What to expect:** I'll respond within 24 hours. If we're a good fit, we'll schedule a 30-minute call to discuss your current setup and goals. No proposals without a conversation first.
 
+### Thank You Page (`/contact/thanks`)
+
+**Heading:** Message sent.
+
+Thanks for reaching out. I'll respond within 24 hours. If we're a good fit, we'll schedule a 30-minute call to discuss your current setup and goals.
+
+[Back to home →]
+
+*Note: This is the form submission conversion URL. Use `/contact/thanks` as the sGTM/GA4 conversion trigger for contact form completions.*
+
 ---
 
 ## Demo Pages

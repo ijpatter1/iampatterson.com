@@ -53,7 +53,9 @@ src/app/
 ├── about/
 │   └── page.tsx            # Background, experience, approach
 ├── contact/
-│   └── page.tsx            # Contact form
+│   ├── page.tsx            # Contact form
+│   └── thanks/
+│       └── page.tsx        # Post-submission confirmation (conversion URL)
 ├── demo/                   # (Phase 6 — empty until then)
 │   ├── ecommerce/
 │   ├── subscription/
