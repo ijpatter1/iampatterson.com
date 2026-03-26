@@ -19,8 +19,8 @@
 - ✅ 2026-03-26, session-2026-03-26-002 — BigQuery event sink configured: "Write to BigQuery" tag in sGTM writing to `iampatterson.iampatterson_raw.events_raw` with "All Event Data" mode
 - ✅ 2026-03-26, session-2026-03-26-001 — Basic SEO and performance optimization
 - ✅ 2026-03-26, session-2026-03-26-002 — Deployed to production on Vercel at https://iampatterson-com.vercel.app/
-- ⬜ Web GTM container config spec (`infrastructure/gtm/web-container.json`) — GA4 config tag, event tags for all 8 Phase 1 events, data layer triggers, consent-aware firing
-- ⬜ sGTM container config spec (`infrastructure/gtm/server-container.json`) — GA4 forwarding tag, BigQuery write tag, triggers for all Phase 1 events
+- ✅ 2026-03-26, session-2026-03-26-002 — Web GTM container config spec + importable container (`infrastructure/gtm/web-container.json`, `web-container-import.json`)
+- ✅ 2026-03-26, session-2026-03-26-002 — sGTM container config spec + importable container (`infrastructure/gtm/server-container.json`, `server-container-import.json`)
 
 ---
 
