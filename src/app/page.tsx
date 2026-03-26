@@ -114,7 +114,7 @@ export default function HomePage() {
               ctaLocation="deliver"
               className="text-sm font-semibold text-neutral-900 underline underline-offset-4 transition-colors hover:text-neutral-600"
             >
-              Explore the full service offering
+              Explore the full service offering →
             </CtaLink>
           </div>
         </div>
@@ -146,7 +146,7 @@ export default function HomePage() {
               disabled
               className="text-sm font-semibold text-neutral-400"
             >
-              Explore the demos
+              Explore the demos →
             </CtaLink>
           </div>
         </div>

@@ -226,6 +226,9 @@ export default function ServicesPage() {
               need.
             </p>
 
+            <h3 className="mt-8 text-lg font-semibold text-neutral-900">
+              Components (all modular, scoped per client):
+            </h3>
             <dl className="mt-4 space-y-4">
               <div>
                 <dt className="font-semibold text-neutral-900">Dashboard Design & Build</dt>
@@ -285,6 +288,9 @@ export default function ServicesPage() {
               good as the data feeding them, and I need to know the data is right.
             </p>
 
+            <h3 className="mt-8 text-lg font-semibold text-neutral-900">
+              Components (scoped independently based on readiness):
+            </h3>
             <dl className="mt-4 space-y-4">
               <div>
                 <dt className="font-semibold text-neutral-900">Multi-Touch Attribution Modeling</dt>

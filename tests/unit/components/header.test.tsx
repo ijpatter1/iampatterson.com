@@ -1,6 +1,22 @@
+/**
+ * @jest-environment jsdom
+ */
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { Header } from '@/components/header';
+
+jest.mock('@/lib/events/track', () => ({
+  trackClickNav: jest.fn(),
+}));
+
+import { trackClickNav } from '@/lib/events/track';
+
+const mockTrackClickNav = trackClickNav as jest.Mock;
+
+beforeEach(() => {
+  jest.clearAllMocks();
+});
 
 describe('Header', () => {
   it('renders navigation links for Phase 1 pages', () => {
@@ -29,5 +45,12 @@ describe('Header', () => {
   it('renders a mobile menu button', () => {
     render(<Header />);
     expect(screen.getByRole('button', { name: /open menu/i })).toBeInTheDocument();
+  });
+
+  it('fires trackClickNav when a nav link is clicked', async () => {
+    const user = userEvent.setup();
+    render(<Header />);
+    await user.click(screen.getByRole('link', { name: /services/i }));
+    expect(mockTrackClickNav).toHaveBeenCalledWith('Services', '/services');
   });
 });

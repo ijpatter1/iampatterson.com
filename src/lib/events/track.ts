@@ -43,3 +43,12 @@ export function trackFormStart(formName: string): void {
 export function trackFormSubmit(formName: string, success: boolean): void {
   pushEvent({ ...baseFields(), event: 'form_submit', form_name: formName, form_success: success });
 }
+
+export function trackScrollDepth(percentage: number, pixels: number): void {
+  pushEvent({
+    ...baseFields(),
+    event: 'scroll_depth',
+    depth_percentage: percentage,
+    depth_pixels: pixels,
+  });
+}

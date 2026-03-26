@@ -1,11 +1,22 @@
+/**
+ * @jest-environment jsdom
+ */
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import HomePage from '@/app/page';
 
-// Mock the track module so CtaLink doesn't error
 jest.mock('@/lib/events/track', () => ({
   trackClickCta: jest.fn(),
 }));
+
+import { trackClickCta } from '@/lib/events/track';
+
+const mockTrackClickCta = trackClickCta as jest.Mock;
+
+beforeEach(() => {
+  jest.clearAllMocks();
+});
 
 describe('HomePage', () => {
   it('renders the hero heading', () => {
@@ -67,5 +78,18 @@ describe('HomePage', () => {
     expect(
       screen.getByRole('link', { name: /explore the full service offering/i }),
     ).toHaveAttribute('href', '/services');
+  });
+
+  it('renders CTA arrows matching CONTENT_GUIDE', () => {
+    render(<HomePage />);
+    expect(screen.getByText(/explore the full service offering →/i)).toBeInTheDocument();
+    expect(screen.getByText(/explore the demos →/i)).toBeInTheDocument();
+  });
+
+  it('fires trackClickCta when a CTA link is clicked', async () => {
+    const user = userEvent.setup();
+    render(<HomePage />);
+    await user.click(screen.getByRole('link', { name: /see how it works/i }));
+    expect(mockTrackClickCta).toHaveBeenCalledWith('See how it works', 'hero');
   });
 });
