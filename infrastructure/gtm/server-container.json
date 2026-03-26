@@ -1,6 +1,7 @@
 {
   "_meta": {
     "description": "sGTM Server Container configuration spec for iampatterson.com Phase 1",
+    "containerId": "GTM-NTTKZFWD",
     "sgtmUrl": "io.iampatterson.com",
     "ga4MeasurementId": "G-9M2G3RLHWF",
     "bigqueryTableId": "iampatterson.iampatterson_raw.events_raw",

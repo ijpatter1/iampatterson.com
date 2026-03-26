@@ -20,7 +20,7 @@ Status of external service credentials and configuration for Phase 1.
 ## sGTM on Stape — DONE (code-side), CONTAINER CONFIG PENDING
 
 - sGTM URL: `io.iampatterson.com`
-- sGTM container ID: hosted by Stape (separate from Stape's auto-generated `GTM-KNTVZ3JW`)
+- sGTM container ID: `GTM-NTTKZFWD` (our production container, separate from Stape's auto-generated `GTM-KNTVZ3JW`)
 - GTM loads from sGTM domain for same-origin cookie context via `NEXT_PUBLIC_SGTM_URL` env var
 - DNS propagation: **DONE, verified**
 - **Pending:** sGTM tags/triggers must be configured — see `infrastructure/gtm/server-container.json` for spec
