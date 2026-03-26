@@ -76,7 +76,7 @@ Additional domains (GCP, Stape, Cookiebot) are available in `init-firewall.sh` b
 
 **Git push is blocked.** The bash-guard hook blocks all `git push` commands. Commits happen inside the container (visible on host via bind mount). Push from your host terminal after reviewing the changes.
 
-**Non-root execution.** Claude Code runs as the `claude` user. The only sudo permission is running `init-firewall.sh` at container start.
+**Non-root execution.** The entrypoint runs as root only for iptables firewall setup, then drops to the `claude` user via `runuser` before starting Claude Code. No root process remains after startup.
 
 ## Modifying the Allowlist
 
