@@ -1,7 +1,7 @@
 # Phase Status Tracker
 
 > **Current Phase: 1 — Foundation**
-> Last updated: 2026-03-26, session-2026-03-26-001
+> Last updated: 2026-03-26, session-2026-03-26-002
 
 ---
 
@@ -12,13 +12,13 @@
 - ✅ 2026-03-26, session-2026-03-26-001 — Next.js project scaffolded with TypeScript (strict) and Tailwind CSS
 - ✅ 2026-03-26, session-2026-03-26-001 — Site structure: homepage, services overview (the four tiers), about/background, contact
 - ✅ 2026-03-26, session-2026-03-26-001 — Data layer event schema defined and wired into all UI components (page_view, scroll_depth, click_nav, click_cta, form events)
-- ⬜ Cookiebot deployed and integrated with GTM consent mode (needs Cookiebot ID)
-- ⬜ Client-side GTM container configured (needs GTM container ID)
-- ⬜ sGTM container on Stape with custom domain and same-origin setup (needs Stape account)
-- ⬜ GA4 configured via sGTM (needs GA4 Measurement ID)
-- ⬜ BigQuery event sink receiving raw event stream from sGTM (needs GCP project)
+- ✅ 2026-03-26, session-2026-03-26-002 — Cookiebot CMP integrated with Consent Mode v2 defaults and consent_update event handler (code-side complete; Cookiebot ID configured)
+- ✅ 2026-03-26, session-2026-03-26-002 — Client-side GTM container configured with sGTM same-origin transport (code-side complete; GTM ID configured)
+- 🔶 sGTM container on Stape with custom domain — code points to io.iampatterson.com, DNS propagation pending (~72 hours)
+- 🔶 GA4 configured via sGTM — Measurement ID known (G-9M2G3RLHWF), sGTM GA4 tag must be configured in Stape UI
+- 🔶 BigQuery event sink — setup script ready (`infrastructure/bigquery/setup.sh`), sGTM BigQuery tag must be configured in Stape UI
 - ✅ 2026-03-26, session-2026-03-26-001 — Basic SEO and performance optimization
-- ⬜ Deployed to production on Vercel
+- 🔶 Deployed to production on Vercel — vercel.json ready, repo needs to be connected to Vercel and env vars set
 
 ---
 
