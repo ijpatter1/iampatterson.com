@@ -48,6 +48,7 @@ blob-report/
 *.swp
 *.swo
 *~
+*.code-workspace
 
 # ─────────────────────────────────────────────
 # OS files
