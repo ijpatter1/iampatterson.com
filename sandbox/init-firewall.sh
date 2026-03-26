@@ -1,7 +1,7 @@
 #!/bin/bash
 # init-firewall.sh
 # Sets up iptables firewall with domain allowlisting.
-# Runs as root (via sudo from entrypoint.sh).
+# Runs as root (entrypoint runs as root for iptables, then drops to claude user).
 # Resolves domains to IPs at container start.
 #
 # IMPORTANT: DNS resolution happens once at startup. If a service's

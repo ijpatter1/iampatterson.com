@@ -128,11 +128,11 @@ test-fw: build
 		--cap-add=NET_RAW \
 		--entrypoint /bin/bash \
 		$(IMAGE_NAME) \
-		-c "sudo /usr/local/bin/init-firewall.sh && curl -s -o /dev/null -w '%{http_code}' --max-time 5 https://api.anthropic.com 2>/dev/null && echo ' ✓ api.anthropic.com reachable' || echo ' ✗ api.anthropic.com unreachable'"
+		-c "/usr/local/bin/init-firewall.sh && curl -s -o /dev/null -w '%{http_code}' --max-time 5 https://api.anthropic.com 2>/dev/null && echo ' ✓ api.anthropic.com reachable' || echo ' ✗ api.anthropic.com unreachable'"
 	@echo "--- Should FAIL (not allowlisted) ---"
 	docker run --rm \
 		--cap-add=NET_ADMIN \
 		--cap-add=NET_RAW \
 		--entrypoint /bin/bash \
 		$(IMAGE_NAME) \
-		-c "sudo /usr/local/bin/init-firewall.sh && curl -s -o /dev/null -w '%{http_code}' --max-time 5 https://example.com 2>/dev/null && echo ' ✗ example.com reachable (FIREWALL LEAK)' || echo ' ✓ example.com blocked'"
+		-c "/usr/local/bin/init-firewall.sh && curl -s -o /dev/null -w '%{http_code}' --max-time 5 https://example.com 2>/dev/null && echo ' ✗ example.com reachable (FIREWALL LEAK)' || echo ' ✓ example.com blocked'"

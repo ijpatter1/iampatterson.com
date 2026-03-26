@@ -30,11 +30,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
     python3-venv \
-    sudo \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Claude Code CLI globally
-RUN npm install -g @anthropic-ai/claude-code
+# Install Claude Code CLI via native installer (recommended over npm).
+# The installer puts the binary at ~/.local/bin/claude and runtime data at
+# ~/.local/share/claude (both under /root/ during build). We copy the binary
+# to /usr/local/bin and the data to /usr/local/share/claude so they're
+# accessible after the privilege drop to the claude user.
+RUN curl -fsSL https://claude.ai/install.sh | bash && \
+    cp /root/.local/bin/claude /usr/local/bin/claude && \
+    chmod +x /usr/local/bin/claude && \
+    if [ -d /root/.local/share/claude ]; then \
+      cp -r /root/.local/share/claude /usr/local/share/claude; \
+    fi
 
 # ─────────────────────────────────────────────
 # OPTIONAL: Google Cloud CLI
@@ -48,12 +56,12 @@ RUN npm install -g @anthropic-ai/claude-code
 #     apt-get update && apt-get install -y --no-install-recommends google-cloud-cli && \
 #     rm -rf /var/lib/apt/lists/*
 
-# Create non-root user
+# Create non-root user for Claude Code to run as.
+# The entrypoint starts as root (for iptables), then drops to this user via runuser.
 ARG HOST_UID=1000
 ARG HOST_GID=1000
 RUN groupadd -g ${HOST_GID} claude && \
-    useradd -m -u ${HOST_UID} -g ${HOST_GID} -s /bin/bash claude && \
-    echo "claude ALL=(root) NOPASSWD: /usr/local/bin/init-firewall.sh" > /etc/sudoers.d/claude
+    useradd -m -u ${HOST_UID} -g ${HOST_GID} -s /bin/bash claude
 
 # Copy firewall initialization script
 COPY init-firewall.sh /usr/local/bin/init-firewall.sh

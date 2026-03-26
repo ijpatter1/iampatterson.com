@@ -1,0 +1,296 @@
+{
+  "_meta": {
+    "description": "GTM Web Container configuration spec for iampatterson.com Phase 1",
+    "containerId": "GTM-MWHFMTZN",
+    "sgtmUrl": "io.iampatterson.com",
+    "ga4MeasurementId": "G-9M2G3RLHWF",
+    "note": "This is a configuration spec, not an importable GTM container export. Use this to manually configure tags/triggers/variables in the GTM UI, or as the basis for generating an importable container JSON."
+  },
+
+  "variables": [
+    {
+      "name": "const - ga4_measurement_id",
+      "type": "constant",
+      "value": "G-9M2G3RLHWF"
+    },
+    {
+      "name": "const - server_container_url",
+      "type": "constant",
+      "value": "https://io.iampatterson.com"
+    },
+    {
+      "name": "dlv - event",
+      "type": "dataLayer",
+      "dataLayerVariable": "event",
+      "note": "Reads the 'event' key from each data layer push"
+    },
+    {
+      "name": "dlv - timestamp",
+      "type": "dataLayer",
+      "dataLayerVariable": "timestamp"
+    },
+    {
+      "name": "dlv - session_id",
+      "type": "dataLayer",
+      "dataLayerVariable": "session_id"
+    },
+    {
+      "name": "dlv - page_path",
+      "type": "dataLayer",
+      "dataLayerVariable": "page_path"
+    },
+    {
+      "name": "dlv - page_title",
+      "type": "dataLayer",
+      "dataLayerVariable": "page_title"
+    },
+    {
+      "name": "dlv - page_referrer",
+      "type": "dataLayer",
+      "dataLayerVariable": "page_referrer"
+    },
+    {
+      "name": "dlv - depth_percentage",
+      "type": "dataLayer",
+      "dataLayerVariable": "depth_percentage"
+    },
+    {
+      "name": "dlv - depth_pixels",
+      "type": "dataLayer",
+      "dataLayerVariable": "depth_pixels"
+    },
+    {
+      "name": "dlv - link_text",
+      "type": "dataLayer",
+      "dataLayerVariable": "link_text"
+    },
+    {
+      "name": "dlv - link_url",
+      "type": "dataLayer",
+      "dataLayerVariable": "link_url"
+    },
+    {
+      "name": "dlv - cta_text",
+      "type": "dataLayer",
+      "dataLayerVariable": "cta_text"
+    },
+    {
+      "name": "dlv - cta_location",
+      "type": "dataLayer",
+      "dataLayerVariable": "cta_location"
+    },
+    {
+      "name": "dlv - form_name",
+      "type": "dataLayer",
+      "dataLayerVariable": "form_name"
+    },
+    {
+      "name": "dlv - field_name",
+      "type": "dataLayer",
+      "dataLayerVariable": "field_name"
+    },
+    {
+      "name": "dlv - form_success",
+      "type": "dataLayer",
+      "dataLayerVariable": "form_success"
+    },
+    {
+      "name": "dlv - consent_analytics",
+      "type": "dataLayer",
+      "dataLayerVariable": "consent_analytics"
+    },
+    {
+      "name": "dlv - consent_marketing",
+      "type": "dataLayer",
+      "dataLayerVariable": "consent_marketing"
+    },
+    {
+      "name": "dlv - consent_preferences",
+      "type": "dataLayer",
+      "dataLayerVariable": "consent_preferences"
+    }
+  ],
+
+  "triggers": [
+    {
+      "name": "ce - page_view",
+      "type": "customEvent",
+      "eventName": "page_view",
+      "note": "Fires when app code pushes { event: 'page_view' } to data layer"
+    },
+    {
+      "name": "ce - scroll_depth",
+      "type": "customEvent",
+      "eventName": "scroll_depth"
+    },
+    {
+      "name": "ce - click_nav",
+      "type": "customEvent",
+      "eventName": "click_nav"
+    },
+    {
+      "name": "ce - click_cta",
+      "type": "customEvent",
+      "eventName": "click_cta"
+    },
+    {
+      "name": "ce - form_field_focus",
+      "type": "customEvent",
+      "eventName": "form_field_focus"
+    },
+    {
+      "name": "ce - form_start",
+      "type": "customEvent",
+      "eventName": "form_start"
+    },
+    {
+      "name": "ce - form_submit",
+      "type": "customEvent",
+      "eventName": "form_submit"
+    },
+    {
+      "name": "ce - consent_update",
+      "type": "customEvent",
+      "eventName": "consent_update"
+    }
+  ],
+
+  "tags": [
+    {
+      "name": "GA4 - Config",
+      "type": "Google Tag (gtag)",
+      "measurementId": "{{const - ga4_measurement_id}}",
+      "serverContainerUrl": "{{const - server_container_url}}",
+      "configSettings": {
+        "send_page_view": false
+      },
+      "firingTrigger": "All Pages",
+      "consentSettings": {
+        "analytics_storage": "required",
+        "note": "Config tag requires analytics consent before initializing GA4"
+      },
+      "note": "GA4 config tag. send_page_view is false because page views are pushed explicitly from app code via data layer. Server container URL routes hits through sGTM on io.iampatterson.com."
+    },
+    {
+      "name": "GA4 - page_view",
+      "type": "GA4 Event (gaawe)",
+      "eventName": "page_view",
+      "parameters": {
+        "timestamp": "{{dlv - timestamp}}",
+        "session_id": "{{dlv - session_id}}",
+        "page_path": "{{dlv - page_path}}",
+        "page_title": "{{dlv - page_title}}",
+        "page_referrer": "{{dlv - page_referrer}}"
+      },
+      "firingTrigger": "ce - page_view",
+      "consentSettings": { "analytics_storage": "required" }
+    },
+    {
+      "name": "GA4 - scroll_depth",
+      "type": "GA4 Event (gaawe)",
+      "eventName": "scroll_depth",
+      "parameters": {
+        "timestamp": "{{dlv - timestamp}}",
+        "session_id": "{{dlv - session_id}}",
+        "page_path": "{{dlv - page_path}}",
+        "page_title": "{{dlv - page_title}}",
+        "depth_percentage": "{{dlv - depth_percentage}}",
+        "depth_pixels": "{{dlv - depth_pixels}}"
+      },
+      "firingTrigger": "ce - scroll_depth",
+      "consentSettings": { "analytics_storage": "required" }
+    },
+    {
+      "name": "GA4 - click_nav",
+      "type": "GA4 Event (gaawe)",
+      "eventName": "click_nav",
+      "parameters": {
+        "timestamp": "{{dlv - timestamp}}",
+        "session_id": "{{dlv - session_id}}",
+        "page_path": "{{dlv - page_path}}",
+        "page_title": "{{dlv - page_title}}",
+        "link_text": "{{dlv - link_text}}",
+        "link_url": "{{dlv - link_url}}"
+      },
+      "firingTrigger": "ce - click_nav",
+      "consentSettings": { "analytics_storage": "required" }
+    },
+    {
+      "name": "GA4 - click_cta",
+      "type": "GA4 Event (gaawe)",
+      "eventName": "click_cta",
+      "parameters": {
+        "timestamp": "{{dlv - timestamp}}",
+        "session_id": "{{dlv - session_id}}",
+        "page_path": "{{dlv - page_path}}",
+        "page_title": "{{dlv - page_title}}",
+        "cta_text": "{{dlv - cta_text}}",
+        "cta_location": "{{dlv - cta_location}}"
+      },
+      "firingTrigger": "ce - click_cta",
+      "consentSettings": { "analytics_storage": "required" }
+    },
+    {
+      "name": "GA4 - form_field_focus",
+      "type": "GA4 Event (gaawe)",
+      "eventName": "form_field_focus",
+      "parameters": {
+        "timestamp": "{{dlv - timestamp}}",
+        "session_id": "{{dlv - session_id}}",
+        "page_path": "{{dlv - page_path}}",
+        "page_title": "{{dlv - page_title}}",
+        "form_name": "{{dlv - form_name}}",
+        "field_name": "{{dlv - field_name}}"
+      },
+      "firingTrigger": "ce - form_field_focus",
+      "consentSettings": { "analytics_storage": "required" }
+    },
+    {
+      "name": "GA4 - form_start",
+      "type": "GA4 Event (gaawe)",
+      "eventName": "form_start",
+      "parameters": {
+        "timestamp": "{{dlv - timestamp}}",
+        "session_id": "{{dlv - session_id}}",
+        "page_path": "{{dlv - page_path}}",
+        "page_title": "{{dlv - page_title}}",
+        "form_name": "{{dlv - form_name}}"
+      },
+      "firingTrigger": "ce - form_start",
+      "consentSettings": { "analytics_storage": "required" }
+    },
+    {
+      "name": "GA4 - form_submit",
+      "type": "GA4 Event (gaawe)",
+      "eventName": "form_submit",
+      "parameters": {
+        "timestamp": "{{dlv - timestamp}}",
+        "session_id": "{{dlv - session_id}}",
+        "page_path": "{{dlv - page_path}}",
+        "page_title": "{{dlv - page_title}}",
+        "form_name": "{{dlv - form_name}}",
+        "form_success": "{{dlv - form_success}}"
+      },
+      "firingTrigger": "ce - form_submit",
+      "consentSettings": { "analytics_storage": "required" }
+    },
+    {
+      "name": "GA4 - consent_update",
+      "type": "GA4 Event (gaawe)",
+      "eventName": "consent_update",
+      "parameters": {
+        "timestamp": "{{dlv - timestamp}}",
+        "session_id": "{{dlv - session_id}}",
+        "page_path": "{{dlv - page_path}}",
+        "page_title": "{{dlv - page_title}}",
+        "consent_analytics": "{{dlv - consent_analytics}}",
+        "consent_marketing": "{{dlv - consent_marketing}}",
+        "consent_preferences": "{{dlv - consent_preferences}}"
+      },
+      "firingTrigger": "ce - consent_update",
+      "consentSettings": {
+        "note": "No consent requirement — consent_update must fire regardless of consent state to track the consent change itself"
+      }
+    }
+  ]
+}

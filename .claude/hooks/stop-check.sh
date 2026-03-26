@@ -37,10 +37,9 @@ fi
 
 if [ -n "$REMINDERS" ]; then
   jq -n --arg r "${REMINDERS}Before ending, consider: (1) Commit any outstanding work. (2) Run /evaluate for a QA assessment. (3) Run /handoff to generate a session artifact. If you are intentionally ending without these, that is fine — this is a reminder, not a requirement." '{
-    hookSpecificOutput: {
-      hookEventName: "Stop",
-      additionalContext: $r
-    }
+    decision: "approve",
+    reason: "Advisory reminder — not blocking",
+    systemMessage: $r
   }'
 fi
 

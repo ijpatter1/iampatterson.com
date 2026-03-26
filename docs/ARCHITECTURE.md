@@ -53,7 +53,9 @@ src/app/
 ├── about/
 │   └── page.tsx            # Background, experience, approach
 ├── contact/
-│   └── page.tsx            # Contact form
+│   ├── page.tsx            # Contact form
+│   └── thanks/
+│       └── page.tsx        # Post-submission confirmation (conversion URL)
 ├── demo/                   # (Phase 6 — empty until then)
 │   ├── ecommerce/
 │   ├── subscription/
@@ -66,6 +68,8 @@ src/app/
 - Server Components by default. Only add `'use client'` when the component needs browser APIs, state, or event handlers
 - The data layer push helper (`src/lib/events/push.ts`) is a client-side utility — components that fire events must be Client Components
 - Layout.tsx loads GTM and Cookiebot scripts via `<Script>` component with appropriate loading strategies (`afterInteractive` for GTM, `beforeInteractive` for Cookiebot if consent is needed before GTM fires)
+- **Progressive nav activation:** The global nav includes Home, Services, About, Contact, and a Demos dropdown. In Phase 1, the Demos dropdown is hidden or disabled (no demo routes exist yet). It activates when Phase 6 ships the demo front-ends. The flip-the-card toggle is also hidden until Phase 3. See `docs/CONTENT_GUIDE.md` for the full nav structure
+- **Content source:** All page copy, headings, CTAs, form fields, and product listings come from `docs/CONTENT_GUIDE.md`. Do not invent placeholder content — the content guide is the source of truth
 
 ### Data Layer Specification
 
@@ -93,9 +97,12 @@ interface BaseEvent {
 | `scroll_depth` | 25%, 50%, 75%, 100% scroll thresholds | `depth_percentage`, `depth_pixels` |
 | `click_nav` | Navigation link click | `link_text`, `link_url` |
 | `click_cta` | CTA button click | `cta_text`, `cta_location` |
-| `form_start` | First interaction with contact form | `form_name` |
-| `form_submit` | Contact form submission | `form_name`, `form_success` |
+| `form_field_focus` | User focuses a form field | `form_name`, `field_name` |
+| `form_start` | First interaction with any form (fires once per form per session) | `form_name` |
+| `form_submit` | Form submission | `form_name`, `form_success` |
 | `consent_update` | Cookiebot consent change | `consent_analytics`, `consent_marketing`, `consent_preferences` |
+
+**Note:** Demo pages (Phase 6) add business-model-specific events (e.g., `product_view`, `add_to_cart`, `purchase`, `trial_signup`, `form_complete`). See `docs/CONTENT_GUIDE.md` for the full event specifications per demo.
 
 **Push helper:**
 
@@ -133,43 +140,81 @@ export function pushEvent(event: BaseEvent & Record<string, unknown>): void {
 
 ### GTM Configuration
 
-**Client-side GTM container:**
+**Relationship with Stape auto-generated templates:**
 
-- Loads via `<Script>` in root layout
+Stape auto-generates a starter GTM web + sGTM container pair when you set up a new site (`docs/gtm-web-template.json` and `docs/gtm-server-template.json`). These are reference templates for a lead gen site (container IDs `GTM-NW698GF4` / `GTM-KNTVZ3JW`) — **not our production containers**. Our site uses its own containers (`GTM-MWHFMTZN` web, sGTM on `io.iampatterson.com`) with our own event taxonomy. We keep Stape's infrastructure (hosting, GA4 client, Data Client, BigQuery tag template) and build our own tag/trigger/variable configuration on top.
+
+**What Stape provides (infrastructure):**
+
+- sGTM container hosting on `io.iampatterson.com` (custom domain, same-origin)
+- GA4 client — standard sGTM client that parses incoming GA4 hits
+- Stape Data Client — proprietary client for routing events to external destinations
+- "Write to BigQuery" community tag template (`docs/template.tpl`)
+
+**What we configure ourselves:**
+
+- Web GTM container (`GTM-MWHFMTZN`) — our tags, triggers, and variables
+- sGTM tags/triggers for our event taxonomy
+- BigQuery write tag configuration
+- Phase 2: Pub/Sub custom tag for real-time pipeline
+- Phase 6: demo-specific event tags and triggers
+
+**Client-side GTM container (`GTM-MWHFMTZN`):**
+
+- Loads via `<Script>` in root layout with sGTM same-origin transport (`io.iampatterson.com`)
 - Contains a minimal set of tags — most processing happens in sGTM
-- Key tags: Cookiebot integration, data layer listener, sGTM transport
+- GA4 config tag with `send_page_view: false` (page views pushed explicitly from app code)
+- GA4 event tags for each Phase 1 event, fired by data layer triggers
 - All event parameters are pushed to the data layer by application code, not extracted by GTM
+- Consent Mode v2 integration — tags respect consent state from Cookiebot
+- Configuration spec: `infrastructure/gtm/web-container.json` (Phase 1)
 
 **Server-side GTM (sGTM) on Stape:**
 
-- Custom domain configured for same-origin (e.g., `sgtm.iampatterson.com`) to avoid ad blockers and ensure first-party cookie context
+- Custom domain `io.iampatterson.com` for same-origin cookie context
 - Stape handles the sGTM container hosting
-- sGTM receives all events from the client-side container
+- GA4 client receives all hits from the web container
 - sGTM routes events to:
-  - GA4 (Measurement Protocol)
-  - BigQuery (BigQuery API tag)
+  - GA4 (Measurement Protocol) — via sGTM GA4 tag
+  - BigQuery (Stape "Write to BigQuery" tag, "All Event Data" mode)
   - Pub/Sub (custom tag — Phase 2)
   - Meta CAPI (simulated — Phase 6)
   - Google Ads Enhanced Conversions (simulated — Phase 6)
+- Configuration spec: `infrastructure/gtm/server-container.json` (Phase 1)
 
 ### BigQuery Event Sink
 
 **Dataset:** `iampatterson_raw`
 **Table:** `events_raw`
+**Tag:** Stape "Write to BigQuery" community template (`docs/template.tpl`)
+**Setup:** `infrastructure/bigquery/setup.sh` (idempotent)
 
-The sGTM BigQuery tag writes every event directly to this table. Schema matches the data layer event shape with additional server-side enrichment from sGTM (IP-based geo, user agent parsing, timestamp normalization).
+The sGTM BigQuery tag uses "All Event Data" mode — `getAllEventData()` writes the full sGTM event object. Column names align with sGTM's Common Event Data model (`page_location`, `ip_override`, etc.) and our custom event parameters (`session_id`, `cta_text`, etc.). Fields not matching a BQ column are silently dropped (`ignoreUnknownValues: true`).
+
+**Schema design decisions:**
+- `received_timestamp` is INT64 (epoch ms from the tag's `getTimestampMillis()`) — convert to TIMESTAMP in Dataform staging
+- `timestamp` is the client-side ISO string passed as an event parameter from the data layer
+- Only `event_name` and `received_timestamp` are REQUIRED — all event parameters are NULLABLE to avoid insert failures
+- Ingestion-time partitioned (daily), clustered by `event_name` and `session_id`
+- Geo fields (`geo_country`, etc.) are not in the raw table — derive from `ip_override` in Dataform staging
+- `page_location` (full URL) and `page_path` (pathname) are both stored as sGTM provides both
 
 This raw table is the starting point for the Dataform transformation pipeline in Phase 5.
 
 ### Deployment
 
-**Next.js app:** Vercel (primary option) or Cloud Run
-- Vercel is simpler for Next.js — zero config, automatic preview deployments, edge functions
-- Cloud Run is the fallback if Vercel limitations emerge (e.g., WebSocket support for Phase 2)
+**Next.js app:** Vercel
+
+Vercel is the deliberate choice for the frontend, not just a convenience. Most clients will host their websites on platforms like Vercel, Netlify, Shopify, or WordPress — not on GCP. By hosting the consulting site on Vercel while running the measurement infrastructure on GCP, the site demonstrates that the stack works seamlessly across the provider boundary that real clients will have. The cross-origin event pipeline (browser on Vercel → sGTM on Stape → Pub/Sub on GCP → WebSocket on Cloud Run → back to the browser) is the same architecture clients experience. If a prospect asks "does this work with our site on Vercel?" the answer is "you're looking at it."
 
 **sGTM:** Stape managed hosting with custom domain
 
-**BigQuery, Pub/Sub, Cloud Run (pipeline):** Google Cloud Platform project
+**Backend services (all on GCP):**
+- Cloud Run — WebSocket/SSE service (Phase 2), background data generator (Phase 4)
+- BigQuery — raw event storage, Dataform transformations, AI functions
+- Pub/Sub — real-time event routing from sGTM to WebSocket service
+- Dataform — transformation pipeline (raw → staging → marts)
+- Cloud Storage — AI access layer exports
 
 ---
 
