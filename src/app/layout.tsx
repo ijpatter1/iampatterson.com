@@ -5,6 +5,7 @@ import { Footer } from '@/components/footer';
 import { RouteTracker } from '@/components/route-tracker';
 import { ScrollDepthTracker } from '@/components/scroll-depth-tracker';
 import { CookiebotScript } from '@/components/scripts/cookiebot';
+import { CookiebotConsentListener } from '@/components/scripts/cookiebot-consent';
 import { GtmScript, GtmNoscript } from '@/components/scripts/gtm';
 import '@/styles/globals.css';
 
@@ -25,6 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="flex min-h-screen flex-col bg-white text-neutral-900 antialiased">
         <GtmNoscript />
+        <CookiebotConsentListener />
         <RouteTracker />
         <ScrollDepthTracker />
         <Header />

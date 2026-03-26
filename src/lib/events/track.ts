@@ -52,3 +52,17 @@ export function trackScrollDepth(percentage: number, pixels: number): void {
     depth_pixels: pixels,
   });
 }
+
+export function trackConsentUpdate(
+  analytics: boolean,
+  marketing: boolean,
+  preferences: boolean,
+): void {
+  pushEvent({
+    ...baseFields(),
+    event: 'consent_update',
+    consent_analytics: analytics,
+    consent_marketing: marketing,
+    consent_preferences: preferences,
+  });
+}

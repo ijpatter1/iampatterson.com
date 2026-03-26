@@ -8,6 +8,7 @@ import {
   trackFormFieldFocus,
   trackFormStart,
   trackFormSubmit,
+  trackConsentUpdate,
 } from '@/lib/events/track';
 
 // Mock crypto.randomUUID for session ID
@@ -82,6 +83,28 @@ describe('trackFormSubmit', () => {
       event: 'form_submit',
       form_name: 'contact',
       form_success: true,
+    });
+  });
+});
+
+describe('trackConsentUpdate', () => {
+  it('pushes a consent_update event with consent state', () => {
+    trackConsentUpdate(true, false, true);
+    expect(window.dataLayer[0]).toMatchObject({
+      event: 'consent_update',
+      consent_analytics: true,
+      consent_marketing: false,
+      consent_preferences: true,
+    });
+  });
+
+  it('pushes a consent_update with all denied', () => {
+    trackConsentUpdate(false, false, false);
+    expect(window.dataLayer[0]).toMatchObject({
+      event: 'consent_update',
+      consent_analytics: false,
+      consent_marketing: false,
+      consent_preferences: false,
     });
   });
 });

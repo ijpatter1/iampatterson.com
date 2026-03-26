@@ -13,7 +13,7 @@ export function CookiebotScript() {
       data-cbid={cbid}
       data-blockingmode="auto"
       type="text/javascript"
-      strategy="afterInteractive"
+      strategy="beforeInteractive"
     />
   );
 }

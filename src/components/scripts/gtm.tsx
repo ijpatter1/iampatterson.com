@@ -2,14 +2,16 @@
 
 import Script from 'next/script';
 
-function getGtmScriptUrl(gtmId: string, sgtmUrl?: string): string {
-  const host = sgtmUrl ? `https://${sgtmUrl}` : 'https://www.googletagmanager.com';
-  return `${host}/gtm.js`;
+function getHost(sgtmUrl?: string): string {
+  return sgtmUrl ? `https://${sgtmUrl}` : 'https://www.googletagmanager.com';
+}
+
+function getGtmScriptUrl(sgtmUrl?: string): string {
+  return `${getHost(sgtmUrl)}/gtm.js`;
 }
 
 function getNoscriptUrl(gtmId: string, sgtmUrl?: string): string {
-  const host = sgtmUrl ? `https://${sgtmUrl}` : 'https://www.googletagmanager.com';
-  return `${host}/ns.html?id=${gtmId}`;
+  return `${getHost(sgtmUrl)}/ns.html?id=${gtmId}`;
 }
 
 export function GtmScript() {
@@ -17,7 +19,7 @@ export function GtmScript() {
   const sgtmUrl = process.env.NEXT_PUBLIC_SGTM_URL;
   if (!gtmId) return null;
 
-  const scriptUrl = getGtmScriptUrl(gtmId, sgtmUrl);
+  const scriptUrl = getGtmScriptUrl(sgtmUrl);
 
   return (
     <>
