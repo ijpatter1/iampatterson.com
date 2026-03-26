@@ -23,6 +23,13 @@ export default function HomePage() {
             >
               See how it works
             </Link>
+            <Link
+              href="/services"
+              className="rounded border border-neutral-400 px-6 py-3 text-sm font-semibold text-neutral-300 transition-colors hover:border-white hover:text-white"
+              aria-label="Explore a live demo (coming soon)"
+            >
+              Explore a live demo
+            </Link>
           </div>
         </div>
       </section>
@@ -128,6 +135,14 @@ export default function HomePage() {
               models — e-commerce, subscription, and lead generation — each with simulated data
               flowing through every layer from collection to attribution.
             </p>
+          </div>
+          <div className="mt-8">
+            <Link
+              href="/services"
+              className="text-sm font-semibold text-neutral-900 underline underline-offset-4 transition-colors hover:text-neutral-600"
+            >
+              Explore the demos
+            </Link>
           </div>
         </div>
       </section>

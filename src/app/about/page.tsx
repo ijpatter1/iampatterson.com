@@ -31,12 +31,14 @@ export default function AboutPage() {
             a way that&#39;s rare and genuinely useful.
           </p>
           <p>
-            In parallel with consulting, I run Tuna Melts My Heart — a cat-themed e-commerce brand
-            with 2.5 million Instagram followers. It&#39;s a real business that generates real
-            revenue, and it serves as a live testing ground for everything I build. The 2025 and
-            2026 Tuna calendars were produced using AI-generated imagery from fine-tuned FLUX models
-            — 5,000 units sold, substantial profit, on a creative production cost of $400.
-            That&#39;s not a case study I wrote. That&#39;s a case study I lived.
+            In parallel with consulting, I run Tuna Melts My Heart — a major pet influencer brand
+            built around Tuna, a Chiweenie (Chihuahua-Dachshund mix) with an exaggerated overbite
+            and 2 million Instagram followers. It&#39;s a real business with multiple revenue
+            streams — merchandise, brand partnerships, licensed content, and live events — and it
+            serves as a live testing ground for everything I build. The 2025 and 2026 Tuna calendars
+            were produced using AI-generated imagery from fine-tuned FLUX models — 5,000 units sold,
+            substantial profit, on a creative production cost of $400. That&#39;s not a case study I
+            wrote. That&#39;s a case study I lived.
           </p>
           <p>I&#39;m based in Atlanta and I work with clients across the US and UK.</p>
         </div>

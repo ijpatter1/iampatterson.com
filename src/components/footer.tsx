@@ -12,7 +12,10 @@ export function Footer() {
               ian@iampatterson.com
             </a>
           </div>
-          <p className="text-sm text-neutral-500">Built with the same stack I sell.</p>
+          <p className="text-sm text-neutral-500">
+            Built with the same stack I sell.{' '}
+            <span className="text-neutral-400">Flip the card to see how.</span>
+          </p>
         </div>
       </div>
     </footer>

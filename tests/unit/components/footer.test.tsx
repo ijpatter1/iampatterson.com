@@ -18,4 +18,9 @@ describe('Footer', () => {
     render(<Footer />);
     expect(screen.getByText(/built with the same stack i sell/i)).toBeInTheDocument();
   });
+
+  it('renders the flip-the-card reference', () => {
+    render(<Footer />);
+    expect(screen.getByText(/flip the card to see how/i)).toBeInTheDocument();
+  });
 });

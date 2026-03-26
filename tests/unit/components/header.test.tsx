@@ -25,4 +25,9 @@ describe('Header', () => {
     render(<Header />);
     expect(screen.getByText(/patterson consulting/i)).toBeInTheDocument();
   });
+
+  it('renders a mobile menu button', () => {
+    render(<Header />);
+    expect(screen.getByRole('button', { name: /open menu/i })).toBeInTheDocument();
+  });
 });
