@@ -76,8 +76,8 @@ Stape auto-generated a lead gen GTM web + sGTM container pair on initial setup. 
 
 1. **Stape DNS:** Verify `io.iampatterson.com` DNS has propagated **DONE**
 2. **sGTM GA4 tag:** Configure GA4 Measurement Protocol tag in sGTM container pointing to `G-9M2G3RLHWF` **DONE**
-3. **Web GTM container:** Configure tags/triggers/variables per `infrastructure/gtm/web-container.json` spec
-4. **sGTM container:** Configure tags/triggers per `infrastructure/gtm/server-container.json` spec
-5. **sGTM BigQuery tag:** Configure BigQuery API tag in sGTM container writing to `iampatterson.iampatterson_raw.events_raw`
-6. **BigQuery table:** Run `./infrastructure/bigquery/setup.sh` from a machine with `gcloud` CLI (or create manually in BigQuery Console)
-7. **Vercel:** Connect repo and set environment variables listed above
+3. **Web GTM container:** Configure tags/triggers/variables per `infrastructure/gtm/web-container.json` spec **DONE**
+4. **sGTM container:** Configure tags/triggers per `infrastructure/gtm/server-container.json` spec **DONE**
+5. **sGTM BigQuery tag:** Configure BigQuery API tag in sGTM container writing to `iampatterson.iampatterson_raw.events_raw` **DONE**
+6. **BigQuery table:** Run `./infrastructure/bigquery/setup.sh` from a machine with `gcloud` CLI (or create manually in BigQuery Console) **DONE**
+7. **Vercel:** Connect repo and set environment variables listed above **DONE**

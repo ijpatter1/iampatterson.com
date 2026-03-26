@@ -51,12 +51,16 @@ describe('GtmScript', () => {
     const consentScript = container.querySelector('#consent-defaults');
     expect(consentScript).not.toBeNull();
     const content = consentScript?.textContent ?? '';
-    expect(content).toContain("'analytics_storage': 'denied'");
+    expect(content).toContain("'ad_personalization': 'denied'");
     expect(content).toContain("'ad_storage': 'denied'");
     expect(content).toContain("'ad_user_data': 'denied'");
-    expect(content).toContain("'ad_personalization': 'denied'");
+    expect(content).toContain("'analytics_storage': 'denied'");
     expect(content).toContain("'functionality_storage': 'denied'");
+    expect(content).toContain("'personalization_storage': 'denied'");
+    expect(content).toContain("'security_storage': 'granted'");
     expect(content).toContain('wait_for_update');
+    expect(content).toContain("'ads_data_redaction', true");
+    expect(content).toContain("'url_passthrough', false");
   });
 
   it('includes GTM container ID in the script', () => {
