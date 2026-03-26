@@ -1,0 +1,144 @@
+[
+  {
+    "name": "event_name",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Snake_case event name (page_view, click_nav, etc.)"
+  },
+  {
+    "name": "event_timestamp",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED",
+    "description": "Client-side ISO 8601 timestamp"
+  },
+  {
+    "name": "received_timestamp",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED",
+    "description": "Server-side timestamp when sGTM received the event"
+  },
+  {
+    "name": "session_id",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Session identifier from first-party cookie"
+  },
+  {
+    "name": "client_id",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "GA4 client ID from cookie"
+  },
+  { "name": "page_path", "type": "STRING", "mode": "REQUIRED", "description": "URL pathname" },
+  { "name": "page_title", "type": "STRING", "mode": "REQUIRED", "description": "Document title" },
+
+  {
+    "name": "page_referrer",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Referrer URL (page_view events)"
+  },
+  {
+    "name": "depth_percentage",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "Scroll depth percentage (scroll_depth events)"
+  },
+  {
+    "name": "depth_pixels",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "Scroll depth in pixels (scroll_depth events)"
+  },
+  {
+    "name": "link_text",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Navigation link text (click_nav events)"
+  },
+  {
+    "name": "link_url",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Navigation link URL (click_nav events)"
+  },
+  {
+    "name": "cta_text",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "CTA button text (click_cta events)"
+  },
+  {
+    "name": "cta_location",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "CTA location on page (click_cta events)"
+  },
+  {
+    "name": "form_name",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Form identifier (form_* events)"
+  },
+  {
+    "name": "field_name",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Form field name (form_field_focus events)"
+  },
+  {
+    "name": "form_success",
+    "type": "BOOL",
+    "mode": "NULLABLE",
+    "description": "Whether form submission succeeded (form_submit events)"
+  },
+  {
+    "name": "consent_analytics",
+    "type": "BOOL",
+    "mode": "NULLABLE",
+    "description": "Analytics consent state (consent_update events)"
+  },
+  {
+    "name": "consent_marketing",
+    "type": "BOOL",
+    "mode": "NULLABLE",
+    "description": "Marketing consent state (consent_update events)"
+  },
+  {
+    "name": "consent_preferences",
+    "type": "BOOL",
+    "mode": "NULLABLE",
+    "description": "Preferences consent state (consent_update events)"
+  },
+
+  {
+    "name": "user_agent",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Raw user agent string from sGTM"
+  },
+  {
+    "name": "ip_address",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Client IP for geo enrichment (anonymized in processing)"
+  },
+  {
+    "name": "geo_country",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Country from IP geo lookup"
+  },
+  {
+    "name": "geo_region",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Region/state from IP geo lookup"
+  },
+  {
+    "name": "geo_city",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "City from IP geo lookup"
+  }
+]
