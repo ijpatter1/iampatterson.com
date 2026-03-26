@@ -1,0 +1,149 @@
+{
+  "_meta": {
+    "description": "sGTM Server Container configuration spec for iampatterson.com Phase 1",
+    "sgtmUrl": "io.iampatterson.com",
+    "ga4MeasurementId": "G-9M2G3RLHWF",
+    "bigqueryTableId": "iampatterson.iampatterson_raw.events_raw",
+    "note": "This is a configuration spec, not an importable GTM container export. Use this to manually configure tags/triggers/variables in the sGTM container on Stape, or as the basis for generating an importable container JSON."
+  },
+
+  "clients": [
+    {
+      "name": "GA4 Client",
+      "type": "GA4 (built-in)",
+      "note": "Standard sGTM GA4 client. Receives GA4 hits from the web container and parses them into sGTM's Common Event Data model. This is what getAllEventData() reads from."
+    },
+    {
+      "name": "Stape Data Client",
+      "type": "Stape Data Client (community template)",
+      "note": "Stape's proprietary client for routing events to external destinations. Used by the BigQuery write tag. Already provisioned by Stape during setup."
+    }
+  ],
+
+  "triggers": [
+    {
+      "name": "All GA4 Events",
+      "type": "always",
+      "filter": { "clientName": "contains 'GA4'" },
+      "note": "Fires for every event received by the GA4 client. Used by the GA4 forwarding tag and BigQuery write tag."
+    },
+    {
+      "name": "ce - page_view",
+      "type": "customEvent",
+      "eventName": "page_view",
+      "filter": { "clientName": "contains 'GA4'" }
+    },
+    {
+      "name": "ce - scroll_depth",
+      "type": "customEvent",
+      "eventName": "scroll_depth",
+      "filter": { "clientName": "contains 'GA4'" }
+    },
+    {
+      "name": "ce - click_nav",
+      "type": "customEvent",
+      "eventName": "click_nav",
+      "filter": { "clientName": "contains 'GA4'" }
+    },
+    {
+      "name": "ce - click_cta",
+      "type": "customEvent",
+      "eventName": "click_cta",
+      "filter": { "clientName": "contains 'GA4'" }
+    },
+    {
+      "name": "ce - form_field_focus",
+      "type": "customEvent",
+      "eventName": "form_field_focus",
+      "filter": { "clientName": "contains 'GA4'" }
+    },
+    {
+      "name": "ce - form_start",
+      "type": "customEvent",
+      "eventName": "form_start",
+      "filter": { "clientName": "contains 'GA4'" }
+    },
+    {
+      "name": "ce - form_submit",
+      "type": "customEvent",
+      "eventName": "form_submit",
+      "filter": { "clientName": "contains 'GA4'" }
+    },
+    {
+      "name": "ce - consent_update",
+      "type": "customEvent",
+      "eventName": "consent_update",
+      "filter": { "clientName": "contains 'GA4'" }
+    }
+  ],
+
+  "tags": [
+    {
+      "name": "GA4 - Forwarding",
+      "type": "Google Analytics: GA4 (sgtmgaaw)",
+      "configuration": {
+        "epToIncludeDropdown": "all",
+        "upToIncludeDropdown": "all",
+        "redactVisitorIp": false
+      },
+      "firingTrigger": "All GA4 Events",
+      "note": "Forwards all events to GA4 via Measurement Protocol. Includes all event parameters (ep) and user properties (up). IP not redacted at sGTM level — GA4 handles its own anonymization. This is the same pattern as Stape's auto-generated '[Stape] GA4 - Base' tag."
+    },
+    {
+      "name": "BigQuery - Write All Events",
+      "type": "Stape Write to BigQuery (community template)",
+      "templateRef": "docs/template.tpl",
+      "configuration": {
+        "tableId": "iampatterson.iampatterson_raw.events_raw",
+        "writeMode": "All Event Data",
+        "addEventTimestamp": true,
+        "eventTimestampFieldName": "received_timestamp",
+        "bigqueryProjectId": "iampatterson"
+      },
+      "firingTrigger": "All GA4 Events",
+      "note": "Writes the full getAllEventData() payload to BigQuery. Column names must match the schema in infrastructure/bigquery/schema.json. Fields not matching a column are silently dropped (ignoreUnknownValues: true). The 'received_timestamp' field is populated by the tag's getTimestampMillis() — INT64 epoch ms."
+    }
+  ],
+
+  "phase2Additions": {
+    "note": "These will be added when Phase 2 (Real-Time Event Pipeline) begins.",
+    "tags": [
+      {
+        "name": "Pub/Sub - Publish All Events",
+        "type": "Custom tag (HTTP request or Stape Pub/Sub template)",
+        "configuration": {
+          "topicName": "iampatterson-events",
+          "projectId": "iampatterson",
+          "messageFormat": "Full event JSON including session_id"
+        },
+        "firingTrigger": "All GA4 Events",
+        "note": "Publishes every event to Pub/Sub for the real-time WebSocket/SSE pipeline. The Cloud Run service subscribes to this topic and routes events to the matching browser session."
+      }
+    ]
+  },
+
+  "phase6Additions": {
+    "note": "These will be added when Phase 6 (Demo Front-Ends) ships.",
+    "triggers": [
+      { "name": "ce - product_view", "eventName": "product_view" },
+      { "name": "ce - add_to_cart", "eventName": "add_to_cart" },
+      { "name": "ce - purchase", "eventName": "purchase" },
+      { "name": "ce - trial_signup", "eventName": "trial_signup" },
+      { "name": "ce - plan_select", "eventName": "plan_select" },
+      { "name": "ce - form_complete", "eventName": "form_complete" },
+      { "name": "ce - lead_qualify", "eventName": "lead_qualify" }
+    ],
+    "tags": [
+      {
+        "name": "Meta CAPI - Simulated",
+        "type": "Custom tag",
+        "note": "Simulated Meta Conversions API tag. Logs the payload that would be sent to Meta's /events endpoint without actually sending. Shows event_name, event_time, user_data hash, custom_data in the flip-the-card overlay."
+      },
+      {
+        "name": "Google Ads Enhanced Conversions - Simulated",
+        "type": "Custom tag",
+        "note": "Simulated Google Ads Enhanced Conversions tag. Logs the conversion payload for demonstration purposes."
+      }
+    ]
+  }
+}

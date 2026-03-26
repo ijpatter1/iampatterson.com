@@ -14,11 +14,13 @@
 - ✅ 2026-03-26, session-2026-03-26-001 — Data layer event schema defined and wired into all UI components (page_view, scroll_depth, click_nav, click_cta, form events)
 - ✅ 2026-03-26, session-2026-03-26-002 — Cookiebot CMP integrated with Consent Mode v2 defaults and consent_update event handler (code-side complete; Cookiebot ID configured)
 - ✅ 2026-03-26, session-2026-03-26-002 — Client-side GTM container configured with sGTM same-origin transport (code-side complete; GTM ID configured)
-- 🔶 sGTM container on Stape with custom domain — code points to io.iampatterson.com, DNS propagation pending (~72 hours)
+- 🔶 sGTM container on Stape with custom domain — code points to io.iampatterson.com, DNS verified
 - 🔶 GA4 configured via sGTM — Measurement ID known (G-9M2G3RLHWF), sGTM GA4 tag must be configured in Stape UI
 - 🔶 BigQuery event sink — setup script ready (`infrastructure/bigquery/setup.sh`), schema aligned with sGTM `getAllEventData()`. sGTM BigQuery tag must be configured in Stape UI, table must be created via setup script
 - ✅ 2026-03-26, session-2026-03-26-001 — Basic SEO and performance optimization
 - 🔶 Deployed to production on Vercel — vercel.json ready, repo needs to be connected to Vercel and env vars set
+- ⬜ Web GTM container config spec (`infrastructure/gtm/web-container.json`) — GA4 config tag, event tags for all 8 Phase 1 events, data layer triggers, consent-aware firing
+- ⬜ sGTM container config spec (`infrastructure/gtm/server-container.json`) — GA4 forwarding tag, BigQuery write tag, triggers for all Phase 1 events
 
 ---
 
@@ -88,6 +90,8 @@
 - ⬜ Route namespaces (/demo/ecommerce, /demo/subscription, /demo/leadgen) styled as standalone mini-sites within the main application
 - ⬜ Flip-the-card overlay from Phase 3 works on all three demos, showing events contextual to the specific business model
 - ⬜ Navigation between demos and back to the main consulting site is seamless
+- ⬜ Web GTM container updated with demo event tags — e-commerce (`product_view`, `add_to_cart`, `purchase`), subscription (`trial_signup`, `plan_select`), lead gen (`form_complete`, `lead_qualify`) events
+- ⬜ sGTM container updated with demo event triggers, GA4 forwarding, BigQuery write tags, simulated Meta CAPI and Google Ads Enhanced Conversions tags
 
 ---
 

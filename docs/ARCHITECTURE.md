@@ -140,24 +140,47 @@ export function pushEvent(event: BaseEvent & Record<string, unknown>): void {
 
 ### GTM Configuration
 
-**Client-side GTM container:**
+**Relationship with Stape auto-generated templates:**
 
-- Loads via `<Script>` in root layout
+Stape auto-generates a starter GTM web + sGTM container pair when you set up a new site (`docs/gtm-web-template.json` and `docs/gtm-server-template.json`). These are reference templates for a lead gen site (container IDs `GTM-NW698GF4` / `GTM-KNTVZ3JW`) — **not our production containers**. Our site uses its own containers (`GTM-MWHFMTZN` web, sGTM on `io.iampatterson.com`) with our own event taxonomy. We keep Stape's infrastructure (hosting, GA4 client, Data Client, BigQuery tag template) and build our own tag/trigger/variable configuration on top.
+
+**What Stape provides (infrastructure):**
+
+- sGTM container hosting on `io.iampatterson.com` (custom domain, same-origin)
+- GA4 client — standard sGTM client that parses incoming GA4 hits
+- Stape Data Client — proprietary client for routing events to external destinations
+- "Write to BigQuery" community tag template (`docs/template.tpl`)
+
+**What we configure ourselves:**
+
+- Web GTM container (`GTM-MWHFMTZN`) — our tags, triggers, and variables
+- sGTM tags/triggers for our event taxonomy
+- BigQuery write tag configuration
+- Phase 2: Pub/Sub custom tag for real-time pipeline
+- Phase 6: demo-specific event tags and triggers
+
+**Client-side GTM container (`GTM-MWHFMTZN`):**
+
+- Loads via `<Script>` in root layout with sGTM same-origin transport (`io.iampatterson.com`)
 - Contains a minimal set of tags — most processing happens in sGTM
-- Key tags: Cookiebot integration, data layer listener, sGTM transport
+- GA4 config tag with `send_page_view: false` (page views pushed explicitly from app code)
+- GA4 event tags for each Phase 1 event, fired by data layer triggers
 - All event parameters are pushed to the data layer by application code, not extracted by GTM
+- Consent Mode v2 integration — tags respect consent state from Cookiebot
+- Configuration spec: `infrastructure/gtm/web-container.json` (Phase 1)
 
 **Server-side GTM (sGTM) on Stape:**
 
-- Custom domain configured for same-origin (e.g., `sgtm.iampatterson.com`) to avoid ad blockers and ensure first-party cookie context
+- Custom domain `io.iampatterson.com` for same-origin cookie context
 - Stape handles the sGTM container hosting
-- sGTM receives all events from the client-side container
+- GA4 client receives all hits from the web container
 - sGTM routes events to:
-  - GA4 (Measurement Protocol)
-  - BigQuery (BigQuery API tag)
+  - GA4 (Measurement Protocol) — via sGTM GA4 tag
+  - BigQuery (Stape "Write to BigQuery" tag, "All Event Data" mode)
   - Pub/Sub (custom tag — Phase 2)
   - Meta CAPI (simulated — Phase 6)
   - Google Ads Enhanced Conversions (simulated — Phase 6)
+- Configuration spec: `infrastructure/gtm/server-container.json` (Phase 1)
 
 ### BigQuery Event Sink
 
