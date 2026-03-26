@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { CtaLink } from '@/components/cta-link';
 
 export default function HomePage() {
   return (
@@ -17,19 +17,21 @@ export default function HomePage() {
             numbers.
           </p>
           <div className="mt-8 flex flex-wrap gap-4">
-            <Link
+            <CtaLink
               href="/services"
+              ctaLocation="hero"
               className="rounded bg-white px-6 py-3 text-sm font-semibold text-neutral-900 transition-colors hover:bg-neutral-100"
             >
               See how it works
-            </Link>
-            <Link
-              href="/services"
-              className="rounded border border-neutral-400 px-6 py-3 text-sm font-semibold text-neutral-300 transition-colors hover:border-white hover:text-white"
-              aria-label="Explore a live demo (coming soon)"
+            </CtaLink>
+            <CtaLink
+              href="#"
+              ctaLocation="hero"
+              disabled
+              className="rounded border border-neutral-500 px-6 py-3 text-sm font-semibold text-neutral-400 cursor-default"
             >
               Explore a live demo
-            </Link>
+            </CtaLink>
           </div>
         </div>
       </section>
@@ -107,12 +109,13 @@ export default function HomePage() {
             </div>
           </dl>
           <div className="mt-10">
-            <Link
+            <CtaLink
               href="/services"
+              ctaLocation="deliver"
               className="text-sm font-semibold text-neutral-900 underline underline-offset-4 transition-colors hover:text-neutral-600"
             >
               Explore the full service offering
-            </Link>
+            </CtaLink>
           </div>
         </div>
       </section>
@@ -137,12 +140,14 @@ export default function HomePage() {
             </p>
           </div>
           <div className="mt-8">
-            <Link
-              href="/services"
-              className="text-sm font-semibold text-neutral-900 underline underline-offset-4 transition-colors hover:text-neutral-600"
+            <CtaLink
+              href="#"
+              ctaLocation="proof"
+              disabled
+              className="text-sm font-semibold text-neutral-400"
             >
               Explore the demos
-            </Link>
+            </CtaLink>
           </div>
         </div>
       </section>

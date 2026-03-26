@@ -1,6 +1,27 @@
 'use client';
 
+import { useRef, useState } from 'react';
+
+import { trackFormFieldFocus, trackFormStart, trackFormSubmit } from '@/lib/events/track';
+
 export default function ContactPage() {
+  const formStartedRef = useRef(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  function handleFieldFocus(fieldName: string) {
+    if (!formStartedRef.current) {
+      formStartedRef.current = true;
+      trackFormStart('contact');
+    }
+    trackFormFieldFocus('contact', fieldName);
+  }
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    trackFormSubmit('contact', true);
+    setSubmitted(true);
+  }
+
   return (
     <main className="px-6 py-20">
       <div className="mx-auto max-w-3xl">
@@ -39,50 +60,62 @@ export default function ContactPage() {
           </p>
         </div>
 
-        <form className="mt-12 space-y-6" onSubmit={(e) => e.preventDefault()}>
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-neutral-900">
-              Name
-            </label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              required
-              className="mt-1 block w-full rounded border border-neutral-300 px-3 py-2 text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none focus:ring-1 focus:ring-neutral-900"
-            />
+        {submitted ? (
+          <div className="mt-12 rounded border border-green-200 bg-green-50 p-6">
+            <p className="font-semibold text-green-900">Message sent.</p>
+            <p className="mt-2 text-green-800">
+              Thanks for reaching out. I&#39;ll respond within 24 hours.
+            </p>
           </div>
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-neutral-900">
-              Email
-            </label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              required
-              className="mt-1 block w-full rounded border border-neutral-300 px-3 py-2 text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none focus:ring-1 focus:ring-neutral-900"
-            />
-          </div>
-          <div>
-            <label htmlFor="message" className="block text-sm font-medium text-neutral-900">
-              Message
-            </label>
-            <textarea
-              id="message"
-              name="message"
-              rows={5}
-              required
-              className="mt-1 block w-full rounded border border-neutral-300 px-3 py-2 text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none focus:ring-1 focus:ring-neutral-900"
-            />
-          </div>
-          <button
-            type="submit"
-            className="rounded bg-neutral-900 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-neutral-700"
-          >
-            Send Message
-          </button>
-        </form>
+        ) : (
+          <form className="mt-12 space-y-6" onSubmit={handleSubmit}>
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium text-neutral-900">
+                Name
+              </label>
+              <input
+                type="text"
+                id="name"
+                name="name"
+                required
+                onFocus={() => handleFieldFocus('name')}
+                className="mt-1 block w-full rounded border border-neutral-300 px-3 py-2 text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none focus:ring-1 focus:ring-neutral-900"
+              />
+            </div>
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-neutral-900">
+                Email
+              </label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                required
+                onFocus={() => handleFieldFocus('email')}
+                className="mt-1 block w-full rounded border border-neutral-300 px-3 py-2 text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none focus:ring-1 focus:ring-neutral-900"
+              />
+            </div>
+            <div>
+              <label htmlFor="message" className="block text-sm font-medium text-neutral-900">
+                Message
+              </label>
+              <textarea
+                id="message"
+                name="message"
+                rows={5}
+                required
+                onFocus={() => handleFieldFocus('message')}
+                className="mt-1 block w-full rounded border border-neutral-300 px-3 py-2 text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none focus:ring-1 focus:ring-neutral-900"
+              />
+            </div>
+            <button
+              type="submit"
+              className="rounded bg-neutral-900 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-neutral-700"
+            >
+              Send Message
+            </button>
+          </form>
+        )}
       </div>
     </main>
   );

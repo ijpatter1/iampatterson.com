@@ -45,7 +45,8 @@ export default function ServicesPage() {
                   Before building anything new, I audit your existing client-side GTM container to
                   identify what to keep, what to fix, and what to remove. The output is a documented
                   data layer specification that becomes the blueprint for your server-side
-                  implementation.
+                  implementation. This step is non-negotiable because implementing sGTM on top of a
+                  messy client-side container just moves the mess server-side.
                 </dd>
               </div>
               <div>
@@ -77,22 +78,24 @@ export default function ServicesPage() {
                 <dd className="mt-1 text-neutral-700">
                   CMP deployment and integration with GTM consent mode, ensuring consent state is
                   enforced server-side. Cookiebot by default, with OneTrust or Didomi for
-                  enterprise-scale or multi-brand requirements.
+                  enterprise-scale or multi-brand requirements. Not required if you already have a
+                  working CMP.
                 </dd>
               </div>
               <div>
                 <dt className="font-semibold text-neutral-900">Event Delivery Configuration</dt>
                 <dd className="mt-1 text-neutral-700">
                   Server-side event delivery to your ad platforms. GA4, Meta Conversions API, and
-                  Google Ads Enhanced Conversions are the standard package.
+                  Google Ads Enhanced Conversions are the standard package. TikTok Events API,
+                  LinkedIn, Pinterest, and Snap are scoped individually based on your channel mix.
                 </dd>
               </div>
               <div>
                 <dt className="font-semibold text-neutral-900">Real-Time Event Architecture</dt>
                 <dd className="mt-1 text-neutral-700">
                   Your sGTM implementation is designed with awareness of future real-time event
-                  streaming capabilities even if they&#39;re not activated on day one. No
-                  architectural decisions that close doors.
+                  streaming capabilities (Pub/Sub, webhooks) even if they&#39;re not activated on
+                  day one. No architectural decisions that close doors.
                 </dd>
               </div>
             </dl>
@@ -125,7 +128,8 @@ export default function ServicesPage() {
                 <dt className="font-semibold text-neutral-900">Warehouse Configuration</dt>
                 <dd className="mt-1 text-neutral-700">
                   BigQuery project setup with proper dataset structure (raw, staging, marts), IAM
-                  permissions, and cost controls.
+                  permissions, and cost controls. The organizational foundation that prevents your
+                  warehouse from becoming an ungoverned data swamp.
                 </dd>
               </div>
               <div>
@@ -133,14 +137,20 @@ export default function ServicesPage() {
                 <dd className="mt-1 text-neutral-700">
                   A standardized transformation pipeline following a medallion architecture: raw
                   events are cleaned and flattened in staging, then assembled into business-ready
-                  mart tables.
+                  mart tables — campaign performance, channel attribution, customer lifetime value,
+                  session events. These models are the intellectual property of the engagement and
+                  the single most valuable deliverable. Clients with existing dbt implementations
+                  stay on dbt, with a migration conversation available.
                 </dd>
               </div>
               <div>
                 <dt className="font-semibold text-neutral-900">Automated Data Quality Framework</dt>
                 <dd className="mt-1 text-neutral-700">
                   Dataform assertions that continuously validate your data: schema checks, null rate
-                  monitoring, volume anomaly detection, and source freshness verification.
+                  monitoring, volume anomaly detection, and source freshness verification. This is a
+                  standard line item under every quality Dataform implementation, not an optional
+                  add-on. Silent data failures are how teams make decisions on broken numbers for
+                  weeks before anyone notices.
                 </dd>
               </div>
               <div>
@@ -149,14 +159,48 @@ export default function ServicesPage() {
                 </dt>
                 <dd className="mt-1 text-neutral-700">
                   AI-generated, human-reviewed documentation of every model, every column, every
-                  business logic definition, and every upstream dependency.
+                  business logic definition, and every upstream dependency. This ships as a
+                  deliverable and lives in the Dataform repository. It&#39;s what makes your data
+                  self-describing — both for your team and for any AI system that needs to work with
+                  it.
                 </dd>
               </div>
               <div>
                 <dt className="font-semibold text-neutral-900">AI Access Layer</dt>
                 <dd className="mt-1 text-neutral-700">
-                  A scheduled BigQuery export to Cloud Storage in standard formats, providing a
-                  clean handoff point for any AI tool without requiring direct warehouse access.
+                  A scheduled BigQuery export to Cloud Storage in standard formats (parquet or
+                  JSON), providing a clean handoff point for any AI tool — Claude, ChatGPT, Gemini,
+                  or your own internal systems — without requiring direct warehouse access. For
+                  clients who want direct database connections, a read-only BigQuery service account
+                  scoped to mart datasets. LLM-friendly naming conventions are enforced across all
+                  models so that any AI system can query your data effectively.
+                </dd>
+              </div>
+            </dl>
+
+            <h3 className="mt-8 text-lg font-semibold text-neutral-900">
+              Additional components (scoped per client):
+            </h3>
+            <dl className="mt-4 space-y-4">
+              <div>
+                <dt className="font-semibold text-neutral-900">Data Pipeline Deployment</dt>
+                <dd className="mt-1 text-neutral-700">
+                  Ingestion of ad platform spend data, CRM data, and e-commerce platform data into
+                  BigQuery. BigQuery Data Transfer Service is the default for supported sources
+                  (Google Ads, Shopify, YouTube, Mailchimp). Airbyte for sources not covered by
+                  native transfers (Meta Ads, TikTok, Klaviyo, HubSpot) or for clients needing
+                  broader connector coverage. Clients with existing ELT tools keep what they have.
+                </dd>
+              </div>
+              <div>
+                <dt className="font-semibold text-neutral-900">Automated Campaign Taxonomy</dt>
+                <dd className="mt-1 text-neutral-700">
+                  Dataform models using BigQuery&#39;s native AI functions to automatically
+                  standardize your campaign names, UTM parameters, and ad group naming into a clean,
+                  consistent taxonomy. Covers channel classification, campaign type, funnel stage,
+                  and product categorization. Includes a validation layer for review and override.
+                  Runs continuously as new campaign data flows in, eliminating the eternal
+                  spreadsheet-mapping exercise that no one wants to maintain.
                 </dd>
               </div>
             </dl>
@@ -164,7 +208,8 @@ export default function ServicesPage() {
             <p className="mt-8 border-l-2 border-neutral-300 pl-4 text-neutral-600">
               <strong>What you get at the end of Tier 2:</strong> A single source of truth for your
               marketing data. Clean, documented, AI-enriched, and accessible to any downstream tool
-              or AI system.
+              or AI system. No more Monday morning CSV exports from six platforms. No more
+              &#34;wait, which campaign is that?&#34; in budget meetings.
             </p>
           </div>
         </section>
@@ -186,7 +231,10 @@ export default function ServicesPage() {
                 <dt className="font-semibold text-neutral-900">Dashboard Design & Build</dt>
                 <dd className="mt-1 text-neutral-700">
                   Executive summary, channel performance, and campaign drill-down dashboards built
-                  on the Tier 2 mart layer.
+                  on the Tier 2 mart layer. Looker Studio for straightforward reporting needs, or
+                  Metabase for embedded dashboards with role-based access and client portal use
+                  cases. This is a decision gate based on your security and embedding requirements,
+                  not an upgrade path.
                 </dd>
               </div>
               <div>
@@ -194,15 +242,21 @@ export default function ServicesPage() {
                   Natural Language Data Exploration
                 </dt>
                 <dd className="mt-1 text-neutral-700">
-                  The AI Access Layer from Tier 2 enables data exploration through whatever AI tool
-                  your team already uses.
+                  Gemini-powered querying is available natively in the BigQuery console for
+                  technical users. For most marketing teams, the AI Access Layer from Tier 2 enables
+                  data exploration through whatever AI tool your team already uses — upload the
+                  export to ChatGPT, connect Claude, use Gemini directly. Custom AI workflow
+                  implementations for more sophisticated setups are scoped as a separate engagement.
                 </dd>
               </div>
               <div>
                 <dt className="font-semibold text-neutral-900">Automated Narrative Reporting</dt>
                 <dd className="mt-1 text-neutral-700">
-                  A RAG pipeline built natively in BigQuery that generates written performance
-                  summaries delivered to Slack or email on a schedule you define.
+                  A RAG pipeline built natively in BigQuery that queries your mart tables, retrieves
+                  semantically relevant data, and generates written performance summaries delivered
+                  to Slack or email on a schedule you define. Replaces the weekly reporting meeting
+                  where someone reads a dashboard aloud. No external AI infrastructure required —
+                  the entire pipeline runs inside BigQuery using native AI functions.
                 </dd>
               </div>
             </dl>
@@ -210,7 +264,8 @@ export default function ServicesPage() {
             <p className="mt-8 border-l-2 border-neutral-300 pl-4 text-neutral-600">
               <strong>What you get at the end of Tier 3:</strong> Your marketing team self-serves
               answers instead of asking the data person. Your executives get a written summary every
-              Monday morning that tells them what changed, why, and what to pay attention to.
+              Monday morning that tells them what changed, why, and what to pay attention to. Your
+              data infrastructure works for the business, not the other way around.
             </p>
           </div>
         </section>
@@ -236,14 +291,19 @@ export default function ServicesPage() {
                 <dd className="mt-1 text-neutral-700">
                   Shapley value or position-based attribution models built in Dataform on your event
                   data in BigQuery. Replaces platform-reported attribution with logic you own, can
-                  inspect, and can trust.
+                  inspect, and can trust. Privacy-compliant by design — built on first-party data
+                  collected through your Tier 1 infrastructure.
                 </dd>
               </div>
               <div>
                 <dt className="font-semibold text-neutral-900">Geo-Lift Incrementality Testing</dt>
                 <dd className="mt-1 text-neutral-700">
                   The most rigorous, privacy-friendly method for measuring whether a channel is
-                  driving incremental revenue or just capturing existing demand.
+                  driving incremental revenue or just capturing existing demand. Uses synthetic
+                  control methodology (the same statistical framework used in econometrics and
+                  public policy research) to compare test and control markets. Doesn&#39;t depend on
+                  user-level tracking, cookies, or device IDs. The only method that directly
+                  measures causation rather than inferring it from correlation.
                 </dd>
               </div>
               <div>
@@ -251,6 +311,9 @@ export default function ServicesPage() {
                 <dd className="mt-1 text-neutral-700">
                   Bayesian media mix modeling using Google&#39;s open-source Meridian framework,
                   running on BigQuery. Requires 2+ years of historical spend and outcome data.
+                  Answers &#34;how should I allocate my budget across channels&#34; with statistical
+                  rigor, scenario planning, and an AI-assisted interpretation layer that makes the
+                  outputs accessible to non-technical stakeholders.
                 </dd>
               </div>
               <div>
@@ -259,7 +322,9 @@ export default function ServicesPage() {
                 </dt>
                 <dd className="mt-1 text-neutral-700">
                   Ongoing advisory on what to test next, which channels to validate, and how to
-                  build a culture of measurement within your marketing team.
+                  build a culture of measurement within your marketing team. This is the retainer
+                  component — not maintaining infrastructure, but guiding the questions you ask of
+                  it.
                 </dd>
               </div>
             </dl>

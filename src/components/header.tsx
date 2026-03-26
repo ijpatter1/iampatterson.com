@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 
+import { trackClickNav } from '@/lib/events/track';
+
 const navLinks = [
   { href: '/', label: 'Home' },
   { href: '/services', label: 'Services' },
@@ -28,6 +30,7 @@ export function Header() {
                 <Link
                   href={href}
                   className="text-sm font-medium text-neutral-600 transition-colors hover:text-neutral-900"
+                  onClick={() => trackClickNav(label, href)}
                 >
                   {label}
                 </Link>
@@ -66,7 +69,10 @@ export function Header() {
                 <Link
                   href={href}
                   className="block py-2 text-sm font-medium text-neutral-600 transition-colors hover:text-neutral-900"
-                  onClick={() => setMenuOpen(false)}
+                  onClick={() => {
+                    trackClickNav(label, href);
+                    setMenuOpen(false);
+                  }}
                 >
                   {label}
                 </Link>

@@ -2,6 +2,11 @@ import { render, screen } from '@testing-library/react';
 
 import HomePage from '@/app/page';
 
+// Mock the track module so CtaLink doesn't error
+jest.mock('@/lib/events/track', () => ({
+  trackClickCta: jest.fn(),
+}));
+
 describe('HomePage', () => {
   it('renders the hero heading', () => {
     render(<HomePage />);
@@ -42,11 +47,25 @@ describe('HomePage', () => {
     expect(screen.getByText(/this site is the case study/i)).toBeInTheDocument();
   });
 
-  it('renders CTA links', () => {
+  it('renders the See how it works CTA as a link to /services', () => {
     render(<HomePage />);
     expect(screen.getByRole('link', { name: /see how it works/i })).toHaveAttribute(
       'href',
       '/services',
     );
+  });
+
+  it('renders disabled demo CTAs as spans, not links', () => {
+    render(<HomePage />);
+    const demoSpan = screen.getByText(/explore a live demo/i);
+    expect(demoSpan.tagName).toBe('SPAN');
+    expect(demoSpan).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('renders the Explore the full service offering CTA as a link', () => {
+    render(<HomePage />);
+    expect(
+      screen.getByRole('link', { name: /explore the full service offering/i }),
+    ).toHaveAttribute('href', '/services');
   });
 });
