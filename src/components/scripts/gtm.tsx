@@ -25,7 +25,7 @@ export function GtmScript() {
 
   return (
     <>
-      <Script id="consent-defaults" strategy="beforeInteractive">
+      <Script id="consent-defaults" strategy="beforeInteractive" data-cookieconsent="ignore">
         {`
 window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
@@ -42,7 +42,7 @@ gtag('consent', 'default', {
 gtag('set', 'ads_data_redaction', true);
 gtag('set', 'url_passthrough', false);`}
       </Script>
-      <Script id="gtm-script" strategy="afterInteractive">
+      <Script id="gtm-script" strategy="afterInteractive" data-cookieconsent="ignore">
         {`
 (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
 new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
