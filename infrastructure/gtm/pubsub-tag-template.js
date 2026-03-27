@@ -37,7 +37,10 @@ var auth = getGoogleAuth({
 });
 
 var eventData = getAllEventData();
-var sessionId = getCookieValues('_iap_sid')[0] || '';
+// GA4's sGTM client maps session_id to ga_session_id in the common event data model.
+// Falls back to _iap_sid cookie (only works when sGTM is on the same root domain).
+var sessionId =
+  eventData.ga_session_id || eventData.session_id || getCookieValues('_iap_sid')[0] || '';
 var receivedAt = makeString(getTimestampMillis());
 var pipelineId = 'pipe-' + receivedAt + '-' + generateRandom(1, 999999);
 
