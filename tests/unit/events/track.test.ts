@@ -18,7 +18,8 @@ Object.defineProperty(globalThis, 'crypto', {
 
 beforeEach(() => {
   window.dataLayer = [];
-  sessionStorage.clear();
+  // Clear session cookie
+  document.cookie = '_iap_sid=; Max-Age=0; Path=/';
 });
 
 describe('trackPageView', () => {

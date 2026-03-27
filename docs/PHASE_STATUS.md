@@ -1,7 +1,7 @@
 # Phase Status Tracker
 
-> **Current Phase: 1 — Foundation**
-> Last updated: 2026-03-26, session-2026-03-26-003 (Phase 1 COMPLETE — deployed to production)
+> **Current Phase: 2 — Real-Time Event Pipeline**
+> Last updated: 2026-03-26, session-2026-03-26-004
 
 ---
 
@@ -28,11 +28,11 @@
 
 *Goal: Build the infrastructure that allows a visitor's session events to be streamed back to their browser in near real time.*
 
-- ⬜ Session ID mechanism: sGTM sets a first-party cookie with a unique session identifier, included as a parameter on every event
-- ⬜ Pub/Sub topic configured to receive events from sGTM (sGTM fires a custom tag that publishes to Pub/Sub on every event)
-- ⬜ Cloud Run WebSocket/SSE service: subscribes to Pub/Sub, maintains connections per session ID, pushes events to the matching browser client
-- ⬜ Client-side event stream hook: a React hook that establishes the WebSocket/SSE connection on page load, scoped to the session ID, and maintains an in-memory event buffer
-- ⬜ Event schema definition: the standardized JSON shape for events flowing through the pipeline, including event name, timestamp, page context, parameters, and routing destinations
+- ✅ 2026-03-26, session-2026-03-26-004 — Session ID mechanism: client-side `_iap_sid` cookie (UUID v4, 30-min sliding window) with `setSessionCookie`, `readSessionCookie`, `getSessionId` utilities
+- ✅ 2026-03-26, session-2026-03-26-004 — Pub/Sub topic configured (`iampatterson-events`) with push subscription, sGTM Pub/Sub tag promoted to main config with full message payload spec
+- ✅ 2026-03-26, session-2026-03-26-004 — Cloud Run SSE service: Express/Node.js with ConnectionManager, Pub/Sub push endpoint, session-scoped SSE routing, health check, Dockerfile
+- ✅ 2026-03-26, session-2026-03-26-004 — Client-side `useEventStream` hook: SSE connection scoped by session ID, in-memory PipelineEvent buffer (most recent first, cap 100), connection status, clearEvents
+- ✅ 2026-03-26, session-2026-03-26-004 — Pipeline event schema: PipelineEvent, ConsentState, RoutingResult, RoutingDestination types, isPipelineEvent type guard, createPipelineEvent factory
 
 ---
 

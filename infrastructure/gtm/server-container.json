@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "description": "sGTM Server Container configuration spec for iampatterson.com Phase 1",
+    "description": "sGTM Server Container configuration spec for iampatterson.com Phase 1-2",
     "containerId": "GTM-NTTKZFWD",
     "sgtmUrl": "io.iampatterson.com",
     "ga4MeasurementId": "G-9M2G3RLHWF",
@@ -103,25 +103,43 @@
       },
       "firingTrigger": "All GA4 Events",
       "note": "Writes the full getAllEventData() payload to BigQuery. Column names must match the schema in infrastructure/bigquery/schema.json. Fields not matching a column are silently dropped (ignoreUnknownValues: true). The 'received_timestamp' field is populated by the tag's getTimestampMillis() — INT64 epoch ms."
+    },
+    {
+      "name": "Pub/Sub - Publish All Events",
+      "type": "Custom tag template (sandboxed JS with getGoogleAuth)",
+      "templateSource": "infrastructure/gtm/pubsub-tag-template.js",
+      "configuration": {
+        "topicName": "projects/iampatterson/topics/iampatterson-events",
+        "projectId": "iampatterson",
+        "authMethod": "Service account (Cloud Run default or Stape GCP integration)",
+        "messagePayload": {
+          "description": "JSON object built from getAllEventData() plus pipeline metadata",
+          "fields": {
+            "pipeline_id": "Generated UUID or timestamp-based ID",
+            "received_at": "ISO 8601 from getTimestampMillis()",
+            "session_id": "From getCookieValues('_iap_sid')[0] or event parameter",
+            "event_name": "From getEventData('event_name')",
+            "timestamp": "From getEventData('timestamp') — client-side ISO string",
+            "page_path": "From getEventData('page_path')",
+            "page_title": "From getEventData('page_title')",
+            "page_location": "From getEventData('page_location')",
+            "parameters": "All event-specific parameters from getEventData()",
+            "consent": {
+              "analytics_storage": "From isConsentGranted('analytics_storage')",
+              "ad_storage": "From isConsentGranted('ad_storage')",
+              "ad_user_data": "From isConsentGranted('ad_user_data')",
+              "ad_personalization": "From isConsentGranted('ad_personalization')",
+              "functionality_storage": "From isConsentGranted('functionality_storage')"
+            },
+            "routing": "Array of {destination, status, timestamp} for each tag that fired"
+          }
+        }
+      },
+      "firingTrigger": "All GA4 Events",
+      "consentRequirement": "none — this tag fires on all events regardless of consent state (the consent field in the payload records the state for downstream consumers)",
+      "note": "Publishes every event to Pub/Sub for the real-time SSE pipeline. The Cloud Run event-stream service (infrastructure/cloud-run/event-stream/) subscribes via a push subscription and routes events to the matching browser session. The message is base64-encoded JSON in the Pub/Sub message envelope. See infrastructure/pubsub/README.md for the full message schema."
     }
   ],
-
-  "phase2Additions": {
-    "note": "These will be added when Phase 2 (Real-Time Event Pipeline) begins.",
-    "tags": [
-      {
-        "name": "Pub/Sub - Publish All Events",
-        "type": "Custom tag (HTTP request or Stape Pub/Sub template)",
-        "configuration": {
-          "topicName": "iampatterson-events",
-          "projectId": "iampatterson",
-          "messageFormat": "Full event JSON including session_id"
-        },
-        "firingTrigger": "All GA4 Events",
-        "note": "Publishes every event to Pub/Sub for the real-time WebSocket/SSE pipeline. The Cloud Run service subscribes to this topic and routes events to the matching browser session."
-      }
-    ]
-  },
 
   "phase6Additions": {
     "note": "These will be added when Phase 6 (Demo Front-Ends) ships.",
