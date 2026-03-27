@@ -88,6 +88,16 @@ export function useEventStream({
         if (!isPipelineEvent(parsed)) return;
 
         setEvents((prev) => {
+          // Deduplicate by event_name + timestamp + page_path (catches both
+          // Pub/Sub redelivery and duplicate GTM tags firing the same event)
+          const isDupe = prev.some(
+            (e) =>
+              e.event_name === parsed.event_name &&
+              e.timestamp === parsed.timestamp &&
+              e.page_path === parsed.page_path,
+          );
+          if (isDupe) return prev;
+
           const next = [parsed, ...prev];
           return next.length > bufferSizeRef.current ? next.slice(0, bufferSizeRef.current) : next;
         });

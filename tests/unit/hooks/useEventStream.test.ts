@@ -301,6 +301,51 @@ describe('useEventStream event buffering', () => {
     expect(result.current.events[0].event_name).toBe('event_109');
   });
 
+  it('deduplicates events with same event_name, timestamp, and page_path', () => {
+    const { result } = renderHook(() => useEventStream({ url: 'http://localhost:8080/events' }));
+    const ts = '2026-03-27T10:00:00.000Z';
+    const event1 = makePipelineEvent({
+      event_name: 'page_view',
+      timestamp: ts,
+      page_path: '/about',
+    });
+    const event2 = makePipelineEvent({
+      event_name: 'page_view',
+      timestamp: ts,
+      page_path: '/about',
+    });
+
+    act(() => {
+      MockEventSource.instances[0].simulateOpen();
+      MockEventSource.instances[0].simulateMessage(JSON.stringify(event1));
+      MockEventSource.instances[0].simulateMessage(JSON.stringify(event2));
+    });
+
+    expect(result.current.events).toHaveLength(1);
+  });
+
+  it('does not deduplicate events with different timestamps', () => {
+    const { result } = renderHook(() => useEventStream({ url: 'http://localhost:8080/events' }));
+    const event1 = makePipelineEvent({
+      event_name: 'page_view',
+      timestamp: '2026-03-27T10:00:00.000Z',
+      page_path: '/',
+    });
+    const event2 = makePipelineEvent({
+      event_name: 'page_view',
+      timestamp: '2026-03-27T10:00:01.000Z',
+      page_path: '/',
+    });
+
+    act(() => {
+      MockEventSource.instances[0].simulateOpen();
+      MockEventSource.instances[0].simulateMessage(JSON.stringify(event1));
+      MockEventSource.instances[0].simulateMessage(JSON.stringify(event2));
+    });
+
+    expect(result.current.events).toHaveLength(2);
+  });
+
   it('ignores messages that are not valid PipelineEvents', () => {
     const { result } = renderHook(() => useEventStream({ url: 'http://localhost:8080/events' }));
 
