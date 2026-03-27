@@ -22,7 +22,7 @@ export function initConsentState(
 }
 
 function baseFields(): {
-  _iap: true;
+  iap_source: true;
   timestamp: string;
   session_id: string;
   page_path: string;
@@ -32,7 +32,7 @@ function baseFields(): {
   consent_preferences: boolean;
 } {
   return {
-    _iap: true,
+    iap_source: true,
     timestamp: new Date().toISOString(),
     session_id: getSessionId(),
     page_path: window.location.pathname,

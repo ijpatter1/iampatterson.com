@@ -110,9 +110,9 @@
       "dataLayerVariable": "consent_preferences"
     },
     {
-      "name": "dlv - _iap",
+      "name": "dlv - iap_source",
       "type": "dataLayer",
-      "dataLayerVariable": "_iap",
+      "dataLayerVariable": "iap_source",
       "note": "Marker identifying iampatterson custom events — used by sGTM Pub/Sub tag to filter out GA4 auto-events"
     }
   ],
@@ -182,7 +182,7 @@
       "type": "GA4 Event (gaawe)",
       "eventName": "page_view",
       "parameters": {
-        "_iap": "{{dlv - _iap}}",
+        "iap_source": "{{dlv - iap_source}}",
         "timestamp": "{{dlv - timestamp}}",
         "session_id": "{{dlv - session_id}}",
         "page_path": "{{dlv - page_path}}",
@@ -200,7 +200,7 @@
       "type": "GA4 Event (gaawe)",
       "eventName": "scroll_depth",
       "parameters": {
-        "_iap": "{{dlv - _iap}}",
+        "iap_source": "{{dlv - iap_source}}",
         "timestamp": "{{dlv - timestamp}}",
         "session_id": "{{dlv - session_id}}",
         "page_path": "{{dlv - page_path}}",
@@ -219,7 +219,7 @@
       "type": "GA4 Event (gaawe)",
       "eventName": "click_nav",
       "parameters": {
-        "_iap": "{{dlv - _iap}}",
+        "iap_source": "{{dlv - iap_source}}",
         "timestamp": "{{dlv - timestamp}}",
         "session_id": "{{dlv - session_id}}",
         "page_path": "{{dlv - page_path}}",
@@ -238,7 +238,7 @@
       "type": "GA4 Event (gaawe)",
       "eventName": "click_cta",
       "parameters": {
-        "_iap": "{{dlv - _iap}}",
+        "iap_source": "{{dlv - iap_source}}",
         "timestamp": "{{dlv - timestamp}}",
         "session_id": "{{dlv - session_id}}",
         "page_path": "{{dlv - page_path}}",
@@ -257,7 +257,7 @@
       "type": "GA4 Event (gaawe)",
       "eventName": "form_field_focus",
       "parameters": {
-        "_iap": "{{dlv - _iap}}",
+        "iap_source": "{{dlv - iap_source}}",
         "timestamp": "{{dlv - timestamp}}",
         "session_id": "{{dlv - session_id}}",
         "page_path": "{{dlv - page_path}}",
@@ -276,7 +276,7 @@
       "type": "GA4 Event (gaawe)",
       "eventName": "form_start",
       "parameters": {
-        "_iap": "{{dlv - _iap}}",
+        "iap_source": "{{dlv - iap_source}}",
         "timestamp": "{{dlv - timestamp}}",
         "session_id": "{{dlv - session_id}}",
         "page_path": "{{dlv - page_path}}",
@@ -294,7 +294,7 @@
       "type": "GA4 Event (gaawe)",
       "eventName": "form_submit",
       "parameters": {
-        "_iap": "{{dlv - _iap}}",
+        "iap_source": "{{dlv - iap_source}}",
         "timestamp": "{{dlv - timestamp}}",
         "session_id": "{{dlv - session_id}}",
         "page_path": "{{dlv - page_path}}",
@@ -313,7 +313,7 @@
       "type": "GA4 Event (gaawe)",
       "eventName": "consent_update",
       "parameters": {
-        "_iap": "{{dlv - _iap}}",
+        "iap_source": "{{dlv - iap_source}}",
         "timestamp": "{{dlv - timestamp}}",
         "session_id": "{{dlv - session_id}}",
         "page_path": "{{dlv - page_path}}",

@@ -19,7 +19,7 @@
 // ---------------------------------------------------------------------------
 
 var mockEventDataBase = {
-  _iap: true,
+  iap_source: true,
   event_name: 'page_view',
   timestamp: '2026-03-27T12:00:00.000Z',
   page_path: '/',
@@ -30,7 +30,7 @@ var mockEventDataBase = {
 
 // Consent-granted event data (sGTM receives consent via x-ga-cs-* fields)
 var mockEventDataConsented = {
-  _iap: true,
+  iap_source: true,
   event_name: 'page_view',
   timestamp: '2026-03-27T12:00:00.000Z',
   page_path: '/',
@@ -46,7 +46,7 @@ var mockEventDataConsented = {
 
 // Consent-denied event data (fields absent or not 'granted')
 var mockEventDataDenied = {
-  _iap: true,
+  iap_source: true,
   event_name: 'page_view',
   timestamp: '2026-03-27T12:00:00.000Z',
   page_path: '/',
@@ -198,7 +198,7 @@ assertThat(capturedBody4).doesNotContain('\\"blocked_consent\\"');
 
 setupMocks({
   eventData: {
-    _iap: true,
+    iap_source: true,
     event_name: 'scroll_depth',
     timestamp: '',
     page_path: '/about',
@@ -229,7 +229,7 @@ assertThat(capturedBody5).contains('\\"depth_percentage\\":\\"50\\"');
 
 setupMocks({
   eventData: {
-    _iap: true,
+    iap_source: true,
     event_name: 'consent_update',
     timestamp: '2026-03-27T12:00:00.000Z',
     page_path: '/',
