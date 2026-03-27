@@ -40,7 +40,7 @@ export function DesktopOverlay({ events }: DesktopOverlayProps) {
             <EventTimeline
               events={events}
               onSelectEvent={setSelectedEvent}
-              selectedEventId={selectedEvent?.pipeline_id}
+              selectedEventId={undefined}
             />
           </div>
         )}

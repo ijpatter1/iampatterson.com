@@ -78,7 +78,7 @@ export function MobileBottomSheet({ events }: MobileBottomSheetProps) {
             <EventTimeline
               events={events}
               onSelectEvent={setSelectedEvent}
-              selectedEventId={selectedEvent?.pipeline_id}
+              selectedEventId={undefined}
             />
           )}
         </div>

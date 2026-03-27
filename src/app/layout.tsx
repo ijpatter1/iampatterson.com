@@ -4,6 +4,7 @@ import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { FlipTrigger } from '@/components/overlay/flip-trigger';
 import { OverlayProvider } from '@/components/overlay/overlay-context';
+import { OverlayPanel } from '@/components/overlay/overlay-panel';
 import { RouteTracker } from '@/components/route-tracker';
 import { ScrollDepthTracker } from '@/components/scroll-depth-tracker';
 import { CookiebotScript } from '@/components/scripts/cookiebot';
@@ -36,6 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="flex-1">{children}</div>
           <Footer />
           <FlipTrigger />
+          <OverlayPanel />
         </OverlayProvider>
       </body>
     </html>

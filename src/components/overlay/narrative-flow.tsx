@@ -1,6 +1,6 @@
 'use client';
 
-import type { PipelineEvent, RoutingResult } from '@/lib/events/pipeline-schema';
+import type { PipelineEvent } from '@/lib/events/pipeline-schema';
 
 const DESTINATION_LABELS: Record<string, string> = {
   ga4: 'GA4',
