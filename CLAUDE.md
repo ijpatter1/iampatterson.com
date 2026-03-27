@@ -18,7 +18,7 @@ This is the consulting website for Patterson Consulting **and** a live, interact
 
 ## Current Phase
 
-**Phase 2 — Real-Time Event Pipeline** (code complete, pending infrastructure deployment)
+**Phase 3 — Flip-the-Card UI** (all deliverables complete)
 
 See `docs/REQUIREMENTS.md` for the full 9-phase development plan.
 See `docs/ARCHITECTURE.md` for technical architecture details.

@@ -1,7 +1,7 @@
 # Phase Status Tracker
 
-> **Current Phase: 2 — Real-Time Event Pipeline**
-> Last updated: 2026-03-27, session-2026-03-27-005
+> **Current Phase: 3 — Flip-the-Card UI**
+> Last updated: 2026-03-27, session-2026-03-27-006
 
 ---
 
@@ -42,14 +42,14 @@
 
 *Goal: Build the overlay component system that lets visitors see the instrumentation layer on the consulting site pages.*
 
-- ⬜ Persistent flip trigger: a subtle, always-visible UI element (bottom-right on desktop, bottom handle on mobile) that activates the overlay
-- ⬜ Mobile bottom sheet component: pull-up interaction with partial view (event timeline) and full view (pipeline detail), smooth gesture handling, dismissable by swipe-down
-- ⬜ Desktop overlay component: translucent layer with annotations mapped to page elements, optional sidebar panel for persistent event stream
-- ⬜ Event timeline renderer: takes the event buffer from the Phase 2 hook and renders a reverse-chronological list of events with routing destination icons
-- ⬜ Event detail panel: tap/click any event to see the full pipeline view — data layer push, sGTM payload, BigQuery row, routing confirmations
-- ⬜ Narrative flow visualization: the simplified "You did X → This triggered Y → Which was sent to Z" animated pipeline for non-technical visitors
-- ⬜ Consent-specific overlay: focused view of consent state propagation — active/suppressed tags, server-side consent passing. Updates live on consent preference change
-- ⬜ Page context awareness: the overlay component reads the current Next.js route and filters/contextualizes the event display accordingly
+- ✅ 2026-03-27, session-2026-03-27-006 — Persistent flip trigger: fixed bottom-right button with OverlayProvider context for open/closed state
+- ✅ 2026-03-27, session-2026-03-27-006 — Mobile bottom sheet component: pull-up with drag handle, swipe-down dismiss (>80px), backdrop, max 85vh
+- ✅ 2026-03-27, session-2026-03-27-006 — Desktop overlay component: right-anchored w-96 sidebar with backdrop blur, hidden on mobile (md:flex)
+- ✅ 2026-03-27, session-2026-03-27-006 — Event timeline renderer: reverse-chronological list with routing destination badges (sent/blocked/error styling)
+- ✅ 2026-03-27, session-2026-03-27-006 — Event detail panel: full pipeline view — data layer parameters, consent state, routing confirmations with status badges
+- ✅ 2026-03-27, session-2026-03-27-006 — Narrative flow visualization: "You did X → Data Layer → sGTM → Destinations" step-by-step cards with arrow connectors
+- ✅ 2026-03-27, session-2026-03-27-006 — Consent-specific overlay: consent signal cards (granted/denied), active/suppressed destination lists, descriptions per signal
+- ✅ 2026-03-27, session-2026-03-27-006 — Page context awareness: useFilteredEvents hook reads Next.js route, filters events by page path with demo namespace support
 
 ---
 
