@@ -45,10 +45,13 @@ if (!eventData.iap_source) {
   return;
 }
 
-// GA4's sGTM client maps session_id to ga_session_id in the common event data model.
-// Falls back to _iap_sid cookie (only works when sGTM is on the same root domain).
+// Session ID resolution order:
+//   1. iap_session_id — custom parameter that survives GA4 remapping (GA4 remaps session_id
+//      to ga_session_id, and for cookieless pings replaces it with its own numeric ID)
+//   2. ga_session_id — works for consented events where GA4 remaps our session_id UUID here
+//   3. _iap_sid cookie — fallback, only works when sGTM is on the same root domain as the site
 var sessionId =
-  eventData.ga_session_id || eventData.session_id || getCookieValues('_iap_sid')[0] || '';
+  eventData.iap_session_id || eventData.ga_session_id || getCookieValues('_iap_sid')[0] || '';
 var receivedAt = makeString(getTimestampMillis());
 var pipelineId = 'pipe-' + receivedAt + '-' + generateRandom(1, 999999);
 

@@ -25,16 +25,19 @@ function baseFields(): {
   iap_source: true;
   timestamp: string;
   session_id: string;
+  iap_session_id: string;
   page_path: string;
   page_title: string;
   consent_analytics: boolean;
   consent_marketing: boolean;
   consent_preferences: boolean;
 } {
+  const sid = getSessionId();
   return {
     iap_source: true,
     timestamp: new Date().toISOString(),
-    session_id: getSessionId(),
+    session_id: sid,
+    iap_session_id: sid,
     page_path: window.location.pathname,
     page_title: document.title,
     ...currentConsent,
@@ -92,59 +95,5 @@ export function trackConsentUpdate(
   pushEvent({
     ...baseFields(),
     event: 'consent_update',
-  });
-
-  // Also beacon directly to the event stream service so consent
-  // withdrawal events reach the overlay even when GA4 Consent Mode
-  // blocks the transport layer.
-  beaconConsentToEventStream();
-}
-
-function beaconConsentToEventStream(): void {
-  const baseUrl = process.env.NEXT_PUBLIC_EVENT_STREAM_URL;
-  if (!baseUrl) return;
-
-  const fields = baseFields();
-  const endpoint = baseUrl.replace(/\/+$/, '').replace(/\/events$/, '');
-
-  fetch(`${endpoint}/consent-beacon`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      session_id: fields.session_id,
-      event_name: 'consent_update',
-      timestamp: fields.timestamp,
-      page_path: fields.page_path,
-      page_title: fields.page_title,
-      page_location: window.location.href,
-      parameters: {
-        consent_analytics: fields.consent_analytics,
-        consent_marketing: fields.consent_marketing,
-        consent_preferences: fields.consent_preferences,
-      },
-      consent: {
-        analytics_storage: fields.consent_analytics ? 'granted' : 'denied',
-        ad_storage: fields.consent_marketing ? 'granted' : 'denied',
-        ad_user_data: fields.consent_marketing ? 'granted' : 'denied',
-        ad_personalization: fields.consent_marketing ? 'granted' : 'denied',
-        functionality_storage: fields.consent_preferences ? 'granted' : 'denied',
-      },
-      routing: [
-        {
-          destination: 'ga4',
-          status: fields.consent_analytics ? 'sent' : 'blocked_consent',
-          timestamp: fields.timestamp,
-        },
-        {
-          destination: 'bigquery',
-          status: fields.consent_analytics ? 'sent' : 'blocked_consent',
-          timestamp: fields.timestamp,
-        },
-        { destination: 'pubsub', status: 'sent', timestamp: fields.timestamp },
-      ],
-    }),
-    keepalive: true,
-  }).catch(() => {
-    // Silently ignore — the GTM path may still deliver
   });
 }
