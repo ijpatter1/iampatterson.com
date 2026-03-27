@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 
-import { trackConsentUpdate } from '@/lib/events/track';
+import { initConsentState, trackConsentUpdate } from '@/lib/events/track';
 
 interface CookiebotGlobal {
   consent: {
@@ -20,6 +20,12 @@ function handleConsentChange() {
 
 export function CookiebotConsentListener() {
   useEffect(() => {
+    // Initialize consent state from Cookiebot if already loaded (returning visitor)
+    const cb = (window as unknown as { Cookiebot?: CookiebotGlobal }).Cookiebot;
+    if (cb?.consent) {
+      initConsentState(cb.consent.statistics, cb.consent.marketing, cb.consent.preferences);
+    }
+
     window.addEventListener('CookiebotOnAccept', handleConsentChange);
     window.addEventListener('CookiebotOnDecline', handleConsentChange);
     return () => {

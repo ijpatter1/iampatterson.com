@@ -1,17 +1,43 @@
 import { pushEvent } from './push';
 import { getSessionId } from './session';
 
+/** Current consent state — updated by trackConsentUpdate and initConsentState. */
+let currentConsent = {
+  consent_analytics: false,
+  consent_marketing: false,
+  consent_preferences: false,
+};
+
+/** Initialize consent state from Cookiebot (call on page load). */
+export function initConsentState(
+  analytics: boolean,
+  marketing: boolean,
+  preferences: boolean,
+): void {
+  currentConsent = {
+    consent_analytics: analytics,
+    consent_marketing: marketing,
+    consent_preferences: preferences,
+  };
+}
+
 function baseFields(): {
+  _iap: true;
   timestamp: string;
   session_id: string;
   page_path: string;
   page_title: string;
+  consent_analytics: boolean;
+  consent_marketing: boolean;
+  consent_preferences: boolean;
 } {
   return {
+    _iap: true,
     timestamp: new Date().toISOString(),
     session_id: getSessionId(),
     page_path: window.location.pathname,
     page_title: document.title,
+    ...currentConsent,
   };
 }
 
@@ -58,11 +84,13 @@ export function trackConsentUpdate(
   marketing: boolean,
   preferences: boolean,
 ): void {
-  pushEvent({
-    ...baseFields(),
-    event: 'consent_update',
+  currentConsent = {
     consent_analytics: analytics,
     consent_marketing: marketing,
     consent_preferences: preferences,
+  };
+  pushEvent({
+    ...baseFields(),
+    event: 'consent_update',
   });
 }

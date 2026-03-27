@@ -37,6 +37,14 @@ var auth = getGoogleAuth({
 });
 
 var eventData = getAllEventData();
+
+// Only process events tagged with _iap marker from our data layer.
+// This filters out GA4 automatic page_view hits and other non-custom events.
+if (!eventData._iap) {
+  data.gtmOnSuccess();
+  return;
+}
+
 // GA4's sGTM client maps session_id to ga_session_id in the common event data model.
 // Falls back to _iap_sid cookie (only works when sGTM is on the same root domain).
 var sessionId =
