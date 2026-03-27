@@ -56,7 +56,7 @@ function OverlayContent({
     return (
       <>
         <EventDetail event={selectedEvent} onClose={() => setSelectedEvent(null)} />
-        <div className="border-t border-neutral-100 px-4 py-3">
+        <div className="border-t border-neutral-100">
           <NarrativeFlow event={selectedEvent} />
         </div>
       </>

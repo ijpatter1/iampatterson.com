@@ -1,18 +1,7 @@
 'use client';
 
+import { destinationLabel } from '@/lib/events/destination-labels';
 import type { PipelineEvent, ConsentState } from '@/lib/events/pipeline-schema';
-
-const DESTINATION_LABELS: Record<string, string> = {
-  ga4: 'GA4',
-  bigquery: 'BigQuery',
-  meta_capi: 'Meta',
-  google_ads: 'Google Ads',
-  pubsub: 'Pub/Sub',
-};
-
-function destinationLabel(dest: string): string {
-  return DESTINATION_LABELS[dest] ?? dest;
-}
 
 const CONSENT_DESCRIPTIONS: Record<keyof ConsentState, string> = {
   analytics_storage: 'Analytics cookies and data collection',

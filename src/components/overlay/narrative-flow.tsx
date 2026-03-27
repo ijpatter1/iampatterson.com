@@ -1,18 +1,7 @@
 'use client';
 
+import { destinationLabel } from '@/lib/events/destination-labels';
 import type { PipelineEvent } from '@/lib/events/pipeline-schema';
-
-const DESTINATION_LABELS: Record<string, string> = {
-  ga4: 'GA4',
-  bigquery: 'BigQuery',
-  meta_capi: 'Meta',
-  google_ads: 'Google Ads',
-  pubsub: 'Pub/Sub',
-};
-
-function destinationLabel(dest: string): string {
-  return DESTINATION_LABELS[dest] ?? dest;
-}
 
 function describeAction(event: PipelineEvent): string {
   const params = event.parameters;
@@ -55,12 +44,13 @@ function StageCard({
 }: {
   title: string;
   description: string;
-  variant?: 'default' | 'action' | 'blocked';
+  variant?: 'default' | 'action' | 'blocked' | 'error';
 }) {
   const styles = {
     default: 'border-neutral-200 bg-neutral-50',
     action: 'border-blue-200 bg-blue-50',
     blocked: 'border-amber-200 bg-amber-50',
+    error: 'border-red-200 bg-red-50',
   };
   return (
     <div className={`rounded-lg border px-3 py-2 ${styles[variant]}`}>
@@ -79,6 +69,7 @@ export function NarrativeFlow({ event }: NarrativeFlowProps) {
 
   const sentRoutes = event.routing.filter((r) => r.status === 'sent');
   const blockedRoutes = event.routing.filter((r) => r.status === 'blocked_consent');
+  const errorRoutes = event.routing.filter((r) => r.status === 'error');
 
   return (
     <div className="px-4 py-3">
@@ -118,6 +109,14 @@ export function NarrativeFlow({ event }: NarrativeFlowProps) {
             title={destinationLabel(route.destination)}
             description="Blocked by consent — ad tracking not permitted"
             variant="blocked"
+          />
+        ))}
+        {errorRoutes.map((route, i) => (
+          <StageCard
+            key={`error-${i}`}
+            title={destinationLabel(route.destination)}
+            description="Delivery error — event could not be sent"
+            variant="error"
           />
         ))}
       </div>

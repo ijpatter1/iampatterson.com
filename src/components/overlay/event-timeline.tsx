@@ -1,18 +1,7 @@
 'use client';
 
+import { destinationLabel } from '@/lib/events/destination-labels';
 import type { PipelineEvent, RoutingResult } from '@/lib/events/pipeline-schema';
-
-const DESTINATION_LABELS: Record<string, string> = {
-  ga4: 'GA4',
-  bigquery: 'BigQuery',
-  meta_capi: 'Meta',
-  google_ads: 'Google Ads',
-  pubsub: 'Pub/Sub',
-};
-
-function destinationLabel(dest: string): string {
-  return DESTINATION_LABELS[dest] ?? dest;
-}
 
 function formatTime(iso: string): string {
   try {
@@ -64,10 +53,18 @@ export function EventTimeline({ events, onSelectEvent, selectedEventId }: EventT
         return (
           <li
             key={event.pipeline_id}
-            className={`cursor-pointer px-4 py-3 transition-colors hover:bg-neutral-50 ${
+            role="button"
+            tabIndex={0}
+            className={`cursor-pointer px-4 py-3 transition-colors hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-neutral-400 ${
               isSelected ? 'bg-neutral-50 ring-1 ring-inset ring-neutral-300' : ''
             }`}
             onClick={() => onSelectEvent?.(event)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onSelectEvent?.(event);
+              }
+            }}
           >
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">

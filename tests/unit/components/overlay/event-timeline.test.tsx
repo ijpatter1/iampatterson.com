@@ -51,7 +51,7 @@ describe('EventTimeline', () => {
       makeEvent({ event_name: 'page_view', timestamp: '2026-03-27T10:00:00Z' }),
     ];
     render(<EventTimeline events={events} />);
-    const items = screen.getAllByRole('listitem');
+    const items = screen.getAllByRole('button');
     expect(within(items[0]).getByText('click_cta')).toBeInTheDocument();
     expect(within(items[1]).getByText('page_view')).toBeInTheDocument();
   });
@@ -115,7 +115,7 @@ describe('EventTimeline', () => {
       makeEvent({ pipeline_id: 'ev-2', event_name: 'click_cta' }),
     ];
     render(<EventTimeline events={events} selectedEventId="ev-1" />);
-    const items = screen.getAllByRole('listitem');
+    const items = screen.getAllByRole('button');
     expect(items[0].className).toContain('ring');
   });
 });

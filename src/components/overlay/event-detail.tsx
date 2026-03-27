@@ -1,18 +1,7 @@
 'use client';
 
+import { destinationLabel } from '@/lib/events/destination-labels';
 import type { PipelineEvent, RoutingResult, ConsentState } from '@/lib/events/pipeline-schema';
-
-const DESTINATION_LABELS: Record<string, string> = {
-  ga4: 'GA4',
-  bigquery: 'BigQuery',
-  meta_capi: 'Meta',
-  google_ads: 'Google Ads',
-  pubsub: 'Pub/Sub',
-};
-
-function destinationLabel(dest: string): string {
-  return DESTINATION_LABELS[dest] ?? dest;
-}
 
 function StatusBadge({ status }: { status: RoutingResult['status'] }) {
   const styles = {
@@ -94,7 +83,13 @@ export function EventDetail({ event, onClose }: EventDetailProps) {
       <div className="px-4 text-xs text-neutral-500">
         <span>{event.page_path}</span>
         <span className="mx-1.5">·</span>
-        <span>{new Date(event.timestamp).toLocaleTimeString()}</span>
+        <span>
+          {new Date(event.timestamp).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+          })}
+        </span>
       </div>
 
       <div className="mt-2 px-4">

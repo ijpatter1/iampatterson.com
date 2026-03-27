@@ -30,7 +30,16 @@ export function MobileBottomSheetShell({ status, children }: MobileBottomSheetSh
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/30 md:hidden" onClick={close} />
+      <div
+        role="button"
+        tabIndex={-1}
+        aria-label="Close overlay"
+        className="fixed inset-0 z-40 bg-black/30 md:hidden"
+        onClick={close}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') close();
+        }}
+      />
       <div
         data-testid="mobile-bottom-sheet"
         className="fixed inset-x-0 bottom-0 z-50 flex max-h-[85vh] flex-col rounded-t-2xl bg-white shadow-2xl md:hidden"
