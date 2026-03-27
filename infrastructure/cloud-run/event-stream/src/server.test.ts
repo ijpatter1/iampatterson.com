@@ -28,6 +28,20 @@ describe('GET /health', () => {
   });
 });
 
+describe('OPTIONS /events (CORS preflight)', () => {
+  it('returns 204 with CORS headers', async () => {
+    const res = await fetch(`${baseUrl}/events`, {
+      method: 'OPTIONS',
+      headers: { Origin: 'https://iampatterson-com.vercel.app' },
+    });
+    expect(res.status).toBe(204);
+    expect(res.headers.get('access-control-allow-origin')).toBe(
+      'https://iampatterson-com.vercel.app',
+    );
+    expect(res.headers.get('access-control-allow-methods')).toContain('GET');
+  });
+});
+
 describe('GET /events', () => {
   it('returns 400 without session_id', async () => {
     const res = await fetch(`${baseUrl}/events`);

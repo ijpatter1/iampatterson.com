@@ -79,10 +79,11 @@ function OverlayContent({
 
 export function OverlayPanel() {
   const { isOpen } = useOverlay();
-  const eventStreamUrl = process.env.NEXT_PUBLIC_EVENT_STREAM_URL ?? '';
+  const baseUrl = process.env.NEXT_PUBLIC_EVENT_STREAM_URL ?? '';
+  const eventStreamUrl = baseUrl.endsWith('/events') ? baseUrl : `${baseUrl}/events`;
   const { events, status } = useEventStream({
     url: eventStreamUrl,
-    enabled: isOpen && eventStreamUrl.length > 0,
+    enabled: isOpen && baseUrl.length > 0,
   });
   const { filteredEvents } = useFilteredEvents(events, false);
   const [viewMode, setViewMode] = useState<ViewMode>('timeline');
