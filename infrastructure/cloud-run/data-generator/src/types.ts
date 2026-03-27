@@ -107,12 +107,7 @@ export type PartnershipType =
   | 'licensing'
   | 'not_sure';
 
-export type BudgetRange =
-  | 'under_5k'
-  | '5k_15k'
-  | '15k_50k'
-  | '50k_plus'
-  | 'prefer_to_discuss';
+export type BudgetRange = 'under_5k' | '5k_15k' | '15k_50k' | '50k_plus' | 'prefer_to_discuss';
 
 export interface LeadGenProfile {
   model: 'leadgen';
@@ -134,10 +129,7 @@ export interface LeadGenProfile {
 // Union profile type
 // ---------------------------------------------------------------------------
 
-export type BusinessModelProfile =
-  | EcommerceProfile
-  | SubscriptionProfile
-  | LeadGenProfile;
+export type BusinessModelProfile = EcommerceProfile | SubscriptionProfile | LeadGenProfile;
 
 // ---------------------------------------------------------------------------
 // Seasonality
@@ -145,15 +137,48 @@ export type BusinessModelProfile =
 
 export interface SeasonalityConfig {
   /** Monthly multipliers (Jan=0 through Dec=11). 1.0 = baseline. */
-  monthly: [number, number, number, number, number, number, number, number, number, number, number, number];
+  monthly: [
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+  ];
   /** Day-of-week multipliers (Sun=0 through Sat=6). 1.0 = baseline. */
   dayOfWeek: [number, number, number, number, number, number, number];
   /** Hour-of-day multipliers (0–23). 1.0 = baseline. */
   hourOfDay: [
-    number, number, number, number, number, number,
-    number, number, number, number, number, number,
-    number, number, number, number, number, number,
-    number, number, number, number, number, number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
   ];
 }
 
@@ -200,6 +225,12 @@ export interface SyntheticBaseEvent {
   utm_source?: string;
   utm_medium?: string;
   utm_campaign?: string;
+}
+
+/** Page view event (all business models). */
+export interface SyntheticPageViewEvent extends SyntheticBaseEvent {
+  event: 'page_view';
+  page_referrer: string;
 }
 
 /** E-commerce events. */
@@ -284,6 +315,7 @@ export interface LeadQualifyEvent extends SyntheticBaseEvent {
 /** Union of all synthetic event types. */
 export type SyntheticEvent =
   | SyntheticBaseEvent
+  | SyntheticPageViewEvent
   | ProductViewEvent
   | AddToCartEvent
   | BeginCheckoutEvent
