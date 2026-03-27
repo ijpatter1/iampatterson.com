@@ -13,6 +13,19 @@ const HEARTBEAT_INTERVAL_MS = 30_000;
 
 app.use(express.json());
 
+/** CORS preflight for cross-origin SSE connections (Vercel → Cloud Run). */
+app.options('/events', (req, res) => {
+  const origin = req.headers.origin ?? '';
+  const allowOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  res.writeHead(204, {
+    'Access-Control-Allow-Origin': allowOrigin,
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Max-Age': '86400',
+  });
+  res.end();
+});
+
 /**
  * SSE endpoint — browser clients connect here scoped by session ID.
  * GET /events?session_id=<uuid>
