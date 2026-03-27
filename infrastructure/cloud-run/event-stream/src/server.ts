@@ -82,6 +82,45 @@ app.post('/pubsub/push', (req, res) => {
   res.status(200).json({ delivered });
 });
 
+/** CORS preflight for consent-beacon (Vercel → Cloud Run). */
+app.options('/consent-beacon', (req, res) => {
+  const origin = req.headers.origin ?? '';
+  const allowOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  res.writeHead(204, {
+    'Access-Control-Allow-Origin': allowOrigin,
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Max-Age': '86400',
+  });
+  res.end();
+});
+
+/**
+ * Direct consent beacon — browser POSTs consent_update events here
+ * when GA4 Consent Mode blocks the normal GTM→sGTM transport.
+ * Constructs a PipelineEvent and routes it to the matching SSE session.
+ */
+app.post('/consent-beacon', (req, res) => {
+  const origin = req.headers.origin ?? '';
+  const allowOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  res.setHeader('Access-Control-Allow-Origin', allowOrigin);
+
+  const body = req.body as Record<string, unknown>;
+  if (typeof body.session_id !== 'string' || !body.session_id) {
+    res.status(400).json({ error: 'session_id required' });
+    return;
+  }
+
+  const payload = {
+    pipeline_id: `consent-${Date.now()}-${Math.floor(Math.random() * 1000000)}`,
+    received_at: new Date().toISOString(),
+    ...body,
+  };
+
+  const delivered = manager.send(body.session_id as string, payload);
+  res.status(200).json({ delivered });
+});
+
 /** Health check for Cloud Run. */
 app.get('/health', (_req, res) => {
   res.status(200).json({

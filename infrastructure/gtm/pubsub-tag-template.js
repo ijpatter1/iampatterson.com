@@ -63,8 +63,10 @@ var analyticsGranted =
   isGranted(eventData['x-ga-cs-analytics_storage']) || isGranted(eventData.consent_analytics);
 var adGranted =
   isGranted(eventData['x-ga-cs-ad_storage']) || isGranted(eventData.consent_marketing);
-var adUserData = isGranted(eventData['x-ga-cs-ad_user_data']);
-var adPersonalization = isGranted(eventData['x-ga-cs-ad_personalization']);
+var adUserData =
+  isGranted(eventData['x-ga-cs-ad_user_data']) || isGranted(eventData.consent_marketing);
+var adPersonalization =
+  isGranted(eventData['x-ga-cs-ad_personalization']) || isGranted(eventData.consent_marketing);
 var functionalityGranted =
   isGranted(eventData['x-ga-cs-functionality_storage']) || isGranted(eventData.consent_preferences);
 
