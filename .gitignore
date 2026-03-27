@@ -103,3 +103,4 @@ sandbox/tmp/
 *.bak
 *.tmp
 *.temp
+docs/tag_assistant_*.json

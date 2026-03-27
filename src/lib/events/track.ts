@@ -25,16 +25,19 @@ function baseFields(): {
   iap_source: true;
   timestamp: string;
   session_id: string;
+  iap_session_id: string;
   page_path: string;
   page_title: string;
   consent_analytics: boolean;
   consent_marketing: boolean;
   consent_preferences: boolean;
 } {
+  const sid = getSessionId();
   return {
     iap_source: true,
     timestamp: new Date().toISOString(),
-    session_id: getSessionId(),
+    session_id: sid,
+    iap_session_id: sid,
     page_path: window.location.pathname,
     page_title: document.title,
     ...currentConsent,

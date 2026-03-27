@@ -114,6 +114,12 @@
       "type": "dataLayer",
       "dataLayerVariable": "iap_source",
       "note": "Marker identifying iampatterson custom events — used by sGTM Pub/Sub tag to filter out GA4 auto-events"
+    },
+    {
+      "name": "dlv - iap_session_id",
+      "type": "dataLayer",
+      "dataLayerVariable": "iap_session_id",
+      "note": "Session ID that survives GA4 remapping — GA4 remaps session_id to ga_session_id and overwrites it on cookieless pings"
     }
   ],
 

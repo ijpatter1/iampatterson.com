@@ -12,6 +12,8 @@ export interface BaseEvent {
   event: string;
   timestamp: string;
   session_id: string;
+  /** Session ID under a name GA4 won't remap (GA4 remaps session_id to ga_session_id). */
+  iap_session_id: string;
   page_path: string;
   page_title: string;
   consent_analytics: boolean;
