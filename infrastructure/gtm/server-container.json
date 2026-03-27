@@ -106,7 +106,8 @@
     },
     {
       "name": "Pub/Sub - Publish All Events",
-      "type": "Custom tag (HTTP request to Pub/Sub REST API)",
+      "type": "Custom tag template (sandboxed JS with getGoogleAuth)",
+      "templateSource": "infrastructure/gtm/pubsub-tag-template.js",
       "configuration": {
         "topicName": "projects/iampatterson/topics/iampatterson-events",
         "projectId": "iampatterson",

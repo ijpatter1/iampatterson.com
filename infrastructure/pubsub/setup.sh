@@ -16,8 +16,13 @@ PROJECT_ID="${GCP_PROJECT_ID:-iampatterson}"
 TOPIC_NAME="iampatterson-events"
 SUBSCRIPTION_NAME="iampatterson-events-push"
 
-# Cloud Run service URL — set after deploying the event-stream service
-PUSH_ENDPOINT="${EVENT_STREAM_URL:-https://event-stream-XXXXXXXXXX.run.app}/pubsub/push"
+# Cloud Run service URL — must be set before running this script
+if [[ -z "${EVENT_STREAM_URL:-}" ]]; then
+  echo "ERROR: EVENT_STREAM_URL is not set."
+  echo "Run: export EVENT_STREAM_URL=\$(gcloud run services describe event-stream --region=us-central1 --format='value(status.url)')"
+  exit 1
+fi
+PUSH_ENDPOINT="${EVENT_STREAM_URL}/pubsub/push"
 
 echo "=== Pub/Sub Setup for ${PROJECT_ID} ==="
 
