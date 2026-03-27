@@ -40,7 +40,7 @@ var eventData = getAllEventData();
 
 // Only process events tagged with _iap marker from our data layer.
 // This filters out GA4 automatic page_view hits and other non-custom events.
-if (!eventData._iap) {
+if (!eventData.iap_source) {
   data.gtmOnSuccess();
   return;
 }
