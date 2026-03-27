@@ -32,7 +32,7 @@ describe('Header', () => {
     expect(screen.queryByText(/demos/i)).not.toBeInTheDocument();
   });
 
-  it('does not render flip-the-card toggle in Phase 1', () => {
+  it('does not render flip-the-card toggle in header (trigger is in layout)', () => {
     render(<Header />);
     expect(screen.queryByText(/flip/i)).not.toBeInTheDocument();
   });
