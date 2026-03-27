@@ -37,6 +37,14 @@ var auth = getGoogleAuth({
 });
 
 var eventData = getAllEventData();
+
+// Only process events tagged with _iap marker from our data layer.
+// This filters out GA4 automatic page_view hits and other non-custom events.
+if (!eventData._iap) {
+  data.gtmOnSuccess();
+  return;
+}
+
 // GA4's sGTM client maps session_id to ga_session_id in the common event data model.
 // Falls back to _iap_sid cookie (only works when sGTM is on the same root domain).
 var sessionId =
@@ -44,17 +52,21 @@ var sessionId =
 var receivedAt = makeString(getTimestampMillis());
 var pipelineId = 'pipe-' + receivedAt + '-' + generateRandom(1, 999999);
 
-// In sGTM, consent state arrives via the event data from the web container.
-// x-ga-cs-* fields are set by the GA4 client when it parses incoming hits.
-// We also check explicit consent fields that Cookiebot may set.
+// In sGTM, consent state arrives via two possible channels:
+//   1. x-ga-cs-* fields set by the GA4 client from Consent Mode signals (string: 'granted'/'denied')
+//   2. Custom event parameters from the data layer (boolean true/false or string 'true'/'granted')
+// We check both, with x-ga-cs-* taking priority.
+var isGranted = function (value) {
+  return value === 'granted' || value === true || value === 'true';
+};
 var analyticsGranted =
-  eventData['x-ga-cs-analytics_storage'] === 'granted' || eventData.consent_analytics === 'granted';
-var adGranted = eventData['x-ga-cs-ad_storage'] === 'granted';
-var adUserData = eventData['x-ga-cs-ad_user_data'] === 'granted';
-var adPersonalization = eventData['x-ga-cs-ad_personalization'] === 'granted';
+  isGranted(eventData['x-ga-cs-analytics_storage']) || isGranted(eventData.consent_analytics);
+var adGranted =
+  isGranted(eventData['x-ga-cs-ad_storage']) || isGranted(eventData.consent_marketing);
+var adUserData = isGranted(eventData['x-ga-cs-ad_user_data']);
+var adPersonalization = isGranted(eventData['x-ga-cs-ad_personalization']);
 var functionalityGranted =
-  eventData['x-ga-cs-functionality_storage'] === 'granted' ||
-  eventData.consent_preferences === 'granted';
+  isGranted(eventData['x-ga-cs-functionality_storage']) || isGranted(eventData.consent_preferences);
 
 var consentStatus = function (granted) {
   return granted ? 'granted' : 'denied';
@@ -72,21 +84,31 @@ var payload = {
   page_path: eventData.page_path || eventData.page_location_path || '',
   page_title: eventData.page_title || '',
   page_location: eventData.page_location || '',
-  parameters: {
-    page_referrer: eventData.page_referrer || '',
-    depth_percentage: eventData.depth_percentage || '',
-    depth_pixels: eventData.depth_pixels || '',
-    link_text: eventData.link_text || '',
-    link_url: eventData.link_url || '',
-    cta_text: eventData.cta_text || '',
-    cta_location: eventData.cta_location || '',
-    form_name: eventData.form_name || '',
-    field_name: eventData.field_name || '',
-    form_success: eventData.form_success || '',
-    consent_analytics: eventData.consent_analytics || '',
-    consent_marketing: eventData.consent_marketing || '',
-    consent_preferences: eventData.consent_preferences || '',
-  },
+  parameters: (function () {
+    var params = {};
+    var keys = [
+      'page_referrer',
+      'depth_percentage',
+      'depth_pixels',
+      'link_text',
+      'link_url',
+      'cta_text',
+      'cta_location',
+      'form_name',
+      'field_name',
+      'form_success',
+      'consent_analytics',
+      'consent_marketing',
+      'consent_preferences',
+    ];
+    for (var i = 0; i < keys.length; i++) {
+      var val = eventData[keys[i]];
+      if (val !== undefined && val !== null && val !== '') {
+        params[keys[i]] = val;
+      }
+    }
+    return params;
+  })(),
   consent: {
     analytics_storage: consentStatus(analyticsGranted),
     ad_storage: consentStatus(adGranted),

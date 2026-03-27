@@ -220,6 +220,39 @@ assertThat(capturedBody5).contains('\\"event_name\\":\\"scroll_depth\\"');
 assertThat(capturedBody5).contains('\\"depth_percentage\\":\\"50\\"');
 
 // ---------------------------------------------------------------------------
+// Test: boolean consent values from data layer are handled correctly
+// ---------------------------------------------------------------------------
+
+setupMocks({
+  eventData: {
+    event_name: 'consent_update',
+    timestamp: '2026-03-27T12:00:00.000Z',
+    page_path: '/',
+    page_title: 'Home | Patterson Consulting',
+    page_location: 'https://iampatterson.com/',
+    consent_analytics: true,
+    consent_marketing: true,
+    consent_preferences: true,
+  },
+});
+
+var capturedBody8;
+mock('sendHttpRequest', function (url, options, body) {
+  capturedBody8 = body;
+  return {
+    then: function (cb) {
+      cb({ statusCode: 200, body: '' });
+    },
+  };
+});
+
+runCode(code);
+assertThat(capturedBody8).contains('\\"analytics_storage\\":\\"granted\\"');
+assertThat(capturedBody8).contains('\\"ad_storage\\":\\"granted\\"');
+assertThat(capturedBody8).contains('\\"functionality_storage\\":\\"granted\\"');
+assertThat(capturedBody8).doesNotContain('\\"blocked_consent\\"');
+
+// ---------------------------------------------------------------------------
 // Test: pipeline_id is generated with timestamp and random number
 // ---------------------------------------------------------------------------
 

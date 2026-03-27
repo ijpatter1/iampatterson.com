@@ -5,6 +5,7 @@ import { render, act } from '@testing-library/react';
 
 jest.mock('@/lib/events/track', () => ({
   trackConsentUpdate: jest.fn(),
+  initConsentState: jest.fn(),
 }));
 
 import { trackConsentUpdate } from '@/lib/events/track';

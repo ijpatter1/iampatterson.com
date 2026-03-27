@@ -7,11 +7,16 @@
 
 /** Base shape shared by all data layer events. */
 export interface BaseEvent {
+  /** Marker identifying this as an iampatterson custom event (filters out GA4 auto-events in sGTM). */
+  _iap: true;
   event: string;
   timestamp: string;
   session_id: string;
   page_path: string;
   page_title: string;
+  consent_analytics: boolean;
+  consent_marketing: boolean;
+  consent_preferences: boolean;
 }
 
 /** Fired on App Router route changes. */

@@ -108,6 +108,12 @@
       "name": "dlv - consent_preferences",
       "type": "dataLayer",
       "dataLayerVariable": "consent_preferences"
+    },
+    {
+      "name": "dlv - _iap",
+      "type": "dataLayer",
+      "dataLayerVariable": "_iap",
+      "note": "Marker identifying iampatterson custom events — used by sGTM Pub/Sub tag to filter out GA4 auto-events"
     }
   ],
 
@@ -176,11 +182,15 @@
       "type": "GA4 Event (gaawe)",
       "eventName": "page_view",
       "parameters": {
+        "_iap": "{{dlv - _iap}}",
         "timestamp": "{{dlv - timestamp}}",
         "session_id": "{{dlv - session_id}}",
         "page_path": "{{dlv - page_path}}",
         "page_title": "{{dlv - page_title}}",
-        "page_referrer": "{{dlv - page_referrer}}"
+        "page_referrer": "{{dlv - page_referrer}}",
+        "consent_analytics": "{{dlv - consent_analytics}}",
+        "consent_marketing": "{{dlv - consent_marketing}}",
+        "consent_preferences": "{{dlv - consent_preferences}}"
       },
       "firingTrigger": "ce - page_view",
       "consentSettings": { "analytics_storage": "required" }
@@ -190,12 +200,16 @@
       "type": "GA4 Event (gaawe)",
       "eventName": "scroll_depth",
       "parameters": {
+        "_iap": "{{dlv - _iap}}",
         "timestamp": "{{dlv - timestamp}}",
         "session_id": "{{dlv - session_id}}",
         "page_path": "{{dlv - page_path}}",
         "page_title": "{{dlv - page_title}}",
         "depth_percentage": "{{dlv - depth_percentage}}",
-        "depth_pixels": "{{dlv - depth_pixels}}"
+        "depth_pixels": "{{dlv - depth_pixels}}",
+        "consent_analytics": "{{dlv - consent_analytics}}",
+        "consent_marketing": "{{dlv - consent_marketing}}",
+        "consent_preferences": "{{dlv - consent_preferences}}"
       },
       "firingTrigger": "ce - scroll_depth",
       "consentSettings": { "analytics_storage": "required" }
@@ -205,12 +219,16 @@
       "type": "GA4 Event (gaawe)",
       "eventName": "click_nav",
       "parameters": {
+        "_iap": "{{dlv - _iap}}",
         "timestamp": "{{dlv - timestamp}}",
         "session_id": "{{dlv - session_id}}",
         "page_path": "{{dlv - page_path}}",
         "page_title": "{{dlv - page_title}}",
         "link_text": "{{dlv - link_text}}",
-        "link_url": "{{dlv - link_url}}"
+        "link_url": "{{dlv - link_url}}",
+        "consent_analytics": "{{dlv - consent_analytics}}",
+        "consent_marketing": "{{dlv - consent_marketing}}",
+        "consent_preferences": "{{dlv - consent_preferences}}"
       },
       "firingTrigger": "ce - click_nav",
       "consentSettings": { "analytics_storage": "required" }
@@ -220,12 +238,16 @@
       "type": "GA4 Event (gaawe)",
       "eventName": "click_cta",
       "parameters": {
+        "_iap": "{{dlv - _iap}}",
         "timestamp": "{{dlv - timestamp}}",
         "session_id": "{{dlv - session_id}}",
         "page_path": "{{dlv - page_path}}",
         "page_title": "{{dlv - page_title}}",
         "cta_text": "{{dlv - cta_text}}",
-        "cta_location": "{{dlv - cta_location}}"
+        "cta_location": "{{dlv - cta_location}}",
+        "consent_analytics": "{{dlv - consent_analytics}}",
+        "consent_marketing": "{{dlv - consent_marketing}}",
+        "consent_preferences": "{{dlv - consent_preferences}}"
       },
       "firingTrigger": "ce - click_cta",
       "consentSettings": { "analytics_storage": "required" }
@@ -235,12 +257,16 @@
       "type": "GA4 Event (gaawe)",
       "eventName": "form_field_focus",
       "parameters": {
+        "_iap": "{{dlv - _iap}}",
         "timestamp": "{{dlv - timestamp}}",
         "session_id": "{{dlv - session_id}}",
         "page_path": "{{dlv - page_path}}",
         "page_title": "{{dlv - page_title}}",
         "form_name": "{{dlv - form_name}}",
-        "field_name": "{{dlv - field_name}}"
+        "field_name": "{{dlv - field_name}}",
+        "consent_analytics": "{{dlv - consent_analytics}}",
+        "consent_marketing": "{{dlv - consent_marketing}}",
+        "consent_preferences": "{{dlv - consent_preferences}}"
       },
       "firingTrigger": "ce - form_field_focus",
       "consentSettings": { "analytics_storage": "required" }
@@ -250,11 +276,15 @@
       "type": "GA4 Event (gaawe)",
       "eventName": "form_start",
       "parameters": {
+        "_iap": "{{dlv - _iap}}",
         "timestamp": "{{dlv - timestamp}}",
         "session_id": "{{dlv - session_id}}",
         "page_path": "{{dlv - page_path}}",
         "page_title": "{{dlv - page_title}}",
-        "form_name": "{{dlv - form_name}}"
+        "form_name": "{{dlv - form_name}}",
+        "consent_analytics": "{{dlv - consent_analytics}}",
+        "consent_marketing": "{{dlv - consent_marketing}}",
+        "consent_preferences": "{{dlv - consent_preferences}}"
       },
       "firingTrigger": "ce - form_start",
       "consentSettings": { "analytics_storage": "required" }
@@ -264,12 +294,16 @@
       "type": "GA4 Event (gaawe)",
       "eventName": "form_submit",
       "parameters": {
+        "_iap": "{{dlv - _iap}}",
         "timestamp": "{{dlv - timestamp}}",
         "session_id": "{{dlv - session_id}}",
         "page_path": "{{dlv - page_path}}",
         "page_title": "{{dlv - page_title}}",
         "form_name": "{{dlv - form_name}}",
-        "form_success": "{{dlv - form_success}}"
+        "form_success": "{{dlv - form_success}}",
+        "consent_analytics": "{{dlv - consent_analytics}}",
+        "consent_marketing": "{{dlv - consent_marketing}}",
+        "consent_preferences": "{{dlv - consent_preferences}}"
       },
       "firingTrigger": "ce - form_submit",
       "consentSettings": { "analytics_storage": "required" }
@@ -279,6 +313,7 @@
       "type": "GA4 Event (gaawe)",
       "eventName": "consent_update",
       "parameters": {
+        "_iap": "{{dlv - _iap}}",
         "timestamp": "{{dlv - timestamp}}",
         "session_id": "{{dlv - session_id}}",
         "page_path": "{{dlv - page_path}}",
