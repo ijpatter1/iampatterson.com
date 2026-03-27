@@ -132,7 +132,7 @@ export function generateLeadgenSession(
   }
 
   const qualificationTier = determineQualificationTier(budgetRange, partnershipType, rng);
-  const leadId = `LEAD-${Date.now()}-${rng.int(1000, 9999)}`;
+  const leadId = `LEAD-${ctx.timestamp.getTime()}-${rng.int(1000, 9999)}`;
 
   const leadQualify: LeadQualifyEvent = {
     ...createBaseEvent(ctx, 'lead_qualify', offsetMs),

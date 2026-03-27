@@ -46,11 +46,16 @@ describe('generator orchestrator', () => {
       expect(result.stats.eventBreakdown['add_to_cart']).toBeGreaterThan(0);
     });
 
-    it('subscription events include plan_select', () => {
-      const config = createSubscriptionConfig({ seed: 42, dailySessions: 50 });
+    it('subscription events include plan_select and lifecycle events', () => {
+      const config = createSubscriptionConfig({ seed: 42, dailySessions: 100 });
       const result = generateDay(config, new Date('2025-06-15'));
 
       expect(result.stats.eventBreakdown['plan_select']).toBeGreaterThan(0);
+      // With 100 sessions, ~15% sign up, and we generate lifecycle events for them
+      const hasLifecycle =
+        (result.stats.eventBreakdown['subscription_renewal'] || 0) > 0 ||
+        (result.stats.eventBreakdown['subscription_churn'] || 0) > 0;
+      expect(hasLifecycle).toBe(true);
     });
 
     it('leadgen events include form-related events', () => {
@@ -145,28 +150,29 @@ describe('generator orchestrator', () => {
   });
 
   describe('growth over time', () => {
-    it('later months generate more sessions than earlier months', () => {
+    it('later months in a backfill have more sessions than earlier months', () => {
       const config = createEcommerceConfig({
         seed: 42,
         dailySessions: 20,
         backfillMonths: 6,
-        monthlyGrowthRate: 0.1, // 10% monthly growth for clear signal
+        monthlyGrowthRate: 0.15, // 15% growth for clear signal
+        seasonality: flatSeasonality(),
       });
 
-      // Generate one day early vs late
-      const earlyResult = generateDay(
-        { ...config, seasonality: flatSeasonality() },
-        new Date('2025-01-15'),
-      );
-      // Create a new config with the same seed base but calculate sessions for later date
-      const lateConfig = { ...config, seasonality: flatSeasonality() };
-      const lateResult = generateDay(lateConfig, new Date('2025-06-15'));
+      // Generate a 6-month backfill and count events per month
+      const result = generateBackfill(config, new Date('2025-06-30'));
+      const eventsByMonth: Record<string, number> = {};
+      for (const event of result.events) {
+        const month = (event as { timestamp: string }).timestamp.substring(0, 7); // "YYYY-MM"
+        eventsByMonth[month] = (eventsByMonth[month] || 0) + 1;
+      }
 
-      // Later should have more sessions due to growth
-      // But both use the same reference date so growth comparison needs generateDateRange
-      // Just verify that sessions are generated
-      expect(earlyResult.stats.totalSessions).toBeGreaterThan(0);
-      expect(lateResult.stats.totalSessions).toBeGreaterThan(0);
+      const months = Object.keys(eventsByMonth).sort();
+      expect(months.length).toBeGreaterThanOrEqual(4);
+      // Last month should have more events than first month due to growth
+      const firstMonthEvents = eventsByMonth[months[0]];
+      const lastMonthEvents = eventsByMonth[months[months.length - 1]];
+      expect(lastMonthEvents).toBeGreaterThan(firstMonthEvents);
     });
   });
 });

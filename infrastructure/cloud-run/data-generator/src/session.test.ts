@@ -1,5 +1,6 @@
 import {
   getSeasonalityMultiplier,
+  getDailySeasonalityMultiplier,
   getSessionCountForDate,
   selectChannel,
   selectCampaign,
@@ -34,6 +35,26 @@ describe('session utilities', () => {
       const juneMultiplier = getSeasonalityMultiplier(june, config.seasonality);
       const decMultiplier = getSeasonalityMultiplier(december, config.seasonality);
       expect(decMultiplier).toBeGreaterThan(juneMultiplier);
+    });
+  });
+
+  describe('getDailySeasonalityMultiplier', () => {
+    it('excludes hour-of-day from the multiplier', () => {
+      const config = createEcommerceConfig();
+      // Midnight vs noon on the same day should give the same daily multiplier
+      const midnight = new Date('2025-06-15T00:00:00Z');
+      const noon = new Date('2025-06-15T12:00:00Z');
+      expect(getDailySeasonalityMultiplier(midnight, config.seasonality)).toBe(
+        getDailySeasonalityMultiplier(noon, config.seasonality),
+      );
+    });
+
+    it('only uses month and day-of-week', () => {
+      const config = createEcommerceConfig();
+      const date = new Date('2025-06-15T00:00:00Z'); // Sunday, June
+      const result = getDailySeasonalityMultiplier(date, config.seasonality);
+      const expected = config.seasonality.monthly[5] * config.seasonality.dayOfWeek[0];
+      expect(result).toBeCloseTo(expected, 5);
     });
   });
 

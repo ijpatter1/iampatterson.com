@@ -1,7 +1,7 @@
 # Phase Status Tracker
 
-> **Current Phase: 3 — Flip-the-Card UI**
-> Last updated: 2026-03-27, session-2026-03-27-006
+> **Current Phase: 4 — Background Data Generator**
+> Last updated: 2026-03-27, session-2026-03-27-008
 
 ---
 
@@ -57,12 +57,12 @@
 
 *Goal: Build a service that continuously generates realistic historical and ongoing data for the three demo business models.*
 
-- ⬜ Cloud Run service (Python or Node.js) that generates synthetic events and sends them to sGTM via HTTP requests, simulating browser activity
-- ⬜ Three data profiles: e-commerce (Tuna shop), subscription (Tuna subscription box), lead generation (Tuna brand partnerships) — see REQUIREMENTS.md for full profile specifications
-- ⬜ Simulated ad platform data: campaign spend, impressions, clicks by platform, campaign, and date. Includes intentional naming inconsistencies across platforms
-- ⬜ Historical backfill: on first run, generates 12-24 months of historical data with realistic trends, seasonality, and growth patterns
-- ⬜ Ongoing generation: runs continuously, generating a realistic daily volume of events so the data stays fresh
-- ⬜ Configurable parameters: traffic volume, channel mix, conversion rates, seasonality curves — all adjustable
+- ✅ 2026-03-27, session-2026-03-27-008 — Cloud Run service (Node.js/TypeScript) that generates synthetic events and sends them to sGTM via GA4 Measurement Protocol, with Express server and Dockerfile
+- ✅ 2026-03-27, session-2026-03-27-008 — Three data profiles: e-commerce (Tuna Shop — 6 products, funnel with configurable drop-off), subscription (Tuna Subscription Box — 3 plans, lifecycle with churn curves), lead generation (Tuna Brand Partnerships — form funnel with qualification scoring)
+- ✅ 2026-03-27, session-2026-03-27-008 — Simulated ad platform data: campaign spend, impressions, clicks by platform, campaign, and date. Includes intentional naming inconsistencies (3-4 UTM variants per campaign) across platforms
+- ✅ 2026-03-27, session-2026-03-27-008 — Historical backfill: configurable months of historical data with seasonality (monthly, day-of-week, hour-of-day curves) and growth patterns
+- ✅ 2026-03-27, session-2026-03-27-008 — Ongoing generation: /generate endpoint produces realistic daily volume; continuous mode via scheduled Cloud Scheduler triggers
+- ✅ 2026-03-27, session-2026-03-27-008 — Configurable parameters: traffic volume, channel mix (6 platforms), conversion rates, seasonality curves, growth rate, backfill months — all adjustable via GeneratorConfig
 
 ---
 

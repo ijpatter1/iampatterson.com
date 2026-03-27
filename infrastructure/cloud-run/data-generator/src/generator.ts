@@ -128,6 +128,9 @@ export function generateDateRange(
 
 /**
  * Generate events for a single session based on the business model.
+ *
+ * For subscriptions, also generates lifecycle events (renewals, churn)
+ * if the visitor signed up for a trial.
  */
 function generateSessionForModel(
   config: GeneratorConfig,
@@ -137,8 +140,28 @@ function generateSessionForModel(
   switch (config.profile.model) {
     case 'ecommerce':
       return generateEcommerceSession(ctx, config.profile as EcommerceProfile, rng);
-    case 'subscription':
-      return generateSubscriptionSession(ctx, config.profile as SubscriptionProfile, rng);
+    case 'subscription': {
+      const profile = config.profile as SubscriptionProfile;
+      const sessionEvents = generateSubscriptionSession(ctx, profile, rng);
+
+      // If the visitor signed up, generate lifecycle events
+      const signup = sessionEvents.find((e) => e.event === 'trial_signup');
+      if (signup) {
+        const planId = (signup as { plan_id: string }).plan_id;
+        const plan = profile.plans.find((p) => p.id === planId) || profile.plans[0];
+        // Generate up to 12 months of lifecycle from the signup date
+        const lifecycleEvents = generateSubscriptionLifecycle(
+          ctx,
+          profile,
+          plan,
+          ctx.timestamp,
+          12,
+          rng,
+        );
+        return [...sessionEvents, ...lifecycleEvents];
+      }
+      return sessionEvents;
+    }
     case 'leadgen':
       return generateLeadgenSession(ctx, config.profile as LeadGenProfile, rng);
   }

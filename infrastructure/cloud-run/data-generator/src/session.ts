@@ -81,7 +81,8 @@ function platformToUtmMedium(platform: string): string {
 }
 
 /**
- * Get the seasonality multiplier for a given timestamp.
+ * Get the full seasonality multiplier for a given timestamp (month × day × hour).
+ * Used for intra-day distribution weighting, not for daily session counts.
  */
 export function getSeasonalityMultiplier(date: Date, seasonality: SeasonalityConfig): number {
   const month = date.getMonth();
@@ -90,6 +91,17 @@ export function getSeasonalityMultiplier(date: Date, seasonality: SeasonalityCon
   return (
     seasonality.monthly[month] * seasonality.dayOfWeek[dayOfWeek] * seasonality.hourOfDay[hour]
   );
+}
+
+/**
+ * Get the daily seasonality multiplier (month × day-of-week only).
+ * Hour-of-day is excluded because session distribution across hours
+ * is handled separately by pickHour in the generator.
+ */
+export function getDailySeasonalityMultiplier(date: Date, seasonality: SeasonalityConfig): number {
+  const month = date.getMonth();
+  const dayOfWeek = date.getDay();
+  return seasonality.monthly[month] * seasonality.dayOfWeek[dayOfWeek];
 }
 
 /**
@@ -106,7 +118,7 @@ export function getSessionCountForDate(
     (date.getMonth() - referenceDate.getMonth());
 
   const growthMultiplier = Math.pow(1 + config.monthlyGrowthRate, monthsElapsed);
-  const seasonalMultiplier = getSeasonalityMultiplier(date, config.seasonality);
+  const seasonalMultiplier = getDailySeasonalityMultiplier(date, config.seasonality);
 
   return Math.max(1, Math.round(config.dailySessions * growthMultiplier * seasonalMultiplier));
 }

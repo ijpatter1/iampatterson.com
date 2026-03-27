@@ -65,13 +65,65 @@ export async function sendEvents(
 
 /**
  * Send a batch of events via the Measurement Protocol.
+ *
+ * Groups events by client_id (session_id) and sends up to 25 events
+ * per request, matching the MP batch limit.
  */
 async function sendBatch(events: SyntheticEvent[], config: TransportConfig): Promise<void> {
   const url = buildMpUrl(config);
 
+  // Group events by session for proper client_id scoping
+  const bySession = new Map<string, SyntheticBaseEvent[]>();
   for (const event of events) {
     const base = event as SyntheticBaseEvent;
-    const payload = buildMpPayload(base, config.measurementId);
+    const list = bySession.get(base.session_id) || [];
+    list.push(base);
+    bySession.set(base.session_id, list);
+  }
+
+  for (const [clientId, sessionEvents] of bySession) {
+    const mpEvents = sessionEvents.map((e) => {
+      const {
+        iap_source,
+        event: eventName,
+        timestamp,
+        session_id,
+        iap_session_id,
+        page_path,
+        page_title,
+        consent_analytics,
+        consent_marketing,
+        consent_preferences,
+        utm_source,
+        utm_medium,
+        utm_campaign,
+        ...customParams
+      } = e;
+      return {
+        name: eventName,
+        params: {
+          iap_source: true,
+          session_id,
+          iap_session_id,
+          page_location: `https://iampatterson-com.vercel.app${page_path}`,
+          page_title,
+          page_path,
+          consent_analytics,
+          consent_marketing,
+          consent_preferences,
+          ...(utm_source ? { utm_source } : {}),
+          ...(utm_medium ? { utm_medium } : {}),
+          ...(utm_campaign ? { utm_campaign } : {}),
+          ...customParams,
+          engagement_time_msec: 100,
+        },
+      };
+    });
+
+    const payload = {
+      client_id: clientId,
+      events: mpEvents,
+    };
 
     const response = await fetch(url, {
       method: 'POST',

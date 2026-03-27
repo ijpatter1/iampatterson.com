@@ -120,7 +120,7 @@ export function generateEcommerceSession(
     return events; // Checkout abandoned
   }
 
-  const orderId = `ORD-${Date.now()}-${rng.int(1000, 9999)}`;
+  const orderId = `ORD-${ctx.timestamp.getTime()}-${rng.int(1000, 9999)}`;
   const purchase: PurchaseEvent = {
     ...createBaseEvent(ctx, 'purchase', offsetMs),
     event: 'purchase',
