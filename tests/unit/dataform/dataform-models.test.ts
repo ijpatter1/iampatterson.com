@@ -317,7 +317,6 @@ describe('Campaign taxonomy models', () => {
     const sql = readSqlx('definitions/taxonomy/campaign_taxonomy.sqlx');
     expect(sql).toContain('AI.CLASSIFY');
     expect(sql).toContain('AI.IF');
-    expect(sql).toContain('vertex-ai-connection');
     expect(sql).toContain('campaign_name_standardized');
   });
 

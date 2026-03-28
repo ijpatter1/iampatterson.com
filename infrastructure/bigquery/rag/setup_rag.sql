@@ -13,7 +13,7 @@
 -- 1. Create the embedding model reference
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE MODEL `iampatterson.iampatterson_marts.embedding_model`
-REMOTE WITH CONNECTION `us.vertex-ai-connection`
+REMOTE WITH CONNECTION `iampatterson.us.vertex-ai-connection`
 OPTIONS (
   endpoint = 'text-embedding-005'
 );
@@ -22,7 +22,7 @@ OPTIONS (
 -- 2. Create the text generation model reference (for RAG responses)
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE MODEL `iampatterson.iampatterson_marts.gemini_model`
-REMOTE WITH CONNECTION `us.vertex-ai-connection`
+REMOTE WITH CONNECTION `iampatterson.us.vertex-ai-connection`
 OPTIONS (
   endpoint = 'gemini-2.0-flash'
 );

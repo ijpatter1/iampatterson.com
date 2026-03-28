@@ -9,13 +9,9 @@ config {
 
 /*
  * Prerequisites:
- *   1. Enable Vertex AI API: gcloud services enable aiplatform.googleapis.com --project=iampatterson
- *   2. Create a BigQuery Cloud Resource connection:
- *      bq mk --connection --connection_type=CLOUD_RESOURCE --location=US vertex-ai-connection
- *   3. Grant the connection's service account the Vertex AI User role:
- *      gcloud projects add-iam-policy-binding iampatterson \
- *        --member="serviceAccount:<CONNECTION_SA>" \
- *        --role="roles/aiplatform.user"
+ *   1. Vertex AI API enabled
+ *   2. BigQuery default Cloud Resource connection configured
+ *   Uses AI.CLASSIFY and AI.IF with the default Vertex AI connection.
  */
 
 WITH distinct_campaigns AS (
@@ -37,20 +33,17 @@ classified AS (
     AI.CLASSIFY(
       CONCAT('Classify this advertising campaign name into a campaign type: "', campaign_name_raw, '"'),
       ['brand', 'prospecting', 'retargeting', 'shopping', 'content', 'lookalike', 'newsletter', 'interest_targeting'],
-      CONNECTION `us.vertex-ai-connection`
     ) AS campaign_type,
 
     -- Classify business model
     AI.CLASSIFY(
       CONCAT('Classify which business this campaign serves based on the name: "', campaign_name_raw, '"'),
       ['ecommerce', 'subscription', 'leadgen', 'general'],
-      CONNECTION `us.vertex-ai-connection`
     ) AS business_model,
 
     -- Extract clean canonical name using AI.IF for pattern matching
     AI.IF(
       CONCAT('Does this campaign name "', campaign_name_raw, '" contain a brand term like "tuna", "merch", or "brand"?'),
-      CONNECTION `us.vertex-ai-connection`
     ) AS is_brand_campaign
 
   FROM distinct_campaigns
