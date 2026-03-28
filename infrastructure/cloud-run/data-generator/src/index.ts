@@ -36,7 +36,7 @@ export { SeededRandom } from './random';
 export { generateBackfill, generateDay, generateDateRange } from './generator';
 export type { GenerationResult, GenerationStats } from './generator';
 
-export { sendEvents, buildMpPayload } from './transport';
+export { sendEvents, buildCollectParams } from './transport';
 export type { TransportConfig, SendResult } from './transport';
 
 export { generateEcommerceSession } from './engines/ecommerce';

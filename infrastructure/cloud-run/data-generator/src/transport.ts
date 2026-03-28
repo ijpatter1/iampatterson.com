@@ -1,9 +1,11 @@
 /**
- * HTTP transport — sends synthetic events to sGTM via the
- * Measurement Protocol, simulating browser-to-GTM traffic.
+ * HTTP transport — sends synthetic events to sGTM via /g/collect,
+ * mimicking the exact format that gtag.js sends from the browser.
  *
- * Events are sent as GA4 Measurement Protocol hits to the sGTM
- * endpoint, which processes them identically to real browser events.
+ * The sGTM GA4 client expects hits at /g/collect with URL-encoded
+ * query parameters (not JSON). This ensures events flow through
+ * the same pipeline as real visitor events: sGTM GA4 client parses
+ * them, then fires all tags (GA4, BigQuery, Pub/Sub).
  */
 
 import type { SyntheticEvent, SyntheticBaseEvent } from './types';
@@ -13,9 +15,7 @@ export interface TransportConfig {
   sgtmUrl: string;
   /** GA4 Measurement ID (e.g., G-XXXXXXXXXX). */
   measurementId: string;
-  /** GA4 API secret for server-side Measurement Protocol. */
-  apiSecret: string;
-  /** Max events per batch (Measurement Protocol limit is 25). */
+  /** Events per batch before inserting a delay. */
   batchSize: number;
   /** Delay between batches in ms (rate limiting). */
   batchDelayMs: number;
@@ -24,7 +24,6 @@ export interface TransportConfig {
 export const DEFAULT_TRANSPORT_CONFIG: TransportConfig = {
   sgtmUrl: process.env['SGTM_URL'] || 'https://io.iampatterson.com',
   measurementId: process.env['GA4_MEASUREMENT_ID'] || 'G-9M2G3RLHWF',
-  apiSecret: process.env['GA4_API_SECRET'] || '',
   batchSize: 25,
   batchDelayMs: 100,
 };
@@ -36,7 +35,7 @@ export interface SendResult {
 }
 
 /**
- * Send events to sGTM in batches via the Measurement Protocol.
+ * Send events to sGTM in batches via /g/collect.
  */
 export async function sendEvents(
   events: SyntheticEvent[],
@@ -47,12 +46,14 @@ export async function sendEvents(
   const batches = chunkArray(events, config.batchSize);
 
   for (const batch of batches) {
-    try {
-      await sendBatch(batch, config);
-      result.sent += batch.length;
-    } catch (err) {
-      result.failed += batch.length;
-      result.errors.push(err instanceof Error ? err.message : String(err));
+    for (const event of batch) {
+      try {
+        await sendHit(event as SyntheticBaseEvent, config);
+        result.sent++;
+      } catch (err) {
+        result.failed++;
+        result.errors.push(err instanceof Error ? err.message : String(err));
+      }
     }
 
     if (config.batchDelayMs > 0) {
@@ -64,136 +65,118 @@ export async function sendEvents(
 }
 
 /**
- * Send a batch of events via the Measurement Protocol.
+ * Send a single event as a GA4 /g/collect hit.
  *
- * Groups events by client_id (session_id) and sends up to 25 events
- * per request, matching the MP batch limit.
+ * This mimics the format gtag.js uses when sending events:
+ * POST /g/collect with URL-encoded query string body.
  */
-async function sendBatch(events: SyntheticEvent[], config: TransportConfig): Promise<void> {
-  const url = buildMpUrl(config);
-
-  // Group events by session for proper client_id scoping
-  const bySession = new Map<string, SyntheticBaseEvent[]>();
-  for (const event of events) {
-    const base = event as SyntheticBaseEvent;
-    const list = bySession.get(base.session_id) || [];
-    list.push(base);
-    bySession.set(base.session_id, list);
-  }
-
-  for (const [clientId, sessionEvents] of bySession) {
-    const mpEvents = sessionEvents.map((e) => {
-      const {
-        iap_source,
-        event: eventName,
-        timestamp,
-        session_id,
-        iap_session_id,
-        page_path,
-        page_title,
-        consent_analytics,
-        consent_marketing,
-        consent_preferences,
-        utm_source,
-        utm_medium,
-        utm_campaign,
-        ...customParams
-      } = e;
-      return {
-        name: eventName,
-        params: {
-          iap_source: true,
-          session_id,
-          iap_session_id,
-          page_location: `https://iampatterson-com.vercel.app${page_path}`,
-          page_title,
-          page_path,
-          consent_analytics,
-          consent_marketing,
-          consent_preferences,
-          ...(utm_source ? { utm_source } : {}),
-          ...(utm_medium ? { utm_medium } : {}),
-          ...(utm_campaign ? { utm_campaign } : {}),
-          ...customParams,
-          engagement_time_msec: 100,
-        },
-      };
-    });
-
-    const payload = {
-      client_id: clientId,
-      events: mpEvents,
-    };
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      throw new Error(`MP request failed: ${response.status} ${response.statusText}`);
-    }
-  }
-}
-
-/**
- * Build the Measurement Protocol URL for sGTM.
- */
-function buildMpUrl(config: TransportConfig): string {
+async function sendHit(event: SyntheticBaseEvent, config: TransportConfig): Promise<void> {
   const base = config.sgtmUrl.replace(/\/$/, '');
-  return `${base}/mp/collect?measurement_id=${config.measurementId}&api_secret=${config.apiSecret}`;
+  const params = buildCollectParams(event, config.measurementId);
+  const body = params.toString();
+
+  const response = await fetch(`${base}/g/collect`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'User-Agent': 'iampatterson-data-generator/1.0',
+    },
+    body,
+  });
+
+  if (!response.ok) {
+    throw new Error(`/g/collect failed: ${response.status} ${response.statusText}`);
+  }
 }
 
 /**
- * Build a Measurement Protocol payload from a synthetic event.
+ * Build URL-encoded parameters matching the GA4 /g/collect format.
+ *
+ * GA4 protocol uses these parameter prefixes:
+ *   v     — protocol version (always 2)
+ *   tid   — tracking/measurement ID
+ *   cid   — client ID
+ *   en    — event name
+ *   dl    — document location (full URL)
+ *   dt    — document title
+ *   dr    — document referrer
+ *   ep.*  — event parameter (string value)
+ *   epn.* — event parameter (numeric value)
+ *   _s    — hit sequence number
+ *   _et   — engagement time in ms
+ *   _ss   — session start flag
+ *   sid   — GA4 session ID
  */
-export function buildMpPayload(
+export function buildCollectParams(
   event: SyntheticBaseEvent,
   measurementId: string,
-): Record<string, unknown> {
-  // Extract custom parameters (everything beyond base fields)
-  const {
-    iap_source,
-    event: eventName,
-    timestamp,
-    session_id,
-    iap_session_id,
-    page_path,
-    page_title,
-    consent_analytics,
-    consent_marketing,
-    consent_preferences,
-    utm_source,
-    utm_medium,
-    utm_campaign,
-    ...customParams
-  } = event;
+): URLSearchParams {
+  const params = new URLSearchParams();
 
-  return {
-    client_id: session_id,
-    events: [
-      {
-        name: eventName,
-        params: {
-          iap_source: true,
-          session_id,
-          iap_session_id,
-          page_location: `https://iampatterson-com.vercel.app${page_path}`,
-          page_title,
-          page_path,
-          consent_analytics,
-          consent_marketing,
-          consent_preferences,
-          ...(utm_source ? { utm_source } : {}),
-          ...(utm_medium ? { utm_medium } : {}),
-          ...(utm_campaign ? { utm_campaign } : {}),
-          ...customParams,
-          engagement_time_msec: 100,
-        },
-      },
-    ],
-  };
+  // Protocol fields
+  params.set('v', '2');
+  params.set('tid', measurementId);
+  params.set('cid', event.session_id);
+  params.set('en', event.event);
+  params.set('_s', '1');
+  params.set('_et', '100');
+  params.set('_ss', '1');
+  params.set('sid', event.session_id);
+
+  // Page context
+  const pageLocation = `https://iampatterson-com.vercel.app${event.page_path}`;
+  params.set('dl', pageLocation);
+  params.set('dt', event.page_title);
+
+  // Custom event parameters — use ep.* for strings, epn.* for numbers/booleans
+  params.set('ep.iap_source', 'true');
+  params.set('ep.session_id', event.session_id);
+  params.set('ep.iap_session_id', event.iap_session_id);
+  params.set('ep.page_path', event.page_path);
+
+  // Consent state
+  params.set('ep.consent_analytics', String(event.consent_analytics));
+  params.set('ep.consent_marketing', String(event.consent_marketing));
+  params.set('ep.consent_preferences', String(event.consent_preferences));
+
+  // UTM parameters
+  if (event.utm_source) params.set('ep.utm_source', event.utm_source);
+  if (event.utm_medium) params.set('ep.utm_medium', event.utm_medium);
+  if (event.utm_campaign) params.set('ep.utm_campaign', event.utm_campaign);
+
+  // Extract custom parameters beyond the base event fields
+  const baseKeys = new Set([
+    'iap_source',
+    'event',
+    'timestamp',
+    'session_id',
+    'iap_session_id',
+    'page_path',
+    'page_title',
+    'consent_analytics',
+    'consent_marketing',
+    'consent_preferences',
+    'utm_source',
+    'utm_medium',
+    'utm_campaign',
+  ]);
+
+  for (const [key, value] of Object.entries(event)) {
+    if (baseKeys.has(key) || value === undefined || value === null) continue;
+
+    if (typeof value === 'number') {
+      params.set(`epn.${key}`, String(value));
+    } else if (typeof value === 'string') {
+      params.set(`ep.${key}`, value);
+    } else if (typeof value === 'boolean') {
+      params.set(`ep.${key}`, String(value));
+    } else if (typeof value === 'object') {
+      // Serialize complex objects (e.g., products array in purchase events)
+      params.set(`ep.${key}`, JSON.stringify(value));
+    }
+  }
+
+  return params;
 }
 
 function chunkArray<T>(array: T[], size: number): T[][] {

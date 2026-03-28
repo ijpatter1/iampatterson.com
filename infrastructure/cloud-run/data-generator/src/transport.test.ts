@@ -1,9 +1,9 @@
-import { buildMpPayload, sendEvents } from './transport';
+import { buildCollectParams, sendEvents } from './transport';
 import type { SyntheticBaseEvent } from './types';
 import type { TransportConfig } from './transport';
 
 describe('transport', () => {
-  describe('buildMpPayload', () => {
+  describe('buildCollectParams', () => {
     const baseEvent: SyntheticBaseEvent = {
       iap_source: true,
       event: 'page_view',
@@ -20,41 +20,59 @@ describe('transport', () => {
       utm_campaign: 'google_brand_tuna_merch',
     };
 
-    it('creates a valid Measurement Protocol payload', () => {
-      const payload = buildMpPayload(baseEvent, 'G-TEST123');
-
-      expect(payload.client_id).toBe('sess-123');
-      expect(payload.events).toHaveLength(1);
-
-      const event = (payload.events as Array<Record<string, unknown>>)[0];
-      expect(event.name).toBe('page_view');
-      expect(event.params).toBeDefined();
+    it('creates params with GA4 protocol version 2', () => {
+      const params = buildCollectParams(baseEvent, 'G-TEST123');
+      expect(params.get('v')).toBe('2');
     });
 
-    it('includes all base event parameters', () => {
-      const payload = buildMpPayload(baseEvent, 'G-TEST123');
-      const params = (
-        (payload.events as Array<Record<string, unknown>>)[0] as Record<string, unknown>
-      ).params as Record<string, unknown>;
+    it('sets measurement ID as tid', () => {
+      const params = buildCollectParams(baseEvent, 'G-TEST123');
+      expect(params.get('tid')).toBe('G-TEST123');
+    });
 
-      expect(params.iap_source).toBe(true);
-      expect(params.session_id).toBe('sess-123');
-      expect(params.iap_session_id).toBe('sess-123');
-      expect(params.page_path).toBe('/demo/ecommerce');
-      expect(params.page_title).toBe('The Tuna Shop');
-      expect(params.consent_analytics).toBe(true);
-      expect(params.consent_marketing).toBe(false);
+    it('sets client ID from session_id', () => {
+      const params = buildCollectParams(baseEvent, 'G-TEST123');
+      expect(params.get('cid')).toBe('sess-123');
+    });
+
+    it('sets event name as en', () => {
+      const params = buildCollectParams(baseEvent, 'G-TEST123');
+      expect(params.get('en')).toBe('page_view');
+    });
+
+    it('sets document location from page_path', () => {
+      const params = buildCollectParams(baseEvent, 'G-TEST123');
+      expect(params.get('dl')).toBe('https://iampatterson-com.vercel.app/demo/ecommerce');
+    });
+
+    it('sets document title', () => {
+      const params = buildCollectParams(baseEvent, 'G-TEST123');
+      expect(params.get('dt')).toBe('The Tuna Shop');
+    });
+
+    it('includes iap_source as string event parameter', () => {
+      const params = buildCollectParams(baseEvent, 'G-TEST123');
+      expect(params.get('ep.iap_source')).toBe('true');
+    });
+
+    it('includes session IDs as event parameters', () => {
+      const params = buildCollectParams(baseEvent, 'G-TEST123');
+      expect(params.get('ep.session_id')).toBe('sess-123');
+      expect(params.get('ep.iap_session_id')).toBe('sess-123');
+    });
+
+    it('includes consent state as event parameters', () => {
+      const params = buildCollectParams(baseEvent, 'G-TEST123');
+      expect(params.get('ep.consent_analytics')).toBe('true');
+      expect(params.get('ep.consent_marketing')).toBe('false');
+      expect(params.get('ep.consent_preferences')).toBe('true');
     });
 
     it('includes UTM parameters when present', () => {
-      const payload = buildMpPayload(baseEvent, 'G-TEST123');
-      const params = (
-        (payload.events as Array<Record<string, unknown>>)[0] as Record<string, unknown>
-      ).params as Record<string, unknown>;
-
-      expect(params.utm_source).toBe('google');
-      expect(params.utm_medium).toBe('cpc');
-      expect(params.utm_campaign).toBe('google_brand_tuna_merch');
+      const params = buildCollectParams(baseEvent, 'G-TEST123');
+      expect(params.get('ep.utm_source')).toBe('google');
+      expect(params.get('ep.utm_medium')).toBe('cpc');
+      expect(params.get('ep.utm_campaign')).toBe('google_brand_tuna_merch');
     });
 
     it('omits UTM parameters when not present', () => {
@@ -64,26 +82,13 @@ describe('transport', () => {
         utm_medium: undefined,
         utm_campaign: undefined,
       };
-      const payload = buildMpPayload(eventNoUtm, 'G-TEST123');
-      const params = (
-        (payload.events as Array<Record<string, unknown>>)[0] as Record<string, unknown>
-      ).params as Record<string, unknown>;
-
-      expect(params.utm_source).toBeUndefined();
-      expect(params.utm_medium).toBeUndefined();
-      expect(params.utm_campaign).toBeUndefined();
+      const params = buildCollectParams(eventNoUtm, 'G-TEST123');
+      expect(params.has('ep.utm_source')).toBe(false);
+      expect(params.has('ep.utm_medium')).toBe(false);
+      expect(params.has('ep.utm_campaign')).toBe(false);
     });
 
-    it('constructs page_location from page_path', () => {
-      const payload = buildMpPayload(baseEvent, 'G-TEST123');
-      const params = (
-        (payload.events as Array<Record<string, unknown>>)[0] as Record<string, unknown>
-      ).params as Record<string, unknown>;
-
-      expect(params.page_location).toBe('https://iampatterson-com.vercel.app/demo/ecommerce');
-    });
-
-    it('includes custom event parameters beyond base fields', () => {
+    it('encodes numeric custom params with epn. prefix', () => {
       const productViewEvent = {
         ...baseEvent,
         event: 'product_view',
@@ -93,22 +98,27 @@ describe('transport', () => {
         product_category: 'toys',
       };
 
-      const payload = buildMpPayload(productViewEvent, 'G-TEST123');
-      const params = (
-        (payload.events as Array<Record<string, unknown>>)[0] as Record<string, unknown>
-      ).params as Record<string, unknown>;
-
-      expect(params.product_id).toBe('tuna-plush');
-      expect(params.product_name).toBe('Tuna Plush Toy');
-      expect(params.product_price).toBe(24.99);
+      const params = buildCollectParams(productViewEvent, 'G-TEST123');
+      expect(params.get('ep.product_id')).toBe('tuna-plush');
+      expect(params.get('ep.product_name')).toBe('Tuna Plush Toy');
+      expect(params.get('epn.product_price')).toBe('24.99');
+      expect(params.get('ep.product_category')).toBe('toys');
     });
 
-    it('includes engagement_time_msec', () => {
-      const payload = buildMpPayload(baseEvent, 'G-TEST123');
-      const params = (
-        (payload.events as Array<Record<string, unknown>>)[0] as Record<string, unknown>
-      ).params as Record<string, unknown>;
-      expect(params.engagement_time_msec).toBe(100);
+    it('includes engagement time', () => {
+      const params = buildCollectParams(baseEvent, 'G-TEST123');
+      expect(params.get('_et')).toBe('100');
+    });
+
+    it('produces a valid URL-encoded string', () => {
+      const params = buildCollectParams(baseEvent, 'G-TEST123');
+      const str = params.toString();
+      expect(str).toContain('v=2');
+      expect(str).toContain('tid=G-TEST123');
+      expect(str).toContain('en=page_view');
+      // Should be URL-encoded, not JSON
+      expect(str).not.toContain('{');
+      expect(str).not.toContain('}');
     });
   });
 
@@ -120,7 +130,6 @@ describe('transport', () => {
       const config: TransportConfig = {
         sgtmUrl: 'https://test.example.com',
         measurementId: 'G-TEST',
-        apiSecret: 'secret',
         batchSize: 10,
         batchDelayMs: 0,
       };
@@ -158,7 +167,6 @@ describe('transport', () => {
       const config: TransportConfig = {
         sgtmUrl: 'https://test.example.com',
         measurementId: 'G-TEST',
-        apiSecret: 'secret',
         batchSize: 25,
         batchDelayMs: 0,
       };
@@ -179,6 +187,11 @@ describe('transport', () => {
       const result = await sendEvents(events, config);
       expect(result.sent).toBe(3);
       expect(result.failed).toBe(0);
+
+      // Verify it sent to /g/collect with form-encoded body
+      const calls = (global.fetch as jest.Mock).mock.calls;
+      expect(calls[0][0]).toBe('https://test.example.com/g/collect');
+      expect(calls[0][1].headers['Content-Type']).toBe('application/x-www-form-urlencoded');
 
       global.fetch = originalFetch;
     });

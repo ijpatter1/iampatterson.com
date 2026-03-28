@@ -8,7 +8,6 @@ jest.mock('./transport', () => ({
   DEFAULT_TRANSPORT_CONFIG: {
     sgtmUrl: 'https://test.example.com',
     measurementId: 'G-TEST',
-    apiSecret: 'test-secret',
     batchSize: 25,
     batchDelayMs: 0,
   },
