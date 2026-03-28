@@ -69,13 +69,13 @@ SELECT
 
   page_location,
   page_path,
-  page_title,
+  REPLACE(page_title, '+', ' ') AS page_title,
   page_referrer,
 
-  -- UTM / attribution
-  utm_source,
-  utm_medium,
-  utm_campaign,
+  -- UTM / attribution (decode URL-encoded + signs from /g/collect transport)
+  REPLACE(utm_source, '+', ' ') AS utm_source,
+  REPLACE(utm_medium, '+', ' ') AS utm_medium,
+  REPLACE(utm_campaign, '+', ' ') AS utm_campaign,
 
   -- Consent state
   consent_analytics,
@@ -85,21 +85,21 @@ SELECT
   -- Synthetic flag
   CASE WHEN iap_source = 'true' THEN TRUE ELSE FALSE END AS is_synthetic,
 
-  -- E-commerce fields
+  -- E-commerce fields (decode URL-encoded + signs)
   product_id,
-  product_name,
+  REPLACE(product_name, '+', ' ') AS product_name,
   product_price,
-  product_category,
+  REPLACE(product_category, '+', ' ') AS product_category,
   quantity,
   cart_total,
   item_count,
   order_id,
   order_total,
-  products,
+  REPLACE(products, '+', ' ') AS products,
 
-  -- Subscription fields
+  -- Subscription fields (decode URL-encoded + signs)
   plan_id,
-  plan_name,
+  REPLACE(plan_name, '+', ' ') AS plan_name,
   plan_price,
   renewal_month,
   revenue,
@@ -112,7 +112,7 @@ SELECT
   form_success,
   partnership_type,
   budget_range,
-  company_name,
+  REPLACE(company_name, '+', ' ') AS company_name,
   lead_id,
   qualification_tier,
 
