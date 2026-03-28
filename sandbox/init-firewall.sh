@@ -46,16 +46,16 @@ ALLOWED_DOMAINS=(
 # Domains needed only when gcloud is installed (Phase 4+).
 # Uncomment these when you uncomment gcloud in the Dockerfile.
 GCLOUD_DOMAINS=(
-    # "oauth2.googleapis.com"
-    # "accounts.google.com"
-    # "www.googleapis.com"
-    # "bigquery.googleapis.com"
-    # "pubsub.googleapis.com"
-    # "run.googleapis.com"
-    # "storage.googleapis.com"
-    # "cloudresourcemanager.googleapis.com"
-    # "iam.googleapis.com"
-    # "dataform.googleapis.com"
+    "oauth2.googleapis.com"
+    "accounts.google.com"
+    "www.googleapis.com"
+    "bigquery.googleapis.com"
+    "pubsub.googleapis.com"
+    "run.googleapis.com"
+    "storage.googleapis.com"
+    "cloudresourcemanager.googleapis.com"
+    "iam.googleapis.com"
+    "dataform.googleapis.com"
 )
 
 # Domains for CMP and sGTM — uncomment when configuring these services
