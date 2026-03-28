@@ -1,7 +1,7 @@
 # Phase Status Tracker
 
-> **Current Phase: 4 — Background Data Generator**
-> Last updated: 2026-03-27, session-2026-03-27-008
+> **Current Phase: 4 — Background Data Generator** (all deliverables complete, deployed)
+> Last updated: 2026-03-28, session-2026-03-28-009
 
 ---
 
@@ -57,12 +57,12 @@
 
 *Goal: Build a service that continuously generates realistic historical and ongoing data for the three demo business models.*
 
-- ✅ 2026-03-27, session-2026-03-27-008 — Cloud Run service (Node.js/TypeScript) that generates synthetic events and sends them to sGTM via GA4 Measurement Protocol, with Express server and Dockerfile
-- ✅ 2026-03-27, session-2026-03-27-008 — Three data profiles: e-commerce (Tuna Shop — 6 products, funnel with configurable drop-off), subscription (Tuna Subscription Box — 3 plans, lifecycle with churn curves), lead generation (Tuna Brand Partnerships — form funnel with qualification scoring)
-- ✅ 2026-03-27, session-2026-03-27-008 — Simulated ad platform data: campaign spend, impressions, clicks by platform, campaign, and date. Includes intentional naming inconsistencies (3-4 UTM variants per campaign) across platforms
-- ✅ 2026-03-27, session-2026-03-27-008 — Historical backfill: configurable months of historical data with seasonality (monthly, day-of-week, hour-of-day curves) and growth patterns
-- ✅ 2026-03-27, session-2026-03-27-008 — Ongoing generation: /generate endpoint produces realistic daily volume; continuous mode via scheduled Cloud Scheduler triggers
-- ✅ 2026-03-27, session-2026-03-27-008 — Configurable parameters: traffic volume, channel mix (6 platforms), conversion rates, seasonality curves, growth rate, backfill months — all adjustable via GeneratorConfig
+- ✅ 2026-03-28, session-2026-03-28-009 — Cloud Run service (Node.js/TypeScript) sends events to sGTM via /g/collect (gtag.js format), deployed to Cloud Run with Express server and Dockerfile
+- ✅ 2026-03-28, session-2026-03-28-009 — Three data profiles: e-commerce (Tuna Shop — 6 products, funnel with configurable drop-off), subscription (Tuna Subscription Box — 3 plans, lifecycle with churn curves), lead generation (Tuna Brand Partnerships — form funnel with qualification scoring)
+- ✅ 2026-03-28, session-2026-03-28-009 — Simulated ad platform data: campaign spend, impressions, clicks by platform, campaign, and date. Includes intentional naming inconsistencies (3-4 UTM variants per campaign) across platforms
+- ✅ 2026-03-28, session-2026-03-28-009 — Historical backfill: 18-month backfill deployed and executed for all three models, streaming day-by-day with 30 concurrent requests. Data verified in BigQuery
+- ✅ 2026-03-28, session-2026-03-28-009 — Ongoing generation: Cloud Scheduler jobs configured (3 jobs, staggered 02:00-03:00 UTC daily) with OIDC auth to Cloud Run
+- ✅ 2026-03-28, session-2026-03-28-009 — Configurable parameters: traffic volume, channel mix (6 platforms), conversion rates, seasonality curves, growth rate, backfill months — all adjustable via GeneratorConfig
 
 ---
 
