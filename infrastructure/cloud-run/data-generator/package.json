@@ -1,0 +1,31 @@
+{
+  "name": "iampatterson-data-generator",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cloud Run service that generates synthetic events for three demo business models, feeding sGTM and BigQuery",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "tsx src/server.ts",
+    "test": "jest --config jest.config.json",
+    "test:watch": "jest --config jest.config.json --watch",
+    "test:coverage": "jest --config jest.config.json --coverage"
+  },
+  "dependencies": {
+    "express": "^4.18.0",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.0",
+    "@types/jest": "^29.5.0",
+    "@types/node": "^20.0.0",
+    "@types/supertest": "^7.2.0",
+    "@types/uuid": "^9.0.0",
+    "jest": "^29.7.0",
+    "supertest": "^7.2.2",
+    "ts-jest": "^29.1.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.3.0"
+  }
+}
