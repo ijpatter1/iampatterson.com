@@ -22,8 +22,10 @@ set -e
 /usr/local/bin/init-firewall.sh
 
 # Step 2: Ensure the claude user owns its home directory volumes
-# The named Docker volumes may have been created by root on first run
-chown -R claude:claude /home/claude
+# The named Docker volumes may have been created by root on first run.
+# Exclude read-only mounts (like the GCP service account key).
+chown -R claude:claude /home/claude/.claude 2>/dev/null || true
+chown -R claude:claude /home/claude/.local 2>/dev/null || true
 
 # Step 3: Print banner and drop to non-root user
 echo ""
