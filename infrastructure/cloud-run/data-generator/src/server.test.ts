@@ -10,6 +10,7 @@ jest.mock('./transport', () => ({
     measurementId: 'G-TEST',
     batchSize: 25,
     batchDelayMs: 0,
+    concurrency: 25,
   },
 }));
 

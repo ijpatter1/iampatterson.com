@@ -132,6 +132,7 @@ describe('transport', () => {
         measurementId: 'G-TEST',
         batchSize: 10,
         batchDelayMs: 0,
+        concurrency: 10,
       };
 
       const events: SyntheticBaseEvent[] = [
@@ -169,6 +170,7 @@ describe('transport', () => {
         measurementId: 'G-TEST',
         batchSize: 25,
         batchDelayMs: 0,
+        concurrency: 25,
       };
 
       const events: SyntheticBaseEvent[] = Array.from({ length: 3 }, (_, i) => ({

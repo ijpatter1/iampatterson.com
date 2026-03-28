@@ -15,17 +15,20 @@ export interface TransportConfig {
   sgtmUrl: string;
   /** GA4 Measurement ID (e.g., G-XXXXXXXXXX). */
   measurementId: string;
-  /** Events per batch before inserting a delay. */
+  /** Events per concurrent batch. */
   batchSize: number;
   /** Delay between batches in ms (rate limiting). */
   batchDelayMs: number;
+  /** Max concurrent HTTP requests. */
+  concurrency: number;
 }
 
 export const DEFAULT_TRANSPORT_CONFIG: TransportConfig = {
   sgtmUrl: process.env['SGTM_URL'] || 'https://io.iampatterson.com',
   measurementId: process.env['GA4_MEASUREMENT_ID'] || 'G-9M2G3RLHWF',
-  batchSize: 25,
-  batchDelayMs: 100,
+  batchSize: 50,
+  batchDelayMs: 50,
+  concurrency: 30,
 };
 
 export interface SendResult {
@@ -35,7 +38,10 @@ export interface SendResult {
 }
 
 /**
- * Send events to sGTM in batches via /g/collect.
+ * Send events to sGTM via /g/collect with concurrent requests.
+ *
+ * Sends up to `config.concurrency` requests in parallel, then waits
+ * for them all to settle before starting the next batch.
  */
 export async function sendEvents(
   events: SyntheticEvent[],
@@ -43,16 +49,21 @@ export async function sendEvents(
 ): Promise<SendResult> {
   const result: SendResult = { sent: 0, failed: 0, errors: [] };
 
-  const batches = chunkArray(events, config.batchSize);
+  const batches = chunkArray(events, config.concurrency);
 
   for (const batch of batches) {
-    for (const event of batch) {
-      try {
-        await sendHit(event as SyntheticBaseEvent, config);
+    const outcomes = await Promise.allSettled(
+      batch.map((event) => sendHit(event as SyntheticBaseEvent, config)),
+    );
+
+    for (const outcome of outcomes) {
+      if (outcome.status === 'fulfilled') {
         result.sent++;
-      } catch (err) {
+      } else {
         result.failed++;
-        result.errors.push(err instanceof Error ? err.message : String(err));
+        result.errors.push(
+          outcome.reason instanceof Error ? outcome.reason.message : String(outcome.reason),
+        );
       }
     }
 
