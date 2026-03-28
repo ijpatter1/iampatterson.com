@@ -188,10 +188,10 @@ describe('transport', () => {
       expect(result.sent).toBe(3);
       expect(result.failed).toBe(0);
 
-      // Verify it sent to /g/collect with form-encoded body
+      // Verify it sent GET requests to /g/collect with query params
       const calls = (global.fetch as jest.Mock).mock.calls;
-      expect(calls[0][0]).toBe('https://test.example.com/g/collect');
-      expect(calls[0][1].headers['Content-Type']).toBe('application/x-www-form-urlencoded');
+      expect(calls[0][0]).toContain('https://test.example.com/g/collect?');
+      expect(calls[0][1].method).toBe('GET');
 
       global.fetch = originalFetch;
     });

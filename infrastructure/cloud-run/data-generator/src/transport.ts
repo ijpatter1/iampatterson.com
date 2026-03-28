@@ -67,21 +67,19 @@ export async function sendEvents(
 /**
  * Send a single event as a GA4 /g/collect hit.
  *
- * This mimics the format gtag.js uses when sending events:
- * POST /g/collect with URL-encoded query string body.
+ * Sends a GET request to /g/collect with all parameters in the
+ * query string — the same format gtag.js uses from the browser.
  */
 async function sendHit(event: SyntheticBaseEvent, config: TransportConfig): Promise<void> {
   const base = config.sgtmUrl.replace(/\/$/, '');
   const params = buildCollectParams(event, config.measurementId);
-  const body = params.toString();
+  const url = `${base}/g/collect?${params.toString()}`;
 
-  const response = await fetch(`${base}/g/collect`, {
-    method: 'POST',
+  const response = await fetch(url, {
+    method: 'GET',
     headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
       'User-Agent': 'iampatterson-data-generator/1.0',
     },
-    body,
   });
 
   if (!response.ok) {
