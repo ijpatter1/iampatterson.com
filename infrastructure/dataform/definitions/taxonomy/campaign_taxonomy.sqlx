@@ -1,0 +1,74 @@
+config {
+  type: "table",
+  schema: "iampatterson_marts",
+  description: "Campaign taxonomy using AI.CLASSIFY to standardize messy campaign names into clean categories. Maps raw UTM campaign strings to canonical campaign name, type, platform, and business model.",
+  bigquery: {
+    clusterBy: ["business_model", "campaign_type"]
+  }
+}
+
+/*
+ * Prerequisites:
+ *   1. Enable Vertex AI API: gcloud services enable aiplatform.googleapis.com --project=iampatterson
+ *   2. Create a BigQuery Cloud Resource connection:
+ *      bq mk --connection --connection_type=CLOUD_RESOURCE --location=US vertex-ai-connection
+ *   3. Grant the connection's service account the Vertex AI User role:
+ *      gcloud projects add-iam-policy-binding iampatterson \
+ *        --member="serviceAccount:<CONNECTION_SA>" \
+ *        --role="roles/aiplatform.user"
+ */
+
+WITH distinct_campaigns AS (
+  SELECT DISTINCT
+    utm_campaign AS campaign_name_raw,
+    utm_source,
+    utm_medium
+  FROM ${ref("stg_events")}
+  WHERE utm_campaign IS NOT NULL
+),
+
+classified AS (
+  SELECT
+    campaign_name_raw,
+    utm_source,
+    utm_medium,
+
+    -- Classify campaign type (brand, prospecting, retargeting, shopping, content, lookalike)
+    AI.CLASSIFY(
+      CONCAT('Classify this advertising campaign name into a campaign type: "', campaign_name_raw, '"'),
+      ['brand', 'prospecting', 'retargeting', 'shopping', 'content', 'lookalike', 'newsletter', 'interest_targeting'],
+      CONNECTION `us.vertex-ai-connection`
+    ) AS campaign_type,
+
+    -- Classify business model
+    AI.CLASSIFY(
+      CONCAT('Classify which business this campaign serves based on the name: "', campaign_name_raw, '"'),
+      ['ecommerce', 'subscription', 'leadgen', 'general'],
+      CONNECTION `us.vertex-ai-connection`
+    ) AS business_model,
+
+    -- Extract clean canonical name using AI.IF for pattern matching
+    AI.IF(
+      CONCAT('Does this campaign name "', campaign_name_raw, '" contain a brand term like "tuna", "merch", or "brand"?'),
+      CONNECTION `us.vertex-ai-connection`
+    ) AS is_brand_campaign
+
+  FROM distinct_campaigns
+)
+
+SELECT
+  campaign_name_raw,
+  utm_source AS platform,
+  utm_medium,
+  campaign_type,
+  business_model,
+  is_brand_campaign,
+
+  -- Derive standardized campaign name by combining platform + type
+  CONCAT(
+    UPPER(utm_source), ' - ',
+    UPPER(campaign_type), ' - ',
+    UPPER(business_model)
+  ) AS campaign_name_standardized
+
+FROM classified

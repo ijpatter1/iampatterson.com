@@ -298,3 +298,117 @@ describe('BigQuery schema files', () => {
     expect(byName.get('tenure_months')).toBe('INT64');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Campaign taxonomy models
+// ---------------------------------------------------------------------------
+describe('Campaign taxonomy models', () => {
+  const taxonomyModels = [
+    'definitions/taxonomy/campaign_taxonomy.sqlx',
+    'definitions/taxonomy/campaign_taxonomy_rules.sqlx',
+    'definitions/taxonomy/campaign_taxonomy_validation.sqlx',
+  ];
+
+  test.each(taxonomyModels)('%s exists', (modelPath) => {
+    expect(fs.existsSync(path.join(DATAFORM_ROOT, modelPath))).toBe(true);
+  });
+
+  test('campaign_taxonomy uses AI.CLASSIFY', () => {
+    const sql = readSqlx('definitions/taxonomy/campaign_taxonomy.sqlx');
+    expect(sql).toContain('AI.CLASSIFY');
+    expect(sql).toContain('AI.IF');
+    expect(sql).toContain('vertex-ai-connection');
+    expect(sql).toContain('campaign_name_standardized');
+  });
+
+  test('campaign_taxonomy_rules uses regex pattern matching', () => {
+    const sql = readSqlx('definitions/taxonomy/campaign_taxonomy_rules.sqlx');
+    expect(sql).toContain('REGEXP_CONTAINS');
+    expect(sql).toContain('brand');
+    expect(sql).toContain('retargeting');
+    expect(sql).toContain('shopping');
+    expect(sql).toContain('prospecting');
+    expect(sql).toContain('campaign_name_standardized');
+  });
+
+  test('campaign_taxonomy_validation joins taxonomy with volumes', () => {
+    const sql = readSqlx('definitions/taxonomy/campaign_taxonomy_validation.sqlx');
+    expect(sql).toContain('ref("campaign_taxonomy")');
+    expect(sql).toContain('ref("stg_events")');
+    expect(sql).toContain('variant_count_in_group');
+  });
+
+  test('all taxonomy models target iampatterson_marts schema', () => {
+    for (const modelPath of taxonomyModels) {
+      const sql = readSqlx(modelPath);
+      expect(sql).toContain('schema: "iampatterson_marts"');
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Data dictionary
+// ---------------------------------------------------------------------------
+describe('Data dictionary', () => {
+  test('data_dictionary.sqlx exists and queries INFORMATION_SCHEMA', () => {
+    const sql = readSqlx('definitions/docs/data_dictionary.sqlx');
+    expect(sql).toContain('INFORMATION_SCHEMA.COLUMNS');
+    expect(sql).toContain('iampatterson_staging');
+    expect(sql).toContain('iampatterson_marts');
+  });
+
+  test('DATA_DICTIONARY.md exists in Dataform root', () => {
+    expect(fs.existsSync(path.join(DATAFORM_ROOT, 'DATA_DICTIONARY.md'))).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AI access layer and RAG infrastructure
+// ---------------------------------------------------------------------------
+describe('AI access layer', () => {
+  const AI_ROOT = path.join(process.cwd(), 'infrastructure/bigquery');
+
+  test('setup.sh exists and is executable', () => {
+    const setupPath = path.join(AI_ROOT, 'ai_access_layer/setup.sh');
+    expect(fs.existsSync(setupPath)).toBe(true);
+  });
+
+  test('export.sh exists', () => {
+    const exportPath = path.join(AI_ROOT, 'ai_access_layer/export.sh');
+    expect(fs.existsSync(exportPath)).toBe(true);
+  });
+
+  test('.gitignore excludes key files', () => {
+    const gitignore = fs.readFileSync(path.join(AI_ROOT, 'ai_access_layer/.gitignore'), 'utf-8');
+    expect(gitignore).toContain('ai-access-key.json');
+  });
+});
+
+describe('RAG infrastructure', () => {
+  const RAG_ROOT = path.join(process.cwd(), 'infrastructure/bigquery/rag');
+
+  test('setup_rag.sql exists with embedding and vector index setup', () => {
+    const sql = fs.readFileSync(path.join(RAG_ROOT, 'setup_rag.sql'), 'utf-8');
+    expect(sql).toContain('ML.GENERATE_TEXT_EMBEDDING');
+    expect(sql).toContain('VECTOR INDEX');
+    expect(sql).toContain('embedding_model');
+    expect(sql).toContain('gemini_model');
+    expect(sql).toContain('text-embedding-005');
+  });
+
+  test('semantic_query.sql exists with stored procedures', () => {
+    const sql = fs.readFileSync(path.join(RAG_ROOT, 'semantic_query.sql'), 'utf-8');
+    expect(sql).toContain('PROCEDURE');
+    expect(sql).toContain('semantic_search');
+    expect(sql).toContain('query_business');
+    expect(sql).toContain('VECTOR_SEARCH');
+    expect(sql).toContain('ML.GENERATE_TEXT');
+  });
+
+  test('README.md documents prerequisites and usage', () => {
+    const readme = fs.readFileSync(path.join(RAG_ROOT, 'README.md'), 'utf-8');
+    expect(readme).toContain('vertex-ai-connection');
+    expect(readme).toContain('semantic_search');
+    expect(readme).toContain('query_business');
+  });
+});
