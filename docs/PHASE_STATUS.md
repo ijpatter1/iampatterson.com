@@ -1,7 +1,7 @@
 # Phase Status Tracker
 
-> **Current Phase: 4 — Background Data Generator** (all deliverables complete, deployed)
-> Last updated: 2026-03-28, session-2026-03-28-009
+> **Current Phase: 5 — Data Infrastructure** (all deliverables complete)
+> Last updated: 2026-03-28, session-2026-03-28-011
 
 ---
 
@@ -70,14 +70,14 @@
 
 *Goal: Build the full Dataform transformation layer, campaign taxonomy, data quality framework, and AI access layer.*
 
-- ⬜ BigQuery dataset structure: raw, staging, marts datasets for each of the three business models
-- ⬜ Dataform repository connected to GitHub with full medallion architecture (raw → staging → marts) — see REQUIREMENTS.md for layer specifications
-- ⬜ Mart models: `mart_campaign_performance`, `mart_channel_attribution`, `mart_customer_ltv`, `mart_session_events`, `mart_subscription_cohorts`, `mart_lead_funnel` — each scoped to relevant business model
-- ⬜ Automated Campaign Taxonomy: Dataform models using `AI.CLASSIFY` and `AI.IF` to standardize messy campaign naming. Validation table showing AI classifications alongside raw inputs
-- ⬜ Automated Data Quality Framework: Dataform assertions across all models — schema validation, null rate checks, volume anomaly detection, source freshness
-- ⬜ Data Dictionary: AI-generated documentation for every model and column, living in the Dataform repo and exportable
-- ⬜ AI Access Layer: scheduled BigQuery export to GCS (parquet), read-only service account scoped to mart datasets
-- ⬜ RAG infrastructure: embeddings generated on mart tables via `ML.GENERATE_TEXT_EMBEDDING`, vector index created, stored procedures for semantic querying
+- ✅ 2026-03-28, session-2026-03-28-011 — BigQuery dataset structure: `iampatterson_raw` (expanded to 51 cols), `iampatterson_staging`, `iampatterson_marts`. Ad platform table `ad_platform_raw` created
+- ✅ 2026-03-28, session-2026-03-28-011 — Dataform repository with full medallion architecture: 3 staging models (`stg_events`, `stg_sessions`, `stg_ad_platform`), constants module, project config
+- ✅ 2026-03-28, session-2026-03-28-011 — Mart models: `mart_campaign_performance` (ROAS), `mart_channel_attribution`, `mart_customer_ltv` (by client_id), `mart_session_events`, `mart_subscription_cohorts`, `mart_lead_funnel`
+- ✅ 2026-03-28, session-2026-03-28-011 — Automated Campaign Taxonomy: AI.CLASSIFY model + rule-based regex fallback (tested live, 100% classification on 33 campaign variants). Validation table with event volumes
+- ✅ 2026-03-28, session-2026-03-28-011 — Automated Data Quality Framework: 6 assertions — schema validation, null checks, purchase revenue, subscription fields, volume anomaly, source freshness
+- ✅ 2026-03-28, session-2026-03-28-011 — Data Dictionary: BQ table from INFORMATION_SCHEMA + exportable DATA_DICTIONARY.md with column-level descriptions
+- ✅ 2026-03-28, session-2026-03-28-011 — AI Access Layer: GCS export scripts (setup.sh, export.sh), read-only service account setup, 30-day lifecycle policy
+- ✅ 2026-03-28, session-2026-03-28-011 — RAG infrastructure: text-embedding-005 + Gemini 2.0 Flash models, vector embeddings on 3 mart tables, IVF indexes, `semantic_search` and `query_business` stored procedures
 
 ---
 
