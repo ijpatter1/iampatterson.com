@@ -85,5 +85,6 @@ SELECT
 FROM ad_spend a
 FULL OUTER JOIN daily_conversions c
   ON a.report_date = c.event_date
+  AND a.platform = c.platform
   AND a.campaign_name_raw = c.campaign_name_raw
   AND a.business_model = c.business_model

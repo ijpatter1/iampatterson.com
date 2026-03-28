@@ -172,12 +172,15 @@ describe('Mart models', () => {
     expect(sql).toContain('utm_source');
   });
 
-  test('mart_customer_ltv calculates lifetime value', () => {
+  test('mart_customer_ltv calculates lifetime value by client_id', () => {
     const sql = readSqlx('definitions/marts/mart_customer_ltv.sqlx');
+    expect(sql).toContain('client_id');
     expect(sql).toContain('total_revenue');
     expect(sql).toContain('total_orders');
     expect(sql).toContain('annualized_revenue');
     expect(sql).toContain('ecommerce');
+    // Must group by client_id, not session_id, for cross-session LTV
+    expect(sql).toContain('GROUP BY client_id');
   });
 
   test('mart_subscription_cohorts tracks cohort lifecycle', () => {
@@ -216,6 +219,7 @@ describe('Dataform assertions', () => {
     'definitions/assertions/assert_purchase_revenue.sqlx',
     'definitions/assertions/assert_subscription_events.sqlx',
     'definitions/assertions/assert_volume_anomaly.sqlx',
+    'definitions/assertions/assert_source_freshness.sqlx',
   ];
 
   test.each(assertions)('%s exists', (assertionPath) => {

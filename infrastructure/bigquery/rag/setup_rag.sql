@@ -40,7 +40,7 @@ FROM ML.GENERATE_TEXT_EMBEDDING(
   MODEL `iampatterson.iampatterson_marts.embedding_model`,
   (
     SELECT
-      CONCAT(report_date) AS title,
+      CONCAT(CAST(report_date AS STRING), ' - ', COALESCE(platform, ''), ' - ', COALESCE(campaign_name_raw, '')) AS title,
       CONCAT(
         'Campaign: ', COALESCE(campaign_name_raw, 'unknown'),
         ' on ', COALESCE(platform, 'unknown'),

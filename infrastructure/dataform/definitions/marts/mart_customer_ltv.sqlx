@@ -1,7 +1,7 @@
 config {
   type: "table",
   schema: "iampatterson_marts",
-  description: "Customer lifetime value mart for e-commerce. Aggregates purchase history per customer (client_id) with first/last purchase, total spend, order count, and LTV metrics by acquisition channel.",
+  description: "Customer lifetime value mart for e-commerce. Aggregates purchase history per customer (client_id) across sessions with first/last purchase, total spend, order count, and LTV metrics by acquisition channel.",
   bigquery: {
     clusterBy: ["utm_source"]
   }
@@ -9,6 +9,7 @@ config {
 
 WITH customer_purchases AS (
   SELECT
+    e.client_id,
     e.session_id,
     s.utm_source,
     s.utm_medium,
@@ -16,47 +17,59 @@ WITH customer_purchases AS (
     e.event_timestamp,
     e.order_id,
     e.order_total,
-    e.item_count,
-    ROW_NUMBER() OVER (PARTITION BY e.session_id ORDER BY e.event_timestamp ASC) AS purchase_seq
+    e.item_count
   FROM ${ref("stg_events")} e
   JOIN ${ref("stg_sessions")} s USING (session_id)
   WHERE e.event_name = 'purchase'
     AND e.business_model = 'ecommerce'
     AND e.order_total > 0
+    AND e.client_id IS NOT NULL
 ),
 
--- Group purchases by client across sessions using utm for cohort
-customer_summary AS (
+-- First-touch attribution: use the UTM from the customer's earliest session
+first_touch AS (
   SELECT
-    session_id,
+    client_id,
     utm_source,
     utm_medium,
+    utm_campaign,
+    ROW_NUMBER() OVER (PARTITION BY client_id ORDER BY event_timestamp ASC) AS rn
+  FROM customer_purchases
+),
+
+customer_summary AS (
+  SELECT
+    client_id,
+    COUNT(DISTINCT order_id) AS total_orders,
+    COUNT(DISTINCT session_id) AS purchase_sessions,
     MIN(event_timestamp) AS first_purchase_at,
     MAX(event_timestamp) AS last_purchase_at,
-    COUNT(*) AS total_orders,
     SUM(order_total) AS total_revenue,
     AVG(order_total) AS avg_order_value,
     SUM(item_count) AS total_items
   FROM customer_purchases
-  GROUP BY session_id, utm_source, utm_medium
+  GROUP BY client_id
 )
 
 SELECT
-  session_id,
-  utm_source,
-  utm_medium,
-  first_purchase_at,
-  last_purchase_at,
-  TIMESTAMP_DIFF(last_purchase_at, first_purchase_at, DAY) AS customer_tenure_days,
-  total_orders,
-  total_revenue,
-  avg_order_value,
-  total_items,
+  cs.client_id,
+  ft.utm_source,
+  ft.utm_medium,
+  ft.utm_campaign,
+  cs.first_purchase_at,
+  cs.last_purchase_at,
+  TIMESTAMP_DIFF(cs.last_purchase_at, cs.first_purchase_at, DAY) AS customer_tenure_days,
+  cs.total_orders,
+  cs.purchase_sessions,
+  cs.total_revenue,
+  cs.avg_order_value,
+  cs.total_items,
 
   -- LTV proxies
-  SAFE_DIVIDE(total_revenue, GREATEST(TIMESTAMP_DIFF(last_purchase_at, first_purchase_at, DAY), 1)) * 365 AS annualized_revenue,
+  SAFE_DIVIDE(cs.total_revenue, GREATEST(TIMESTAMP_DIFF(cs.last_purchase_at, cs.first_purchase_at, DAY), 1)) * 365 AS annualized_revenue,
 
   -- Acquisition month cohort
-  DATE_TRUNC(DATE(first_purchase_at), MONTH) AS acquisition_month
+  DATE_TRUNC(DATE(cs.first_purchase_at), MONTH) AS acquisition_month
 
-FROM customer_summary
+FROM customer_summary cs
+JOIN first_touch ft ON cs.client_id = ft.client_id AND ft.rn = 1

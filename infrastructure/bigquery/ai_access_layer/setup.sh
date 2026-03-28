@@ -65,21 +65,24 @@ else
   echo "Created ${SA_EMAIL}"
 fi
 
-# Grant BigQuery Data Viewer on mart datasets only
+# Grant BigQuery Data Viewer on mart datasets only (append to existing ACL)
 echo "Granting BigQuery Data Viewer on mart datasets..."
 for DATASET in iampatterson_marts iampatterson_staging; do
-  bq update --dataset \
-    --source /dev/stdin \
-    "${PROJECT}:${DATASET}" <<POLICY
-{
-  "access": [
-    {
-      "role": "READER",
-      "userByEmail": "${SA_EMAIL}"
-    }
-  ]
-}
-POLICY
+  # Read existing access entries, append the new one, write back
+  EXISTING=$(bq show --format=json "${PROJECT}:${DATASET}" | \
+    python3 -c "import sys,json; d=json.load(sys.stdin); print(json.dumps(d.get('access',[])))")
+
+  UPDATED=$(python3 -c "
+import json, sys
+existing = json.loads('${EXISTING}')
+new_entry = {'role': 'READER', 'userByEmail': '${SA_EMAIL}'}
+# Avoid duplicates
+if new_entry not in existing:
+    existing.append(new_entry)
+print(json.dumps({'access': existing}))
+")
+
+  echo "$UPDATED" | bq update --dataset --source /dev/stdin "${PROJECT}:${DATASET}"
 done
 
 # Grant BigQuery Job User (needed to run queries)
