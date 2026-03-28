@@ -118,7 +118,7 @@ describe('transport', () => {
       global.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
 
       const config: TransportConfig = {
-        mpUrl: 'https://test.example.com',
+        sgtmUrl: 'https://test.example.com',
         measurementId: 'G-TEST',
         apiSecret: 'secret',
         batchSize: 10,
@@ -156,7 +156,7 @@ describe('transport', () => {
       });
 
       const config: TransportConfig = {
-        mpUrl: 'https://test.example.com',
+        sgtmUrl: 'https://test.example.com',
         measurementId: 'G-TEST',
         apiSecret: 'secret',
         batchSize: 25,
