@@ -3,7 +3,7 @@
     "name": "event_name",
     "type": "STRING",
     "mode": "REQUIRED",
-    "description": "Snake_case event name from sGTM (page_view, click_nav, etc.)"
+    "description": "Snake_case event name from sGTM (page_view, click_nav, product_view, purchase, etc.)"
   },
   {
     "name": "timestamp",
@@ -138,5 +138,171 @@
     "type": "STRING",
     "mode": "NULLABLE",
     "description": "Client IP (sGTM Common Event Data, anonymized in Dataform staging)"
+  },
+
+  {
+    "name": "utm_source",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "UTM source parameter (google, facebook, tiktok, email, etc.)"
+  },
+  {
+    "name": "utm_medium",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "UTM medium parameter (cpc, paid_social, email, organic, etc.)"
+  },
+  {
+    "name": "utm_campaign",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "UTM campaign name — raw value, may contain inconsistent naming"
+  },
+  {
+    "name": "iap_source",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Flag indicating event came from iampatterson data generator ('true')"
+  },
+  {
+    "name": "iap_session_id",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "IAP-specific session ID (UUID, mirrors session_id for generator events)"
+  },
+
+  {
+    "name": "product_id",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Product identifier (product_view, add_to_cart events)"
+  },
+  {
+    "name": "product_name",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Product display name (product_view, add_to_cart events)"
+  },
+  {
+    "name": "product_price",
+    "type": "FLOAT64",
+    "mode": "NULLABLE",
+    "description": "Product unit price in USD (product_view, add_to_cart events)"
+  },
+  {
+    "name": "product_category",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Product category (product_view events)"
+  },
+  {
+    "name": "quantity",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "Quantity added to cart (add_to_cart events)"
+  },
+  {
+    "name": "cart_total",
+    "type": "FLOAT64",
+    "mode": "NULLABLE",
+    "description": "Cart total in USD (begin_checkout events)"
+  },
+  {
+    "name": "item_count",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "Number of items in cart/order (begin_checkout, purchase events)"
+  },
+  {
+    "name": "order_id",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Order identifier (purchase events)"
+  },
+  {
+    "name": "order_total",
+    "type": "FLOAT64",
+    "mode": "NULLABLE",
+    "description": "Order total in USD (purchase events)"
+  },
+  {
+    "name": "products",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "JSON-serialized product array [{product_id, product_name, price, quantity}] (purchase events)"
+  },
+
+  {
+    "name": "plan_id",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Subscription plan identifier (plan_select, trial_signup, renewal, churn events)"
+  },
+  {
+    "name": "plan_name",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Subscription plan display name (plan_select, trial_signup, renewal, churn events)"
+  },
+  {
+    "name": "plan_price",
+    "type": "FLOAT64",
+    "mode": "NULLABLE",
+    "description": "Subscription plan monthly price in USD (plan_select, trial_signup events)"
+  },
+  {
+    "name": "renewal_month",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "Renewal month number since signup (subscription_renewal events)"
+  },
+  {
+    "name": "revenue",
+    "type": "FLOAT64",
+    "mode": "NULLABLE",
+    "description": "Revenue amount in USD (subscription_renewal events)"
+  },
+  {
+    "name": "tenure_months",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "Months subscribed before churn (subscription_churn events)"
+  },
+  {
+    "name": "reason",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Churn reason (subscription_churn events)"
+  },
+
+  {
+    "name": "partnership_type",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Partnership type selected (form_complete, lead_qualify events)"
+  },
+  {
+    "name": "budget_range",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Budget range selected (form_complete, lead_qualify events)"
+  },
+  {
+    "name": "company_name",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Company name from form (form_complete events)"
+  },
+  {
+    "name": "lead_id",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Lead identifier (lead_qualify events)"
+  },
+  {
+    "name": "qualification_tier",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Lead qualification tier: high, medium, low (lead_qualify events)"
   }
 ]

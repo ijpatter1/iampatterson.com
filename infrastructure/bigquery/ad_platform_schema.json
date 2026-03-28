@@ -1,0 +1,62 @@
+[
+  {
+    "name": "date",
+    "type": "DATE",
+    "mode": "REQUIRED",
+    "description": "Reporting date (YYYY-MM-DD)"
+  },
+  {
+    "name": "platform",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Ad platform: google, meta, tiktok, email, organic, direct"
+  },
+  {
+    "name": "business_model",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Business model: ecommerce, subscription, leadgen"
+  },
+  {
+    "name": "campaign_name",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Canonical campaign name (clean, standardized)"
+  },
+  {
+    "name": "campaign_name_raw",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Raw campaign name with intentional inconsistencies for taxonomy testing"
+  },
+  {
+    "name": "impressions",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "Number of ad impressions"
+  },
+  {
+    "name": "clicks",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "Number of ad clicks"
+  },
+  {
+    "name": "spend",
+    "type": "FLOAT64",
+    "mode": "NULLABLE",
+    "description": "Ad spend in USD"
+  },
+  {
+    "name": "cpc",
+    "type": "FLOAT64",
+    "mode": "NULLABLE",
+    "description": "Cost per click in USD (derived: spend / clicks)"
+  },
+  {
+    "name": "ctr",
+    "type": "FLOAT64",
+    "mode": "NULLABLE",
+    "description": "Click-through rate (derived: clicks / impressions)"
+  }
+]

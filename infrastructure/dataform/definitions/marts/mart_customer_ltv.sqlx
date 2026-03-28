@@ -1,0 +1,62 @@
+config {
+  type: "table",
+  schema: "iampatterson_marts",
+  description: "Customer lifetime value mart for e-commerce. Aggregates purchase history per customer (client_id) with first/last purchase, total spend, order count, and LTV metrics by acquisition channel.",
+  bigquery: {
+    clusterBy: ["utm_source"]
+  }
+}
+
+WITH customer_purchases AS (
+  SELECT
+    e.session_id,
+    s.utm_source,
+    s.utm_medium,
+    s.utm_campaign,
+    e.event_timestamp,
+    e.order_id,
+    e.order_total,
+    e.item_count,
+    ROW_NUMBER() OVER (PARTITION BY e.session_id ORDER BY e.event_timestamp ASC) AS purchase_seq
+  FROM ${ref("stg_events")} e
+  JOIN ${ref("stg_sessions")} s USING (session_id)
+  WHERE e.event_name = 'purchase'
+    AND e.business_model = 'ecommerce'
+    AND e.order_total > 0
+),
+
+-- Group purchases by client across sessions using utm for cohort
+customer_summary AS (
+  SELECT
+    session_id,
+    utm_source,
+    utm_medium,
+    MIN(event_timestamp) AS first_purchase_at,
+    MAX(event_timestamp) AS last_purchase_at,
+    COUNT(*) AS total_orders,
+    SUM(order_total) AS total_revenue,
+    AVG(order_total) AS avg_order_value,
+    SUM(item_count) AS total_items
+  FROM customer_purchases
+  GROUP BY session_id, utm_source, utm_medium
+)
+
+SELECT
+  session_id,
+  utm_source,
+  utm_medium,
+  first_purchase_at,
+  last_purchase_at,
+  TIMESTAMP_DIFF(last_purchase_at, first_purchase_at, DAY) AS customer_tenure_days,
+  total_orders,
+  total_revenue,
+  avg_order_value,
+  total_items,
+
+  -- LTV proxies
+  SAFE_DIVIDE(total_revenue, GREATEST(TIMESTAMP_DIFF(last_purchase_at, first_purchase_at, DAY), 1)) * 365 AS annualized_revenue,
+
+  -- Acquisition month cohort
+  DATE_TRUNC(DATE(first_purchase_at), MONTH) AS acquisition_month
+
+FROM customer_summary

@@ -1,0 +1,89 @@
+config {
+  type: "table",
+  schema: "iampatterson_marts",
+  description: "Campaign performance mart joining ad spend data with conversion events. One row per campaign per day per business model. Enables spend vs revenue analysis.",
+  bigquery: {
+    partitionBy: "report_date",
+    clusterBy: ["business_model", "platform"]
+  }
+}
+
+WITH daily_conversions AS (
+  -- Aggregate conversion events by campaign per day
+  SELECT
+    DATE(e.event_timestamp) AS event_date,
+    s.utm_source AS platform,
+    s.utm_campaign AS campaign_name_raw,
+    e.business_model,
+
+    -- E-commerce conversions
+    COUNTIF(e.event_name = 'purchase') AS purchases,
+    SUM(IF(e.event_name = 'purchase', e.order_total, 0)) AS purchase_revenue,
+    COUNTIF(e.event_name = 'add_to_cart') AS add_to_carts,
+    COUNTIF(e.event_name = 'product_view') AS product_views,
+
+    -- Subscription conversions
+    COUNTIF(e.event_name = 'trial_signup') AS trial_signups,
+    COUNTIF(e.event_name = 'subscription_renewal') AS renewals,
+    SUM(IF(e.event_name = 'subscription_renewal', e.revenue, 0)) AS subscription_revenue,
+
+    -- Lead gen conversions
+    COUNTIF(e.event_name = 'form_complete') AS form_completions,
+    COUNTIF(e.event_name = 'lead_qualify') AS qualified_leads,
+
+    -- Sessions
+    COUNT(DISTINCT e.session_id) AS sessions
+
+  FROM ${ref("stg_events")} e
+  JOIN ${ref("stg_sessions")} s USING (session_id)
+  WHERE s.utm_campaign IS NOT NULL
+  GROUP BY 1, 2, 3, 4
+),
+
+ad_spend AS (
+  SELECT
+    report_date,
+    platform,
+    business_model,
+    campaign_name,
+    campaign_name_raw,
+    impressions,
+    clicks,
+    spend_usd
+  FROM ${ref("stg_ad_platform")}
+)
+
+SELECT
+  COALESCE(a.report_date, c.event_date) AS report_date,
+  COALESCE(a.platform, c.platform) AS platform,
+  COALESCE(a.business_model, c.business_model) AS business_model,
+  a.campaign_name,
+  COALESCE(a.campaign_name_raw, c.campaign_name_raw) AS campaign_name_raw,
+
+  -- Ad metrics
+  COALESCE(a.impressions, 0) AS impressions,
+  COALESCE(a.clicks, 0) AS clicks,
+  COALESCE(a.spend_usd, 0) AS spend_usd,
+
+  -- Conversion metrics
+  COALESCE(c.sessions, 0) AS sessions,
+  COALESCE(c.product_views, 0) AS product_views,
+  COALESCE(c.add_to_carts, 0) AS add_to_carts,
+  COALESCE(c.purchases, 0) AS purchases,
+  COALESCE(c.purchase_revenue, 0) AS purchase_revenue,
+  COALESCE(c.trial_signups, 0) AS trial_signups,
+  COALESCE(c.renewals, 0) AS renewals,
+  COALESCE(c.subscription_revenue, 0) AS subscription_revenue,
+  COALESCE(c.form_completions, 0) AS form_completions,
+  COALESCE(c.qualified_leads, 0) AS qualified_leads,
+
+  -- Derived metrics
+  SAFE_DIVIDE(COALESCE(a.spend_usd, 0), COALESCE(c.sessions, 0)) AS cost_per_session,
+  SAFE_DIVIDE(COALESCE(a.spend_usd, 0), COALESCE(c.purchases, 0)) AS cost_per_purchase,
+  SAFE_DIVIDE(COALESCE(c.purchase_revenue, 0), COALESCE(a.spend_usd, 0)) AS roas
+
+FROM ad_spend a
+FULL OUTER JOIN daily_conversions c
+  ON a.report_date = c.event_date
+  AND a.campaign_name_raw = c.campaign_name_raw
+  AND a.business_model = c.business_model

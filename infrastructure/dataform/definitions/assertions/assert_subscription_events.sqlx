@@ -1,0 +1,14 @@
+config {
+  type: "assertion",
+  description: "Validates subscription events have required plan fields."
+}
+
+SELECT
+  event_id,
+  event_name,
+  plan_id,
+  plan_name
+FROM ${ref("stg_events")}
+WHERE
+  event_name IN ('trial_signup', 'plan_select', 'subscription_renewal', 'subscription_churn')
+  AND (plan_id IS NULL OR plan_name IS NULL)

@@ -1,0 +1,61 @@
+config {
+  type: "table",
+  schema: "iampatterson_marts",
+  description: "Session-enriched event stream for analysis. Joins event-level data with session attribution for cross-model analysis.",
+  bigquery: {
+    partitionBy: "DATE(event_timestamp)",
+    clusterBy: ["business_model", "event_name"]
+  }
+}
+
+SELECT
+  e.event_id,
+  e.event_name,
+  e.event_timestamp,
+  e.business_model,
+  e.session_id,
+  e.page_path,
+  e.page_title,
+  e.is_synthetic,
+
+  -- Session-level attribution (first-touch)
+  s.utm_source,
+  s.utm_medium,
+  s.utm_campaign,
+  s.session_start,
+  s.session_duration_seconds,
+  s.event_count AS session_event_count,
+
+  -- Consent
+  e.consent_analytics,
+  e.consent_marketing,
+
+  -- E-commerce fields
+  e.product_id,
+  e.product_name,
+  e.product_price,
+  e.product_category,
+  e.quantity,
+  e.cart_total,
+  e.item_count,
+  e.order_id,
+  e.order_total,
+
+  -- Subscription fields
+  e.plan_id,
+  e.plan_name,
+  e.plan_price,
+  e.renewal_month,
+  e.revenue,
+  e.tenure_months,
+  e.churn_reason,
+
+  -- Lead gen fields
+  e.partnership_type,
+  e.budget_range,
+  e.company_name,
+  e.lead_id,
+  e.qualification_tier
+
+FROM ${ref("stg_events")} e
+LEFT JOIN ${ref("stg_sessions")} s USING (session_id)
