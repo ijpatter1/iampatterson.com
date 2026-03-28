@@ -6,7 +6,7 @@ jest.mock('./transport', () => ({
   ...jest.requireActual('./transport'),
   sendEvents: jest.fn().mockResolvedValue({ sent: 0, failed: 0, errors: [] }),
   DEFAULT_TRANSPORT_CONFIG: {
-    sgtmUrl: 'https://test.example.com',
+    mpUrl: 'https://test.example.com',
     measurementId: 'G-TEST',
     apiSecret: 'test-secret',
     batchSize: 25,

@@ -9,8 +9,8 @@
 import type { SyntheticEvent, SyntheticBaseEvent } from './types';
 
 export interface TransportConfig {
-  /** sGTM endpoint URL (e.g., https://io.iampatterson.com). */
-  sgtmUrl: string;
+  /** GA4 Measurement Protocol endpoint. Defaults to Google's endpoint. */
+  mpUrl: string;
   /** GA4 Measurement ID (e.g., G-XXXXXXXXXX). */
   measurementId: string;
   /** GA4 API secret for server-side Measurement Protocol. */
@@ -22,7 +22,7 @@ export interface TransportConfig {
 }
 
 export const DEFAULT_TRANSPORT_CONFIG: TransportConfig = {
-  sgtmUrl: process.env['SGTM_URL'] || 'https://io.iampatterson.com',
+  mpUrl: process.env['MP_URL'] || 'https://www.google-analytics.com',
   measurementId: process.env['GA4_MEASUREMENT_ID'] || 'G-9M2G3RLHWF',
   apiSecret: process.env['GA4_API_SECRET'] || '',
   batchSize: 25,
@@ -138,10 +138,10 @@ async function sendBatch(events: SyntheticEvent[], config: TransportConfig): Pro
 }
 
 /**
- * Build the Measurement Protocol URL for sGTM.
+ * Build the Measurement Protocol URL.
  */
 function buildMpUrl(config: TransportConfig): string {
-  const base = config.sgtmUrl.replace(/\/$/, '');
+  const base = config.mpUrl.replace(/\/$/, '');
   return `${base}/mp/collect?measurement_id=${config.measurementId}&api_secret=${config.apiSecret}`;
 }
 

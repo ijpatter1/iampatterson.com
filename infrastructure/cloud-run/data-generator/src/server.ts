@@ -167,7 +167,7 @@ app.post('/backfill', async (req, res) => {
 function getTransportConfig(): TransportConfig {
   return {
     ...DEFAULT_TRANSPORT_CONFIG,
-    sgtmUrl: process.env['SGTM_URL'] || DEFAULT_TRANSPORT_CONFIG.sgtmUrl,
+    mpUrl: process.env['MP_URL'] || DEFAULT_TRANSPORT_CONFIG.mpUrl,
     measurementId: process.env['GA4_MEASUREMENT_ID'] || DEFAULT_TRANSPORT_CONFIG.measurementId,
     apiSecret: process.env['GA4_API_SECRET'] || DEFAULT_TRANSPORT_CONFIG.apiSecret,
   };
