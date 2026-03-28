@@ -17,7 +17,7 @@ import express from 'express';
 import type { BusinessModel } from './types';
 import { createConfig } from './profiles';
 import { validateConfig } from './validation';
-import { generateDay, generateBackfill } from './generator';
+import { generateDay, streamingBackfill } from './generator';
 import { sendEvents, DEFAULT_TRANSPORT_CONFIG } from './transport';
 import type { TransportConfig, SendResult } from './transport';
 
@@ -131,17 +131,21 @@ app.post('/backfill', async (req, res) => {
       return;
     }
 
-    const result = generateBackfill(config, endDate);
+    const transportConfig = getTransportConfig();
+    const result = await streamingBackfill(
+      config,
+      endDate,
+      transportConfig,
+      dryRun,
+      (_day, _dayEvents, totalSent) => {
+        // Update stats as we go so /stats endpoint reflects progress
+        state.totalEventsSent = totalSent;
+      },
+    );
+
     state.totalEventsGenerated += result.stats.totalEvents;
-
-    let sendResult: SendResult | null = null;
-    if (!dryRun) {
-      const transportConfig = getTransportConfig();
-      sendResult = await sendEvents(result.events, transportConfig);
-      state.totalEventsSent += sendResult.sent;
-      state.totalErrors += sendResult.failed;
-    }
-
+    state.totalEventsSent += result.sendResult.sent;
+    state.totalErrors += result.sendResult.failed;
     state.lastRun = new Date().toISOString();
     state.isRunning = false;
 
@@ -151,7 +155,7 @@ app.post('/backfill', async (req, res) => {
       months,
       dryRun,
       stats: result.stats,
-      sendResult,
+      sendResult: dryRun ? null : result.sendResult,
     });
   } catch (err) {
     state.isRunning = false;

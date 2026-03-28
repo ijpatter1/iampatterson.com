@@ -33,8 +33,8 @@ export type { ValidationResult, ValidationError } from './validation';
 
 export { SeededRandom } from './random';
 
-export { generateBackfill, generateDay, generateDateRange } from './generator';
-export type { GenerationResult, GenerationStats } from './generator';
+export { generateBackfill, generateDay, generateDateRange, streamingBackfill } from './generator';
+export type { GenerationResult, GenerationStats, StreamingBackfillResult } from './generator';
 
 export { sendEvents, buildCollectParams } from './transport';
 export type { TransportConfig, SendResult } from './transport';

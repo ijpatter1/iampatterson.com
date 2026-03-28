@@ -86,7 +86,7 @@ describe('server endpoints', () => {
       expect(res.body.success).toBe(true);
       expect(res.body.months).toBe(1);
       expect(res.body.stats.totalSessions).toBeGreaterThan(0);
-      expect(res.body.stats.totalAdRecords).toBeGreaterThan(0);
+      expect(res.body.stats.totalEvents).toBeGreaterThan(0);
     });
   });
 });

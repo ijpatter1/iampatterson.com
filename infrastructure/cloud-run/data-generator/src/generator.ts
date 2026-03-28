@@ -17,6 +17,8 @@ import { generateEcommerceSession } from './engines/ecommerce';
 import { generateSubscriptionSession, generateSubscriptionLifecycle } from './engines/subscription';
 import { generateLeadgenSession } from './engines/leadgen';
 import { generateAdPlatformData } from './ad-platform';
+import { sendEvents } from './transport';
+import type { TransportConfig, SendResult } from './transport';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -175,4 +177,94 @@ function pickHour(config: GeneratorConfig, rng: SeededRandom): number {
     (weight, hour) => [hour, weight] as const,
   );
   return rng.weighted(items);
+}
+
+// ---------------------------------------------------------------------------
+// Streaming backfill — generates and sends one day at a time
+// ---------------------------------------------------------------------------
+
+export interface StreamingBackfillResult {
+  stats: GenerationStats;
+  sendResult: SendResult;
+}
+
+/**
+ * Generate and send historical data day-by-day, keeping memory constant.
+ *
+ * Unlike generateBackfill() which builds all events in memory,
+ * this generates one day's events, sends them immediately, then
+ * discards them before generating the next day.
+ */
+export async function streamingBackfill(
+  config: GeneratorConfig,
+  endDate: Date,
+  transportConfig: TransportConfig,
+  dryRun: boolean,
+  onProgress?: (day: string, dayEvents: number, totalSent: number) => void,
+): Promise<StreamingBackfillResult> {
+  const startDate = new Date(endDate);
+  startDate.setMonth(startDate.getMonth() - config.backfillMonths);
+
+  const rng = new SeededRandom(config.seed ?? Date.now());
+  const referenceDate = new Date(startDate);
+  const current = new Date(startDate);
+
+  const stats: GenerationStats = {
+    totalSessions: 0,
+    totalEvents: 0,
+    totalAdRecords: 0,
+    dateRange: {
+      start: startDate.toISOString().split('T')[0],
+      end: endDate.toISOString().split('T')[0],
+    },
+    eventBreakdown: {},
+  };
+
+  const sendResult: SendResult = { sent: 0, failed: 0, errors: [] };
+
+  while (current <= endDate) {
+    // Generate one day's events
+    const dayEvents: SyntheticEvent[] = [];
+    const daySessionCount = getSessionCountForDate(current, config, referenceDate);
+
+    for (let i = 0; i < daySessionCount; i++) {
+      const hour = pickHour(config, rng);
+      const minute = rng.int(0, 59);
+      const second = rng.int(0, 59);
+
+      const sessionTime = new Date(current);
+      sessionTime.setHours(hour, minute, second, 0);
+
+      const ctx = createSessionContext(config, sessionTime, rng);
+      const sessionEvents = generateSessionForModel(config, ctx, rng);
+
+      for (const event of sessionEvents) {
+        dayEvents.push(event);
+        stats.eventBreakdown[event.event] = (stats.eventBreakdown[event.event] || 0) + 1;
+      }
+
+      stats.totalSessions++;
+    }
+
+    stats.totalEvents += dayEvents.length;
+
+    // Send this day's events immediately, then discard
+    if (!dryRun && dayEvents.length > 0) {
+      const dayResult = await sendEvents(dayEvents, transportConfig);
+      sendResult.sent += dayResult.sent;
+      sendResult.failed += dayResult.failed;
+      if (dayResult.errors.length > 0) {
+        // Keep only the last few errors to avoid memory growth
+        sendResult.errors = dayResult.errors.slice(-5);
+      }
+    }
+
+    if (onProgress) {
+      onProgress(current.toISOString().split('T')[0], dayEvents.length, sendResult.sent);
+    }
+
+    current.setDate(current.getDate() + 1);
+  }
+
+  return { stats, sendResult };
 }
