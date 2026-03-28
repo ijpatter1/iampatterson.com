@@ -132,6 +132,7 @@ app.post('/backfill', async (req, res) => {
     }
 
     const transportConfig = getTransportConfig();
+    const sentBefore = state.totalEventsSent;
     const result = await streamingBackfill(
       config,
       endDate,
@@ -139,12 +140,12 @@ app.post('/backfill', async (req, res) => {
       dryRun,
       (_day, _dayEvents, totalSent) => {
         // Update stats as we go so /stats endpoint reflects progress
-        state.totalEventsSent = totalSent;
+        state.totalEventsSent = sentBefore + totalSent;
       },
     );
 
     state.totalEventsGenerated += result.stats.totalEvents;
-    state.totalEventsSent += result.sendResult.sent;
+    state.totalEventsSent = sentBefore + result.sendResult.sent;
     state.totalErrors += result.sendResult.failed;
     state.lastRun = new Date().toISOString();
     state.isRunning = false;

@@ -137,6 +137,9 @@ export function buildCollectParams(
   params.set('dl', pageLocation);
   params.set('dt', event.page_title);
 
+  // Simulated timestamp — critical for historical backfill time dimension
+  params.set('ep.timestamp', event.timestamp);
+
   // Custom event parameters — use ep.* for strings, epn.* for numbers/booleans
   params.set('ep.iap_source', 'true');
   params.set('ep.session_id', event.session_id);

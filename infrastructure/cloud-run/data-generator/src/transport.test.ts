@@ -50,6 +50,11 @@ describe('transport', () => {
       expect(params.get('dt')).toBe('The Tuna Shop');
     });
 
+    it('includes simulated timestamp as ep.timestamp', () => {
+      const params = buildCollectParams(baseEvent, 'G-TEST123');
+      expect(params.get('ep.timestamp')).toBe('2025-06-15T14:00:00Z');
+    });
+
     it('includes iap_source as string event parameter', () => {
       const params = buildCollectParams(baseEvent, 'G-TEST123');
       expect(params.get('ep.iap_source')).toBe('true');
