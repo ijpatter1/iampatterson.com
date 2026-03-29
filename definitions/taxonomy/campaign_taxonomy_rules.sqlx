@@ -1,0 +1,94 @@
+config {
+  type: "table",
+  schema: "iampatterson_marts",
+  description: "Rule-based campaign taxonomy fallback. Uses regex pattern matching on known campaign name patterns to classify without AI functions. Runs alongside the AI taxonomy for comparison.",
+  bigquery: {
+    clusterBy: ["business_model", "campaign_type"]
+  }
+}
+
+/*
+ * This model classifies campaigns using deterministic regex rules derived from
+ * the known campaign naming patterns in the data generator profiles.
+ * It serves two purposes:
+ *   1. Fallback when Vertex AI API is not enabled
+ *   2. Validation baseline to compare against AI.CLASSIFY results
+ */
+
+WITH distinct_campaigns AS (
+  SELECT DISTINCT
+    utm_campaign AS campaign_name_raw,
+    utm_source AS platform,
+    utm_medium
+  FROM ${ref("stg_events")}
+  WHERE utm_campaign IS NOT NULL
+)
+
+SELECT
+  campaign_name_raw,
+  platform,
+  utm_medium,
+
+  -- Campaign type classification via pattern matching
+  CASE
+    -- Brand campaigns
+    WHEN LOWER(REPLACE(campaign_name_raw, '+', ' '))
+      REGEXP_CONTAINS(r'brand|merch') THEN 'brand'
+    -- Shopping campaigns
+    WHEN LOWER(REPLACE(campaign_name_raw, '+', ' '))
+      REGEXP_CONTAINS(r'shopping|shop|pla') THEN 'shopping'
+    -- Retargeting campaigns
+    WHEN LOWER(REPLACE(campaign_name_raw, '+', ' '))
+      REGEXP_CONTAINS(r'retarget|rtg|cart.?abandon|remarketing') THEN 'retargeting'
+    -- Lookalike / LAL campaigns
+    WHEN LOWER(REPLACE(campaign_name_raw, '+', ' '))
+      REGEXP_CONTAINS(r'lookalike|lal|similar') THEN 'lookalike'
+    -- Interest / prospecting campaigns
+    WHEN LOWER(REPLACE(campaign_name_raw, '+', ' '))
+      REGEXP_CONTAINS(r'interest|prospect|prosp|cat.?lover|pet.?owner') THEN 'prospecting'
+    -- Content / broad campaigns
+    WHEN LOWER(REPLACE(campaign_name_raw, '+', ' '))
+      REGEXP_CONTAINS(r'broad|content') THEN 'content'
+    -- Newsletter / email
+    WHEN LOWER(REPLACE(campaign_name_raw, '+', ' '))
+      REGEXP_CONTAINS(r'newsletter|email|wkly|weekly|monthly') THEN 'newsletter'
+    -- Subscription-specific
+    WHEN LOWER(REPLACE(campaign_name_raw, '+', ' '))
+      REGEXP_CONTAINS(r'trial|subscription|sub_') THEN 'subscription_acquisition'
+    -- Lead gen specific
+    WHEN LOWER(REPLACE(campaign_name_raw, '+', ' '))
+      REGEXP_CONTAINS(r'partner|lead|b2b|enterprise') THEN 'lead_generation'
+    ELSE 'unclassified'
+  END AS campaign_type,
+
+  -- Business model inference from campaign context + platform
+  CASE
+    WHEN LOWER(REPLACE(campaign_name_raw, '+', ' '))
+      REGEXP_CONTAINS(r'tuna|merch|shop|cart|product|plush|mug|pin') THEN 'ecommerce'
+    WHEN LOWER(REPLACE(campaign_name_raw, '+', ' '))
+      REGEXP_CONTAINS(r'trial|subscription|plan|box|renewal') THEN 'subscription'
+    WHEN LOWER(REPLACE(campaign_name_raw, '+', ' '))
+      REGEXP_CONTAINS(r'partner|lead|b2b|enterprise|brand.?collab') THEN 'leadgen'
+    ELSE 'general'
+  END AS business_model,
+
+  -- Is this a brand campaign?
+  LOWER(REPLACE(campaign_name_raw, '+', ' '))
+    REGEXP_CONTAINS(r'brand|merch|tuna') AS is_brand_campaign,
+
+  -- Standardized name: PLATFORM - TYPE
+  CONCAT(
+    UPPER(platform), ' - ',
+    UPPER(CASE
+      WHEN LOWER(REPLACE(campaign_name_raw, '+', ' ')) REGEXP_CONTAINS(r'brand|merch') THEN 'brand'
+      WHEN LOWER(REPLACE(campaign_name_raw, '+', ' ')) REGEXP_CONTAINS(r'shopping|shop|pla') THEN 'shopping'
+      WHEN LOWER(REPLACE(campaign_name_raw, '+', ' ')) REGEXP_CONTAINS(r'retarget|rtg|cart.?abandon') THEN 'retargeting'
+      WHEN LOWER(REPLACE(campaign_name_raw, '+', ' ')) REGEXP_CONTAINS(r'lookalike|lal|similar') THEN 'lookalike'
+      WHEN LOWER(REPLACE(campaign_name_raw, '+', ' ')) REGEXP_CONTAINS(r'interest|prospect|prosp|cat.?lover|pet.?owner') THEN 'prospecting'
+      WHEN LOWER(REPLACE(campaign_name_raw, '+', ' ')) REGEXP_CONTAINS(r'broad|content') THEN 'content'
+      WHEN LOWER(REPLACE(campaign_name_raw, '+', ' ')) REGEXP_CONTAINS(r'newsletter|email') THEN 'newsletter'
+      ELSE 'other'
+    END)
+  ) AS campaign_name_standardized
+
+FROM distinct_campaigns

@@ -1,0 +1,13 @@
+config {
+  type: "assertion",
+  description: "Validates that purchase events have positive order totals."
+}
+
+SELECT
+  event_id,
+  order_id,
+  order_total
+FROM ${ref("stg_events")}
+WHERE
+  event_name = 'purchase'
+  AND (order_total IS NULL OR order_total <= 0)
