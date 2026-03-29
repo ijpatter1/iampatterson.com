@@ -3,7 +3,6 @@ config {
   schema: "iampatterson_marts",
   description: "Validation table showing AI campaign classifications alongside raw inputs and event volumes. Use this to audit and verify the AI taxonomy quality.",
   bigquery: {
-    clusterBy: ["platform", "campaign_type"]
   }
 }
 
