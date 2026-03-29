@@ -18,7 +18,7 @@ This is the consulting website for Patterson Consulting **and** a live, interact
 
 ## Current Phase
 
-**Phase 5 — Data Infrastructure** (all deliverables complete)
+**Phase 6 — Three Demo Front-Ends** (in progress — front-end deliverables complete, GTM container updates remaining)
 
 See `docs/REQUIREMENTS.md` for the full 9-phase development plan.
 See `docs/ARCHITECTURE.md` for technical architecture details.

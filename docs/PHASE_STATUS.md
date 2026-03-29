@@ -1,7 +1,7 @@
 # Phase Status Tracker
 
-> **Current Phase: 5 — Data Infrastructure** (all deliverables complete)
-> Last updated: 2026-03-28, session-2026-03-28-011
+> **Current Phase: 6 — Three Demo Front-Ends** (in progress)
+> Last updated: 2026-03-29, session-2026-03-29-012
 
 ---
 
@@ -85,13 +85,13 @@
 
 *Goal: Build the three mini-sites within iampatterson.com, each representing a different business model and fully instrumented.*
 
-- ⬜ E-commerce demo (Tuna Shop): product listing page, product detail page, cart, checkout flow with data layer events on every interaction
-- ⬜ Subscription demo (Tuna Subscription Box): landing page, plan selection, trial signup form, account dashboard. Simulates trial-to-paid journey with events at each stage
-- ⬜ Lead gen demo (Tuna Brand Partnerships): landing page, inquiry form with qualifying fields, thank you page. Events on form field interactions, submission, and lead qualification
-- ⬜ Each demo has its own data layer specification and sGTM event schema matching the background generator's output
-- ⬜ Route namespaces (/demo/ecommerce, /demo/subscription, /demo/leadgen) styled as standalone mini-sites within the main application
-- ⬜ Flip-the-card overlay from Phase 3 works on all three demos, showing events contextual to the specific business model
-- ⬜ Navigation between demos and back to the main consulting site is seamless
+- ✅ 2026-03-29, session-2026-03-29-012 — E-commerce demo (Tuna Shop): product listing (6 products), product detail pages with product_view, cart with add_to_cart, checkout with begin_checkout + purchase, order confirmation
+- ✅ 2026-03-29, session-2026-03-29-012 — Subscription demo (Tuna Subscription Box): landing page with 3 plans, plan_select events, trial signup form with trial_signup, account dashboard with upgrade/downgrade/cancel
+- ✅ 2026-03-29, session-2026-03-29-012 — Lead gen demo (Tuna Brand Partnerships): landing page, multi-select partnership inquiry form with form_start/form_field_focus/form_complete/lead_qualify, thank you page
+- ✅ 2026-03-29, session-2026-03-29-012 — Each demo has its own data layer specification (8 event types) matching the background generator's output
+- ✅ 2026-03-29, session-2026-03-29-012 — Route namespaces (/demo/ecommerce, /demo/subscription, /demo/leadgen) with shared DemoNav, demo landing page, Demos dropdown in header
+- ✅ 2026-03-29, session-2026-03-29-012 — Flip-the-card overlay from Phase 3 works on all three demos via useFilteredEvents route-aware filtering
+- ✅ 2026-03-29, session-2026-03-29-012 — Navigation between demos and back to the main consulting site is seamless (DemoNav + header Demos dropdown)
 - ⬜ Web GTM container updated with demo event tags — e-commerce (`product_view`, `add_to_cart`, `purchase`), subscription (`trial_signup`, `plan_select`), lead gen (`form_complete`, `lead_qualify`) events
 - ⬜ sGTM container updated with demo event triggers, GA4 forwarding, BigQuery write tags, simulated Meta CAPI and Google Ads Enhanced Conversions tags
 
