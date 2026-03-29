@@ -1,23 +1,28 @@
 config {
   type: "assertion",
-  description: "Detects days with zero events (volume anomaly). Flags any day in the last 30 days that has no events at all."
+  description: "Detects days with zero events within the data range. Flags any day between the first and last event that has no events at all."
 }
 
-WITH daily_counts AS (
+-- Only checks for gaps within the actual data range, not the last 30 calendar days
+WITH data_range AS (
+  SELECT
+    DATE(MIN(event_timestamp)) AS first_date,
+    DATE(MAX(event_timestamp)) AS last_date
+  FROM ${ref("stg_events")}
+),
+
+daily_counts AS (
   SELECT
     DATE(event_timestamp) AS event_date,
     COUNT(*) AS event_count
   FROM ${ref("stg_events")}
-  WHERE event_timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 30 DAY)
   GROUP BY 1
 ),
 
 date_spine AS (
   SELECT date
-  FROM UNNEST(GENERATE_DATE_ARRAY(
-    DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY),
-    CURRENT_DATE()
-  )) AS date
+  FROM data_range,
+  UNNEST(GENERATE_DATE_ARRAY(data_range.first_date, data_range.last_date)) AS date
 )
 
 SELECT
@@ -25,4 +30,3 @@ SELECT
 FROM date_spine ds
 LEFT JOIN daily_counts dc ON ds.date = dc.event_date
 WHERE dc.event_count IS NULL
-  AND ds.date < CURRENT_DATE()  -- Don't flag today (may be incomplete)
