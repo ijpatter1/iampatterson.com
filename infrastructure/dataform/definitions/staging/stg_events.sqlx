@@ -43,9 +43,9 @@ WITH raw_events AS (
 SELECT
   -- Synthetic event ID for deduplication tracking
   TO_HEX(SHA256(CONCAT(
-    COALESCE(event_name, ''),
-    COALESCE(session_id, ''),
-    CAST(received_timestamp AS STRING),
+    COALESCE(event_name, ''), '|',
+    COALESCE(session_id, ''), '|',
+    CAST(received_timestamp AS STRING), '|',
     COALESCE(page_path, '')
   ))) AS event_id,
 

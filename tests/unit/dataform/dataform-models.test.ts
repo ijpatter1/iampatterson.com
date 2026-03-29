@@ -39,17 +39,38 @@ describe('Dataform project structure', () => {
     expect(pkg.dependencies['@dataform/core']).toBeDefined();
   });
 
-  test('includes/url_decode.js returns SQL with percent-decode chains', () => {
+  test('includes/url_decode.js decodes with correct nesting order', () => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { url_decode } = require(path.join(DATAFORM_ROOT, 'includes/url_decode.js'));
     const result = url_decode('my_column');
+
+    // All expected encodings present
     expect(result).toContain("'+'");
     expect(result).toContain("'%20'");
     expect(result).toContain("'%26'");
     expect(result).toContain("'%3D'");
     expect(result).toContain("'%2B'");
     expect(result).toContain("'%25'");
+    expect(result).toContain("'%2F'");
+    expect(result).toContain("'%3A'");
+    expect(result).toContain("'%3F'");
+    expect(result).toContain("'%23'");
+    expect(result).toContain("'%40'");
     expect(result).toContain('my_column');
+
+    // Critical: %25 must be innermost (decoded first) to prevent double-decoding.
+    // In nested REPLACE(REPLACE(...REPLACE(col, '%25', '%')..., '+', ' ')),
+    // the innermost pattern (%25) appears closest to the column name (just after it),
+    // and the outermost (+) appears furthest left.
+    const pct25Pos = result.indexOf("'%25'");
+    const columnPos = result.indexOf('my_column');
+    const pct20Pos = result.indexOf("'%20'");
+    const plusPos = result.lastIndexOf("'+'");
+    // %25 is innermost: appears right after column, before %20
+    expect(pct25Pos).toBeGreaterThan(columnPos);
+    expect(pct25Pos).toBeLessThan(pct20Pos);
+    // + is outermost: appears leftmost in the nested REPLACE chain
+    expect(plusPos).toBeGreaterThan(pct20Pos);
   });
 
   test('includes/constants.js exports required values', () => {

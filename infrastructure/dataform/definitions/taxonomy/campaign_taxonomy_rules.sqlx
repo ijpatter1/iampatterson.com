@@ -15,6 +15,10 @@ config {
  *   2. Validation baseline to compare against AI.CLASSIFY results
  */
 
+js {
+  const { url_decode } = require("includes/url_decode");
+}
+
 WITH distinct_campaigns AS (
   SELECT DISTINCT
     utm_campaign AS campaign_name_raw,
@@ -29,7 +33,7 @@ classified AS (
     campaign_name_raw,
     platform,
     utm_medium,
-    LOWER(REPLACE(campaign_name_raw, '+', ' ')) AS norm,
+    LOWER(${url_decode("campaign_name_raw")}) AS norm,
   FROM distinct_campaigns
 ),
 
