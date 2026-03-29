@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 #
-# Run the historical backfill for all three business models.
+# Run the historical backfill for business models.
 #
 # Usage:
-#   ./backfill.sh              # Full 18-month backfill
-#   ./backfill.sh --months 3   # Shorter backfill for testing
-#   ./backfill.sh --dry-run    # Generate without sending to sGTM
+#   ./backfill.sh                          # Full 18-month backfill (all models)
+#   ./backfill.sh --months 1               # Shorter backfill for testing
+#   ./backfill.sh --model ecommerce        # Backfill a single model
+#   ./backfill.sh --model subscription --months 1
+#   ./backfill.sh --dry-run                # Generate without sending to sGTM
 #
 # Prerequisites:
 #   - gcloud CLI authenticated (gcloud auth login)
@@ -22,22 +24,36 @@ MONTHS=18
 DRY_RUN=false
 SERVICE_NAME="data-generator"
 REGION="us-central1"
-MODELS=("ecommerce" "subscription" "leadgen")
+SELECTED_MODEL=""
+ALL_MODELS=("ecommerce" "subscription" "leadgen")
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
   case $1 in
     --months)  MONTHS="$2"; shift 2 ;;
+    --model)   SELECTED_MODEL="$2"; shift 2 ;;
     --dry-run) DRY_RUN=true; shift ;;
     --help)
-      echo "Usage: $0 [--months N] [--dry-run]"
-      echo "  --months N   Number of months to backfill (default: 18)"
-      echo "  --dry-run    Generate events without sending to sGTM"
+      echo "Usage: $0 [--months N] [--model MODEL] [--dry-run]"
+      echo "  --months N       Number of months to backfill (default: 18)"
+      echo "  --model MODEL    Run a single model: ecommerce, subscription, or leadgen"
+      echo "  --dry-run        Generate events without sending to sGTM"
       exit 0
       ;;
     *) echo "Unknown option: $1"; exit 1 ;;
   esac
 done
+
+# Validate and set models to run
+if [[ -n "$SELECTED_MODEL" ]]; then
+  if [[ ! " ${ALL_MODELS[*]} " =~ " ${SELECTED_MODEL} " ]]; then
+    echo "ERROR: Unknown model '${SELECTED_MODEL}'. Valid: ${ALL_MODELS[*]}"
+    exit 1
+  fi
+  MODELS=("$SELECTED_MODEL")
+else
+  MODELS=("${ALL_MODELS[@]}")
+fi
 
 # ---------------------------------------------------------------------------
 # Setup

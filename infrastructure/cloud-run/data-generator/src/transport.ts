@@ -125,7 +125,7 @@ export function buildCollectParams(
   // Protocol fields
   params.set('v', '2');
   params.set('tid', measurementId);
-  params.set('cid', event.session_id);
+  params.set('cid', event.client_id);
   params.set('en', event.event);
   params.set('_s', '1');
   params.set('_et', '100');
@@ -162,6 +162,7 @@ export function buildCollectParams(
     'event',
     'timestamp',
     'session_id',
+    'client_id',
     'iap_session_id',
     'page_path',
     'page_title',

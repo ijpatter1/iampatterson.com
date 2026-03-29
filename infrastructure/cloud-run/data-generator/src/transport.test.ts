@@ -9,6 +9,7 @@ describe('transport', () => {
       event: 'page_view',
       timestamp: '2025-06-15T14:00:00Z',
       session_id: 'sess-123',
+      client_id: 'client-456',
       iap_session_id: 'sess-123',
       page_path: '/demo/ecommerce',
       page_title: 'The Tuna Shop',
@@ -30,9 +31,9 @@ describe('transport', () => {
       expect(params.get('tid')).toBe('G-TEST123');
     });
 
-    it('sets client ID from session_id', () => {
+    it('sets client ID from client_id', () => {
       const params = buildCollectParams(baseEvent, 'G-TEST123');
-      expect(params.get('cid')).toBe('sess-123');
+      expect(params.get('cid')).toBe('client-456');
     });
 
     it('sets event name as en', () => {
@@ -146,6 +147,7 @@ describe('transport', () => {
           event: 'test',
           timestamp: '2025-01-01T00:00:00Z',
           session_id: 'sess-1',
+          client_id: 'client-1',
           iap_session_id: 'sess-1',
           page_path: '/test',
           page_title: 'Test',
@@ -183,6 +185,7 @@ describe('transport', () => {
         event: 'test',
         timestamp: '2025-01-01T00:00:00Z',
         session_id: `sess-${i}`,
+        client_id: `client-${i}`,
         iap_session_id: `sess-${i}`,
         page_path: '/test',
         page_title: 'Test',

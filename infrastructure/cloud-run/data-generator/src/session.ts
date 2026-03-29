@@ -23,6 +23,7 @@ import { SeededRandom } from './random';
 
 export interface SessionContext {
   sessionId: string;
+  clientId: string;
   timestamp: Date;
   pagePath: string;
   pageTitle: string;
@@ -34,6 +35,55 @@ export interface SessionContext {
   consentAnalytics: boolean;
   consentMarketing: boolean;
   consentPreferences: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Client pool — simulates returning visitors by reusing client_ids
+// ---------------------------------------------------------------------------
+
+/**
+ * Maintains a pool of client IDs to simulate returning visitors.
+ * New visitors get a fresh UUID; returning visitors reuse an existing one.
+ * The pool grows over time as new visitors are added.
+ */
+export class ClientPool {
+  private clients: string[] = [];
+  private readonly returnRate: number;
+
+  /**
+   * @param returnRate Fraction of sessions that are returning visitors (0-1).
+   *                   e.g., 0.3 means 30% of sessions reuse an existing client_id.
+   */
+  constructor(returnRate = 0.3) {
+    this.returnRate = returnRate;
+  }
+
+  /**
+   * Get a client ID for a new session. May return an existing ID
+   * (returning visitor) or create a new one (new visitor).
+   */
+  getClientId(rng: SeededRandom): string {
+    if (this.clients.length > 0 && rng.chance(this.returnRate)) {
+      // Returning visitor — pick from existing pool
+      return rng.pick(this.clients);
+    }
+
+    // New visitor
+    const clientId = uuidv4();
+    this.clients.push(clientId);
+
+    // Cap pool size to prevent unbounded growth during long backfills
+    if (this.clients.length > 10000) {
+      this.clients = this.clients.slice(-5000);
+    }
+
+    return clientId;
+  }
+
+  /** Current pool size (for stats). */
+  get size(): number {
+    return this.clients.length;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -144,16 +194,21 @@ export function selectCampaign(channel: ChannelConfig, rng: SeededRandom): Campa
 
 /**
  * Create a session context — the shared state for a visitor session.
+ *
+ * @param clientPool Optional pool for returning visitor simulation.
+ *                   If omitted, each session gets a unique client_id.
  */
 export function createSessionContext(
   config: GeneratorConfig,
   timestamp: Date,
   rng: SeededRandom,
+  clientPool?: ClientPool,
 ): SessionContext {
   const channel = selectChannel(config.channels, rng);
   const campaign = selectCampaign(channel, rng);
 
   const sessionId = uuidv4();
+  const clientId = clientPool ? clientPool.getClientId(rng) : uuidv4();
 
   // Determine UTM params
   const utmSource = platformToUtmSource(channel.platform);
@@ -185,6 +240,7 @@ export function createSessionContext(
 
   return {
     sessionId,
+    clientId,
     timestamp,
     pagePath,
     pageTitle,
@@ -213,6 +269,7 @@ export function createBaseEvent(
     event: eventName,
     timestamp: ts.toISOString(),
     session_id: ctx.sessionId,
+    client_id: ctx.clientId,
     iap_session_id: ctx.sessionId,
     page_path: ctx.pagePath,
     page_title: ctx.pageTitle,

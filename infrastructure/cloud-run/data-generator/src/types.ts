@@ -215,6 +215,7 @@ export interface SyntheticBaseEvent {
   event: string;
   timestamp: string;
   session_id: string;
+  client_id: string;
   iap_session_id: string;
   page_path: string;
   page_title: string;
@@ -334,6 +335,7 @@ export type SyntheticEvent =
 export interface AdPlatformRecord {
   date: string;
   platform: Platform;
+  business_model: BusinessModel;
   campaign_name: string;
   /** Raw campaign name with intentional inconsistencies. */
   campaign_name_raw: string;

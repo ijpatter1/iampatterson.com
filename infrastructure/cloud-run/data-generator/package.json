@@ -13,6 +13,7 @@
     "test:coverage": "jest --config jest.config.json --coverage"
   },
   "dependencies": {
+    "@google-cloud/bigquery": "^8.1.1",
     "express": "^4.18.0",
     "uuid": "^9.0.0"
   },

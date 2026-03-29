@@ -1,0 +1,60 @@
+name: Sync Dataform Branch
+
+# Keeps the `dataform` branch in sync with Dataform model changes on main.
+# Dataform requires files at repo root — this action copies
+# infrastructure/dataform/* to the root of the `dataform` branch.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'infrastructure/dataform/**'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Checkout dataform branch
+        run: |
+          git fetch origin dataform:dataform 2>/dev/null || true
+          git checkout dataform
+
+      - name: Sync Dataform files to root
+        run: |
+          # Switch to main to read source files
+          git checkout main -- infrastructure/dataform/
+
+          # Copy Dataform files to root (overwrite existing)
+          cp infrastructure/dataform/dataform.json ./dataform.json
+          cp infrastructure/dataform/package.json ./package.json
+          rm -rf definitions/ includes/
+          cp -r infrastructure/dataform/definitions ./definitions
+          cp -r infrastructure/dataform/includes ./includes
+
+          # Clean up the copied infrastructure dir
+          git checkout dataform -- . 2>/dev/null || true
+          rm -rf infrastructure/
+
+          # Stage changes
+          git add dataform.json package.json definitions/ includes/
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if git diff --cached --quiet; then
+            echo "No changes to sync"
+          else
+            git commit -m "chore(dataform): auto-sync from main ($(git rev-parse --short main))"
+            git push origin dataform
+          fi

@@ -12,7 +12,7 @@ import type {
   AdPlatformRecord,
 } from './types';
 import { SeededRandom } from './random';
-import { createSessionContext, getSessionCountForDate } from './session';
+import { createSessionContext, getSessionCountForDate, ClientPool } from './session';
 import { generateEcommerceSession } from './engines/ecommerce';
 import { generateSubscriptionSession, generateSubscriptionLifecycle } from './engines/subscription';
 import { generateLeadgenSession } from './engines/leadgen';
@@ -76,6 +76,7 @@ export function generateDateRange(
   endDate: Date,
 ): GenerationResult {
   const rng = new SeededRandom(config.seed ?? Date.now());
+  const clientPool = new ClientPool(0.3); // 30% returning visitors
   const events: SyntheticEvent[] = [];
   const eventBreakdown: Record<string, number> = {};
   let totalSessions = 0;
@@ -95,7 +96,7 @@ export function generateDateRange(
       const sessionTime = new Date(current);
       sessionTime.setHours(hour, minute, second, 0);
 
-      const ctx = createSessionContext(config, sessionTime, rng);
+      const ctx = createSessionContext(config, sessionTime, rng, clientPool);
       const sessionEvents = generateSessionForModel(config, ctx, rng);
 
       for (const event of sessionEvents) {
@@ -183,9 +184,15 @@ function pickHour(config: GeneratorConfig, rng: SeededRandom): number {
 // Streaming backfill — generates and sends one day at a time
 // ---------------------------------------------------------------------------
 
+export interface AdInsertResult {
+  inserted: number;
+  failed: number;
+}
+
 export interface StreamingBackfillResult {
   stats: GenerationStats;
   sendResult: SendResult;
+  adInsertResult: AdInsertResult;
 }
 
 /**
@@ -201,11 +208,13 @@ export async function streamingBackfill(
   transportConfig: TransportConfig,
   dryRun: boolean,
   onProgress?: (day: string, dayEvents: number, totalSent: number) => void,
+  onAdRecords?: (records: AdPlatformRecord[]) => Promise<{ inserted: number; failed: number }>,
 ): Promise<StreamingBackfillResult> {
   const startDate = new Date(endDate);
   startDate.setMonth(startDate.getMonth() - config.backfillMonths);
 
   const rng = new SeededRandom(config.seed ?? Date.now());
+  const clientPool = new ClientPool(0.3); // 30% returning visitors
   const referenceDate = new Date(startDate);
   const current = new Date(startDate);
 
@@ -221,6 +230,7 @@ export async function streamingBackfill(
   };
 
   const sendResult: SendResult = { sent: 0, failed: 0, errors: [] };
+  const adInsertResult: AdInsertResult = { inserted: 0, failed: 0 };
 
   while (current <= endDate) {
     // Generate one day's events
@@ -235,7 +245,7 @@ export async function streamingBackfill(
       const sessionTime = new Date(current);
       sessionTime.setHours(hour, minute, second, 0);
 
-      const ctx = createSessionContext(config, sessionTime, rng);
+      const ctx = createSessionContext(config, sessionTime, rng, clientPool);
       const sessionEvents = generateSessionForModel(config, ctx, rng);
 
       for (const event of sessionEvents) {
@@ -247,6 +257,16 @@ export async function streamingBackfill(
     }
 
     stats.totalEvents += dayEvents.length;
+
+    // Generate and insert ad platform records for this day
+    const dayAdRecords = generateAdPlatformData(config, new Date(current), new Date(current), rng);
+    stats.totalAdRecords += dayAdRecords.length;
+
+    if (!dryRun && dayAdRecords.length > 0 && onAdRecords) {
+      const adResult = await onAdRecords(dayAdRecords);
+      adInsertResult.inserted += adResult.inserted;
+      adInsertResult.failed += adResult.failed;
+    }
 
     // Send this day's events immediately, then discard
     if (!dryRun && dayEvents.length > 0) {
@@ -266,5 +286,5 @@ export async function streamingBackfill(
     current.setDate(current.getDate() + 1);
   }
 
-  return { stats, sendResult };
+  return { stats, sendResult, adInsertResult };
 }

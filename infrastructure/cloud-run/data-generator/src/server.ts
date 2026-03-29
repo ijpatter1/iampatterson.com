@@ -20,6 +20,7 @@ import { validateConfig } from './validation';
 import { generateDay, streamingBackfill } from './generator';
 import { sendEvents, DEFAULT_TRANSPORT_CONFIG } from './transport';
 import type { TransportConfig, SendResult } from './transport';
+import { insertAdPlatformRecords } from './bq-insert';
 
 const app = express();
 app.use(express.json());
@@ -82,11 +83,17 @@ app.post('/generate', async (req, res) => {
     state.totalEventsGenerated += result.stats.totalEvents;
 
     let sendResult: SendResult | null = null;
+    let adInsertResult = null;
     if (!dryRun) {
       const transportConfig = getTransportConfig();
       sendResult = await sendEvents(result.events, transportConfig);
       state.totalEventsSent += sendResult.sent;
       state.totalErrors += sendResult.failed;
+
+      // Insert ad platform records into BigQuery
+      if (result.adPlatformRecords.length > 0) {
+        adInsertResult = await insertAdPlatformRecords(result.adPlatformRecords);
+      }
     }
 
     state.lastRun = new Date().toISOString();
@@ -99,6 +106,7 @@ app.post('/generate', async (req, res) => {
       dryRun,
       stats: result.stats,
       sendResult,
+      adInsertResult,
     });
   } catch (err) {
     state.isRunning = false;
@@ -142,6 +150,11 @@ app.post('/backfill', async (req, res) => {
         // Update stats as we go so /stats endpoint reflects progress
         state.totalEventsSent = sentBefore + totalSent;
       },
+      // Insert ad platform records into BigQuery
+      async (records) => {
+        const bqResult = await insertAdPlatformRecords(records);
+        return { inserted: bqResult.inserted, failed: bqResult.failed };
+      },
     );
 
     state.totalEventsGenerated += result.stats.totalEvents;
@@ -157,6 +170,7 @@ app.post('/backfill', async (req, res) => {
       dryRun,
       stats: result.stats,
       sendResult: dryRun ? null : result.sendResult,
+      adInsertResult: dryRun ? null : result.adInsertResult,
     });
   } catch (err) {
     state.isRunning = false;

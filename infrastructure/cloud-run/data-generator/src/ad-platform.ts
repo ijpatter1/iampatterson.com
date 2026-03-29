@@ -42,6 +42,7 @@ export function generateAdPlatformData(
         records.push({
           date: dateStr,
           platform: channel.platform,
+          business_model: config.businessModel,
           campaign_name: campaign.name,
           campaign_name_raw: rawName,
           impressions,

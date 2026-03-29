@@ -49,12 +49,12 @@ RUN curl -fsSL https://claude.ai/install.sh | bash && \
 # Uncomment when needed (Phase 4+). Adds ~500MB to image and slows build.
 # For Phase 1-3, gcloud is not required.
 # ─────────────────────────────────────────────
-# RUN curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | \
-#     gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg && \
-#     echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | \
-#     tee /etc/apt/sources.list.d/google-cloud-sdk.list && \
-#     apt-get update && apt-get install -y --no-install-recommends google-cloud-cli && \
-#     rm -rf /var/lib/apt/lists/*
+RUN curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | \
+    gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg && \
+    echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | \
+    tee /etc/apt/sources.list.d/google-cloud-sdk.list && \
+    apt-get update && apt-get install -y --no-install-recommends google-cloud-cli && \
+    rm -rf /var/lib/apt/lists/*
 
 # Create non-root user for Claude Code to run as.
 # The entrypoint starts as root (for iptables), then drops to this user via runuser.
