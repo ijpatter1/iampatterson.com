@@ -32,18 +32,18 @@ classified AS (
     -- Classify campaign type (brand, prospecting, retargeting, shopping, content, lookalike)
     AI.CLASSIFY(
       CONCAT('Classify this advertising campaign name into a campaign type: "', campaign_name_raw, '"'),
-      ['brand', 'prospecting', 'retargeting', 'shopping', 'content', 'lookalike', 'newsletter', 'interest_targeting'],
+      ['brand', 'prospecting', 'retargeting', 'shopping', 'content', 'lookalike', 'newsletter', 'interest_targeting']
     ) AS campaign_type,
 
     -- Classify business model
     AI.CLASSIFY(
       CONCAT('Classify which business this campaign serves based on the name: "', campaign_name_raw, '"'),
-      ['ecommerce', 'subscription', 'leadgen', 'general'],
+      ['ecommerce', 'subscription', 'leadgen', 'general']
     ) AS business_model,
 
     -- Extract clean canonical name using AI.IF for pattern matching
     AI.IF(
-      CONCAT('Does this campaign name "', campaign_name_raw, '" contain a brand term like "tuna", "merch", or "brand"?'),
+      CONCAT('Does this campaign name "', campaign_name_raw, '" contain a brand term like "tuna", "merch", or "brand"?')
     ) AS is_brand_campaign
 
   FROM distinct_campaigns
