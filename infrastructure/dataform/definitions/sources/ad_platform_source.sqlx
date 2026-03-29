@@ -1,0 +1,6 @@
+config {
+  type: "declaration",
+  schema: "iampatterson_raw",
+  name: "ad_platform_raw",
+  description: "Simulated ad platform spend data. One row per campaign per day per business model."
+}
