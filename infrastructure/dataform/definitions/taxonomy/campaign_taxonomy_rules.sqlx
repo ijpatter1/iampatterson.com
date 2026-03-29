@@ -15,10 +15,6 @@ config {
  *   2. Validation baseline to compare against AI.CLASSIFY results
  */
 
-js {
-  const { url_decode } = require("includes/url_decode");
-}
-
 WITH distinct_campaigns AS (
   SELECT DISTINCT
     utm_campaign AS campaign_name_raw,
@@ -29,11 +25,12 @@ WITH distinct_campaigns AS (
 ),
 
 classified AS (
+  -- stg_events already URL-decodes utm_campaign, so just lowercase here
   SELECT
     campaign_name_raw,
     platform,
     utm_medium,
-    LOWER(${url_decode("campaign_name_raw")}) AS norm,
+    LOWER(campaign_name_raw) AS norm,
   FROM distinct_campaigns
 ),
 
