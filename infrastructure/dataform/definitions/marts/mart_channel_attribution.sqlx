@@ -3,7 +3,7 @@ config {
   schema: "iampatterson_marts",
   description: "Channel-level attribution summary. Aggregates sessions, conversions, and revenue by channel (utm_source/utm_medium) per business model per month.",
   bigquery: {
-    partitionBy: "report_month",
+    partitionBy: "DATE(report_month)",
     clusterBy: ["business_model", "utm_source"]
   }
 }
