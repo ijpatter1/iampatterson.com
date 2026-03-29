@@ -185,6 +185,7 @@ refactor(hooks): extract useEventStream from overlay component
   - `phase/7-bi-layer-dashboards`
   - `phase/8-attribution-advanced-analytics`
   - `phase/9-polish-performance-launch`
+- `dataform` — dedicated branch for GCP Dataform integration. Mirrors `infrastructure/dataform/` at repo root (Dataform requires files at root). Auto-synced from `main` via GitHub Action (`.github/workflows/sync-dataform.yml`). **Do not edit Dataform models directly on this branch** — edit in `infrastructure/dataform/` on main and let the sync action propagate changes.
 - `feat/description` — feature branches off the phase branch for larger features
 - Merge feature branches into the phase branch. Merge the phase branch into `main` when the phase is complete and evaluated.
 

@@ -767,18 +767,89 @@ CALL iampatterson_marts.semantic_search('Which channels drive the highest ROAS?'
 
 ---
 
-## 11 — Step 9 — Connect Dataform to GitHub (Optional)
+## 11 — Step 9 — Connect Dataform to GitHub
 
-If you want automated pipeline execution instead of manual SQL:
+GCP Dataform requires `dataform.json` at the repo root — it doesn't support subdirectories. To handle this, we maintain a dedicated `dataform` branch where the Dataform files are mirrored at the root level.
 
-1. Go to **BigQuery Console > Dataform > Create Repository**
-2. Name: `iampatterson-dataform`
-3. Region: `US`
-4. Connect to your GitHub repo
-5. Set the root path to `infrastructure/dataform/`
-6. Create a **workflow configuration** that runs all models on a schedule
+### Branch Architecture
 
-This replaces the need to run the SQL manually from this guide.
+```
+main (and phase branches)          dataform branch
+├── infrastructure/                ├── dataform.json        (from infrastructure/dataform/)
+│   └── dataform/                  ├── package.json         (Dataform's, not Next.js)
+│       ├── dataform.json          ├── definitions/         (mirrored)
+│       ├── package.json           ├── includes/            (mirrored)
+│       ├── definitions/           ├── src/                 (ignored by Dataform)
+│       └── includes/              └── ...                  (rest of repo, ignored)
+├── src/
+└── ...
+```
+
+A GitHub Action (`.github/workflows/sync-dataform.yml`) automatically syncs `infrastructure/dataform/` → root of the `dataform` branch whenever changes are pushed to `main`.
+
+### Setup Steps
+
+**1. Prerequisites** (already done):
+- Dataform API enabled
+- GitHub PAT stored in Secret Manager as `dataform-github-token`
+- Dataform service account granted `secretmanager.secretAccessor`
+
+**2. Push the `dataform` branch to GitHub:**
+
+```bash
+git push origin dataform
+```
+
+**3. Configure the Dataform repository** (in the GCP Console):
+- Go to BigQuery > Dataform > `iampatterson-dataform`
+- Set Git remote: `https://github.com/ijpatter1/iampatterson.com.git`
+- Set default branch: `dataform`
+- Set secret: `dataform-github-token`
+
+**4. Create a Development Workspace:**
+- In the Dataform repo, click "Create Development Workspace"
+- Name it (e.g., `dev`)
+- Click into the workspace — you should see the `definitions/` folder with all models
+
+**5. Test compilation:**
+- In the workspace, click "Compile" or check the compilation status
+- All models should compile without errors
+- You can run individual models or "Start Execution" for all
+
+**6. Create a Release Configuration** (for production):
+- Go to Releases & Scheduling > Create Release Configuration
+- Name: `production`
+- Git branch: `dataform`
+- Frequency: daily or on-demand
+
+**7. Create a Workflow Configuration** (scheduled execution):
+- Go to Releases & Scheduling > Create Workflow Configuration
+- Name: `daily-pipeline`
+- Release configuration: `production`
+- Schedule: daily (e.g., 04:00 UTC — after the data generator's 02:00-03:00 UTC jobs)
+- Select all actions (or specific tags if you want to run subsets)
+
+### Keeping the Branch in Sync
+
+The `sync-dataform` GitHub Action handles this automatically:
+- Triggers on push to `main` when `infrastructure/dataform/**` files change
+- Copies Dataform files to root of the `dataform` branch
+- Commits and pushes if there are changes
+
+For manual sync (if the Action hasn't run yet or you're on a phase branch):
+
+```bash
+git checkout dataform
+git checkout main -- infrastructure/dataform/
+cp infrastructure/dataform/dataform.json ./dataform.json
+cp infrastructure/dataform/package.json ./package.json
+rm -rf definitions/ includes/
+cp -r infrastructure/dataform/definitions ./definitions
+cp -r infrastructure/dataform/includes ./includes
+git add dataform.json package.json definitions/ includes/
+git commit -m "chore(dataform): manual sync from main"
+git push origin dataform
+```
 
 ---
 
