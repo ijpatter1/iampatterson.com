@@ -1,0 +1,16 @@
+config {
+  type: "assertion",
+  description: "Validates stg_events: no null event_names, valid timestamps, valid business models."
+}
+
+-- Fails if any rows are returned
+SELECT
+  event_id,
+  event_name,
+  event_timestamp,
+  business_model
+FROM ${ref("stg_events")}
+WHERE
+  event_name IS NULL
+  OR event_timestamp IS NULL
+  OR business_model NOT IN ('ecommerce', 'subscription', 'leadgen', 'consulting')

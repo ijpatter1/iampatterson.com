@@ -1,0 +1,47 @@
+config {
+  type: "table",
+  schema: "iampatterson_marts",
+  description: "Validation table showing AI campaign classifications alongside raw inputs and event volumes. Use this to audit and verify the AI taxonomy quality.",
+  bigquery: {
+  }
+}
+
+WITH campaign_volumes AS (
+  SELECT
+    utm_campaign AS campaign_name_raw,
+    utm_source AS platform,
+    COUNT(*) AS total_events,
+    COUNT(DISTINCT session_id) AS unique_sessions,
+    COUNTIF(event_name = 'purchase') AS purchases,
+    SUM(IF(event_name = 'purchase', order_total, 0)) AS revenue,
+    COUNTIF(event_name = 'trial_signup') AS trial_signups,
+    COUNTIF(event_name = 'form_complete') AS form_completions
+  FROM ${ref("stg_events")}
+  WHERE utm_campaign IS NOT NULL
+  GROUP BY 1, 2
+)
+
+SELECT
+  t.campaign_name_raw,
+  t.platform,
+  t.campaign_type,
+  t.business_model,
+  t.is_brand_campaign,
+  t.campaign_name_standardized,
+
+  -- Volume metrics for validation context
+  v.total_events,
+  v.unique_sessions,
+  v.purchases,
+  v.revenue,
+  v.trial_signups,
+  v.form_completions,
+
+  -- Group variants that map to the same standardized name
+  COUNT(*) OVER (PARTITION BY t.campaign_name_standardized) AS variant_count_in_group
+
+FROM ${ref("campaign_taxonomy")} t
+LEFT JOIN campaign_volumes v
+  ON t.campaign_name_raw = v.campaign_name_raw
+  AND t.platform = v.platform
+ORDER BY t.campaign_name_standardized, v.total_events DESC

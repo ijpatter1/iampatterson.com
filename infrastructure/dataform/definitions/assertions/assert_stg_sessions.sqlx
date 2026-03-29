@@ -1,0 +1,16 @@
+config {
+  type: "assertion",
+  description: "Validates stg_sessions: no null session_ids, session_start <= session_end, non-negative duration."
+}
+
+SELECT
+  session_id,
+  session_start,
+  session_end,
+  session_duration_seconds
+FROM ${ref("stg_sessions")}
+WHERE
+  session_id IS NULL
+  OR session_start IS NULL
+  OR session_start > session_end
+  OR session_duration_seconds < 0
