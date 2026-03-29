@@ -3,7 +3,6 @@ config {
   schema: "iampatterson_marts",
   description: "Auto-generated data dictionary documenting all Dataform models, their columns, types, and descriptions. Updated on each Dataform run.",
   bigquery: {
-    clusterBy: ["dataset_name", "table_name"]
   }
 }
 
