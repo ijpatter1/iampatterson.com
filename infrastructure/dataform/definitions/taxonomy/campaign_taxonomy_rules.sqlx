@@ -31,47 +31,45 @@ classified AS (
     utm_medium,
     LOWER(REPLACE(campaign_name_raw, '+', ' ')) AS norm,
   FROM distinct_campaigns
+),
+
+typed AS (
+  SELECT
+    campaign_name_raw,
+    platform,
+    utm_medium,
+
+    CASE
+      WHEN REGEXP_CONTAINS(norm, r'brand|merch') THEN 'brand'
+      WHEN REGEXP_CONTAINS(norm, r'shopping|shop|pla') THEN 'shopping'
+      WHEN REGEXP_CONTAINS(norm, r'retarget|rtg|cart.?abandon|remarketing') THEN 'retargeting'
+      WHEN REGEXP_CONTAINS(norm, r'lookalike|lal|similar') THEN 'lookalike'
+      WHEN REGEXP_CONTAINS(norm, r'interest|prospect|prosp|cat.?lover|pet.?owner') THEN 'prospecting'
+      WHEN REGEXP_CONTAINS(norm, r'broad|content') THEN 'content'
+      WHEN REGEXP_CONTAINS(norm, r'newsletter|email|wkly|weekly|monthly') THEN 'newsletter'
+      WHEN REGEXP_CONTAINS(norm, r'trial|subscription|sub_') THEN 'subscription_acquisition'
+      WHEN REGEXP_CONTAINS(norm, r'partner|lead|b2b|enterprise') THEN 'lead_generation'
+      ELSE 'unclassified'
+    END AS campaign_type,
+
+    CASE
+      WHEN REGEXP_CONTAINS(norm, r'tuna|merch|shop|cart|product|plush|mug|pin') THEN 'ecommerce'
+      WHEN REGEXP_CONTAINS(norm, r'trial|subscription|plan|box|renewal') THEN 'subscription'
+      WHEN REGEXP_CONTAINS(norm, r'partner|lead|b2b|enterprise|brand.?collab') THEN 'leadgen'
+      ELSE 'general'
+    END AS business_model,
+
+    REGEXP_CONTAINS(norm, r'brand|merch|tuna') AS is_brand_campaign
+
+  FROM classified
 )
 
 SELECT
   campaign_name_raw,
   platform,
   utm_medium,
-
-  CASE
-    WHEN REGEXP_CONTAINS(norm, r'brand|merch') THEN 'brand'
-    WHEN REGEXP_CONTAINS(norm, r'shopping|shop|pla') THEN 'shopping'
-    WHEN REGEXP_CONTAINS(norm, r'retarget|rtg|cart.?abandon|remarketing') THEN 'retargeting'
-    WHEN REGEXP_CONTAINS(norm, r'lookalike|lal|similar') THEN 'lookalike'
-    WHEN REGEXP_CONTAINS(norm, r'interest|prospect|prosp|cat.?lover|pet.?owner') THEN 'prospecting'
-    WHEN REGEXP_CONTAINS(norm, r'broad|content') THEN 'content'
-    WHEN REGEXP_CONTAINS(norm, r'newsletter|email|wkly|weekly|monthly') THEN 'newsletter'
-    WHEN REGEXP_CONTAINS(norm, r'trial|subscription|sub_') THEN 'subscription_acquisition'
-    WHEN REGEXP_CONTAINS(norm, r'partner|lead|b2b|enterprise') THEN 'lead_generation'
-    ELSE 'unclassified'
-  END AS campaign_type,
-
-  CASE
-    WHEN REGEXP_CONTAINS(norm, r'tuna|merch|shop|cart|product|plush|mug|pin') THEN 'ecommerce'
-    WHEN REGEXP_CONTAINS(norm, r'trial|subscription|plan|box|renewal') THEN 'subscription'
-    WHEN REGEXP_CONTAINS(norm, r'partner|lead|b2b|enterprise|brand.?collab') THEN 'leadgen'
-    ELSE 'general'
-  END AS business_model,
-
-  REGEXP_CONTAINS(norm, r'brand|merch|tuna') AS is_brand_campaign,
-
-  CONCAT(
-    UPPER(platform), ' - ',
-    UPPER(CASE
-      WHEN REGEXP_CONTAINS(norm, r'brand|merch') THEN 'brand'
-      WHEN REGEXP_CONTAINS(norm, r'shopping|shop|pla') THEN 'shopping'
-      WHEN REGEXP_CONTAINS(norm, r'retarget|rtg|cart.?abandon') THEN 'retargeting'
-      WHEN REGEXP_CONTAINS(norm, r'lookalike|lal|similar') THEN 'lookalike'
-      WHEN REGEXP_CONTAINS(norm, r'interest|prospect|prosp|cat.?lover|pet.?owner') THEN 'prospecting'
-      WHEN REGEXP_CONTAINS(norm, r'broad|content') THEN 'content'
-      WHEN REGEXP_CONTAINS(norm, r'newsletter|email') THEN 'newsletter'
-      ELSE 'other'
-    END)
-  ) AS campaign_name_standardized
-
-FROM classified
+  campaign_type,
+  business_model,
+  is_brand_campaign,
+  CONCAT(UPPER(platform), ' - ', UPPER(campaign_type)) AS campaign_name_standardized
+FROM typed

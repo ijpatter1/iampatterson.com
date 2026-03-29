@@ -39,6 +39,19 @@ describe('Dataform project structure', () => {
     expect(pkg.dependencies['@dataform/core']).toBeDefined();
   });
 
+  test('includes/url_decode.js returns SQL with percent-decode chains', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { url_decode } = require(path.join(DATAFORM_ROOT, 'includes/url_decode.js'));
+    const result = url_decode('my_column');
+    expect(result).toContain("'+'");
+    expect(result).toContain("'%20'");
+    expect(result).toContain("'%26'");
+    expect(result).toContain("'%3D'");
+    expect(result).toContain("'%2B'");
+    expect(result).toContain("'%25'");
+    expect(result).toContain('my_column');
+  });
+
   test('includes/constants.js exports required values', () => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const constants = require(path.join(DATAFORM_ROOT, 'includes/constants.js'));
@@ -87,10 +100,12 @@ describe('Staging models', () => {
     expect(sql).toContain('business_model');
   });
 
-  test('stg_events deduplicates with ROW_NUMBER', () => {
+  test('stg_events deduplicates with ROW_NUMBER and deterministic ordering', () => {
     const sql = readSqlx('definitions/staging/stg_events.sqlx');
     expect(sql).toContain('ROW_NUMBER()');
     expect(sql).toContain('_row_num = 1');
+    // Tiebreaker columns ensure deterministic dedup
+    expect(sql).toContain('ORDER BY page_path');
   });
 
   test('stg_events includes all demo parameter columns', () => {
@@ -324,7 +339,7 @@ describe('Campaign taxonomy models', () => {
     expect(sql).toContain('campaign_name_standardized');
   });
 
-  test('campaign_taxonomy_rules uses regex pattern matching', () => {
+  test('campaign_taxonomy_rules uses regex without duplicated CASE logic', () => {
     const sql = readSqlx('definitions/taxonomy/campaign_taxonomy_rules.sqlx');
     expect(sql).toContain('REGEXP_CONTAINS');
     expect(sql).toContain('brand');
@@ -332,6 +347,8 @@ describe('Campaign taxonomy models', () => {
     expect(sql).toContain('shopping');
     expect(sql).toContain('prospecting');
     expect(sql).toContain('campaign_name_standardized');
+    // campaign_name_standardized should reference campaign_type, not duplicate the CASE
+    expect(sql).toContain('UPPER(campaign_type)');
   });
 
   test('campaign_taxonomy_validation joins taxonomy with volumes', () => {

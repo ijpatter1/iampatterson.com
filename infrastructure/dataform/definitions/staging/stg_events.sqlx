@@ -25,12 +25,16 @@ config {
   }
 }
 
+js {
+  const { url_decode } = require("includes/url_decode");
+}
+
 WITH raw_events AS (
   SELECT
     *,
     ROW_NUMBER() OVER (
       PARTITION BY event_name, session_id, received_timestamp
-      ORDER BY received_timestamp
+      ORDER BY page_path, COALESCE(timestamp, '')
     ) AS _row_num
   FROM
     ${ref("iampatterson_raw", "events_raw")}
@@ -69,13 +73,13 @@ SELECT
 
   page_location,
   page_path,
-  REPLACE(page_title, '+', ' ') AS page_title,
+  ${url_decode("page_title")} AS page_title,
   page_referrer,
 
-  -- UTM / attribution (decode URL-encoded + signs from /g/collect transport)
-  REPLACE(utm_source, '+', ' ') AS utm_source,
-  REPLACE(utm_medium, '+', ' ') AS utm_medium,
-  REPLACE(utm_campaign, '+', ' ') AS utm_campaign,
+  -- UTM / attribution
+  ${url_decode("utm_source")} AS utm_source,
+  ${url_decode("utm_medium")} AS utm_medium,
+  ${url_decode("utm_campaign")} AS utm_campaign,
 
   -- Consent state
   consent_analytics,
@@ -85,21 +89,21 @@ SELECT
   -- Synthetic flag
   CASE WHEN iap_source = 'true' THEN TRUE ELSE FALSE END AS is_synthetic,
 
-  -- E-commerce fields (decode URL-encoded + signs)
+  -- E-commerce fields
   product_id,
-  REPLACE(product_name, '+', ' ') AS product_name,
+  ${url_decode("product_name")} AS product_name,
   product_price,
-  REPLACE(product_category, '+', ' ') AS product_category,
+  ${url_decode("product_category")} AS product_category,
   quantity,
   cart_total,
   item_count,
   order_id,
   order_total,
-  REPLACE(products, '+', ' ') AS products,
+  ${url_decode("products")} AS products,
 
-  -- Subscription fields (decode URL-encoded + signs)
+  -- Subscription fields
   plan_id,
-  REPLACE(plan_name, '+', ' ') AS plan_name,
+  ${url_decode("plan_name")} AS plan_name,
   plan_price,
   renewal_month,
   revenue,
@@ -112,7 +116,7 @@ SELECT
   form_success,
   partnership_type,
   budget_range,
-  REPLACE(company_name, '+', ' ') AS company_name,
+  ${url_decode("company_name")} AS company_name,
   lead_id,
   qualification_tier,
 
