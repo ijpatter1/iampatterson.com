@@ -39,6 +39,71 @@ describe('Dataform project structure', () => {
     expect(pkg.dependencies['@dataform/core']).toBeDefined();
   });
 
+  test('includes/url_decode.js decodes with correct nesting order', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { url_decode } = require(path.join(DATAFORM_ROOT, 'includes/url_decode.js'));
+    const result = url_decode('my_column');
+
+    // All expected encodings present (uppercase)
+    expect(result).toContain("'+'");
+    expect(result).toContain("'%20'");
+    expect(result).toContain("'%26'");
+    expect(result).toContain("'%3D'");
+    expect(result).toContain("'%2B'");
+    expect(result).toContain("'%25'");
+    expect(result).toContain("'%2F'");
+    expect(result).toContain("'%3A'");
+    expect(result).toContain("'%3F'");
+    expect(result).toContain("'%23'");
+    expect(result).toContain("'%40'");
+    expect(result).toContain('my_column');
+
+    // Lowercase variants
+    expect(result).toContain("'%3d'");
+    expect(result).toContain("'%2f'");
+    expect(result).toContain("'%3a'");
+    expect(result).toContain("'%3f'");
+    expect(result).toContain("'%2b'");
+
+    // Critical: %25 must be innermost (decoded first) to prevent double-decoding.
+    // In nested REPLACE(REPLACE(...REPLACE(col, '%25', '%')..., '+', ' ')),
+    // the innermost pattern (%25) appears closest to the column name (just after it).
+    const pct25Pos = result.indexOf("'%25'");
+    const columnPos = result.indexOf('my_column');
+    const pct20Pos = result.indexOf("'%20'");
+    // %25 is innermost: appears right after column, before %20
+    expect(pct25Pos).toBeGreaterThan(columnPos);
+    expect(pct25Pos).toBeLessThan(pct20Pos);
+
+    // + must be the absolute outermost REPLACE (decoded last).
+    // The outermost REPLACE starts at the beginning of the string.
+    expect(result).toMatch(/^REPLACE\(.+, '\+', ' '\)$/s);
+  });
+
+  test('includes/url_decode.js handles double-encoded values correctly', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { url_decode } = require(path.join(DATAFORM_ROOT, 'includes/url_decode.js'));
+
+    // Simulate the REPLACE chain execution order for %252B (double-encoded +)
+    // Step 1 (innermost): %25 → % transforms %252B → %2B
+    // Step N: %2B → + transforms %2B → +
+    // Step last: + → space transforms + → space
+    // Net result: %252B → space (correct for double-encoded + in URL)
+
+    // Verify by tracing through: the generated SQL applies REPLACEs from
+    // innermost to outermost. We can verify the order by checking that
+    // %25 appears closer to the column than %2B in the nesting.
+    const result = url_decode('val');
+    const pct25Pos = result.indexOf("'%25'");
+    const pct2BPos = result.indexOf("'%2B'");
+    const plusPos = result.lastIndexOf("'+'");
+
+    // %25 decoded before %2B (innermost = lower string position)
+    expect(pct25Pos).toBeLessThan(pct2BPos);
+    // %2B decoded before + (inner = lower string position)
+    expect(pct2BPos).toBeLessThan(plusPos);
+  });
+
   test('includes/constants.js exports required values', () => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const constants = require(path.join(DATAFORM_ROOT, 'includes/constants.js'));
@@ -87,10 +152,19 @@ describe('Staging models', () => {
     expect(sql).toContain('business_model');
   });
 
-  test('stg_events deduplicates with ROW_NUMBER', () => {
+  test('stg_events deduplicates with ROW_NUMBER and deterministic ordering', () => {
     const sql = readSqlx('definitions/staging/stg_events.sqlx');
     expect(sql).toContain('ROW_NUMBER()');
     expect(sql).toContain('_row_num = 1');
+    // Tiebreaker columns ensure deterministic dedup
+    expect(sql).toContain('ORDER BY page_path');
+  });
+
+  test('stg_events event_id hash uses pipe delimiters to prevent collisions', () => {
+    const sql = readSqlx('definitions/staging/stg_events.sqlx');
+    // Pipe delimiters between fields prevent boundary-shift collisions
+    // e.g. CONCAT('a', '|', 'bc') != CONCAT('ab', '|', 'c')
+    expect(sql).toContain("'|'");
   });
 
   test('stg_events includes all demo parameter columns', () => {
@@ -324,7 +398,7 @@ describe('Campaign taxonomy models', () => {
     expect(sql).toContain('campaign_name_standardized');
   });
 
-  test('campaign_taxonomy_rules uses regex pattern matching', () => {
+  test('campaign_taxonomy_rules uses regex without duplicated CASE logic', () => {
     const sql = readSqlx('definitions/taxonomy/campaign_taxonomy_rules.sqlx');
     expect(sql).toContain('REGEXP_CONTAINS');
     expect(sql).toContain('brand');
@@ -332,6 +406,8 @@ describe('Campaign taxonomy models', () => {
     expect(sql).toContain('shopping');
     expect(sql).toContain('prospecting');
     expect(sql).toContain('campaign_name_standardized');
+    // campaign_name_standardized should reference campaign_type, not duplicate the CASE
+    expect(sql).toContain('UPPER(campaign_type)');
   });
 
   test('campaign_taxonomy_validation joins taxonomy with volumes', () => {

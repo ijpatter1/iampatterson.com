@@ -49,13 +49,11 @@ for TABLE in "${TABLES[@]}"; do
   echo "--- Exporting: ${TABLE} ---"
   DEST="${BUCKET}/${EXPORT_DATE}/${TABLE}/*.parquet"
 
-  bq extract \
+  if bq extract \
     --destination_format=PARQUET \
     --compression=SNAPPY \
     "${PROJECT}:${DATASET}.${TABLE}" \
-    "$DEST" 2>&1
-
-  if [[ $? -eq 0 ]]; then
+    "$DEST" 2>&1; then
     echo "  → ${DEST}"
     TOTAL=$((TOTAL + 1))
   else

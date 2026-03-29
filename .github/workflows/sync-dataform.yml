@@ -40,8 +40,7 @@ jobs:
           cp -r infrastructure/dataform/definitions ./definitions
           cp -r infrastructure/dataform/includes ./includes
 
-          # Clean up the copied infrastructure dir
-          git checkout dataform -- . 2>/dev/null || true
+          # Remove the infrastructure dir that was checked out from main
           rm -rf infrastructure/
 
           # Stage changes
