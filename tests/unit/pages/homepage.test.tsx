@@ -66,11 +66,16 @@ describe('HomePage', () => {
     );
   });
 
-  it('renders disabled demo CTAs as spans, not links', () => {
+  it('renders demo CTAs as links to /demo', () => {
     render(<HomePage />);
-    const demoSpan = screen.getByText(/explore a live demo/i);
-    expect(demoSpan.tagName).toBe('SPAN');
-    expect(demoSpan).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('link', { name: /explore a live demo/i })).toHaveAttribute(
+      'href',
+      '/demo',
+    );
+    expect(screen.getByRole('link', { name: /explore the demos/i })).toHaveAttribute(
+      'href',
+      '/demo',
+    );
   });
 
   it('renders the Explore the full service offering CTA as a link', () => {

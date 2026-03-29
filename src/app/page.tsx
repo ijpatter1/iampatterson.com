@@ -25,10 +25,9 @@ export default function HomePage() {
               See how it works
             </CtaLink>
             <CtaLink
-              href="#"
+              href="/demo"
               ctaLocation="hero"
-              disabled
-              className="rounded border border-neutral-500 px-6 py-3 text-sm font-semibold text-neutral-400 cursor-default"
+              className="rounded border border-white px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white hover:text-neutral-900"
             >
               Explore a live demo
             </CtaLink>
@@ -141,10 +140,9 @@ export default function HomePage() {
           </div>
           <div className="mt-8">
             <CtaLink
-              href="#"
+              href="/demo"
               ctaLocation="proof"
-              disabled
-              className="text-sm font-semibold text-neutral-400"
+              className="text-sm font-semibold text-neutral-900 underline underline-offset-4 transition-colors hover:text-neutral-600"
             >
               Explore the demos →
             </CtaLink>
