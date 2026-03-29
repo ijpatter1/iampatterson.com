@@ -6,6 +6,7 @@ import {
   selectCampaign,
   createSessionContext,
   createBaseEvent,
+  ClientPool,
 } from './session';
 import { createEcommerceConfig } from './profiles';
 import { SeededRandom } from './random';
@@ -214,3 +215,82 @@ function flatSeasonality(): SeasonalityConfig {
     hourOfDay: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
   };
 }
+
+describe('ClientPool', () => {
+  it('returns unique client IDs for new visitors', () => {
+    const pool = new ClientPool(0); // 0% return rate = all new
+    const rng = new SeededRandom(42);
+    const ids = new Set<string>();
+    for (let i = 0; i < 100; i++) {
+      ids.add(pool.getClientId(rng));
+    }
+    expect(ids.size).toBe(100);
+    expect(pool.size).toBe(100);
+  });
+
+  it('reuses client IDs for returning visitors', () => {
+    const pool = new ClientPool(1.0); // 100% return rate after first
+    const rng = new SeededRandom(42);
+
+    // First call always creates a new client (pool is empty)
+    const first = pool.getClientId(rng);
+    expect(pool.size).toBe(1);
+
+    // Subsequent calls should reuse the first ID
+    const second = pool.getClientId(rng);
+    expect(second).toBe(first);
+  });
+
+  it('mixes new and returning visitors at configured rate', () => {
+    const pool = new ClientPool(0.5); // 50% return rate
+    const rng = new SeededRandom(42);
+    const ids: string[] = [];
+    for (let i = 0; i < 200; i++) {
+      ids.push(pool.getClientId(rng));
+    }
+    const uniqueIds = new Set(ids);
+    // With 50% return rate, we should have fewer unique IDs than total
+    expect(uniqueIds.size).toBeLessThan(200);
+    // But more than 1 (not all returning)
+    expect(uniqueIds.size).toBeGreaterThan(1);
+  });
+
+  it('caps pool size and trims to prevent unbounded growth', () => {
+    const pool = new ClientPool(0); // All new visitors
+    const rng = new SeededRandom(42);
+    for (let i = 0; i < 10001; i++) {
+      pool.getClientId(rng);
+    }
+    // After exceeding 10000, pool trims to last 5000
+    expect(pool.size).toBe(5000);
+  });
+
+  it('works with createSessionContext when provided', () => {
+    const config = createEcommerceConfig();
+    const rng = new SeededRandom(42);
+    const pool = new ClientPool(0);
+    const ctx1 = createSessionContext(config, new Date(), rng, pool);
+    const ctx2 = createSessionContext(config, new Date(), rng, pool);
+
+    // Each session gets a unique sessionId
+    expect(ctx1.sessionId).not.toBe(ctx2.sessionId);
+    // Each session gets a unique clientId (0% return rate)
+    expect(ctx1.clientId).not.toBe(ctx2.clientId);
+    // clientId is different from sessionId
+    expect(ctx1.clientId).not.toBe(ctx1.sessionId);
+  });
+
+  it('returns same clientId across sessions with high return rate', () => {
+    const config = createEcommerceConfig();
+    const rng = new SeededRandom(42);
+    const pool = new ClientPool(1.0); // 100% return
+
+    const ctx1 = createSessionContext(config, new Date(), rng, pool);
+    const ctx2 = createSessionContext(config, new Date(), rng, pool);
+
+    // Different sessions
+    expect(ctx1.sessionId).not.toBe(ctx2.sessionId);
+    // Same client (returning visitor)
+    expect(ctx2.clientId).toBe(ctx1.clientId);
+  });
+});

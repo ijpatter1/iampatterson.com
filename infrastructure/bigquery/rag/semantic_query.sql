@@ -27,7 +27,7 @@ BEGIN
   CREATE TEMP TABLE search_results AS
 
   -- Campaign performance results
-  SELECT content, 'campaign_performance' AS source
+  SELECT base.content, 'campaign_performance' AS source
   FROM VECTOR_SEARCH(
     TABLE `iampatterson.iampatterson_marts.rag_campaign_embeddings`,
     'text_embedding',
@@ -39,7 +39,7 @@ BEGIN
   UNION ALL
 
   -- Channel attribution results
-  SELECT content, 'channel_attribution' AS source
+  SELECT base.content, 'channel_attribution' AS source
   FROM VECTOR_SEARCH(
     TABLE `iampatterson.iampatterson_marts.rag_channel_embeddings`,
     'text_embedding',
@@ -51,7 +51,7 @@ BEGIN
   UNION ALL
 
   -- Subscription cohort results
-  SELECT content, 'subscription_cohorts' AS source
+  SELECT base.content, 'subscription_cohorts' AS source
   FROM VECTOR_SEARCH(
     TABLE `iampatterson.iampatterson_marts.rag_subscription_embeddings`,
     'text_embedding',

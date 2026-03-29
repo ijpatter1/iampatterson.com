@@ -8,7 +8,7 @@
 #
 # Designed to be run manually or via Cloud Scheduler.
 
-set -euo pipefail
+set -uo pipefail
 
 PROJECT="iampatterson"
 BUCKET="gs://${PROJECT}-ai-exports"

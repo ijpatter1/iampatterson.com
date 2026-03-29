@@ -19,6 +19,7 @@ REGION="us-central1"
 BUCKET="gs://${PROJECT}-ai-exports"
 SA_NAME="ai-access-reader"
 SA_EMAIL="${SA_NAME}@${PROJECT}.iam.gserviceaccount.com"
+export SA_EMAIL
 
 echo "=== AI Access Layer Setup ==="
 echo ""
@@ -72,11 +73,10 @@ for DATASET in iampatterson_marts iampatterson_staging; do
   EXISTING=$(bq show --format=json "${PROJECT}:${DATASET}" | \
     python3 -c "import sys,json; d=json.load(sys.stdin); print(json.dumps(d.get('access',[])))")
 
-  UPDATED=$(python3 -c "
-import json, sys
-existing = json.loads('${EXISTING}')
-new_entry = {'role': 'READER', 'userByEmail': '${SA_EMAIL}'}
-# Avoid duplicates
+  UPDATED=$(echo "$EXISTING" | python3 -c "
+import json, sys, os
+existing = json.loads(sys.stdin.read())
+new_entry = {'role': 'READER', 'userByEmail': os.environ['SA_EMAIL']}
 if new_entry not in existing:
     existing.append(new_entry)
 print(json.dumps({'access': existing}))
