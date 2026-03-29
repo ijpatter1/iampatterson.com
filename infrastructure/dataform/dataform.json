@@ -1,0 +1,7 @@
+{
+  "defaultSchema": "iampatterson_staging",
+  "assertionSchema": "iampatterson_assertions",
+  "warehouse": "bigquery",
+  "defaultDatabase": "iampatterson",
+  "defaultLocation": "US"
+}

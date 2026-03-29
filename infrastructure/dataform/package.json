@@ -1,0 +1,6 @@
+{
+  "name": "iampatterson-dataform",
+  "dependencies": {
+    "@dataform/core": "2.9.0"
+  }
+}
