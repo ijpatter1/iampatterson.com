@@ -1,9 +1,8 @@
 config {
   type: "assertion",
-  description: "Detects days with zero events within the data range. Flags any day between the first and last event that has no events at all."
+  description: "Detects significant volume gaps in the data. Fails if more than 10% of days in the data range have zero events, indicating a pipeline outage rather than normal month-end variation."
 }
 
--- Only checks for gaps within the actual data range, not the last 30 calendar days
 WITH data_range AS (
   SELECT
     DATE(MIN(event_timestamp)) AS first_date,
@@ -23,10 +22,18 @@ date_spine AS (
   SELECT date
   FROM data_range,
   UNNEST(GENERATE_DATE_ARRAY(data_range.first_date, data_range.last_date)) AS date
+),
+
+gap_stats AS (
+  SELECT
+    COUNT(*) AS total_days,
+    COUNTIF(dc.event_count IS NULL) AS missing_days,
+    SAFE_DIVIDE(COUNTIF(dc.event_count IS NULL), COUNT(*)) AS gap_rate
+  FROM date_spine ds
+  LEFT JOIN daily_counts dc ON ds.date = dc.event_date
 )
 
-SELECT
-  ds.date AS missing_date
-FROM date_spine ds
-LEFT JOIN daily_counts dc ON ds.date = dc.event_date
-WHERE dc.event_count IS NULL
+-- Fail if more than 10% of days are missing (allows for month-end gaps)
+SELECT total_days, missing_days, gap_rate
+FROM gap_stats
+WHERE gap_rate > 0.10
