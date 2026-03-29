@@ -27,9 +27,9 @@ const budgetRanges = [
 ];
 
 function qualifyLead(partnershipType: string, budgetRange: string): string {
-  if (budgetRange === '50k_plus' || budgetRange === '15k_50k') return 'hot';
-  if (budgetRange === '5k_15k' && partnershipType !== 'not_sure') return 'warm';
-  return 'cold';
+  if (budgetRange === '50k_plus' || budgetRange === '15k_50k') return 'high';
+  if (budgetRange === '5k_15k' && partnershipType !== 'not_sure') return 'medium';
+  return 'low';
 }
 
 export function PartnershipForm() {
@@ -49,7 +49,8 @@ export function PartnershipForm() {
     const form = e.currentTarget;
     const data = new FormData(form);
 
-    const partnershipType = (data.get('partnership_type') as string) || 'not_sure';
+    const selectedTypes = data.getAll('partnership_type') as string[];
+    const partnershipType = selectedTypes.length > 0 ? selectedTypes.join(',') : 'not_sure';
     const budgetRange = (data.get('budget_range') as string) || 'prefer_to_discuss';
     const companyName = (data.get('company_name') as string) || 'Unknown';
 
@@ -117,24 +118,26 @@ export function PartnershipForm() {
         />
       </div>
 
-      <div>
-        <label htmlFor="partnership_type" className="block text-sm font-medium text-neutral-700">
-          Partnership Type
-        </label>
-        <select
-          id="partnership_type"
-          name="partnership_type"
-          defaultValue="sponsored_content"
-          onFocus={() => handleFocus('partnership_type')}
-          className="mt-1 w-full rounded border border-neutral-300 px-3 py-2 text-sm"
-        >
+      <fieldset>
+        <legend className="block text-sm font-medium text-neutral-700">
+          Partnership Type (select all that apply)
+        </legend>
+        <div className="mt-2 space-y-2">
           {partnershipTypes.map(({ value, label }) => (
-            <option key={value} value={value}>
+            <label key={value} className="flex items-center gap-2 text-sm text-neutral-700">
+              <input
+                type="checkbox"
+                name="partnership_type"
+                value={value}
+                defaultChecked={value === 'sponsored_content'}
+                onFocus={() => handleFocus('partnership_type')}
+                className="rounded border-neutral-300"
+              />
               {label}
-            </option>
+            </label>
           ))}
-        </select>
-      </div>
+        </div>
+      </fieldset>
 
       <div>
         <label htmlFor="budget_range" className="block text-sm font-medium text-neutral-700">

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 
 import { getPlan } from '@/lib/demo/plans';
+import { trackClickCta } from '@/lib/events/track';
 
 interface AccountDashboardProps {
   planId: string;
@@ -49,18 +50,21 @@ export function AccountDashboard({ planId }: AccountDashboardProps) {
       <div className="flex gap-3">
         <button
           type="button"
+          onClick={() => trackClickCta('Upgrade', 'subscription_dashboard')}
           className="flex-1 rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-900 transition-colors hover:bg-neutral-50"
         >
           Upgrade
         </button>
         <button
           type="button"
+          onClick={() => trackClickCta('Downgrade', 'subscription_dashboard')}
           className="flex-1 rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-900 transition-colors hover:bg-neutral-50"
         >
           Downgrade
         </button>
         <button
           type="button"
+          onClick={() => trackClickCta('Cancel', 'subscription_dashboard')}
           className="flex-1 rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
         >
           Cancel

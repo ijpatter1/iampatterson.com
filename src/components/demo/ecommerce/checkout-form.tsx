@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { trackBeginCheckout, trackPurchase } from '@/lib/events/track';
@@ -8,6 +9,14 @@ import { useCart } from './cart-context';
 export function CheckoutForm() {
   const { items, total, itemCount, clearCart } = useCart();
   const router = useRouter();
+  const checkoutFired = useRef(false);
+
+  useEffect(() => {
+    if (!checkoutFired.current && items.length > 0) {
+      trackBeginCheckout({ cart_total: total, item_count: itemCount });
+      checkoutFired.current = true;
+    }
+  }, [items.length, total, itemCount]);
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -33,11 +42,6 @@ export function CheckoutForm() {
     router.push(
       `/demo/ecommerce/confirmation?order_id=${orderId}&total=${total.toFixed(2)}&items=${itemCount}`,
     );
-  }
-
-  // Fire begin_checkout when the form mounts with items
-  if (typeof window !== 'undefined' && items.length > 0) {
-    trackBeginCheckout({ cart_total: total, item_count: itemCount });
   }
 
   return (

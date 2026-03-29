@@ -63,7 +63,7 @@ describe('PartnershipForm', () => {
     expect(screen.getByLabelText(/your name/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/company name/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/partnership type/i)).toBeInTheDocument();
+    expect(screen.getByText(/partnership type/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/budget range/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/tell us about/i)).toBeInTheDocument();
   });
