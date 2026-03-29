@@ -76,7 +76,82 @@ export interface ConsentUpdateEvent extends BaseEvent {
   consent_preferences: boolean;
 }
 
-/** Union of all Phase 1 event types. */
+// --- E-commerce demo events (Phase 6) ---
+
+/** Fired when a product detail page is viewed. */
+export interface ProductViewEvent extends BaseEvent {
+  event: 'product_view';
+  product_id: string;
+  product_name: string;
+  product_price: number;
+  product_category: string;
+}
+
+/** Fired when a product is added to cart. */
+export interface AddToCartEvent extends BaseEvent {
+  event: 'add_to_cart';
+  product_id: string;
+  product_name: string;
+  product_price: number;
+  quantity: number;
+}
+
+/** Fired when the checkout flow begins. */
+export interface BeginCheckoutEvent extends BaseEvent {
+  event: 'begin_checkout';
+  cart_total: number;
+  item_count: number;
+}
+
+/** Fired on order completion. */
+export interface PurchaseEvent extends BaseEvent {
+  event: 'purchase';
+  order_id: string;
+  order_total: number;
+  item_count: number;
+  /** JSON-stringified array of {product_id, product_name, price, quantity}. */
+  products: string;
+}
+
+// --- Subscription demo events (Phase 6) ---
+
+/** Fired when a subscription plan is selected/viewed. */
+export interface PlanSelectEvent extends BaseEvent {
+  event: 'plan_select';
+  plan_id: string;
+  plan_name: string;
+  plan_price: number;
+}
+
+/** Fired when a user signs up for a trial. */
+export interface TrialSignupEvent extends BaseEvent {
+  event: 'trial_signup';
+  plan_id: string;
+  plan_name: string;
+  plan_price: number;
+}
+
+// --- Lead gen demo events (Phase 6) ---
+
+/** Fired on form submission with qualifying fields. */
+export interface FormCompleteEvent extends BaseEvent {
+  event: 'form_complete';
+  form_name: string;
+  partnership_type: string;
+  budget_range: string;
+  company_name: string;
+}
+
+/** Fired when a lead is qualified (simulated). */
+export interface LeadQualifyEvent extends BaseEvent {
+  event: 'lead_qualify';
+  lead_id: string;
+  qualification_tier: string;
+  partnership_type: string;
+  budget_range: string;
+}
+
+/** Union of all event types. */
 export type DataLayerEvent =
   | PageViewEvent
   | ScrollDepthEvent
@@ -85,4 +160,12 @@ export type DataLayerEvent =
   | FormFieldFocusEvent
   | FormStartEvent
   | FormSubmitEvent
-  | ConsentUpdateEvent;
+  | ConsentUpdateEvent
+  | ProductViewEvent
+  | AddToCartEvent
+  | BeginCheckoutEvent
+  | PurchaseEvent
+  | PlanSelectEvent
+  | TrialSignupEvent
+  | FormCompleteEvent
+  | LeadQualifyEvent;

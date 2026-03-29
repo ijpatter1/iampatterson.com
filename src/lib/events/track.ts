@@ -97,3 +97,74 @@ export function trackConsentUpdate(
     event: 'consent_update',
   });
 }
+
+// --- E-commerce demo tracking (Phase 6) ---
+
+export function trackProductView(params: {
+  product_id: string;
+  product_name: string;
+  product_price: number;
+  product_category: string;
+}): void {
+  pushEvent({ ...baseFields(), event: 'product_view', ...params });
+}
+
+export function trackAddToCart(params: {
+  product_id: string;
+  product_name: string;
+  product_price: number;
+  quantity: number;
+}): void {
+  pushEvent({ ...baseFields(), event: 'add_to_cart', ...params });
+}
+
+export function trackBeginCheckout(params: { cart_total: number; item_count: number }): void {
+  pushEvent({ ...baseFields(), event: 'begin_checkout', ...params });
+}
+
+export function trackPurchase(params: {
+  order_id: string;
+  order_total: number;
+  item_count: number;
+  products: string;
+}): void {
+  pushEvent({ ...baseFields(), event: 'purchase', ...params });
+}
+
+// --- Subscription demo tracking (Phase 6) ---
+
+export function trackPlanSelect(params: {
+  plan_id: string;
+  plan_name: string;
+  plan_price: number;
+}): void {
+  pushEvent({ ...baseFields(), event: 'plan_select', ...params });
+}
+
+export function trackTrialSignup(params: {
+  plan_id: string;
+  plan_name: string;
+  plan_price: number;
+}): void {
+  pushEvent({ ...baseFields(), event: 'trial_signup', ...params });
+}
+
+// --- Lead gen demo tracking (Phase 6) ---
+
+export function trackFormComplete(params: {
+  form_name: string;
+  partnership_type: string;
+  budget_range: string;
+  company_name: string;
+}): void {
+  pushEvent({ ...baseFields(), event: 'form_complete', ...params });
+}
+
+export function trackLeadQualify(params: {
+  lead_id: string;
+  qualification_tier: string;
+  partnership_type: string;
+  budget_range: string;
+}): void {
+  pushEvent({ ...baseFields(), event: 'lead_qualify', ...params });
+}

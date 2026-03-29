@@ -27,9 +27,9 @@ describe('Header', () => {
     expect(screen.getByRole('link', { name: /contact/i })).toHaveAttribute('href', '/contact');
   });
 
-  it('does not render Demos dropdown in Phase 1', () => {
+  it('renders Demos dropdown trigger', () => {
     render(<Header />);
-    expect(screen.queryByText(/demos/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/demos/i)).toBeInTheDocument();
   });
 
   it('does not render flip-the-card toggle in header (trigger is in layout)', () => {
