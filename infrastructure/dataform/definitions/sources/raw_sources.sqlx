@@ -1,6 +1,0 @@
-config {
-  type: "declaration",
-  schema: "iampatterson_raw",
-  name: "events_raw",
-  description: "Raw event data from sGTM BigQuery tag. 51 columns covering core events, UTM, e-commerce, subscription, and lead gen parameters."
-}
