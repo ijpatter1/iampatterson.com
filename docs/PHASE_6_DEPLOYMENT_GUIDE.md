@@ -48,284 +48,89 @@ npx vercel --prod
 
 ---
 
-## Step 2 — Add Demo Data Layer Variables to Web GTM
+## Step 2 — Import Web GTM Container
 
-The demo events push additional parameters to the data layer that GTM needs to read. Open the web GTM container (`GTM-MWHFMTZN`) at [tagmanager.google.com](https://tagmanager.google.com) and add these Data Layer Variables:
+The updated container is pre-built as an importable JSON file. This adds all Phase 6 variables, triggers, and tags in one step.
 
-| Variable Name | Data Layer Variable Name | Type |
-|---|---|---|
-| `dlv - product_id` | `product_id` | Data Layer Variable |
-| `dlv - product_name` | `product_name` | Data Layer Variable |
-| `dlv - product_price` | `product_price` | Data Layer Variable |
-| `dlv - product_category` | `product_category` | Data Layer Variable |
-| `dlv - quantity` | `quantity` | Data Layer Variable |
-| `dlv - cart_total` | `cart_total` | Data Layer Variable |
-| `dlv - item_count` | `item_count` | Data Layer Variable |
-| `dlv - order_id` | `order_id` | Data Layer Variable |
-| `dlv - order_total` | `order_total` | Data Layer Variable |
-| `dlv - products` | `products` | Data Layer Variable |
-| `dlv - plan_id` | `plan_id` | Data Layer Variable |
-| `dlv - plan_name` | `plan_name` | Data Layer Variable |
-| `dlv - plan_price` | `plan_price` | Data Layer Variable |
-| `dlv - partnership_type` | `partnership_type` | Data Layer Variable |
-| `dlv - budget_range` | `budget_range` | Data Layer Variable |
-| `dlv - company_name` | `company_name` | Data Layer Variable |
-| `dlv - lead_id` | `lead_id` | Data Layer Variable |
-| `dlv - qualification_tier` | `qualification_tier` | Data Layer Variable |
+**File:** `infrastructure/gtm/web-container-import.json`
 
-These variables are used by the GA4 event tags in the next step to pass event-specific parameters through to sGTM.
+**What it adds (on top of existing Phase 1 config):**
+- 18 new Data Layer Variables (product_id, product_name, product_price, product_category, quantity, cart_total, item_count, order_id, order_total, products, plan_id, plan_name, plan_price, partnership_type, budget_range, company_name, lead_id, qualification_tier)
+- 8 new Custom Event triggers (product_view, add_to_cart, begin_checkout, purchase, plan_select, trial_signup, form_complete, lead_qualify)
+- 8 new GA4 Event tags, each using the shared_event_settings variable for base params + event-specific parameters
+- New folder "Phase 6 - Demo Events" for organizational clarity
 
----
+**Import steps:**
 
-## Step 3 — Add Demo Triggers to Web GTM
+1. Open GTM at [tagmanager.google.com](https://tagmanager.google.com), select container `GTM-MWHFMTZN`
+2. Go to **Admin** → **Import Container**
+3. Click **Choose container file** and select `infrastructure/gtm/web-container-import.json`
+4. Select **Existing workspace** → Default Workspace
+5. Choose **Merge** → **Rename conflicting tags, triggers, and variables**
+   - This preserves your existing Phase 1 config and adds the Phase 6 items alongside it
+   - If the existing tags have been manually modified since Phase 1, "Rename" ensures nothing is overwritten
+6. Review the preview — you should see 18 variables, 8 triggers, and 8 tags being added
+7. Click **Confirm**
 
-Add 7 Custom Event triggers to the web GTM container:
-
-| Trigger Name | Event Name | Notes |
-|---|---|---|
-| `ce - product_view` | `product_view` | Fires when a product detail page loads |
-| `ce - add_to_cart` | `add_to_cart` | Fires when "Add to Cart" is clicked |
-| `ce - begin_checkout` | `begin_checkout` | Fires once when checkout page loads with items |
-| `ce - purchase` | `purchase` | Fires on "Complete Purchase" submit |
-| `ce - plan_select` | `plan_select` | Fires when a subscription plan CTA is clicked |
-| `ce - trial_signup` | `trial_signup` | Fires on trial signup form submit |
-| `ce - form_complete` | `form_complete` | Fires on partnership inquiry form submit |
-| `ce - lead_qualify` | `lead_qualify` | Fires immediately after form_complete with qualification data |
-
-Each trigger uses the exact `event` value pushed to the data layer by the frontend code.
+> **Note:** If you prefer a clean slate, you can choose **Overwrite** instead of Merge. This replaces the entire container with the import file, which includes all Phase 1 + Phase 6 config. Only do this if you haven't made manual changes to the live container beyond what's in the import file.
 
 ---
 
-## Step 4 — Add Demo GA4 Event Tags to Web GTM
+## Step 3 — Import sGTM Container
 
-Add 7 GA4 Event tags, one per trigger. Each tag follows the same pattern as the existing Phase 1 tags — the event name matches the trigger, and all relevant parameters are passed via the data layer variables.
+**File:** `infrastructure/gtm/server-container-import.json`
 
-### E-Commerce Tags
+**What it adds (on top of existing config):**
+- 1 new trigger: `ce - conversions` (fires on `purchase`, `trial_signup`, or `form_complete` events only)
+- 2 new tags: `Meta CAPI - Simulated` and `Google Ads Enhanced Conversions - Simulated`
+- New folder "Phase 6 - Simulated Ad Platforms"
 
-**GA4 - product_view**
-- Type: GA4 Event
-- Event Name: `product_view`
-- Firing Trigger: `ce - product_view`
-- Consent: `analytics_storage` required
-- Parameters:
+**Import steps:**
 
-| Parameter Name | Value |
-|---|---|
-| `iap_source` | `{{dlv - iap_source}}` |
-| `timestamp` | `{{dlv - timestamp}}` |
-| `session_id` | `{{dlv - session_id}}` |
-| `page_path` | `{{dlv - page_path}}` |
-| `page_title` | `{{dlv - page_title}}` |
-| `product_id` | `{{dlv - product_id}}` |
-| `product_name` | `{{dlv - product_name}}` |
-| `product_price` | `{{dlv - product_price}}` |
-| `product_category` | `{{dlv - product_category}}` |
-| `consent_analytics` | `{{dlv - consent_analytics}}` |
-| `consent_marketing` | `{{dlv - consent_marketing}}` |
-| `consent_preferences` | `{{dlv - consent_preferences}}` |
+1. Open the sGTM container (`GTM-NTTKZFWD`) on Stape
+2. Go to **Admin** → **Import Container**
+3. Select `infrastructure/gtm/server-container-import.json`
+4. Choose **Merge** → **Rename conflicting tags, triggers, and variables**
+5. Review and confirm
 
-**GA4 - add_to_cart**
-- Firing Trigger: `ce - add_to_cart`
-- Consent: `analytics_storage` required
-- Parameters: base fields (iap_source, timestamp, session_id, page_path, page_title, consent_*) plus:
+**Important — Simulated ad platform tags require manual template attachment:**
 
-| Parameter Name | Value |
-|---|---|
-| `product_id` | `{{dlv - product_id}}` |
-| `product_name` | `{{dlv - product_name}}` |
-| `product_price` | `{{dlv - product_price}}` |
-| `quantity` | `{{dlv - quantity}}` |
+The two simulated tags (`Meta CAPI - Simulated` and `Google Ads Enhanced Conversions - Simulated`) are imported as placeholder tags of type `CUSTOM`. After import, you need to:
 
-**GA4 - begin_checkout**
-- Firing Trigger: `ce - begin_checkout`
-- Consent: `analytics_storage` required
-- Parameters: base fields plus:
+1. Open each tag in the sGTM workspace
+2. Create or attach a custom sGTM template (sandboxed JavaScript)
+3. The template should read `getAllEventData()` and log the simulated payload to the sGTM console via `logToConsole()`
 
-| Parameter Name | Value |
-|---|---|
-| `cart_total` | `{{dlv - cart_total}}` |
-| `item_count` | `{{dlv - item_count}}` |
+**Meta CAPI template behavior:**
+- Maps event names: `purchase` → `Purchase`, `add_to_cart` → `AddToCart`, `begin_checkout` → `InitiateCheckout`, `trial_signup` → `StartTrial`, `form_complete` → `Lead`
+- Builds the Meta CAPI payload structure (event_name, event_time, event_source_url, user_data with hashed placeholders, custom_data with value/currency)
+- Logs with prefix `[SIMULATED] Meta CAPI:`
+- **Does not make any HTTP request**
 
-**GA4 - purchase**
-- Firing Trigger: `ce - purchase`
-- Consent: `analytics_storage` required
-- Parameters: base fields plus:
+**Google Ads EC template behavior:**
+- Builds Enhanced Conversions payload (conversion_action, conversion_value, currency_code, order_id, hashed user_data)
+- Logs with prefix `[SIMULATED] Google Ads EC:`
+- **Does not make any HTTP request**
 
-| Parameter Name | Value |
-|---|---|
-| `order_id` | `{{dlv - order_id}}` |
-| `order_total` | `{{dlv - order_total}}` |
-| `item_count` | `{{dlv - item_count}}` |
-| `products` | `{{dlv - products}}` |
+> **Why simulate?** There are no real Meta or Google Ads accounts connected to this demo. The simulation shows prospects exactly what payload would be sent to each platform, making the server-side delivery visible in the flip-the-card overlay.
 
-### Subscription Tags
-
-**GA4 - plan_select**
-- Firing Trigger: `ce - plan_select`
-- Consent: `analytics_storage` required
-- Parameters: base fields plus:
-
-| Parameter Name | Value |
-|---|---|
-| `plan_id` | `{{dlv - plan_id}}` |
-| `plan_name` | `{{dlv - plan_name}}` |
-| `plan_price` | `{{dlv - plan_price}}` |
-
-**GA4 - trial_signup**
-- Firing Trigger: `ce - trial_signup`
-- Consent: `analytics_storage` required
-- Parameters: base fields plus:
-
-| Parameter Name | Value |
-|---|---|
-| `plan_id` | `{{dlv - plan_id}}` |
-| `plan_name` | `{{dlv - plan_name}}` |
-| `plan_price` | `{{dlv - plan_price}}` |
-
-### Lead Gen Tags
-
-**GA4 - form_complete**
-- Firing Trigger: `ce - form_complete`
-- Consent: `analytics_storage` required
-- Parameters: base fields plus:
-
-| Parameter Name | Value |
-|---|---|
-| `form_name` | `{{dlv - form_name}}` |
-| `partnership_type` | `{{dlv - partnership_type}}` |
-| `budget_range` | `{{dlv - budget_range}}` |
-| `company_name` | `{{dlv - company_name}}` |
-
-**GA4 - lead_qualify**
-- Firing Trigger: `ce - lead_qualify`
-- Consent: `analytics_storage` required
-- Parameters: base fields plus:
-
-| Parameter Name | Value |
-|---|---|
-| `lead_id` | `{{dlv - lead_id}}` |
-| `qualification_tier` | `{{dlv - qualification_tier}}` |
-| `partnership_type` | `{{dlv - partnership_type}}` |
-| `budget_range` | `{{dlv - budget_range}}` |
-
-> **Note:** "Base fields" in all tags above means: `iap_source`, `timestamp`, `session_id`, `page_path`, `page_title`, `consent_analytics`, `consent_marketing`, `consent_preferences`. These are identical across all tags and use the same data layer variables as the Phase 1 tags.
+**No changes needed to existing sGTM tags.** The three existing tags (GA4 Forwarding, BigQuery Write, Pub/Sub Publish) fire on "All GA4 Events" and will automatically process all new demo events.
 
 ---
 
-## Step 5 — Add Demo Triggers to sGTM
+## Step 4 — Publish GTM Containers
 
-Open the sGTM container (`GTM-NTTKZFWD`) on Stape and add 7 Custom Event triggers. These match the web container triggers but run server-side:
-
-| Trigger Name | Event Name | Filter |
-|---|---|---|
-| `ce - product_view` | `product_view` | Client Name contains "GA4" |
-| `ce - add_to_cart` | `add_to_cart` | Client Name contains "GA4" |
-| `ce - begin_checkout` | `begin_checkout` | Client Name contains "GA4" |
-| `ce - purchase` | `purchase` | Client Name contains "GA4" |
-| `ce - plan_select` | `plan_select` | Client Name contains "GA4" |
-| `ce - trial_signup` | `trial_signup` | Client Name contains "GA4" |
-| `ce - form_complete` | `form_complete` | Client Name contains "GA4" |
-| `ce - lead_qualify` | `lead_qualify` | Client Name contains "GA4" |
-
-**No changes needed to existing sGTM tags.** The three existing tags fire on "All GA4 Events" and will automatically process the new demo events:
-
-- **GA4 - Forwarding** → forwards to GA4 via Measurement Protocol (all event params included)
-- **BigQuery - Write All Events** → writes to `events_raw` via `getAllEventData()` (all demo columns already exist in schema)
-- **Pub/Sub - Publish All Events** → publishes to `iampatterson-events` topic (drives the flip-the-card overlay)
-
-The demo-specific triggers are for the two new simulated tags in the next step, and for future use if event-specific routing logic is needed.
-
----
-
-## Step 6 — Add Simulated Ad Platform Tags to sGTM
-
-These tags demonstrate what real Meta CAPI and Google Ads Enhanced Conversions payloads would look like, without actually sending data to those platforms. They are visible in the flip-the-card overlay's routing section.
-
-### Meta CAPI — Simulated
-
-Create a **Custom HTML tag** (or Custom Template if you prefer) that logs the Meta Conversions API payload:
-
-- **Tag Name:** `Meta CAPI - Simulated`
-- **Firing Triggers:** `ce - purchase`, `ce - trial_signup`, `ce - form_complete` (conversion events only)
-- **Consent:** `ad_storage` and `ad_user_data` required
-
-**Behavior:** The tag should:
-1. Read the event data via `getAllEventData()`
-2. Build the Meta CAPI payload structure:
-   ```json
-   {
-     "event_name": "Purchase",
-     "event_time": 1711929600,
-     "event_source_url": "https://iampatterson-com.vercel.app/demo/ecommerce/confirmation",
-     "user_data": {
-       "em": "[hashed]",
-       "fn": "[hashed]",
-       "ln": "[hashed]"
-     },
-     "custom_data": {
-       "currency": "USD",
-       "value": 49.98,
-       "content_ids": ["tuna-plush"],
-       "content_type": "product"
-     },
-     "action_source": "website"
-   }
-   ```
-3. Log the payload to the sGTM console (via `logToConsole()`) with the prefix `[SIMULATED] Meta CAPI:`
-4. **Do not make any HTTP request.** This is simulation only.
-
-**Event name mapping for Meta:**
-
-| sGTM Event | Meta Event Name |
-|---|---|
-| `purchase` | `Purchase` |
-| `add_to_cart` | `AddToCart` |
-| `begin_checkout` | `InitiateCheckout` |
-| `trial_signup` | `StartTrial` |
-| `form_complete` | `Lead` |
-
-### Google Ads Enhanced Conversions — Simulated
-
-- **Tag Name:** `Google Ads Enhanced Conversions - Simulated`
-- **Firing Triggers:** `ce - purchase`, `ce - trial_signup` (high-value conversion events)
-- **Consent:** `ad_storage` and `ad_user_data` required
-
-**Behavior:** The tag should:
-1. Read event data via `getAllEventData()`
-2. Build the Enhanced Conversions payload:
-   ```json
-   {
-     "conversion_action": "demo_purchase",
-     "conversion_value": 49.98,
-     "currency_code": "USD",
-     "order_id": "ORD-ABC123",
-     "user_data": {
-       "sha256_email_address": "[hashed]",
-       "sha256_first_name": "[hashed]",
-       "sha256_last_name": "[hashed]"
-     }
-   }
-   ```
-3. Log to sGTM console with prefix `[SIMULATED] Google Ads EC:`
-4. **Do not make any HTTP request.**
-
-> **Why simulate?** There are no real Meta or Google Ads accounts connected to this demo. The simulation shows prospects exactly what payload would be sent to each platform, making the server-side delivery visible in the flip-the-card overlay. The Pub/Sub tag already captures the routing result (destination: `meta_capi` or `google_ads`, status: `simulated`) and streams it to the browser.
-
----
-
-## Step 7 — Publish GTM Containers
-
-After adding all variables, triggers, and tags:
+After importing both containers:
 
 1. **Web GTM (`GTM-MWHFMTZN`)**
    - Open the workspace in GTM
-   - Review the container summary: should show 18 new items (18 variables, 7 triggers, 7 tags)
+   - Review the container summary: should show the newly imported items (18 variables, 8 triggers, 8 tags)
    - Click **Submit** → name the version "Phase 6 — Demo event tags"
    - **Publish**
 
 2. **sGTM (`GTM-NTTKZFWD`)**
    - Open the workspace in sGTM on Stape
-   - Review: should show 7 new triggers + 2 new tags
+   - Review: should show 1 new trigger + 2 new tags
    - Click **Submit** → name the version "Phase 6 — Demo triggers + simulated ad tags"
    - **Publish**
 
@@ -333,11 +138,11 @@ After adding all variables, triggers, and tags:
 
 ---
 
-## Step 8 — Verify the Event Pipeline End-to-End
+## Step 5 — Verify the Event Pipeline End-to-End
 
 After both containers are published, test the full pipeline:
 
-### 8a. Browser → GTM → sGTM
+### 5a. Browser → GTM → sGTM
 
 1. Open `https://iampatterson-com.vercel.app/demo/ecommerce` in a new incognito window
 2. Accept the Cookiebot consent banner (grant all categories)
@@ -352,13 +157,13 @@ After both containers are published, test the full pipeline:
 11. Click "Complete Purchase"
 12. Verify `purchase` appears with `order_id`, `order_total`, `products`
 
-### 8b. sGTM → GA4
+### 5b. sGTM → GA4
 
 1. Open GA4 Realtime report (`G-9M2G3RLHWF`)
 2. Confirm demo events appear: `product_view`, `add_to_cart`, `purchase`, etc.
 3. Verify event parameters are populated (click into an event to see parameter values)
 
-### 8c. sGTM → BigQuery
+### 5c. sGTM → BigQuery
 
 1. Open BigQuery console → `iampatterson.iampatterson_raw.events_raw`
 2. Run:
@@ -371,7 +176,7 @@ After both containers are published, test the full pipeline:
    ```
 3. Confirm your demo events appear with populated demo-specific columns
 
-### 8d. sGTM → Pub/Sub → Flip-the-Card Overlay
+### 5d. sGTM → Pub/Sub → Flip-the-Card Overlay
 
 1. Open `https://iampatterson-com.vercel.app/demo/ecommerce`
 2. Click the flip-the-card toggle (bottom-right button)
@@ -384,14 +189,14 @@ After both containers are published, test the full pipeline:
    - Google Ads: simulated (if consent_marketing is granted)
 6. Repeat for subscription demo (`/demo/subscription`) and lead gen demo (`/demo/leadgen`)
 
-### 8e. Subscription Demo
+### 5e. Subscription Demo
 
 1. Navigate to `/demo/subscription`
 2. Click "Start Free Trial" on any plan → verify `plan_select` fires
 3. Submit the signup form → verify `trial_signup` fires
 4. On the dashboard, click Upgrade/Downgrade/Cancel → verify `click_cta` fires
 
-### 8f. Lead Gen Demo
+### 5f. Lead Gen Demo
 
 1. Navigate to `/demo/leadgen`
 2. Click into the first form field → verify `form_start` fires (once)
@@ -401,35 +206,20 @@ After both containers are published, test the full pipeline:
 
 ---
 
-## Step 9 — Update Container Spec Files
+## Step 6 — Verify Spec Files Are Up to Date
 
-After the live GTM containers are configured and verified, update the spec files in the repo to reflect the current state:
+The container spec files and import files in the repo have already been updated with Phase 6 additions:
 
-1. **Update `infrastructure/gtm/web-container.json`:**
-   - Add the 18 new data layer variables to the `variables` array
-   - Add the 7 new triggers to the `triggers` array
-   - Add the 7 new GA4 event tags to the `tags` array
-   - Update `_meta.description` to reference Phase 6
+- `infrastructure/gtm/web-container.json` — 18 new variables, 8 triggers, 8 tags added
+- `infrastructure/gtm/server-container.json` — `phase6Additions` stub replaced with actual triggers + simulated tags
+- `infrastructure/gtm/web-container-import.json` — importable JSON with all Phase 1 + Phase 6 config
+- `infrastructure/gtm/server-container-import.json` — importable JSON with all config including simulated tags
 
-2. **Update `infrastructure/gtm/server-container.json`:**
-   - Add the 7 new triggers to the `triggers` array
-   - Add the 2 simulated ad platform tags to the `tags` array
-   - Remove the `phase6Additions` section (now integrated into the main spec)
-   - Update `_meta.description` to reference Phase 6
-
-3. **Regenerate import files** (if the team uses them):
-   - `infrastructure/gtm/web-container-import.json`
-   - `infrastructure/gtm/server-container-import.json`
-
-4. **Commit:**
-   ```bash
-   git add infrastructure/gtm/
-   git commit -m "feat(gtm): update container specs with Phase 6 demo event tags"
-   ```
+No further spec file changes needed unless you make manual modifications in the GTM UI after import.
 
 ---
 
-## Step 10 — Update Phase Status
+## Step 7 — Update Phase Status
 
 After all steps are verified:
 

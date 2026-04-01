@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "description": "sGTM Server Container configuration spec for iampatterson.com Phase 1-2",
+    "description": "sGTM Server Container configuration spec for iampatterson.com Phase 1-2 + Phase 6 Demo Events",
     "containerId": "GTM-NTTKZFWD",
     "sgtmUrl": "io.iampatterson.com",
     "ga4MeasurementId": "G-9M2G3RLHWF",
@@ -75,6 +75,15 @@
       "type": "customEvent",
       "eventName": "consent_update",
       "filter": { "clientName": "contains 'GA4'" }
+    },
+    {
+      "name": "ce - conversions",
+      "type": "always",
+      "filter": [
+        { "clientName": "contains 'GA4'" },
+        { "eventName": "matches regex '^(purchase|trial_signup|form_complete)$'" }
+      ],
+      "note": "Fires on conversion events only. Used by simulated ad platform tags."
     }
   ],
 
@@ -138,31 +147,20 @@
       "firingTrigger": "All GA4 Events",
       "consentRequirement": "none — this tag fires on all events regardless of consent state (the consent field in the payload records the state for downstream consumers)",
       "note": "Publishes every event to Pub/Sub for the real-time SSE pipeline. The Cloud Run event-stream service (infrastructure/cloud-run/event-stream/) subscribes via a push subscription and routes events to the matching browser session. The message is base64-encoded JSON in the Pub/Sub message envelope. See infrastructure/pubsub/README.md for the full message schema."
+    },
+    {
+      "name": "Meta CAPI - Simulated",
+      "type": "Custom tag (sGTM sandboxed JS template)",
+      "firingTrigger": "ce - conversions",
+      "consentSettings": { "ad_storage": "required", "ad_user_data": "required" },
+      "note": "Simulated Meta Conversions API tag. Logs the payload that would be sent to Meta's /events endpoint without making an HTTP request. Maps: purchase→Purchase, add_to_cart→AddToCart, trial_signup→StartTrial, form_complete→Lead. Requires a custom sGTM template to be created and attached after import."
+    },
+    {
+      "name": "Google Ads Enhanced Conversions - Simulated",
+      "type": "Custom tag (sGTM sandboxed JS template)",
+      "firingTrigger": "ce - conversions",
+      "consentSettings": { "ad_storage": "required", "ad_user_data": "required" },
+      "note": "Simulated Google Ads Enhanced Conversions tag. Logs the conversion payload (conversion_action, value, order_id, hashed user_data) without making an HTTP request. Requires a custom sGTM template to be created and attached after import."
     }
-  ],
-
-  "phase6Additions": {
-    "note": "These will be added when Phase 6 (Demo Front-Ends) ships.",
-    "triggers": [
-      { "name": "ce - product_view", "eventName": "product_view" },
-      { "name": "ce - add_to_cart", "eventName": "add_to_cart" },
-      { "name": "ce - purchase", "eventName": "purchase" },
-      { "name": "ce - trial_signup", "eventName": "trial_signup" },
-      { "name": "ce - plan_select", "eventName": "plan_select" },
-      { "name": "ce - form_complete", "eventName": "form_complete" },
-      { "name": "ce - lead_qualify", "eventName": "lead_qualify" }
-    ],
-    "tags": [
-      {
-        "name": "Meta CAPI - Simulated",
-        "type": "Custom tag",
-        "note": "Simulated Meta Conversions API tag. Logs the payload that would be sent to Meta's /events endpoint without actually sending. Shows event_name, event_time, user_data hash, custom_data in the flip-the-card overlay."
-      },
-      {
-        "name": "Google Ads Enhanced Conversions - Simulated",
-        "type": "Custom tag",
-        "note": "Simulated Google Ads Enhanced Conversions tag. Logs the conversion payload for demonstration purposes."
-      }
-    ]
-  }
+  ]
 }

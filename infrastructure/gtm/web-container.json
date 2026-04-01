@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "description": "GTM Web Container configuration spec for iampatterson.com Phase 1",
+    "description": "GTM Web Container configuration spec for iampatterson.com Phase 1 + Phase 6 Demo Events",
     "containerId": "GTM-MWHFMTZN",
     "sgtmUrl": "io.iampatterson.com",
     "ga4MeasurementId": "G-9M2G3RLHWF",
@@ -120,6 +120,36 @@
       "type": "dataLayer",
       "dataLayerVariable": "iap_session_id",
       "note": "Session ID that survives GA4 remapping — GA4 remaps session_id to ga_session_id and overwrites it on cookieless pings"
+    },
+    { "name": "dlv - product_id", "type": "dataLayer", "dataLayerVariable": "product_id" },
+    { "name": "dlv - product_name", "type": "dataLayer", "dataLayerVariable": "product_name" },
+    { "name": "dlv - product_price", "type": "dataLayer", "dataLayerVariable": "product_price" },
+    {
+      "name": "dlv - product_category",
+      "type": "dataLayer",
+      "dataLayerVariable": "product_category"
+    },
+    { "name": "dlv - quantity", "type": "dataLayer", "dataLayerVariable": "quantity" },
+    { "name": "dlv - cart_total", "type": "dataLayer", "dataLayerVariable": "cart_total" },
+    { "name": "dlv - item_count", "type": "dataLayer", "dataLayerVariable": "item_count" },
+    { "name": "dlv - order_id", "type": "dataLayer", "dataLayerVariable": "order_id" },
+    { "name": "dlv - order_total", "type": "dataLayer", "dataLayerVariable": "order_total" },
+    { "name": "dlv - products", "type": "dataLayer", "dataLayerVariable": "products" },
+    { "name": "dlv - plan_id", "type": "dataLayer", "dataLayerVariable": "plan_id" },
+    { "name": "dlv - plan_name", "type": "dataLayer", "dataLayerVariable": "plan_name" },
+    { "name": "dlv - plan_price", "type": "dataLayer", "dataLayerVariable": "plan_price" },
+    {
+      "name": "dlv - partnership_type",
+      "type": "dataLayer",
+      "dataLayerVariable": "partnership_type"
+    },
+    { "name": "dlv - budget_range", "type": "dataLayer", "dataLayerVariable": "budget_range" },
+    { "name": "dlv - company_name", "type": "dataLayer", "dataLayerVariable": "company_name" },
+    { "name": "dlv - lead_id", "type": "dataLayer", "dataLayerVariable": "lead_id" },
+    {
+      "name": "dlv - qualification_tier",
+      "type": "dataLayer",
+      "dataLayerVariable": "qualification_tier"
     }
   ],
 
@@ -164,7 +194,15 @@
       "name": "ce - consent_update",
       "type": "customEvent",
       "eventName": "consent_update"
-    }
+    },
+    { "name": "ce - product_view", "type": "customEvent", "eventName": "product_view" },
+    { "name": "ce - add_to_cart", "type": "customEvent", "eventName": "add_to_cart" },
+    { "name": "ce - begin_checkout", "type": "customEvent", "eventName": "begin_checkout" },
+    { "name": "ce - purchase", "type": "customEvent", "eventName": "purchase" },
+    { "name": "ce - plan_select", "type": "customEvent", "eventName": "plan_select" },
+    { "name": "ce - trial_signup", "type": "customEvent", "eventName": "trial_signup" },
+    { "name": "ce - form_complete", "type": "customEvent", "eventName": "form_complete" },
+    { "name": "ce - lead_qualify", "type": "customEvent", "eventName": "lead_qualify" }
   ],
 
   "tags": [
@@ -332,6 +370,105 @@
       "consentSettings": {
         "note": "No consent requirement — consent_update must fire regardless of consent state to track the consent change itself"
       }
+    },
+
+    {
+      "name": "GA4 - product_view",
+      "type": "GA4 Event (gaawe)",
+      "eventName": "product_view",
+      "parameters": {
+        "product_id": "{{dlv - product_id}}",
+        "product_name": "{{dlv - product_name}}",
+        "product_price": "{{dlv - product_price}}",
+        "product_category": "{{dlv - product_category}}"
+      },
+      "firingTrigger": "ce - product_view",
+      "consentSettings": { "analytics_storage": "required" },
+      "note": "Base params (iap_source, timestamp, session_id, page_path, page_title, consent_*) inherited via shared_event_settings"
+    },
+    {
+      "name": "GA4 - add_to_cart",
+      "type": "GA4 Event (gaawe)",
+      "eventName": "add_to_cart",
+      "parameters": {
+        "product_id": "{{dlv - product_id}}",
+        "product_name": "{{dlv - product_name}}",
+        "product_price": "{{dlv - product_price}}",
+        "quantity": "{{dlv - quantity}}"
+      },
+      "firingTrigger": "ce - add_to_cart",
+      "consentSettings": { "analytics_storage": "required" }
+    },
+    {
+      "name": "GA4 - begin_checkout",
+      "type": "GA4 Event (gaawe)",
+      "eventName": "begin_checkout",
+      "parameters": { "cart_total": "{{dlv - cart_total}}", "item_count": "{{dlv - item_count}}" },
+      "firingTrigger": "ce - begin_checkout",
+      "consentSettings": { "analytics_storage": "required" }
+    },
+    {
+      "name": "GA4 - purchase",
+      "type": "GA4 Event (gaawe)",
+      "eventName": "purchase",
+      "parameters": {
+        "order_id": "{{dlv - order_id}}",
+        "order_total": "{{dlv - order_total}}",
+        "item_count": "{{dlv - item_count}}",
+        "products": "{{dlv - products}}"
+      },
+      "firingTrigger": "ce - purchase",
+      "consentSettings": { "analytics_storage": "required" }
+    },
+    {
+      "name": "GA4 - plan_select",
+      "type": "GA4 Event (gaawe)",
+      "eventName": "plan_select",
+      "parameters": {
+        "plan_id": "{{dlv - plan_id}}",
+        "plan_name": "{{dlv - plan_name}}",
+        "plan_price": "{{dlv - plan_price}}"
+      },
+      "firingTrigger": "ce - plan_select",
+      "consentSettings": { "analytics_storage": "required" }
+    },
+    {
+      "name": "GA4 - trial_signup",
+      "type": "GA4 Event (gaawe)",
+      "eventName": "trial_signup",
+      "parameters": {
+        "plan_id": "{{dlv - plan_id}}",
+        "plan_name": "{{dlv - plan_name}}",
+        "plan_price": "{{dlv - plan_price}}"
+      },
+      "firingTrigger": "ce - trial_signup",
+      "consentSettings": { "analytics_storage": "required" }
+    },
+    {
+      "name": "GA4 - form_complete",
+      "type": "GA4 Event (gaawe)",
+      "eventName": "form_complete",
+      "parameters": {
+        "form_name": "{{dlv - form_name}}",
+        "partnership_type": "{{dlv - partnership_type}}",
+        "budget_range": "{{dlv - budget_range}}",
+        "company_name": "{{dlv - company_name}}"
+      },
+      "firingTrigger": "ce - form_complete",
+      "consentSettings": { "analytics_storage": "required" }
+    },
+    {
+      "name": "GA4 - lead_qualify",
+      "type": "GA4 Event (gaawe)",
+      "eventName": "lead_qualify",
+      "parameters": {
+        "lead_id": "{{dlv - lead_id}}",
+        "qualification_tier": "{{dlv - qualification_tier}}",
+        "partnership_type": "{{dlv - partnership_type}}",
+        "budget_range": "{{dlv - budget_range}}"
+      },
+      "firingTrigger": "ce - lead_qualify",
+      "consentSettings": { "analytics_storage": "required" }
     }
   ]
 }

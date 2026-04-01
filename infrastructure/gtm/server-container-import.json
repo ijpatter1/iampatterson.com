@@ -80,6 +80,54 @@
         "consentSettings": {
           "consentStatus": "NOT_SET"
         }
+      },
+      {
+        "accountId": "0",
+        "containerId": "0",
+        "tagId": "2",
+        "name": "Meta CAPI - Simulated",
+        "type": "CUSTOM",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "__comments",
+            "value": "PLACEHOLDER: Requires custom sGTM template. After import, attach the Meta CAPI simulation template. This tag logs simulated Meta Conversions API payloads for purchase, trial_signup, and form_complete events. Maps event names: purchase→Purchase, add_to_cart→AddToCart, begin_checkout→InitiateCheckout, trial_signup→StartTrial, form_complete→Lead. Includes hashed user_data placeholders and custom_data with currency/value."
+          }
+        ],
+        "fingerprint": "1711411200201",
+        "firingTriggerId": ["2"],
+        "parentFolderId": "2",
+        "tagFiringOption": "ONCE_PER_EVENT",
+        "monitoringMetadata": {
+          "type": "MAP"
+        },
+        "consentSettings": {
+          "consentStatus": "NOT_SET"
+        }
+      },
+      {
+        "accountId": "0",
+        "containerId": "0",
+        "tagId": "3",
+        "name": "Google Ads Enhanced Conversions - Simulated",
+        "type": "CUSTOM",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "__comments",
+            "value": "PLACEHOLDER: Requires custom sGTM template. After import, attach the Google Ads Enhanced Conversions simulation template. This tag logs simulated Enhanced Conversions payloads for purchase, trial_signup, and form_complete events. Includes conversion_action, conversion_value, currency_code, order_id, and hashed user identifiers."
+          }
+        ],
+        "fingerprint": "1711411200202",
+        "firingTriggerId": ["2"],
+        "parentFolderId": "2",
+        "tagFiringOption": "ONCE_PER_EVENT",
+        "monitoringMetadata": {
+          "type": "MAP"
+        },
+        "consentSettings": {
+          "consentStatus": "NOT_SET"
+        }
       }
     ],
     "trigger": [
@@ -107,6 +155,46 @@
           }
         ],
         "fingerprint": "1711411200100"
+      },
+      {
+        "accountId": "0",
+        "containerId": "0",
+        "triggerId": "2",
+        "name": "ce - conversions",
+        "type": "ALWAYS",
+        "filter": [
+          {
+            "type": "CONTAINS",
+            "parameter": [
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{Client Name}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "GA4"
+              }
+            ]
+          },
+          {
+            "type": "MATCH_REGEX",
+            "parameter": [
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{Event Name}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "^(purchase|trial_signup|form_complete)$"
+              }
+            ]
+          }
+        ],
+        "fingerprint": "1711411200110"
       }
     ],
     "variable": [],
@@ -117,6 +205,13 @@
         "folderId": "1",
         "name": "GA4",
         "fingerprint": "1711411200200"
+      },
+      {
+        "accountId": "0",
+        "containerId": "0",
+        "folderId": "2",
+        "name": "Phase 6 - Simulated Ad Platforms",
+        "fingerprint": "1711411200300"
       }
     ]
   }
