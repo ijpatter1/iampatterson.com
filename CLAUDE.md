@@ -18,7 +18,7 @@ This is the consulting website for Patterson Consulting **and** a live, interact
 
 ## Current Phase
 
-**Phase 6 — Three Demo Front-Ends** (in progress — front-end deliverables complete, GTM container updates remaining)
+**Phase 6 — Three Demo Front-Ends** (COMPLETE — all deliverables shipped, GTM containers published, sGTM self-hosted on Cloud Run)
 
 See `docs/REQUIREMENTS.md` for the full 10-phase development plan.
 See `docs/ARCHITECTURE.md` for technical architecture details.
