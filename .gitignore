@@ -104,3 +104,4 @@ sandbox/tmp/
 *.tmp
 *.temp
 docs/tag_assistant_*.json
+docs/scratchpad.md
