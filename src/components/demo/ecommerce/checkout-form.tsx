@@ -18,6 +18,22 @@ export function CheckoutForm() {
     }
   }, [items.length, total, itemCount]);
 
+  if (items.length === 0) {
+    return (
+      <div className="mx-auto max-w-lg py-12 text-center">
+        <p className="mb-4 text-neutral-600">
+          Your cart is empty. Add some items before checking out.
+        </p>
+        <a
+          href="/demo/ecommerce"
+          className="text-sm font-medium text-neutral-900 underline hover:text-neutral-700"
+        >
+          Back to The Tuna Shop
+        </a>
+      </div>
+    );
+  }
+
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 

@@ -157,7 +157,7 @@ describe('Lead gen demo events', () => {
     it('pushes a lead_qualify event with qualification data', () => {
       trackLeadQualify({
         lead_id: 'LEAD-001',
-        qualification_tier: 'hot',
+        qualification_tier: 'high',
         partnership_type: 'sponsored_content',
         budget_range: '15k_50k',
       });
@@ -165,7 +165,7 @@ describe('Lead gen demo events', () => {
       expect(window.dataLayer[0]).toMatchObject({
         event: 'lead_qualify',
         lead_id: 'LEAD-001',
-        qualification_tier: 'hot',
+        qualification_tier: 'high',
         partnership_type: 'sponsored_content',
         budget_range: '15k_50k',
       });
@@ -208,7 +208,7 @@ describe('All demo events include base fields', () => {
   it('lead_qualify includes all base fields', () => {
     trackLeadQualify({
       lead_id: 'LEAD-002',
-      qualification_tier: 'warm',
+      qualification_tier: 'medium',
       partnership_type: 'licensing',
       budget_range: '5k_15k',
     });

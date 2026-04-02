@@ -1,6 +1,7 @@
 /**
  * @jest-environment jsdom
  */
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
@@ -9,7 +10,7 @@ import { ProductDetail } from '@/components/demo/ecommerce/product-detail';
 import { CartView } from '@/components/demo/ecommerce/cart-view';
 import { CheckoutForm } from '@/components/demo/ecommerce/checkout-form';
 import { OrderConfirmation } from '@/components/demo/ecommerce/order-confirmation';
-import { CartProvider } from '@/components/demo/ecommerce/cart-context';
+import { CartProvider, useCart } from '@/components/demo/ecommerce/cart-context';
 import { products, getProduct } from '@/lib/demo/products';
 
 jest.mock('next/navigation', () => ({
@@ -139,11 +140,33 @@ describe('CartView', () => {
   });
 });
 
+function AddItemThenCheckout() {
+  const { addItem } = useCart();
+  React.useEffect(() => {
+    addItem({
+      product_id: 'tuna-plush',
+      product_name: 'Tuna Plush Toy',
+      product_price: 24.99,
+      quantity: 1,
+    });
+  }, [addItem]);
+  return <CheckoutForm />;
+}
+
 describe('CheckoutForm', () => {
-  it('renders shipping form fields', () => {
+  it('shows empty state when cart has no items', () => {
     render(
       <CartProvider>
         <CheckoutForm />
+      </CartProvider>,
+    );
+    expect(screen.getByText(/cart is empty/i)).toBeInTheDocument();
+  });
+
+  it('renders shipping form fields when cart has items', () => {
+    render(
+      <CartProvider>
+        <AddItemThenCheckout />
       </CartProvider>,
     );
     expect(screen.getByLabelText(/first name/i)).toBeInTheDocument();
@@ -151,10 +174,10 @@ describe('CheckoutForm', () => {
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
   });
 
-  it('renders Complete Purchase button', () => {
+  it('renders Complete Purchase button when cart has items', () => {
     render(
       <CartProvider>
-        <CheckoutForm />
+        <AddItemThenCheckout />
       </CartProvider>,
     );
     expect(screen.getByRole('button', { name: /complete purchase/i })).toBeInTheDocument();
