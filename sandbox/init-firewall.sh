@@ -56,6 +56,7 @@ GCLOUD_DOMAINS=(
     "cloudresourcemanager.googleapis.com"
     "iam.googleapis.com"
     "dataform.googleapis.com"
+    "tagmanager.googleapis.com"
 )
 
 # Domains for CMP and sGTM — uncomment when configuring these services
