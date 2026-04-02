@@ -20,7 +20,7 @@ This is the consulting website for Patterson Consulting **and** a live, interact
 
 **Phase 6 — Three Demo Front-Ends** (in progress — front-end deliverables complete, GTM container updates remaining)
 
-See `docs/REQUIREMENTS.md` for the full 9-phase development plan.
+See `docs/REQUIREMENTS.md` for the full 10-phase development plan.
 See `docs/ARCHITECTURE.md` for technical architecture details.
 See `docs/PHASE_STATUS.md` for current completion state.
 
@@ -261,7 +261,7 @@ When building UI, read the frontend-design skill at `/mnt/skills/public/frontend
 
 ## References
 
-- `docs/REQUIREMENTS.md` — the full 9-phase development plan with deliverables and dependencies
+- `docs/REQUIREMENTS.md` — the full 10-phase development plan with deliverables and dependencies
 - `docs/ARCHITECTURE.md` — technical architecture, infrastructure diagrams, data flow specifications
 - `docs/PHASE_STATUS.md` — living tracker of phase completion
 - `docs/sessions/` — session handoff artifacts with detailed state from prior work sessions

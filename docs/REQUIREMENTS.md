@@ -171,6 +171,25 @@ iampatterson.com is simultaneously a consulting site for Patterson Consulting an
 
 ---
 
+## Phase 10 — Operational Readiness & Maintenance Infrastructure
+
+**Goal:** Build the monitoring, alerting, and operational tooling needed to keep the full stack healthy in production without manual babysitting.
+
+**Deliverables:**
+
+1. **Cloud Monitoring dashboard:** Single pane covering all Cloud Run services (sGTM, event-stream, data-generator), Pub/Sub throughput and dead-letter queue depth, BigQuery slot usage and costs, SSL certificate status
+2. **Alerting policies:** Service health (5xx error rate > threshold), event pipeline latency (Pub/Sub → SSE delivery time), sGTM container crash loops, BigQuery daily cost threshold, Dataform run failures, SSL certificate expiry warnings
+3. **Uptime checks:** Automated health probes for sGTM (`/healthz`), event-stream service, and the Vercel-hosted site. Notification channels (email, Slack, or PagerDuty integration)
+4. **sGTM container lifecycle:** Automated or documented process for updating the `gtm-cloud-image` when Google releases new versions. Version pinning strategy (`:stable` vs specific tags)
+5. **Data retention and cost controls:** BigQuery partition expiration policies on raw event tables, Cloud Storage lifecycle rules on AI export bucket, budget alerts on the GCP billing account
+6. **Operational runbook:** Documented procedures for common failure modes — sGTM not responding, event pipeline backlog, Dataform assertion failures, data generator stuck/failing, SSL cert renewal failure. This doubles as portfolio content demonstrating operational maturity
+7. **Log aggregation:** Structured logging across all Cloud Run services routed to Cloud Logging with log-based metrics for error patterns. Log retention policy aligned with data retention requirements
+8. **Dependency update process:** Documented cadence for updating Node.js runtime, Next.js framework, Cloud Run base images, and npm dependencies. Security advisory monitoring
+
+**Why this is Phase 10:** Everything must be built and running before you can instrument its operations. This phase turns a working demo into a production system you can confidently hand off or maintain long-term. It's also a differentiator — most portfolio sites don't demonstrate operational thinking.
+
+---
+
 ## Dependencies & Risk Notes
 
 - Phases 1-3 can be built without any simulated data — they work on real visitor events to the consulting site
@@ -178,7 +197,7 @@ iampatterson.com is simultaneously a consulting site for Patterson Consulting an
 - The Dataform models built in Phase 5 are directly reusable for real client work — this is not throwaway code
 - The flip-the-card UI (Phase 3) will likely need iteration after the demos are built (Phase 6) because the demo contexts surface UX requirements that the consulting pages alone don't reveal
 - BigQuery managed AI functions (AI.CLASSIFY, AI.IF) are currently in public preview. If they reach GA during development, the implementation stays the same. If Google changes the API surface during preview, Dataform models may need adjustment
-- Stape's free tier (10,000 requests/month) may be sufficient during development but will need a paid plan once the background generator is running continuous traffic
+- sGTM is self-hosted on Cloud Run (migrated from Stape in Phase 6). The `gtm-cloud-image` must be kept up to date when Google releases new versions. Cloud Run costs are negligible for current traffic volume but should be monitored
 - The three demo front-ends are the most scope-creep-prone phase. Each one could absorb unlimited design time. Define a "good enough" visual standard early and stick to it
 
 ---

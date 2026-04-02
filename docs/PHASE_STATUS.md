@@ -133,3 +133,18 @@
 - ⬜ SEO: meta tags, structured data, sitemap, content strategy for organic discoverability
 - ⬜ Security review: ensure demo interactions can't expose real data, service accounts properly scoped, no PII leakage in event stream
 - ⬜ Load testing on background data generator and WebSocket service
+
+---
+
+## Phase 10 — Operational Readiness & Maintenance Infrastructure
+
+*Goal: Build the monitoring, alerting, and operational tooling needed to keep the full stack healthy in production.*
+
+- ⬜ Cloud Monitoring dashboard: single pane for Cloud Run services, Pub/Sub throughput, BigQuery costs, SSL status
+- ⬜ Alerting policies: 5xx error rates, pipeline latency, container crashes, BigQuery cost threshold, Dataform failures, SSL expiry
+- ⬜ Uptime checks: automated health probes for sGTM, event-stream, and Vercel site with notification channels
+- ⬜ sGTM container lifecycle: update process for gtm-cloud-image releases, version pinning strategy
+- ⬜ Data retention and cost controls: BigQuery partition expiration, GCS lifecycle rules, GCP budget alerts
+- ⬜ Operational runbook: documented procedures for common failure modes (doubles as portfolio content)
+- ⬜ Log aggregation: structured logging across Cloud Run services, log-based metrics, retention policy
+- ⬜ Dependency update process: cadence for Node.js, Next.js, Cloud Run images, npm deps, security advisories
