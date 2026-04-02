@@ -1,7 +1,7 @@
 # Phase Status Tracker
 
-> **Current Phase: 6 — Three Demo Front-Ends** (in progress — front-end complete, GTM deployment remaining)
-> Last updated: 2026-04-02, session-2026-04-02-013
+> **Current Phase: 6 — Three Demo Front-Ends** (COMPLETE)
+> Last updated: 2026-04-02, session-2026-04-02-014
 
 ---
 
@@ -92,8 +92,8 @@
 - ✅ 2026-03-29, session-2026-03-29-012 — Route namespaces (/demo/ecommerce, /demo/subscription, /demo/leadgen) with shared DemoNav, demo landing page, Demos dropdown in header
 - ✅ 2026-03-29, session-2026-03-29-012 — Flip-the-card overlay from Phase 3 works on all three demos via useFilteredEvents route-aware filtering
 - ✅ 2026-03-29, session-2026-03-29-012 — Navigation between demos and back to the main consulting site is seamless (DemoNav + header Demos dropdown)
-- ⬜ Web GTM container updated with demo event tags — e-commerce (`product_view`, `add_to_cart`, `purchase`), subscription (`trial_signup`, `plan_select`), lead gen (`form_complete`, `lead_qualify`) events
-- ⬜ sGTM container updated with demo event triggers, GA4 forwarding, BigQuery write tags, simulated Meta CAPI and Google Ads Enhanced Conversions tags
+- ✅ 2026-04-02, session-2026-04-02-014 — Web GTM container updated with 18 DLV variables, 8 custom event triggers, 8 GA4 event tags for demo events (product_view, add_to_cart, begin_checkout, purchase, plan_select, trial_signup, form_complete, lead_qualify). Published as version 7
+- ✅ 2026-04-02, session-2026-04-02-014 — sGTM container updated with ce-conversions trigger, Meta CAPI Simulation and Google Ads EC Simulation custom templates + tags. Published as version 13
 
 ---
 
