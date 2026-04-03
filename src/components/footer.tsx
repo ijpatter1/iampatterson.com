@@ -16,7 +16,7 @@ export function Footer() {
           </div>
           <p className="text-sm text-content-on-dark">
             Built with the same stack I sell.{' '}
-            <span className="text-content-muted">Flip the card to see how.</span>
+            <span className="text-content-muted">Look under the hood to see how.</span>
           </p>
         </div>
       </div>

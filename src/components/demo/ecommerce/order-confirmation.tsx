@@ -26,7 +26,7 @@ export function OrderConfirmation({ orderId, orderTotal, itemCount }: OrderConfi
 
       <p className="mb-6 text-sm leading-relaxed text-neutral-600">
         Thanks for your (simulated) order. This purchase event just fired through sGTM, landed in
-        BigQuery, and updated the dashboards. Flip the card to see exactly what happened.
+        BigQuery, and updated the dashboards. Look under the hood to see exactly what happened.
       </p>
 
       <Link

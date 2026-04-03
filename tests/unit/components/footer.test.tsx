@@ -19,8 +19,8 @@ describe('Footer', () => {
     expect(screen.getByText(/built with the same stack i sell/i)).toBeInTheDocument();
   });
 
-  it('renders the flip-the-card reference', () => {
+  it('renders the under-the-hood reference', () => {
     render(<Footer />);
-    expect(screen.getByText(/flip the card to see how/i)).toBeInTheDocument();
+    expect(screen.getByText(/look under the hood/i)).toBeInTheDocument();
   });
 });

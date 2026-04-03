@@ -1,7 +1,7 @@
 # Phase Status Tracker
 
-> **Current Phase: 8 — Frontend Redesign** (IN PROGRESS — 10/13 deliverables complete)
-> Last updated: 2026-04-03, session-2026-04-03-016
+> **Current Phase: 9A — Homepage & Core Architecture** (COMPLETE)
+> Last updated: 2026-04-03, session-2026-04-03-017
 
 ---
 
@@ -108,36 +108,76 @@
 
 ---
 
-## Phase 8 — Frontend Redesign
+## Phase 8 — Frontend Redesign (COMPLETE)
 
 *Goal: Transform the site from a text-heavy layout into a scroll-driven, visually distinctive portfolio experience while preserving all existing event tracking and backend functionality.*
 
-- ✅ 2026-04-03, session-2026-04-03-016 — Design system overhaul — color palette, typography, spacing, component tokens in Tailwind config
-- ✅ 2026-04-03, session-2026-04-03-016 — Scroll-driven homepage rebuild — full-viewport sections, demo spotlights as Perry Wang–style gallery with per-demo color identity, replacing `/demo` landing page
-- ✅ 2026-04-03, session-2026-04-03-016 — Scroll animation system — Framer Motion ScrollReveal component with reduced-motion support
-- ✅ 2026-04-03, session-2026-04-03-016 — Flip-the-card as first-class homepage element — 5-step pipeline visualization section on homepage
+- ✅ 2026-04-03, session-2026-04-03-016 — Design system overhaul — color palette (midnight navy brand), typography (Space Grotesk + Inter), spacing, shadow, animation tokens in Tailwind config
+- ✅ 2026-04-03, session-2026-04-03-016 — Scroll-driven homepage rebuild — full-viewport sections, demo spotlights as gallery with per-demo color identity
+- ✅ 2026-04-03, session-2026-04-03-016 — Scroll animation system — Framer Motion ScrollReveal component with fade/slideUp/slideLeft/scale variants, reduced-motion support
+- ✅ 2026-04-03, session-2026-04-03-016 — Pipeline visualization homepage section — 5-step pipeline teaser (superseded by Phase 9A live visualization)
 - ✅ 2026-04-03, session-2026-04-03-016 — Demo visual differentiation — DemoThemeProvider context with per-demo color accents (amber/teal/indigo)
-- ⬜ Intentional demo entry transitions — color wash or card expansion bridging homepage to demo palette
 - ✅ 2026-04-03, session-2026-04-03-016 — Dashboard integration into demo flow — DashboardPreview component with KPI cards and narrative at bottom of key demo pages
-- ✅ 2026-04-03, session-2026-04-03-016 — Navigation redesign — sticky header with scroll transform, dark footer, DemoNav analytics link removed
+- ✅ 2026-04-03, session-2026-04-03-016 — Navigation redesign — sticky header with scroll transform and dark-hero awareness, dark footer, DemoNav analytics link removed
 - ✅ 2026-04-03, session-2026-04-03-016 — Services page visual hierarchy — full-width tier sections with numbered badges, two-column layouts, dark Tier 4
 - ✅ 2026-04-03, session-2026-04-03-016 — About page personality — grid layout with Tuna brand card, dark "What I Believe" section
 - ✅ 2026-04-03, session-2026-04-03-016 — Contact page refinement — split layout with form card, branded focus states
-- ⬜ Micro-interactions and polish — hover states, transitions, page animations, scroll indicators
-- ⬜ Performance validation — Core Web Vitals, Lighthouse, event tracking regression check
+
+*Note: Three Phase 8 deliverables (demo entry transitions, micro-interactions/polish, performance validation) are absorbed into Phase 9A and Phase 10 respectively. Remaining neutral-* class migration across inner demo components deferred to Phase 9 demo-specific work.*
 
 ---
 
-## Phase 9 — Attribution & Advanced Analytics (Tier 4 Demonstration)
+## Phase 9A — Homepage & Core Architecture (COMPLETE)
 
-*Goal: Build lightweight MTA and/or MMM demonstrations on simulated data, plus external BI tool integration and automated narrative reporting.*
+*Goal: Rebuild the homepage interaction model. Replace the sidebar/bottom-sheet overlay with ambient event bubbles + full-page "under the hood" view. The homepage IS the Tier 1 showcase. Remove DemoNav. Full-width demo spotlight sections.*
 
-- ⬜ Multi-touch attribution model built in Dataform: Shapley value attribution across simulated channel mix for e-commerce model, with comparison view (MTA vs last-click vs platform-reported)
-- ⬜ Lightweight MMM or geo-lift demonstration using simulated historical data, if geographic segmentation available (may be static analysis)
-- ⬜ Attribution results surfaced in demo dashboards and/or as standalone interactive visualization accessible from flip-the-card overlay
-- ⬜ Narrative explanation of methodology accessible within the demo — explaining why results differ from platform-reported attribution
-- ⬜ Built in Looker Studio and/or Metabase to demonstrate both BI tool options, connected to BigQuery mart tables
-- ⬜ Automated Narrative Reporting: RAG pipeline wired to scheduled job generating weekly written summaries per business model
+- ✅ 2026-04-03, session-2026-04-03-017 — Strip "flip the card" language from all copy — footer, proof section, content guide, demo confirmations. Replaced with "under the hood" language
+- ✅ 2026-04-03, session-2026-04-03-017 — Ambient event bubbles (Layer 1) — ephemeral, non-interactive event indicators on homepage/consulting pages. Route-aware (hidden on demo pages). Polls dataLayer, auto-fade after 3s
+- ✅ 2026-04-03, session-2026-04-03-017 — Full-page "under the hood" view (Layer 2) — replaces Phase 3 sidebar/bottom-sheet with fixed inset-0 full-page view. Old overlay components removed
+- ✅ 2026-04-03, session-2026-04-03-017 — Homepage underside content (Tier 1 showcase) — consent visualization, event stream reference, pipeline architecture. Overview tab default on homepage
+- ✅ 2026-04-03, session-2026-04-03-017 — Replaced "See the Stack Running Live" static section with dark CTA section featuring pipeline path diagram and "Look under the hood" button that opens overlay
+- ✅ 2026-04-03, session-2026-04-03-017 — Full-width demo spotlight sections — 3 full-width scroll sections with per-demo color world, tier badge, highlight bullets, and prominent CTAs
+- ✅ 2026-04-03, session-2026-04-03-017 — Kill DemoNav — replaced with DemoFooterNav at bottom of demo pages with cross-demo navigation and back-to-homepage link
+- ✅ 2026-04-03, session-2026-04-03-017 — Kill `/demo` landing page — redirects to `/#demos`
+
+---
+
+## Phase 9B — E-Commerce Demo: Tiers 2 & 3 (Data Infrastructure + BI)
+
+*Goal: Each page in the checkout funnel demonstrates a different Tier 2 deliverable. Confirmation page pivots to Tier 3 with actionable insights. Looker Studio / Metabase integration.*
+
+- ⬜ Product listing underside: Campaign Taxonomy — AI-classified UTM parameters shown for visitor's session
+- ⬜ Product detail underside: Staging Layer — event flattening and enrichment visualization
+- ⬜ Cart underside: Data Quality Framework — live assertion checklist (schema validation, null checks, volume anomaly)
+- ⬜ Checkout underside: Warehouse Write — real-time BigQuery write visualization
+- ⬜ Confirmation page: Tier 3 pivot — funnel metrics, AOV trends, actionable insight with revenue impact
+- ⬜ Looker Studio / Metabase dashboard connected to BigQuery mart tables, embedded from confirmation page under-the-hood
+- ⬜ Services page cross-links: Tier 2 → ecommerce funnel, Tier 3 → confirmation page
+
+---
+
+## Phase 9C — Lead Gen Demo: Tier 1 Privacy/Consent + Tier 3 BI + AI
+
+*Goal: Make consent enforcement tangible. Form interaction shows PII handling, consent-gated routing. Thank-you page shows BI + AI narrative reporting.*
+
+- ⬜ Form interaction underside: Consent & Privacy visualization — consent signals, platform routing, email hashing, ad_user_data gating
+- ⬜ Live consent enforcement demonstration — deny/grant marketing consent, see routing differences (BigQuery+GA4 only vs full routing with hashed PII)
+- ⬜ Thank-you page: Tier 3 BI — lead funnel dashboard, cost per qualified lead by channel
+- ⬜ Automated Narrative Reporting (AI) — RAG pipeline generating weekly written summaries for lead gen model, viewable in under-the-hood
+- ⬜ Services page cross-links: Tier 1 privacy → lead gen form, Tier 3 AI → narrative reporting sample
+
+---
+
+## Phase 9D — Subscription Demo: Tier 4 (Attribution & Advanced Analytics)
+
+*Goal: Multi-touch attribution, cohort retention by channel, LTV analysis. The most analytically sophisticated tier on the model that benefits most.*
+
+- ⬜ Multi-touch attribution model (Shapley value) built in Dataform for subscription business model
+- ⬜ Attribution comparison visualization: Shapley vs last-click vs platform-reported, with narrative methodology explanation
+- ⬜ Cohort retention curves by acquisition source — channels that produce high-retention vs high-churn subscribers
+- ⬜ LTV by channel analysis using mart_customer_ltv and mart_subscription_cohorts tables
+- ⬜ Lightweight MMM or geo-lift demonstration (static analysis if geo data insufficient)
+- ⬜ Services page cross-links: Tier 4 → subscription attribution comparison, cohort retention
 
 ---
 
