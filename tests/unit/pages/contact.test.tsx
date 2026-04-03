@@ -12,6 +12,15 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
 }));
 
+jest.mock('framer-motion', () => ({
+  motion: {
+    div: ({ children, className }: { children: React.ReactNode; className?: string }) => (
+      <div className={className}>{children}</div>
+    ),
+  },
+  useReducedMotion: () => false,
+}));
+
 jest.mock('@/lib/events/track', () => ({
   trackFormStart: jest.fn(),
   trackFormFieldFocus: jest.fn(),

@@ -1,19 +1,19 @@
 /**
- * Tests that each page exports metadata with the correct title and description.
+ * Tests that each page or layout exports metadata with the correct title and description.
  * These are static exports read by Next.js at build time.
  */
 import type { Metadata } from 'next';
 
 describe('Page metadata exports', () => {
-  it('services page exports metadata with title', async () => {
-    const mod = await import('@/app/services/page');
+  it('services layout exports metadata with title', async () => {
+    const mod = await import('@/app/services/layout');
     const metadata = (mod as unknown as { metadata: Metadata }).metadata;
     expect(metadata).toBeDefined();
     expect(metadata.title).toBeTruthy();
   });
 
-  it('about page exports metadata with title', async () => {
-    const mod = await import('@/app/about/page');
+  it('about layout exports metadata with title', async () => {
+    const mod = await import('@/app/about/layout');
     const metadata = (mod as unknown as { metadata: Metadata }).metadata;
     expect(metadata).toBeDefined();
     expect(metadata.title).toBeTruthy();

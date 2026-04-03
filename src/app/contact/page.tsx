@@ -3,6 +3,7 @@
 import { useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
+import { ScrollReveal } from '@/components/scroll-reveal';
 import { trackFormFieldFocus, trackFormStart, trackFormSubmit } from '@/lib/events/track';
 
 export default function ContactPage() {
@@ -24,90 +25,113 @@ export default function ContactPage() {
   }
 
   return (
-    <main className="px-6 py-20">
-      <div className="mx-auto max-w-3xl">
-        <h1 className="text-4xl font-bold tracking-tight text-neutral-900">
-          Let&#39;s talk about your measurement stack.
-        </h1>
+    <main className="px-6 py-section">
+      <div className="section-container">
+        <div className="grid gap-16 lg:grid-cols-2">
+          {/* Left: context */}
+          <div>
+            <ScrollReveal>
+              <h1 className="font-display text-display-sm font-bold tracking-tight text-content sm:text-display-md">
+                Let&apos;s talk about your measurement stack.
+              </h1>
+            </ScrollReveal>
 
-        <div className="mt-6 space-y-4 text-neutral-700">
-          <p>
-            I work with e-commerce brands, SaaS companies, marketing agencies, and mobile app
-            companies that know their measurement infrastructure needs work but don&#39;t have the
-            in-house expertise to fix it.
-          </p>
-          <p>
-            If you&#39;re not sure where to start, that&#39;s fine. Most engagements begin with a
-            conversation about what&#39;s broken, what&#39;s missing, and what you&#39;re trying to
-            answer. From there, I&#39;ll scope the work and tell you honestly which tiers make sense
-            for your situation — and which ones don&#39;t.
-          </p>
-        </div>
+            <ScrollReveal delay={0.1}>
+              <div className="mt-8 space-y-5 text-lg leading-relaxed text-content-secondary">
+                <p>
+                  I work with e-commerce brands, SaaS companies, marketing agencies, and mobile app
+                  companies that know their measurement infrastructure needs work but don&apos;t
+                  have the in-house expertise to fix it.
+                </p>
+                <p>
+                  If you&apos;re not sure where to start, that&apos;s fine. Most engagements begin
+                  with a conversation about what&apos;s broken, what&apos;s missing, and what
+                  you&apos;re trying to answer. From there, I&apos;ll scope the work and tell you
+                  honestly which tiers make sense for your situation — and which ones don&apos;t.
+                </p>
+              </div>
+            </ScrollReveal>
 
-        <div className="mt-8">
-          <p className="text-neutral-700">
-            <strong>Email:</strong>{' '}
-            <a
-              href="mailto:ian@iampatterson.com"
-              className="text-neutral-900 underline underline-offset-4 transition-colors hover:text-neutral-600"
+            <ScrollReveal delay={0.2}>
+              <div className="mt-8 rounded-card bg-surface-alt p-6">
+                <p className="text-content-secondary">
+                  <strong className="text-content">Email:</strong>{' '}
+                  <a
+                    href="mailto:ian@iampatterson.com"
+                    className="text-brand-500 underline underline-offset-4 transition-colors hover:text-brand-700"
+                  >
+                    ian@iampatterson.com
+                  </a>
+                </p>
+                <p className="mt-3 text-sm text-content-muted">
+                  <strong className="text-content-secondary">What to expect:</strong> I&apos;ll
+                  respond within 24 hours. If we&apos;re a good fit, we&apos;ll schedule a 30-minute
+                  call to discuss your current setup and goals. No proposals without a conversation
+                  first.
+                </p>
+              </div>
+            </ScrollReveal>
+          </div>
+
+          {/* Right: form */}
+          <ScrollReveal delay={0.2} variant="slideLeft">
+            <form
+              className="rounded-card border border-border bg-surface p-8 shadow-card"
+              onSubmit={handleSubmit}
             >
-              ian@iampatterson.com
-            </a>
-          </p>
-          <p className="mt-2 text-neutral-600">
-            <strong>What to expect:</strong> I&#39;ll respond within 24 hours. If we&#39;re a good
-            fit, we&#39;ll schedule a 30-minute call to discuss your current setup and goals. No
-            proposals without a conversation first.
-          </p>
+              <h2 className="mb-6 font-display text-lg font-semibold text-content">
+                Send a message
+              </h2>
+              <div className="space-y-5">
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium text-content">
+                    Name
+                  </label>
+                  <input
+                    type="text"
+                    id="name"
+                    name="name"
+                    required
+                    onFocus={() => handleFieldFocus('name')}
+                    className="mt-1.5 block w-full rounded-card border border-border bg-surface px-4 py-2.5 text-content placeholder:text-content-disabled focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-content">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    required
+                    onFocus={() => handleFieldFocus('email')}
+                    className="mt-1.5 block w-full rounded-card border border-border bg-surface px-4 py-2.5 text-content placeholder:text-content-disabled focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="message" className="block text-sm font-medium text-content">
+                    Message
+                  </label>
+                  <textarea
+                    id="message"
+                    name="message"
+                    rows={5}
+                    required
+                    onFocus={() => handleFieldFocus('message')}
+                    className="mt-1.5 block w-full rounded-card border border-border bg-surface px-4 py-2.5 text-content placeholder:text-content-disabled focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full rounded-card bg-surface-dark px-6 py-3 text-sm font-semibold text-content-inverse transition-all hover:bg-brand-700 hover:shadow-glow"
+                >
+                  Send Message
+                </button>
+              </div>
+            </form>
+          </ScrollReveal>
         </div>
-
-        <form className="mt-12 space-y-6" onSubmit={handleSubmit}>
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-neutral-900">
-              Name
-            </label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              required
-              onFocus={() => handleFieldFocus('name')}
-              className="mt-1 block w-full rounded border border-neutral-300 px-3 py-2 text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none focus:ring-1 focus:ring-neutral-900"
-            />
-          </div>
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-neutral-900">
-              Email
-            </label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              required
-              onFocus={() => handleFieldFocus('email')}
-              className="mt-1 block w-full rounded border border-neutral-300 px-3 py-2 text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none focus:ring-1 focus:ring-neutral-900"
-            />
-          </div>
-          <div>
-            <label htmlFor="message" className="block text-sm font-medium text-neutral-900">
-              Message
-            </label>
-            <textarea
-              id="message"
-              name="message"
-              rows={5}
-              required
-              onFocus={() => handleFieldFocus('message')}
-              className="mt-1 block w-full rounded border border-neutral-300 px-3 py-2 text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none focus:ring-1 focus:ring-neutral-900"
-            />
-          </div>
-          <button
-            type="submit"
-            className="rounded bg-neutral-900 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-neutral-700"
-          >
-            Send Message
-          </button>
-        </form>
       </div>
     </main>
   );
