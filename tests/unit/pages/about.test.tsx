@@ -1,6 +1,18 @@
+/**
+ * @jest-environment jsdom
+ */
 import { render, screen } from '@testing-library/react';
 
 import AboutPage from '@/app/about/page';
+
+jest.mock('framer-motion', () => ({
+  motion: {
+    div: ({ children, className }: { children: React.ReactNode; className?: string }) => (
+      <div className={className}>{children}</div>
+    ),
+  },
+  useReducedMotion: () => false,
+}));
 
 describe('AboutPage', () => {
   it('renders the page heading', () => {
