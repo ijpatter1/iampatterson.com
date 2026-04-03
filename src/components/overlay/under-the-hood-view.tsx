@@ -58,9 +58,12 @@ export function UnderTheHoodView() {
   const isHomepage = pathname === '/';
   const baseUrl = process.env.NEXT_PUBLIC_EVENT_STREAM_URL ?? '';
   const eventStreamUrl = baseUrl.endsWith('/events') ? baseUrl : `${baseUrl}/events`;
+  // Keep SSE connection alive even when overlay is closed so events
+  // accumulate in the buffer. When the user opens the view, they see
+  // their full session history — not just events fired after opening.
   const { events, status } = useEventStream({
     url: eventStreamUrl,
-    enabled: isOpen && baseUrl.length > 0,
+    enabled: baseUrl.length > 0,
   });
   const { filteredEvents } = useFilteredEvents(events, false);
   const [viewMode, setViewMode] = useState<ViewMode>(isHomepage ? 'overview' : 'timeline');

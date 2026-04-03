@@ -79,11 +79,11 @@ describe('HomePage', () => {
       ).toBeInTheDocument();
     });
 
-    it('renders the See how it works CTA as a link to /services', () => {
+    it('renders the See how it works CTA as a link to #proof', () => {
       render(<HomePage />);
       expect(screen.getByRole('link', { name: /see how it works/i })).toHaveAttribute(
         'href',
-        '/services',
+        '#proof',
       );
     });
 
@@ -104,28 +104,6 @@ describe('HomePage', () => {
     it('renders the closing statement', () => {
       render(<HomePage />);
       expect(screen.getByText(/that's what I build/i)).toBeInTheDocument();
-    });
-  });
-
-  describe('What I Deliver section', () => {
-    it('renders the section heading', () => {
-      render(<HomePage />);
-      expect(screen.getByText(/end-to-end measurement infrastructure/i)).toBeInTheDocument();
-    });
-
-    it('renders the four tier cards with headings', () => {
-      render(<HomePage />);
-      expect(screen.getByText('Measurement Foundation')).toBeInTheDocument();
-      expect(screen.getByText('Data Infrastructure')).toBeInTheDocument();
-      expect(screen.getByText('Business Intelligence')).toBeInTheDocument();
-      expect(screen.getByText('Attribution & Advanced Analytics')).toBeInTheDocument();
-    });
-
-    it('renders the services CTA link', () => {
-      render(<HomePage />);
-      expect(
-        screen.getByRole('link', { name: /explore the full service offering/i }),
-      ).toHaveAttribute('href', '/services');
     });
   });
 
@@ -184,14 +162,6 @@ describe('HomePage', () => {
       expect(screen.getByText('E-Commerce')).toBeInTheDocument();
       expect(screen.getByText('Subscription')).toBeInTheDocument();
       expect(screen.getByText('Lead Generation')).toBeInTheDocument();
-    });
-
-    it('shows tier previews for each demo', () => {
-      render(<HomePage />);
-      // Each demo section should indicate which tiers it showcases
-      expect(screen.getByText(/tiers 1–4/i)).toBeInTheDocument();
-      expect(screen.getByText(/tiers 1, 3 & 4/i)).toBeInTheDocument();
-      expect(screen.getByText(/tiers 1, 3 & ai/i)).toBeInTheDocument();
     });
   });
 });

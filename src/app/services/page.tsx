@@ -60,13 +60,63 @@ const tiers = [
 export default function ServicesPage() {
   return (
     <main>
-      {/* Page intro */}
+      {/* Positioning */}
       <section className="px-6 py-section">
         <div className="prose-container">
           <ScrollReveal>
-            <h1 className="font-display text-display-sm font-bold tracking-tight text-content sm:text-display-md">
-              Four tiers. Each one delivers standalone value. Each one makes the next one possible.
+            <h1 className="max-w-3xl font-display text-display-sm font-bold tracking-tight text-content sm:text-display-md">
+              End-to-end measurement infrastructure. Not just another tag implementation.
             </h1>
+          </ScrollReveal>
+          <ScrollReveal delay={0.1}>
+            <div className="mt-8 grid gap-6 sm:grid-cols-2">
+              {[
+                {
+                  tier: '01',
+                  title: 'Measurement Foundation',
+                  description:
+                    'Consent management, server-side Google Tag Manager, and event delivery to your ad platforms. Better data quality, longer cookie life, improved match rates, privacy compliance. This is where every engagement starts.',
+                },
+                {
+                  tier: '02',
+                  title: 'Data Infrastructure',
+                  description:
+                    'Your marketing data in BigQuery, transformed and modeled by Dataform, with AI-native enrichment built into every layer. A single source of truth that replaces the six-platform CSV export your team does every Monday morning.',
+                },
+                {
+                  tier: '03',
+                  title: 'Business Intelligence',
+                  description:
+                    'Dashboards your team can actually use, AI-powered data exploration, and automated weekly reporting that reads like an analyst wrote it. Built on the infrastructure from the previous phases, not bolted on top of raw data.',
+                },
+                {
+                  tier: '04',
+                  title: 'Attribution & Advanced Analytics',
+                  description:
+                    'Multi-touch attribution, media mix modeling, and incrementality testing. The only way to honestly answer "what\u2019s actually working." Available exclusively to clients whose measurement foundation I\u2019ve built, because the models are only as good as the data feeding them.',
+                },
+              ].map(({ tier, title, description }) => (
+                <div
+                  key={tier}
+                  className="rounded-card border border-border bg-surface p-6 transition-all hover:border-brand-300 hover:shadow-card"
+                >
+                  <span className="mb-3 block font-mono text-sm text-content-muted">{tier}</span>
+                  <h2 className="mb-2 text-lg font-semibold text-content">{title}</h2>
+                  <p className="text-sm leading-relaxed text-content-secondary">{description}</p>
+                </div>
+              ))}
+            </div>
+          </ScrollReveal>
+        </div>
+      </section>
+
+      {/* Engagement structure */}
+      <section className="bg-surface-alt px-6 py-section">
+        <div className="prose-container">
+          <ScrollReveal>
+            <h2 className="font-display text-display-sm font-bold tracking-tight text-content sm:text-display-md">
+              Four tiers. Each one delivers standalone value. Each one makes the next one possible.
+            </h2>
           </ScrollReveal>
           <ScrollReveal delay={0.1}>
             <p className="mt-6 text-lg leading-relaxed text-content-secondary">

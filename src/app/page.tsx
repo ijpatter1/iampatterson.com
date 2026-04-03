@@ -5,39 +5,12 @@ import { useOverlay } from '@/components/overlay/overlay-context';
 import { ScrollReveal } from '@/components/scroll-reveal';
 import { trackClickCta } from '@/lib/events/track';
 
-const tiers = [
-  {
-    title: 'Measurement Foundation',
-    description:
-      'Consent management, server-side Google Tag Manager, and event delivery to your ad platforms. Better data quality, longer cookie life, improved match rates, privacy compliance. This is where every engagement starts.',
-    tier: '01',
-  },
-  {
-    title: 'Data Infrastructure',
-    description:
-      'Your marketing data in BigQuery, transformed and modeled by Dataform, with AI-native enrichment built into every layer. A single source of truth that replaces the six-platform CSV export your team does every Monday morning.',
-    tier: '02',
-  },
-  {
-    title: 'Business Intelligence',
-    description:
-      'Dashboards your team can actually use, AI-powered data exploration, and automated weekly reporting that reads like an analyst wrote it. Built on the infrastructure from the previous phases, not bolted on top of raw data.',
-    tier: '03',
-  },
-  {
-    title: 'Attribution & Advanced Analytics',
-    description:
-      'Multi-touch attribution, media mix modeling, and incrementality testing. The only way to honestly answer "what\u2019s actually working." Available exclusively to clients whose measurement foundation I\u2019ve built, because the models are only as good as the data feeding them.',
-    tier: '04',
-  },
-];
-
 const demos = [
   {
     href: '/demo/ecommerce',
     title: 'The Tuna Shop',
     type: 'E-Commerce',
-    tiers: 'Tiers 1–4',
+
     description:
       'A fully instrumented e-commerce storefront. Browse products, add to cart, and complete checkout — every interaction generates events that flow through the full measurement stack.',
     highlights: [
@@ -54,7 +27,7 @@ const demos = [
     href: '/demo/subscription',
     title: 'Tuna Subscription',
     type: 'Subscription',
-    tiers: 'Tiers 1, 3 & 4',
+
     description:
       'A subscription product from signup to retention. Select a plan, start a trial, and explore the account dashboard — see how cohort analysis and LTV calculations are built on the same event infrastructure.',
     highlights: [
@@ -71,7 +44,7 @@ const demos = [
     href: '/demo/leadgen',
     title: 'Tuna Partnerships',
     type: 'Lead Generation',
-    tiers: 'Tiers 1, 3 & AI',
+
     description:
       'A lead generation landing page with full funnel tracking. Fill out the partnership inquiry form and watch consent enforcement, PII handling, and lead qualification happen in real time.',
     highlights: [
@@ -111,7 +84,7 @@ export default function HomePage() {
           <ScrollReveal variant="slideUp" delay={0.4}>
             <div className="mt-10 flex flex-wrap gap-4">
               <CtaLink
-                href="/services"
+                href="#proof"
                 ctaLocation="hero"
                 className="rounded-card bg-content-inverse px-8 py-3.5 text-sm font-semibold text-surface-dark transition-all hover:bg-brand-100 hover:shadow-glow"
               >
@@ -163,41 +136,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* What I Deliver — tier cards */}
-      <section className="bg-surface-alt px-6 py-section">
-        <div className="section-container">
-          <ScrollReveal>
-            <h2 className="max-w-3xl font-display text-display-sm font-bold tracking-tight text-content sm:text-display-md">
-              End-to-end measurement infrastructure. Not just another tag implementation.
-            </h2>
-          </ScrollReveal>
-          <div className="mt-12 grid gap-6 sm:grid-cols-2">
-            {tiers.map(({ title, description, tier }, i) => (
-              <ScrollReveal key={title} delay={i * 0.1} variant="slideUp">
-                <div className="group relative h-full rounded-card border border-border bg-surface p-8 transition-all hover:border-brand-300 hover:shadow-elevated">
-                  <span className="mb-4 block font-mono text-sm text-content-muted">{tier}</span>
-                  <h3 className="mb-3 text-lg font-semibold text-content">{title}</h3>
-                  <p className="text-sm leading-relaxed text-content-secondary">{description}</p>
-                </div>
-              </ScrollReveal>
-            ))}
-          </div>
-          <ScrollReveal delay={0.4}>
-            <div className="mt-10">
-              <CtaLink
-                href="/services"
-                ctaLocation="deliver"
-                className="text-sm font-semibold text-content underline underline-offset-4 transition-colors hover:text-brand-500"
-              >
-                Explore the full service offering →
-              </CtaLink>
-            </div>
-          </ScrollReveal>
-        </div>
-      </section>
-
       {/* The Proof */}
-      <section className="px-6 py-section">
+      <section id="proof" className="px-6 py-section">
         <div className="prose-container">
           <ScrollReveal>
             <h2 className="font-display text-display-sm font-bold tracking-tight text-content sm:text-display-md">
@@ -270,7 +210,6 @@ export default function HomePage() {
               href,
               title,
               type,
-              tiers,
               description,
               highlights,
               bgClass,
@@ -285,13 +224,10 @@ export default function HomePage() {
                 <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
                   <ScrollReveal variant={i % 2 === 0 ? 'slideUp' : 'slideLeft'}>
                     <div>
-                      <div className="mb-4 flex items-center gap-3">
+                      <div className="mb-4 flex items-center gap-2">
                         <span className={`inline-block h-2.5 w-2.5 rounded-full ${accentClass}`} />
                         <span className="text-xs font-medium uppercase tracking-wider text-content-muted">
                           {type}
-                        </span>
-                        <span className="rounded-full bg-surface px-2.5 py-0.5 text-xs font-medium text-content-secondary">
-                          {tiers}
                         </span>
                       </div>
                       <h2 className="font-display text-display-sm font-bold tracking-tight text-content sm:text-display-md">
