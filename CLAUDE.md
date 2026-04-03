@@ -18,9 +18,9 @@ This is the consulting website for Patterson Consulting **and** a live, interact
 
 ## Current Phase
 
-**Phase 6 — Three Demo Front-Ends** (COMPLETE — all deliverables shipped, GTM containers published, sGTM self-hosted on Cloud Run)
+**Phase 8 — Frontend Redesign** (NOT STARTED — Phase 7 BI Layer complete, Frontend Redesign is next)
 
-See `docs/REQUIREMENTS.md` for the full 10-phase development plan.
+See `docs/REQUIREMENTS.md` for the full 11-phase development plan.
 See `docs/ARCHITECTURE.md` for technical architecture details.
 See `docs/PHASE_STATUS.md` for current completion state.
 
@@ -183,8 +183,10 @@ refactor(hooks): extract useEventStream from overlay component
   - `phase/5-data-infrastructure`
   - `phase/6-demo-front-ends`
   - `phase/7-bi-layer-dashboards`
-  - `phase/8-attribution-advanced-analytics`
-  - `phase/9-polish-performance-launch`
+  - `phase/8-frontend-redesign`
+  - `phase/9-attribution-advanced-analytics`
+  - `phase/10-polish-performance-launch`
+  - `phase/11-operational-readiness`
 - `dataform` — dedicated branch for GCP Dataform integration. Mirrors `infrastructure/dataform/` at repo root (Dataform requires files at root). Auto-synced from `main` via GitHub Action (`.github/workflows/sync-dataform.yml`). **Do not edit Dataform models directly on this branch** — edit in `infrastructure/dataform/` on main and let the sync action propagate changes.
 - `feat/description` — feature branches off the phase branch for larger features
 - Merge feature branches into the phase branch. Merge the phase branch into `main` when the phase is complete and evaluated.
@@ -261,7 +263,7 @@ When building UI, read the frontend-design skill at `/mnt/skills/public/frontend
 
 ## References
 
-- `docs/REQUIREMENTS.md` — the full 10-phase development plan with deliverables and dependencies
+- `docs/REQUIREMENTS.md` — the full 11-phase development plan with deliverables and dependencies
 - `docs/ARCHITECTURE.md` — technical architecture, infrastructure diagrams, data flow specifications
 - `docs/PHASE_STATUS.md` — living tracker of phase completion
 - `docs/sessions/` — session handoff artifacts with detailed state from prior work sessions

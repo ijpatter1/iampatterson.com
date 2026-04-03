@@ -1,7 +1,7 @@
 # Phase Status Tracker
 
-> **Current Phase: 6 — Three Demo Front-Ends** (COMPLETE)
-> Last updated: 2026-04-02, session-2026-04-02-014
+> **Current Phase: 8 — Frontend Redesign** (NOT STARTED)
+> Last updated: 2026-04-03, session-2026-04-03-015
 
 ---
 
@@ -97,31 +97,51 @@
 
 ---
 
-## Phase 7 — BI Layer & Demo Dashboards (Tier 3 Demonstration)
+## Phase 7 — BI Layer & Demo Dashboards (Tier 3 Demonstration) (COMPLETE)
 
 *Goal: Build the dashboard and reporting layer for each business model, embeddable or linkable from the demo back-end views.*
 
-- ⬜ E-commerce dashboards: executive summary (revenue, AOV, conversion rate by channel), campaign performance (spend vs revenue with AI-classified taxonomy), product performance, acquisition funnel
-- ⬜ Subscription dashboards: cohort retention curves, trial-to-paid conversion by channel, MRR/ARR trending, churn analysis, LTV by acquisition source
-- ⬜ Lead gen dashboards: lead funnel (visits → form starts → submissions → qualified leads), cost per lead by channel, lead quality distribution, conversion timeline
-- ⬜ Built in Looker Studio and/or Metabase to demonstrate both options
-- ⬜ Automated Narrative Reporting: RAG pipeline wired to scheduled job generating weekly written summaries per business model
-- ⬜ Dashboard embed or deep-link integration with flip-the-card UI for pipeline-to-dashboard navigation within the overlay
+- ✅ 2026-04-03, session-2026-04-03-015 — E-commerce dashboards: executive summary (revenue, AOV, conversion rate by channel), campaign performance (spend vs revenue with AI-classified taxonomy), product performance, acquisition funnel. Built with Recharts on mock data matching BigQuery mart schemas
+- ✅ 2026-04-03, session-2026-04-03-015 — Subscription dashboards: cohort retention curves, trial-to-paid conversion by channel, MRR/ARR trending, churn analysis, LTV by acquisition source
+- ✅ 2026-04-03, session-2026-04-03-015 — Lead gen dashboards: lead funnel (visits → form starts → submissions → qualified leads), cost per lead by channel, lead quality distribution, conversion timeline
+- ✅ 2026-04-03, session-2026-04-03-015 — Dashboard embed/deep-link integration with flip-the-card UI: Dashboards tab in overlay, contextual Analytics link in DemoNav
 
 ---
 
-## Phase 8 — Attribution & Advanced Analytics (Tier 4 Demonstration)
+## Phase 8 — Frontend Redesign
 
-*Goal: Build lightweight MTA and/or MMM demonstrations on simulated data.*
+*Goal: Transform the site from a text-heavy layout into a scroll-driven, visually distinctive portfolio experience while preserving all existing event tracking and backend functionality.*
+
+- ⬜ Design system overhaul — color palette, typography, spacing, component tokens in Tailwind config
+- ⬜ Scroll-driven homepage rebuild — full-viewport sections, demo spotlights as Perry Wang–style gallery with per-demo color identity, replacing `/demo` landing page
+- ⬜ Scroll animation system — Framer Motion or CSS scroll-driven animations with reduced-motion support
+- ⬜ Flip-the-card as first-class homepage element — interactive pipeline visualization on scroll
+- ⬜ Demo visual differentiation — per-demo color accent, mood, and layout variations across all demo pages
+- ⬜ Intentional demo entry transitions — color wash or card expansion bridging homepage to demo palette
+- ⬜ Dashboard integration into demo flow — embedded KPI/chart previews replacing standalone analytics pages
+- ⬜ Navigation redesign — sticky transform, smooth scroll, simplified DemoNav (no analytics link)
+- ⬜ Services page visual hierarchy — distinct tier sections, alternating layouts, visual gates
+- ⬜ About page personality — personal layout, visual elements, Tuna brand integration
+- ⬜ Contact page refinement — tighter layout, conversational form pattern
+- ⬜ Micro-interactions and polish — hover states, transitions, page animations, scroll indicators
+- ⬜ Performance validation — Core Web Vitals, Lighthouse, event tracking regression check
+
+---
+
+## Phase 9 — Attribution & Advanced Analytics (Tier 4 Demonstration)
+
+*Goal: Build lightweight MTA and/or MMM demonstrations on simulated data, plus external BI tool integration and automated narrative reporting.*
 
 - ⬜ Multi-touch attribution model built in Dataform: Shapley value attribution across simulated channel mix for e-commerce model, with comparison view (MTA vs last-click vs platform-reported)
 - ⬜ Lightweight MMM or geo-lift demonstration using simulated historical data, if geographic segmentation available (may be static analysis)
 - ⬜ Attribution results surfaced in demo dashboards and/or as standalone interactive visualization accessible from flip-the-card overlay
 - ⬜ Narrative explanation of methodology accessible within the demo — explaining why results differ from platform-reported attribution
+- ⬜ Built in Looker Studio and/or Metabase to demonstrate both BI tool options, connected to BigQuery mart tables
+- ⬜ Automated Narrative Reporting: RAG pipeline wired to scheduled job generating weekly written summaries per business model
 
 ---
 
-## Phase 9 — Polish, Performance & Launch Prep
+## Phase 10 — Polish, Performance & Launch Prep
 
 *Goal: Optimize the full experience for production readiness.*
 
@@ -136,7 +156,7 @@
 
 ---
 
-## Phase 10 — Operational Readiness & Maintenance Infrastructure
+## Phase 11 — Operational Readiness & Maintenance Infrastructure
 
 *Goal: Build the monitoring, alerting, and operational tooling needed to keep the full stack healthy in production.*
 
