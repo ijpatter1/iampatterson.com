@@ -85,14 +85,14 @@ export default function HomePage() {
                   trackClickCta('Look under the hood', 'hero');
                   open();
                 }}
-                className="rounded-card bg-sage-700 px-8 py-3.5 text-sm font-semibold text-neutral-100 transition-all hover:bg-sage-900 hover:shadow-glow"
+                className="rounded-card bg-sage-700 px-8 py-3.5 text-sm font-semibold text-neutral-100 transition-all hover:bg-sage-500 hover:shadow-glow"
               >
                 Look under the hood
               </button>
               <CtaLink
                 href="#demos"
                 ctaLocation="hero"
-                className="rounded-card border border-sage-400/40 px-8 py-3.5 text-sm font-semibold text-neutral-100 transition-all hover:border-sage-400 hover:bg-sage-400/10"
+                className="rounded-card border border-plum-400/40 px-8 py-3.5 text-sm font-semibold text-neutral-100 transition-all hover:border-plum-400 hover:bg-plum-400/10"
               >
                 Explore the demos
               </CtaLink>
@@ -136,7 +136,7 @@ export default function HomePage() {
                 trackClickCta('Look under the hood', 'pipeline-cta');
                 open();
               }}
-              className="mt-8 inline-flex items-center gap-2 rounded-card bg-sage-700 px-8 py-3.5 text-sm font-semibold text-neutral-100 transition-all hover:bg-sage-900 hover:shadow-card"
+              className="mt-8 inline-flex items-center gap-2 rounded-card bg-sage-700 px-8 py-3.5 text-sm font-semibold text-neutral-100 transition-all hover:bg-sage-500 hover:shadow-card"
             >
               Look under the hood
             </button>
@@ -147,13 +147,13 @@ export default function HomePage() {
       {/* Demo Spotlights */}
       <div id="demos">
         {/* Demos intro */}
-        <section className="bg-plum-900 px-6 py-section-sm">
+        <section className="bg-neutral-900 px-6 py-section-sm">
           <div className="section-container">
             <ScrollReveal variant="fade">
               <h2 className="font-display text-display-sm font-bold tracking-tight text-neutral-100 sm:text-display-md">
                 Three business models. Same stack.
               </h2>
-              <p className="mt-4 max-w-2xl text-lg text-plum-400">
+              <p className="mt-4 max-w-2xl text-lg text-neutral-400">
                 Each demo below is a fully functional front-end generating real events through the
                 measurement pipeline. Browse a shop, sign up for a subscription, or submit a
                 partnership inquiry, then look under the hood to watch your session data flow

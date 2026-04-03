@@ -79,7 +79,7 @@ export default function AboutPage() {
       </section>
 
       {/* What I Believe */}
-      <section className="bg-plum-900 px-6 py-section">
+      <section className="bg-neutral-900 px-6 py-section">
         <div className="section-container">
           <ScrollReveal>
             <h2 className="font-display text-display-sm font-bold tracking-tight text-neutral-100">
@@ -89,9 +89,9 @@ export default function AboutPage() {
           <div className="mt-12 grid gap-8 md:grid-cols-3">
             {beliefs.map(({ title, body }, i) => (
               <ScrollReveal key={title} delay={i * 0.15} variant="slideUp">
-                <div className="h-full rounded-card border border-plum-400/15 bg-plum-700 p-8">
+                <div className="h-full rounded-card border border-plum-400/20 bg-neutral-800 p-8">
                   <h3 className="text-lg font-semibold leading-snug text-neutral-100">{title}</h3>
-                  <p className="mt-4 leading-relaxed text-plum-200">{body}</p>
+                  <p className="mt-4 leading-relaxed text-neutral-400">{body}</p>
                 </div>
               </ScrollReveal>
             ))}

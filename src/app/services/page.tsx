@@ -53,7 +53,7 @@ const tiers = [
     number: '04',
     title: 'Attribution & Advanced Analytics',
     subtitle: 'Finally answering "what\u2019s actually working."',
-    bg: 'bg-plum-900',
+    bg: 'bg-neutral-900',
   },
 ];
 
@@ -388,17 +388,17 @@ export default function ServicesPage() {
         <div className="section-container">
           <ScrollReveal>
             <div className="mb-8">
-              <span className="font-mono text-sm text-plum-400">{tiers[3].number}</span>
+              <span className="font-mono text-sm text-sage-500">{tiers[3].number}</span>
               <h2 className="mt-1 font-display text-display-sm font-bold tracking-tight text-neutral-100">
                 {tiers[3].title}
               </h2>
-              <p className="mt-2 text-lg text-plum-400">{tiers[3].subtitle}</p>
+              <p className="mt-2 text-lg text-neutral-400">{tiers[3].subtitle}</p>
             </div>
           </ScrollReveal>
 
           <div className="grid gap-12 lg:grid-cols-2">
             <ScrollReveal delay={0.1}>
-              <div className="space-y-4 text-plum-200">
+              <div className="space-y-4 text-neutral-400">
                 <p>
                   This tier is only available to clients who have completed Tiers 1 and 2 with
                   Patterson Consulting. Not because of a commercial requirement — because the models
@@ -413,7 +413,7 @@ export default function ServicesPage() {
                     <dt className="font-semibold text-neutral-100">
                       Multi-Touch Attribution Modeling
                     </dt>
-                    <dd className="mt-1 text-plum-200">
+                    <dd className="mt-1 text-neutral-400">
                       Shapley value or position-based attribution models built in Dataform on your
                       event data in BigQuery. Replaces platform-reported attribution with logic you
                       own, can inspect, and can trust. Privacy-compliant by design — built on
@@ -424,7 +424,7 @@ export default function ServicesPage() {
                     <dt className="font-semibold text-neutral-100">
                       Geo-Lift Incrementality Testing
                     </dt>
-                    <dd className="mt-1 text-plum-200">
+                    <dd className="mt-1 text-neutral-400">
                       The most rigorous, privacy-friendly method for measuring whether a channel is
                       driving incremental revenue or just capturing existing demand. Uses synthetic
                       control methodology (the same statistical framework used in econometrics and
@@ -435,7 +435,7 @@ export default function ServicesPage() {
                   </div>
                   <div>
                     <dt className="font-semibold text-neutral-100">Media Mix Modeling</dt>
-                    <dd className="mt-1 text-plum-200">
+                    <dd className="mt-1 text-neutral-400">
                       Bayesian media mix modeling using Google&apos;s open-source Meridian
                       framework, running on BigQuery. Requires 2+ years of historical spend and
                       outcome data. Answers &quot;how should I allocate my budget across
@@ -448,7 +448,7 @@ export default function ServicesPage() {
                     <dt className="font-semibold text-neutral-100">
                       Measurement Strategy & Testing Roadmap
                     </dt>
-                    <dd className="mt-1 text-plum-200">
+                    <dd className="mt-1 text-neutral-400">
                       Ongoing advisory on what to test next, which channels to validate, and how to
                       build a culture of measurement within your marketing team. This is the
                       retainer component — not maintaining infrastructure, but guiding the questions
@@ -460,7 +460,7 @@ export default function ServicesPage() {
             </ScrollReveal>
 
             <ScrollReveal delay={0.2}>
-              <p className="mt-8 rounded-card border-l-4 border-plum-400 bg-plum-700 py-4 pl-5 pr-4 text-plum-200">
+              <p className="mt-8 rounded-card border-l-4 border-plum-400 bg-neutral-800 py-4 pl-5 pr-4 text-neutral-400">
                 <strong className="text-neutral-100">What you get at the end of Tier 4:</strong> An
                 honest answer to the hardest question in marketing. Not &quot;what did the platform
                 report&quot; but &quot;what actually happened when we spent this money.&quot;

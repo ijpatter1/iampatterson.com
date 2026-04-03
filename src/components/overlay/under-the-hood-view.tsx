@@ -76,7 +76,7 @@ export function UnderTheHoodView() {
       {/* Header */}
       <header className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-dark">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sage-700">
             <svg
               width="16"
               height="16"

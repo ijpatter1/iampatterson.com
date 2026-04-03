@@ -82,8 +82,8 @@ const config: Config = {
           DEFAULT: neutral[100],
           alt: '#EFEBE5',
           hover: neutral[200],
-          dark: sage[900],
-          'dark-alt': plum[900],
+          dark: neutral[900],
+          'dark-alt': neutral[900],
         },
 
         // Semantic border tokens
