@@ -68,54 +68,30 @@ describe('HomePage', () => {
     it('renders the hero heading', () => {
       render(<HomePage />);
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-        'Your marketing data is lying to you.',
+        /I build measurement infrastructure/i,
       );
     });
 
-    it('renders the hero subheading', () => {
+    it('describes the live stack running on this site', () => {
       render(<HomePage />);
-      expect(
-        screen.getByText(/platform-reported attribution is self-grading homework/i),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/this site runs on the same stack I sell/i)).toBeInTheDocument();
     });
 
-    it('renders the See how it works CTA as a link to #proof', () => {
-      render(<HomePage />);
-      expect(screen.getByRole('link', { name: /see how it works/i })).toHaveAttribute(
-        'href',
-        '#proof',
-      );
-    });
-
-    it('fires trackClickCta when a CTA link is clicked', async () => {
+    it('renders the "See what\'s underneath" hero CTA that opens the overlay', async () => {
       const user = userEvent.setup();
       render(<HomePage />);
-      await user.click(screen.getByRole('link', { name: /see how it works/i }));
-      expect(mockTrackClickCta).toHaveBeenCalledWith('See how it works', 'hero');
-    });
-  });
-
-  describe('Problem section', () => {
-    it('renders the problem section heading', () => {
-      render(<HomePage />);
-      expect(screen.getByText(/the measurement gap is getting wider/i)).toBeInTheDocument();
+      const btn = screen.getByRole('button', { name: /see what.*s underneath/i });
+      await user.click(btn);
+      expect(mockOpen).toHaveBeenCalled();
+      expect(mockTrackClickCta).toHaveBeenCalledWith("See what's underneath", 'hero');
     });
 
-    it('renders the closing statement', () => {
+    it('renders the "Explore the demos" CTA linking to #demos', () => {
       render(<HomePage />);
-      expect(screen.getByText(/that's what I build/i)).toBeInTheDocument();
-    });
-  });
-
-  describe('Proof section', () => {
-    it('renders the proof section heading', () => {
-      render(<HomePage />);
-      expect(screen.getByText(/this site is the case study/i)).toBeInTheDocument();
-    });
-
-    it('renders the under-the-hood call to action text', () => {
-      render(<HomePage />);
-      expect(screen.getByText(/look under the hood and see for yourself/i)).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /explore the demos/i })).toHaveAttribute(
+        'href',
+        '#demos',
+      );
     });
   });
 
@@ -129,7 +105,31 @@ describe('HomePage', () => {
 
     it('renders the pipeline section heading', () => {
       render(<HomePage />);
-      expect(screen.getByText(/see what.*s running underneath/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/see what.*s running underneath/i).length).toBeGreaterThanOrEqual(
+        1,
+      );
+    });
+
+    it('renders the "Look under the hood" button that opens the overlay', async () => {
+      const user = userEvent.setup();
+      render(<HomePage />);
+      const btn = screen.getByRole('button', { name: /look under the hood/i });
+      await user.click(btn);
+      expect(mockOpen).toHaveBeenCalled();
+    });
+  });
+
+  describe('Demos intro', () => {
+    it('renders the demos section heading', () => {
+      render(<HomePage />);
+      expect(screen.getByText(/three business models/i)).toBeInTheDocument();
+    });
+
+    it('renders the demos intro copy', () => {
+      render(<HomePage />);
+      expect(
+        screen.getByText(/each demo below is a fully functional front-end/i),
+      ).toBeInTheDocument();
     });
   });
 

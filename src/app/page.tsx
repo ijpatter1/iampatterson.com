@@ -10,7 +10,6 @@ const demos = [
     href: '/demo/ecommerce',
     title: 'The Tuna Shop',
     type: 'E-Commerce',
-
     description:
       'A fully instrumented e-commerce storefront. Browse products, add to cart, and complete checkout — every interaction generates events that flow through the full measurement stack.',
     highlights: [
@@ -27,7 +26,6 @@ const demos = [
     href: '/demo/subscription',
     title: 'Tuna Subscription',
     type: 'Subscription',
-
     description:
       'A subscription product from signup to retention. Select a plan, start a trial, and explore the account dashboard — see how cohort analysis and LTV calculations are built on the same event infrastructure.',
     highlights: [
@@ -44,7 +42,6 @@ const demos = [
     href: '/demo/leadgen',
     title: 'Tuna Partnerships',
     type: 'Lead Generation',
-
     description:
       'A lead generation landing page with full funnel tracking. Fill out the partnership inquiry form and watch consent enforcement, PII handling, and lead qualification happen in real time.',
     highlights: [
@@ -64,122 +61,67 @@ export default function HomePage() {
 
   return (
     <main>
-      {/* Hero — full viewport, dark, bold typography */}
+      {/* Hero — the site IS the portfolio */}
       <section className="relative flex min-h-[90vh] items-center bg-surface-dark px-6">
         <div className="section-container">
           <ScrollReveal variant="fade" duration={0.8}>
             <h1 className="max-w-4xl font-display text-display-lg font-bold tracking-tight text-content-inverse sm:text-display-xl">
-              Your marketing data is lying to you.
+              I build measurement infrastructure for marketing teams.
             </h1>
           </ScrollReveal>
           <ScrollReveal variant="slideUp" delay={0.2}>
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-content-on-dark sm:text-xl">
-              Platform-reported attribution is self-grading homework. Cookie deprecation is eroding
-              your signal. Your analytics are built on a client-side stack that was designed for
-              2018. I build the measurement infrastructure that fixes this — from consent and
-              collection through to dashboards and attribution — so your marketing team can finally
-              trust the numbers.
+              This site runs on the same stack I sell. Consent management, server-side GTM, a
+              real-time event pipeline into BigQuery, Dataform transformations, AI-enriched data
+              models, and live dashboards — all running right now, on your session. Instead of
+              describing what I build, I built this site on it.
             </p>
           </ScrollReveal>
-          <ScrollReveal variant="slideUp" delay={0.4}>
+          <ScrollReveal variant="slideUp" delay={0.5}>
             <div className="mt-10 flex flex-wrap gap-4">
-              <CtaLink
-                href="#proof"
-                ctaLocation="hero"
+              <button
+                type="button"
+                onClick={() => {
+                  trackClickCta("See what's underneath", 'hero');
+                  open();
+                }}
                 className="rounded-card bg-content-inverse px-8 py-3.5 text-sm font-semibold text-surface-dark transition-all hover:bg-brand-100 hover:shadow-glow"
               >
-                See how it works
-              </CtaLink>
+                See what&apos;s underneath
+              </button>
               <CtaLink
                 href="#demos"
                 ctaLocation="hero"
                 className="rounded-card border border-content-on-dark/30 px-8 py-3.5 text-sm font-semibold text-content-inverse transition-all hover:border-content-inverse hover:bg-content-inverse/10"
               >
-                Explore a live demo
+                Explore the demos
               </CtaLink>
-            </div>
-          </ScrollReveal>
-        </div>
-      </section>
-
-      {/* The Problem — clean, focused */}
-      <section className="px-6 py-section">
-        <div className="prose-container">
-          <ScrollReveal>
-            <h2 className="font-display text-display-sm font-bold tracking-tight text-content sm:text-display-md">
-              The measurement gap is getting wider.
-            </h2>
-          </ScrollReveal>
-          <ScrollReveal delay={0.1}>
-            <div className="mt-8 space-y-5 text-lg leading-relaxed text-content-secondary">
-              <p>
-                Most marketing teams are running blind and don&apos;t know it. They trust
-                platform-reported ROAS numbers that double-count conversions. They rely on cookies
-                that Safari kills after seven days. They pay for analytics tools that can&apos;t
-                tell them which marketing is actually working.
-              </p>
-              <p>
-                The result: budget decisions based on flawed data, attribution models that reward
-                whoever touched the customer last, and no way to answer the question every CMO
-                eventually asks — &quot;what would happen if we turned off spend on this
-                channel?&quot;
-              </p>
-              <p>
-                This isn&apos;t a tools problem. You don&apos;t need another dashboard or another
-                analytics vendor. You need measurement infrastructure — a system that collects data
-                properly, stores it in a warehouse you own, transforms it into something
-                trustworthy, and gives you answers you can act on.
-              </p>
-              <p className="font-semibold text-content">That&apos;s what I build.</p>
-            </div>
-          </ScrollReveal>
-        </div>
-      </section>
-
-      {/* The Proof */}
-      <section id="proof" className="px-6 py-section">
-        <div className="prose-container">
-          <ScrollReveal>
-            <h2 className="font-display text-display-sm font-bold tracking-tight text-content sm:text-display-md">
-              This site is the case study.
-            </h2>
-          </ScrollReveal>
-          <ScrollReveal delay={0.1}>
-            <div className="mt-8 space-y-5 text-lg leading-relaxed text-content-secondary">
-              <p>
-                Every page you&apos;re browsing right now is instrumented with the same stack I sell
-                to clients. The consent banner, the server-side tracking, the event pipeline into
-                BigQuery, the transformation layer, the dashboards — it&apos;s all running live.
-              </p>
-              <p className="font-semibold text-content">
-                Don&apos;t take my word for it. Look under the hood and see for yourself.
-              </p>
             </div>
           </ScrollReveal>
         </div>
       </section>
 
       {/* Pipeline CTA — under-the-hood teaser */}
-      <section className="bg-surface-dark px-6 py-section">
+      <section className="bg-surface px-6 py-section">
         <div className="section-container text-center">
           <ScrollReveal variant="fade">
-            <h2 className="font-display text-display-sm font-bold tracking-tight text-content-inverse sm:text-display-md">
+            <h2 className="font-display text-display-sm font-bold tracking-tight text-content sm:text-display-md">
               See what&apos;s running underneath.
             </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-lg text-content-on-dark">
+            <p className="mx-auto mt-4 max-w-2xl text-lg text-content-secondary">
               Every scroll, click, and page view on this site flows through a real measurement
-              pipeline — right now, including yours.
+              pipeline. The same architecture I deploy for clients — running live, on your session.
             </p>
           </ScrollReveal>
           <ScrollReveal delay={0.2}>
             <div className="mx-auto mt-10 flex max-w-lg items-center justify-center gap-3">
               {['Browser', 'GTM', 'sGTM', 'BigQuery', 'Dashboards'].map((node, i, arr) => (
                 <span key={node} className="flex items-center gap-3">
-                  <span className="rounded-full border border-content-on-dark/20 px-3 py-1 text-xs font-medium text-content-on-dark">
+                  <span className="rounded-full border border-border px-3 py-1 text-xs font-medium text-content-secondary">
                     {node}
                   </span>
                   {i < arr.length - 1 && (
-                    <span className="text-content-on-dark/40" aria-hidden="true">
+                    <span className="text-content-muted" aria-hidden="true">
                       &rarr;
                     </span>
                   )}
@@ -194,7 +136,7 @@ export default function HomePage() {
                 trackClickCta('Look under the hood', 'pipeline-cta');
                 open();
               }}
-              className="mt-10 inline-flex items-center gap-2 rounded-card border border-content-on-dark/30 px-8 py-3.5 text-sm font-semibold text-content-inverse transition-all hover:border-content-inverse hover:bg-content-inverse/10"
+              className="mt-10 inline-flex items-center gap-2 rounded-card border border-border px-8 py-3.5 text-sm font-semibold text-content transition-all hover:border-brand-300 hover:bg-surface-alt hover:shadow-card"
             >
               Look under the hood
             </button>
@@ -202,8 +144,26 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Demo Spotlights — full-width sections */}
+      {/* Demo Spotlights */}
       <div id="demos">
+        {/* Demos intro */}
+        <section className="bg-surface-dark px-6 py-section pb-0">
+          <div className="section-container">
+            <ScrollReveal variant="fade">
+              <h2 className="font-display text-display-sm font-bold tracking-tight text-content-inverse sm:text-display-md">
+                Three business models. Same stack.
+              </h2>
+              <p className="mt-4 max-w-2xl text-lg text-content-on-dark">
+                Each demo below is a fully functional front-end generating real events through the
+                measurement pipeline. Browse a shop, sign up for a subscription, or submit a
+                partnership inquiry — then look under the hood to watch your session data flow
+                through every layer.
+              </p>
+            </ScrollReveal>
+          </div>
+        </section>
+
+        {/* Individual demo sections */}
         {demos.map(
           (
             {
@@ -230,9 +190,9 @@ export default function HomePage() {
                           {type}
                         </span>
                       </div>
-                      <h2 className="font-display text-display-sm font-bold tracking-tight text-content sm:text-display-md">
+                      <h3 className="font-display text-display-sm font-bold tracking-tight text-content sm:text-display-md">
                         {title}
-                      </h2>
+                      </h3>
                       <p className="mt-4 max-w-xl text-lg leading-relaxed text-content-secondary">
                         {description}
                       </p>
