@@ -21,6 +21,7 @@ const demoLinks = [
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [demosOpen, setDemosOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const demosRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -33,10 +34,34 @@ export function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    function handleScroll() {
+      setScrolled(window.scrollY > 20);
+    }
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
-    <header className="border-b border-neutral-200 bg-white">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        <Link href="/" className="text-lg font-semibold tracking-tight text-neutral-900">
+    <header
+      className={`sticky top-0 z-40 transition-all duration-300 ${
+        scrolled
+          ? 'border-b border-border bg-surface/95 shadow-card backdrop-blur-md'
+          : 'border-b border-transparent bg-transparent'
+      }`}
+    >
+      <div
+        className={`mx-auto flex max-w-content items-center justify-between px-6 transition-all duration-300 ${
+          scrolled ? 'py-3' : 'py-5'
+        }`}
+      >
+        <Link
+          href="/"
+          className={`font-display font-semibold tracking-tight transition-all duration-300 ${
+            scrolled ? 'text-base text-content' : 'text-lg text-content'
+          }`}
+        >
           Patterson Consulting
         </Link>
 
@@ -47,7 +72,7 @@ export function Header() {
               <li key={href}>
                 <Link
                   href={href}
-                  className="text-sm font-medium text-neutral-600 transition-colors hover:text-neutral-900"
+                  className="text-sm font-medium text-content-secondary transition-colors hover:text-content"
                   onClick={() => trackClickNav(label, href)}
                 >
                   {label}
@@ -58,7 +83,7 @@ export function Header() {
               <div ref={demosRef} className="relative">
                 <button
                   type="button"
-                  className="text-sm font-medium text-neutral-600 transition-colors hover:text-neutral-900"
+                  className="text-sm font-medium text-content-secondary transition-colors hover:text-content"
                   onClick={() => setDemosOpen(!demosOpen)}
                   aria-expanded={demosOpen}
                 >
@@ -74,12 +99,12 @@ export function Header() {
                   </svg>
                 </button>
                 {demosOpen && (
-                  <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-lg border border-neutral-200 bg-white py-2 shadow-lg">
+                  <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-card border border-border bg-surface py-2 shadow-elevated">
                     {demoLinks.map(({ href, label }) => (
                       <Link
                         key={href}
                         href={href}
-                        className="block px-4 py-2 text-sm text-neutral-600 transition-colors hover:bg-neutral-50 hover:text-neutral-900"
+                        className="block px-4 py-2 text-sm text-content-secondary transition-colors hover:bg-surface-alt hover:text-content"
                         onClick={() => {
                           trackClickNav(label, href);
                           setDemosOpen(false);
@@ -98,7 +123,7 @@ export function Header() {
         {/* Mobile menu button */}
         <button
           type="button"
-          className="md:hidden text-neutral-600"
+          className="text-content-secondary md:hidden"
           onClick={() => setMenuOpen(!menuOpen)}
           aria-label={menuOpen ? 'Close menu' : 'Open menu'}
           aria-expanded={menuOpen}
@@ -118,13 +143,13 @@ export function Header() {
 
       {/* Mobile nav */}
       {menuOpen && (
-        <nav className="border-t border-neutral-100 md:hidden">
+        <nav className="border-t border-border md:hidden">
           <ul className="flex flex-col px-6 py-4">
             {navLinks.map(({ href, label }) => (
               <li key={href}>
                 <Link
                   href={href}
-                  className="block py-2 text-sm font-medium text-neutral-600 transition-colors hover:text-neutral-900"
+                  className="block py-2.5 text-sm font-medium text-content-secondary transition-colors hover:text-content"
                   onClick={() => {
                     trackClickNav(label, href);
                     setMenuOpen(false);
@@ -134,15 +159,15 @@ export function Header() {
                 </Link>
               </li>
             ))}
-            <li className="mt-2 border-t border-neutral-100 pt-2">
-              <span className="block py-1 text-xs font-medium uppercase tracking-wider text-neutral-400">
+            <li className="mt-2 border-t border-border-muted pt-2">
+              <span className="block py-1 text-xs font-medium uppercase tracking-wider text-content-muted">
                 Demos
               </span>
               {demoLinks.map(({ href, label }) => (
                 <Link
                   key={href}
                   href={href}
-                  className="block py-2 pl-3 text-sm font-medium text-neutral-600 transition-colors hover:text-neutral-900"
+                  className="block py-2.5 pl-3 text-sm font-medium text-content-secondary transition-colors hover:text-content"
                   onClick={() => {
                     trackClickNav(label, href);
                     setMenuOpen(false);
