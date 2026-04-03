@@ -30,7 +30,9 @@ let nextId = 0;
 
 export function AmbientBubbles({ maxBubbles = 3, duration = 3000 }: AmbientBubblesProps) {
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
-  const lastIndexRef = useRef(0);
+  const lastIndexRef = useRef(
+    typeof window !== 'undefined' && window.dataLayer ? window.dataLayer.length : 0,
+  );
   const pollIntervalMs = 400;
 
   const addBubble = useCallback(

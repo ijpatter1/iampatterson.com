@@ -3,6 +3,7 @@
 import { CtaLink } from '@/components/cta-link';
 import { useOverlay } from '@/components/overlay/overlay-context';
 import { ScrollReveal } from '@/components/scroll-reveal';
+import { trackClickCta } from '@/lib/events/track';
 
 const tiers = [
   {
@@ -249,7 +250,10 @@ export default function HomePage() {
           <ScrollReveal delay={0.4}>
             <button
               type="button"
-              onClick={open}
+              onClick={() => {
+                trackClickCta('Look under the hood', 'pipeline-cta');
+                open();
+              }}
               className="mt-10 inline-flex items-center gap-2 rounded-card border border-content-on-dark/30 px-8 py-3.5 text-sm font-semibold text-content-inverse transition-all hover:border-content-inverse hover:bg-content-inverse/10"
             >
               Look under the hood

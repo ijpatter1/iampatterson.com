@@ -4,6 +4,10 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
+jest.mock('@/lib/events/track', () => ({
+  trackClickCta: jest.fn(),
+}));
+
 import { FlipTrigger } from '@/components/overlay/flip-trigger';
 import { OverlayProvider } from '@/components/overlay/overlay-context';
 
