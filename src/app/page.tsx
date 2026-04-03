@@ -1,6 +1,7 @@
 'use client';
 
 import { CtaLink } from '@/components/cta-link';
+import { useOverlay } from '@/components/overlay/overlay-context';
 import { ScrollReveal } from '@/components/scroll-reveal';
 
 const tiers = [
@@ -85,6 +86,8 @@ const demos = [
 ];
 
 export default function HomePage() {
+  const { open } = useOverlay();
+
   return (
     <main>
       {/* Hero — full viewport, dark, bold typography */}
@@ -244,13 +247,13 @@ export default function HomePage() {
             </div>
           </ScrollReveal>
           <ScrollReveal delay={0.4}>
-            <CtaLink
-              href="#"
-              ctaLocation="pipeline-cta"
+            <button
+              type="button"
+              onClick={open}
               className="mt-10 inline-flex items-center gap-2 rounded-card border border-content-on-dark/30 px-8 py-3.5 text-sm font-semibold text-content-inverse transition-all hover:border-content-inverse hover:bg-content-inverse/10"
             >
               Look under the hood
-            </CtaLink>
+            </button>
           </ScrollReveal>
         </div>
       </section>

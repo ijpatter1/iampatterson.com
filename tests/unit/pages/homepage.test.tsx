@@ -10,6 +10,16 @@ jest.mock('@/lib/events/track', () => ({
   trackClickCta: jest.fn(),
 }));
 
+const mockOpen = jest.fn();
+jest.mock('@/components/overlay/overlay-context', () => ({
+  useOverlay: () => ({
+    isOpen: false,
+    toggle: jest.fn(),
+    open: mockOpen,
+    close: jest.fn(),
+  }),
+}));
+
 jest.mock('framer-motion', () => ({
   motion: {
     div: ({

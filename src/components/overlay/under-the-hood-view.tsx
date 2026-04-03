@@ -1,21 +1,32 @@
 'use client';
 
+import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 
 import { ConsentView } from '@/components/overlay/consent-view';
 import { DashboardView } from '@/components/overlay/dashboard-view';
 import { EventDetail } from '@/components/overlay/event-detail';
 import { EventTimeline } from '@/components/overlay/event-timeline';
+import { HomepageUnderside } from '@/components/overlay/homepage-underside';
 import { NarrativeFlow } from '@/components/overlay/narrative-flow';
 import { useOverlay } from '@/components/overlay/overlay-context';
 import { useEventStream } from '@/hooks/useEventStream';
 import { useFilteredEvents } from '@/hooks/useFilteredEvents';
 import type { PipelineEvent } from '@/lib/events/pipeline-schema';
 
-type ViewMode = 'timeline' | 'narrative' | 'consent' | 'dashboards';
+type ViewMode = 'overview' | 'timeline' | 'narrative' | 'consent' | 'dashboards';
 
-function ViewTabs({ active, onChange }: { active: ViewMode; onChange: (mode: ViewMode) => void }) {
+function ViewTabs({
+  active,
+  onChange,
+  showOverview,
+}: {
+  active: ViewMode;
+  onChange: (mode: ViewMode) => void;
+  showOverview: boolean;
+}) {
   const tabs: { mode: ViewMode; label: string }[] = [
+    ...(showOverview ? [{ mode: 'overview' as ViewMode, label: 'Overview' }] : []),
     { mode: 'timeline', label: 'Timeline' },
     { mode: 'narrative', label: 'Narrative' },
     { mode: 'consent', label: 'Consent' },
@@ -43,6 +54,8 @@ function ViewTabs({ active, onChange }: { active: ViewMode; onChange: (mode: Vie
 
 export function UnderTheHoodView() {
   const { isOpen, close } = useOverlay();
+  const pathname = usePathname();
+  const isHomepage = pathname === '/';
   const baseUrl = process.env.NEXT_PUBLIC_EVENT_STREAM_URL ?? '';
   const eventStreamUrl = baseUrl.endsWith('/events') ? baseUrl : `${baseUrl}/events`;
   const { events, status } = useEventStream({
@@ -50,7 +63,7 @@ export function UnderTheHoodView() {
     enabled: isOpen && baseUrl.length > 0,
   });
   const { filteredEvents } = useFilteredEvents(events, false);
-  const [viewMode, setViewMode] = useState<ViewMode>('timeline');
+  const [viewMode, setViewMode] = useState<ViewMode>(isHomepage ? 'overview' : 'timeline');
   const [selectedEvent, setSelectedEvent] = useState<PipelineEvent | null>(null);
 
   if (!isOpen) return null;
@@ -94,7 +107,7 @@ export function UnderTheHoodView() {
       </header>
 
       {/* View tabs */}
-      <ViewTabs active={viewMode} onChange={setViewMode} />
+      <ViewTabs active={viewMode} onChange={setViewMode} showOverview={isHomepage} />
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
@@ -108,6 +121,7 @@ export function UnderTheHoodView() {
             </>
           ) : (
             <>
+              {viewMode === 'overview' && <HomepageUnderside />}
               {viewMode === 'timeline' && (
                 <EventTimeline events={filteredEvents} onSelectEvent={setSelectedEvent} />
               )}

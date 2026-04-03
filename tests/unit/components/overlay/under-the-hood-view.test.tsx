@@ -8,6 +8,10 @@ import { UnderTheHoodView } from '@/components/overlay/under-the-hood-view';
 
 const mockClose = jest.fn();
 
+jest.mock('next/navigation', () => ({
+  usePathname: () => '/',
+}));
+
 jest.mock('@/components/overlay/overlay-context', () => ({
   useOverlay: () => ({
     isOpen: true,
@@ -57,12 +61,18 @@ describe('UnderTheHoodView', () => {
     expect(mockClose).toHaveBeenCalled();
   });
 
-  it('renders view mode tabs', () => {
+  it('renders view mode tabs including Overview on homepage', () => {
     render(<UnderTheHoodView />);
+    expect(screen.getByText('Overview')).toBeInTheDocument();
     expect(screen.getByText('Timeline')).toBeInTheDocument();
     expect(screen.getByText('Narrative')).toBeInTheDocument();
     expect(screen.getByText('Consent')).toBeInTheDocument();
     expect(screen.getByText('Dashboards')).toBeInTheDocument();
+  });
+
+  it('shows HomepageUnderside content by default on homepage', () => {
+    render(<UnderTheHoodView />);
+    expect(screen.getByText(/tier 1 in action/i)).toBeInTheDocument();
   });
 
   it('renders a heading identifying the view', () => {
