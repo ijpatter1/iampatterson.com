@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
+import { AmbientBubblesWrapper } from '@/components/ambient-bubbles-wrapper';
 import { FlipTrigger } from '@/components/overlay/flip-trigger';
 import { OverlayProvider } from '@/components/overlay/overlay-context';
 import { OverlayPanel } from '@/components/overlay/overlay-panel';
@@ -37,6 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Header />
           <div className="flex-1">{children}</div>
           <Footer />
+          <AmbientBubblesWrapper />
           <FlipTrigger />
           <OverlayPanel />
         </OverlayProvider>

@@ -140,6 +140,7 @@ const config: Config = {
       animation: {
         'fade-in': 'fadeIn 0.6s ease-out',
         'slide-up': 'slideUp 0.6s ease-out',
+        'bubble-rise': 'bubble-rise 3s ease-in-out forwards',
       },
 
       keyframes: {
@@ -150,6 +151,12 @@ const config: Config = {
         slideUp: {
           '0%': { opacity: '0', transform: 'translateY(1.5rem)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        'bubble-rise': {
+          '0%': { opacity: '0', transform: 'translateY(0.5rem) scale(0.95)' },
+          '10%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+          '80%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+          '100%': { opacity: '0', transform: 'translateY(-0.5rem) scale(0.95)' },
         },
       },
     },
