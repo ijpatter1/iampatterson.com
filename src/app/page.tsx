@@ -85,14 +85,14 @@ export default function HomePage() {
                   trackClickCta('Look under the hood', 'hero');
                   open();
                 }}
-                className="rounded-card bg-content-inverse px-8 py-3.5 text-sm font-semibold text-surface-dark transition-all hover:bg-brand-100 hover:shadow-glow"
+                className="rounded-card bg-sage-700 px-8 py-3.5 text-sm font-semibold text-neutral-100 transition-all hover:bg-sage-900 hover:shadow-glow"
               >
                 Look under the hood
               </button>
               <CtaLink
                 href="#demos"
                 ctaLocation="hero"
-                className="rounded-card border border-content-on-dark/30 px-8 py-3.5 text-sm font-semibold text-content-inverse transition-all hover:border-content-inverse hover:bg-content-inverse/10"
+                className="rounded-card border border-sage-400/40 px-8 py-3.5 text-sm font-semibold text-neutral-100 transition-all hover:border-sage-400 hover:bg-sage-400/10"
               >
                 Explore the demos
               </CtaLink>
@@ -102,7 +102,7 @@ export default function HomePage() {
       </section>
 
       {/* Pipeline CTA */}
-      <section className="bg-surface px-6 py-section-sm">
+      <section className="bg-plum-100 px-6 py-section-sm">
         <div className="section-container text-center">
           <ScrollReveal variant="fade">
             <h2 className="font-display text-display-sm font-bold tracking-tight text-content sm:text-display-md">
@@ -117,11 +117,11 @@ export default function HomePage() {
             <div className="mx-auto mt-8 flex max-w-lg items-center justify-center gap-3">
               {['Browser', 'GTM', 'sGTM', 'BigQuery', 'Dashboards'].map((node, i, arr) => (
                 <span key={node} className="flex items-center gap-3">
-                  <span className="rounded-full border border-border px-3 py-1 text-xs font-medium text-content-secondary">
+                  <span className="rounded-full border border-plum-200 px-3 py-1 text-xs font-medium text-plum-700">
                     {node}
                   </span>
                   {i < arr.length - 1 && (
-                    <span className="text-content-muted" aria-hidden="true">
+                    <span className="text-plum-400" aria-hidden="true">
                       &rarr;
                     </span>
                   )}
@@ -136,7 +136,7 @@ export default function HomePage() {
                 trackClickCta('Look under the hood', 'pipeline-cta');
                 open();
               }}
-              className="mt-8 inline-flex items-center gap-2 rounded-card border border-border px-8 py-3.5 text-sm font-semibold text-content transition-all hover:border-brand-300 hover:bg-surface-alt hover:shadow-card"
+              className="mt-8 inline-flex items-center gap-2 rounded-card bg-sage-700 px-8 py-3.5 text-sm font-semibold text-neutral-100 transition-all hover:bg-sage-900 hover:shadow-card"
             >
               Look under the hood
             </button>
@@ -147,13 +147,13 @@ export default function HomePage() {
       {/* Demo Spotlights */}
       <div id="demos">
         {/* Demos intro */}
-        <section className="bg-surface-dark px-6 py-section-sm">
+        <section className="bg-plum-900 px-6 py-section-sm">
           <div className="section-container">
             <ScrollReveal variant="fade">
-              <h2 className="font-display text-display-sm font-bold tracking-tight text-content-inverse sm:text-display-md">
+              <h2 className="font-display text-display-sm font-bold tracking-tight text-neutral-100 sm:text-display-md">
                 Three business models. Same stack.
               </h2>
-              <p className="mt-4 max-w-2xl text-lg text-content-on-dark">
+              <p className="mt-4 max-w-2xl text-lg text-plum-400">
                 Each demo below is a fully functional front-end generating real events through the
                 measurement pipeline. Browse a shop, sign up for a subscription, or submit a
                 partnership inquiry, then look under the hood to watch your session data flow

@@ -41,8 +41,8 @@ function ViewTabs({
           onClick={() => onChange(mode)}
           className={`px-4 py-3 text-sm font-medium transition-colors ${
             active === mode
-              ? 'border-b-2 border-content text-content'
-              : 'text-content-muted hover:text-content-secondary'
+              ? 'border-b-2 border-sage-700 text-sage-900'
+              : 'text-content-muted hover:text-plum-700'
           }`}
         >
           {label}
