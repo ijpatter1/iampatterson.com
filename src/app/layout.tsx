@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
@@ -13,6 +13,11 @@ import { CookiebotConsentListener } from '@/components/scripts/cookiebot-consent
 import { GtmScript, GtmNoscript } from '@/components/scripts/gtm';
 import { lora, plusJakarta, jetbrainsMono } from '@/lib/fonts';
 import '@/styles/globals.css';
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+};
 
 export const metadata: Metadata = {
   title: {
