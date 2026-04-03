@@ -24,16 +24,12 @@ beforeEach(() => {
 });
 
 describe('RouteTracker', () => {
-  it('fires trackPageView with document.referrer on initial mount', () => {
-    Object.defineProperty(document, 'referrer', {
-      value: 'https://google.com',
-      configurable: true,
-    });
+  it('does not fire trackPageView on initial mount (googtag handles it)', () => {
     render(<RouteTracker />);
-    expect(mockTrackPageView).toHaveBeenCalledWith('https://google.com');
+    expect(mockTrackPageView).not.toHaveBeenCalled();
   });
 
-  it('fires trackPageView with previous path on route change', () => {
+  it('fires trackPageView with previous path on SPA navigation', () => {
     const { rerender } = render(<RouteTracker />);
     mockTrackPageView.mockClear();
 
@@ -41,6 +37,19 @@ describe('RouteTracker', () => {
     rerender(<RouteTracker />);
 
     expect(mockTrackPageView).toHaveBeenCalledWith('/');
+  });
+
+  it('fires trackPageView on subsequent navigations', () => {
+    const { rerender } = render(<RouteTracker />);
+
+    mockUsePathname.mockReturnValue('/services');
+    rerender(<RouteTracker />);
+    expect(mockTrackPageView).toHaveBeenCalledTimes(1);
+
+    mockUsePathname.mockReturnValue('/about');
+    rerender(<RouteTracker />);
+    expect(mockTrackPageView).toHaveBeenCalledTimes(2);
+    expect(mockTrackPageView).toHaveBeenLastCalledWith('/services');
   });
 
   it('renders nothing', () => {
