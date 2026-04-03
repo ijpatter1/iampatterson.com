@@ -10,6 +10,7 @@ import { ScrollDepthTracker } from '@/components/scroll-depth-tracker';
 import { CookiebotScript } from '@/components/scripts/cookiebot';
 import { CookiebotConsentListener } from '@/components/scripts/cookiebot-consent';
 import { GtmScript, GtmNoscript } from '@/components/scripts/gtm';
+import { inter, spaceGrotesk } from '@/lib/fonts';
 import '@/styles/globals.css';
 
 export const metadata: Metadata = {
@@ -22,12 +23,12 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable}`}>
       <head>
         <CookiebotScript />
         <GtmScript />
       </head>
-      <body className="flex min-h-screen flex-col bg-white text-neutral-900 antialiased">
+      <body className="flex min-h-screen flex-col bg-surface text-content font-sans antialiased">
         <GtmNoscript />
         <CookiebotConsentListener />
         <RouteTracker />

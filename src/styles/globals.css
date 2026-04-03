@@ -1,3 +1,43 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  /* Smooth scrolling with reduced-motion respect */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* Selection styling */
+  ::selection {
+    background-color: theme('colors.brand.200');
+    color: theme('colors.brand.900');
+  }
+}
+
+@layer components {
+  /* Section container — full-viewport sections for scroll-driven layout */
+  .section-container {
+    @apply mx-auto w-full max-w-content px-6;
+  }
+
+  /* Prose container — narrower for text-heavy content */
+  .prose-container {
+    @apply mx-auto w-full max-w-prose px-6;
+  }
+}
