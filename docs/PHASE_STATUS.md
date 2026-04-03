@@ -1,7 +1,7 @@
 # Phase Status Tracker
 
-> **Current Phase: 6 — Three Demo Front-Ends** (COMPLETE)
-> Last updated: 2026-04-02, session-2026-04-02-014
+> **Current Phase: 7 — BI Layer & Demo Dashboards** (IN PROGRESS)
+> Last updated: 2026-04-03, session-2026-04-03-015
 
 ---
 
@@ -101,12 +101,12 @@
 
 *Goal: Build the dashboard and reporting layer for each business model, embeddable or linkable from the demo back-end views.*
 
-- ⬜ E-commerce dashboards: executive summary (revenue, AOV, conversion rate by channel), campaign performance (spend vs revenue with AI-classified taxonomy), product performance, acquisition funnel
-- ⬜ Subscription dashboards: cohort retention curves, trial-to-paid conversion by channel, MRR/ARR trending, churn analysis, LTV by acquisition source
-- ⬜ Lead gen dashboards: lead funnel (visits → form starts → submissions → qualified leads), cost per lead by channel, lead quality distribution, conversion timeline
+- ✅ 2026-04-03, session-2026-04-03-015 — E-commerce dashboards: executive summary (revenue, AOV, conversion rate by channel), campaign performance (spend vs revenue with AI-classified taxonomy), product performance, acquisition funnel. Built with Recharts on mock data matching BigQuery mart schemas
+- ✅ 2026-04-03, session-2026-04-03-015 — Subscription dashboards: cohort retention curves, trial-to-paid conversion by channel, MRR/ARR trending, churn analysis, LTV by acquisition source
+- ✅ 2026-04-03, session-2026-04-03-015 — Lead gen dashboards: lead funnel (visits → form starts → submissions → qualified leads), cost per lead by channel, lead quality distribution, conversion timeline
 - ⬜ Built in Looker Studio and/or Metabase to demonstrate both options
 - ⬜ Automated Narrative Reporting: RAG pipeline wired to scheduled job generating weekly written summaries per business model
-- ⬜ Dashboard embed or deep-link integration with flip-the-card UI for pipeline-to-dashboard navigation within the overlay
+- ✅ 2026-04-03, session-2026-04-03-015 — Dashboard embed/deep-link integration with flip-the-card UI: Dashboards tab in overlay, contextual Analytics link in DemoNav
 
 ---
 

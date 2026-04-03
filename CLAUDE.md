@@ -18,7 +18,7 @@ This is the consulting website for Patterson Consulting **and** a live, interact
 
 ## Current Phase
 
-**Phase 6 — Three Demo Front-Ends** (COMPLETE — all deliverables shipped, GTM containers published, sGTM self-hosted on Cloud Run)
+**Phase 7 — BI Layer & Demo Dashboards** (IN PROGRESS — dashboards built for all 3 demos with mock data, Looker Studio/Metabase and Narrative Reporting remaining)
 
 See `docs/REQUIREMENTS.md` for the full 10-phase development plan.
 See `docs/ARCHITECTURE.md` for technical architecture details.
