@@ -121,7 +121,27 @@
 
 ---
 
-## Phase 9 — Polish, Performance & Launch Prep
+## Phase 9 — Frontend Redesign
+
+*Goal: Transform the site from a text-heavy layout into a scroll-driven, visually distinctive portfolio experience while preserving all existing event tracking and backend functionality.*
+
+- ⬜ Design system overhaul — color palette, typography, spacing, component tokens in Tailwind config
+- ⬜ Scroll-driven homepage rebuild — full-viewport sections, demo spotlights as Perry Wang–style gallery with per-demo color identity, replacing `/demo` landing page
+- ⬜ Scroll animation system — Framer Motion or CSS scroll-driven animations with reduced-motion support
+- ⬜ Flip-the-card as first-class homepage element — interactive pipeline visualization on scroll
+- ⬜ Demo visual differentiation — per-demo color accent, mood, and layout variations across all demo pages
+- ⬜ Intentional demo entry transitions — color wash or card expansion bridging homepage to demo palette
+- ⬜ Dashboard integration into demo flow — embedded KPI/chart previews replacing standalone analytics pages
+- ⬜ Navigation redesign — sticky transform, smooth scroll, simplified DemoNav (no analytics link)
+- ⬜ Services page visual hierarchy — distinct tier sections, alternating layouts, visual gates
+- ⬜ About page personality — personal layout, visual elements, Tuna brand integration
+- ⬜ Contact page refinement — tighter layout, conversational form pattern
+- ⬜ Micro-interactions and polish — hover states, transitions, page animations, scroll indicators
+- ⬜ Performance validation — Core Web Vitals, Lighthouse, event tracking regression check
+
+---
+
+## Phase 10 — Polish, Performance & Launch Prep
 
 *Goal: Optimize the full experience for production readiness.*
 
@@ -136,7 +156,7 @@
 
 ---
 
-## Phase 10 — Operational Readiness & Maintenance Infrastructure
+## Phase 11 — Operational Readiness & Maintenance Infrastructure
 
 *Goal: Build the monitoring, alerting, and operational tooling needed to keep the full stack healthy in production.*
 
