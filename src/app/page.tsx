@@ -187,14 +187,14 @@ export default function HomePage() {
                 BigQuery, the transformation layer, the dashboards — it&apos;s all running live.
               </p>
               <p className="font-semibold text-content">
-                Don&apos;t take my word for it. Flip the card and watch it work.
+                Don&apos;t take my word for it. Look under the hood and see for yourself.
               </p>
             </div>
           </ScrollReveal>
         </div>
       </section>
 
-      {/* Pipeline Visualization — flip-the-card teaser */}
+      {/* Pipeline Visualization — under-the-hood teaser */}
       <section className="bg-surface-alt px-6 py-section">
         <div className="section-container">
           <ScrollReveal>
@@ -248,8 +248,8 @@ export default function HomePage() {
             </h2>
             <p className="mt-4 max-w-2xl text-lg text-content-on-dark">
               Each demo is a fully functional front-end generating real events through the
-              measurement pipeline. Interact with any demo, then flip the card to watch your session
-              data propagate in real time.
+              measurement pipeline. Interact with any demo, then look under the hood to watch your
+              session data propagate in real time.
             </p>
           </ScrollReveal>
           <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">

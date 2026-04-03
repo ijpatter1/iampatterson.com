@@ -52,7 +52,7 @@ export default function DemoLandingPage() {
           and live dashboards.
         </p>
         <p className="mt-4 text-lg leading-relaxed text-content-secondary">
-          Interact with any demo, then flip the card to watch your own session data propagate
+          Interact with any demo, then look under the hood to watch your own session data propagate
           through every layer of the stack in real time.
         </p>
       </div>

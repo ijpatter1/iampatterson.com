@@ -125,9 +125,9 @@ describe('HomePage', () => {
       expect(screen.getByText(/this site is the case study/i)).toBeInTheDocument();
     });
 
-    it('renders the flip-the-card call to action text', () => {
+    it('renders the under-the-hood call to action text', () => {
       render(<HomePage />);
-      expect(screen.getByText(/flip the card and watch it work/i)).toBeInTheDocument();
+      expect(screen.getByText(/look under the hood and see for yourself/i)).toBeInTheDocument();
     });
   });
 

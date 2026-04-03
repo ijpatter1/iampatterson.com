@@ -112,9 +112,9 @@ describe('LeadgenThankYou', () => {
     expect(screen.getByText(/thanks for your inquiry/i)).toBeInTheDocument();
   });
 
-  it('mentions flip the card', () => {
+  it('mentions under the hood', () => {
     render(<LeadgenThankYou />);
-    expect(screen.getByText(/flip the card/i)).toBeInTheDocument();
+    expect(screen.getByText(/under the hood/i)).toBeInTheDocument();
   });
 
   it('links back to the landing page', () => {

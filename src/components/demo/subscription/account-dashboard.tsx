@@ -73,8 +73,8 @@ export function AccountDashboard({ planId }: AccountDashboardProps) {
 
       <p className="mt-6 text-sm leading-relaxed text-neutral-600">
         Your trial is active. In a real subscription, you&apos;d receive your first box within 5-7
-        days. In this demo, we&apos;ve just fired a trial_signup event through the full stack. Flip
-        the card to see your signup flow through consent, sGTM, BigQuery, and into the cohort
+        days. In this demo, we&apos;ve just fired a trial_signup event through the full stack. Look
+        under the hood to see your signup flow through consent, sGTM, BigQuery, and into the cohort
         models.
       </p>
 
