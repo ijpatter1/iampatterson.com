@@ -4,6 +4,8 @@ import Link from 'next/link';
 
 import { trackClickNav } from '@/lib/events/track';
 
+import { useDemoTheme } from './demo-theme';
+
 const demoLinks = [
   { href: '/demo/ecommerce', label: 'The Tuna Shop', short: 'E-Commerce' },
   { href: '/demo/subscription', label: 'Tuna Subscription', short: 'Subscription' },
@@ -23,21 +25,29 @@ interface DemoNavProps {
 }
 
 export function DemoNav({ activePath }: DemoNavProps) {
+  const theme = useDemoTheme();
   const analyticsHref = getAnalyticsHref(activePath);
   const isOnAnalytics = activePath?.endsWith('/analytics');
 
   return (
-    <nav className="border-b border-neutral-200 bg-neutral-50">
-      <div className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-3">
+    <nav className="border-b border-border bg-surface-alt">
+      {/* Accent color strip at top */}
+      {theme.demoId && (
+        <div
+          className={`h-1 ${theme.borderAccentClass}`}
+          style={{ backgroundColor: theme.accent }}
+        />
+      )}
+      <div className="mx-auto flex max-w-content items-center gap-6 px-6 py-3">
         <Link
           href="/"
-          className="text-sm text-neutral-500 transition-colors hover:text-neutral-900"
+          className="text-sm text-content-muted transition-colors hover:text-content"
           onClick={() => trackClickNav('Back to site', '/')}
           aria-label="Back to site"
         >
           &larr; Back to site
         </Link>
-        <span className="h-4 w-px bg-neutral-300" aria-hidden="true" />
+        <span className="h-4 w-px bg-border-strong" aria-hidden="true" />
         {demoLinks.map(({ href, label }) => {
           const isActive = activePath?.startsWith(href);
           return (
@@ -46,8 +56,8 @@ export function DemoNav({ activePath }: DemoNavProps) {
               href={href}
               className={`text-sm transition-colors ${
                 isActive
-                  ? 'font-semibold text-neutral-900'
-                  : 'text-neutral-600 hover:text-neutral-900'
+                  ? `font-semibold ${theme.textAccentClass || 'text-content'}`
+                  : 'text-content-secondary hover:text-content'
               }`}
               onClick={() => trackClickNav(label, href)}
             >
@@ -57,13 +67,13 @@ export function DemoNav({ activePath }: DemoNavProps) {
         })}
         {analyticsHref && (
           <>
-            <span className="h-4 w-px bg-neutral-300" aria-hidden="true" />
+            <span className="h-4 w-px bg-border-strong" aria-hidden="true" />
             <Link
               href={analyticsHref}
               className={`text-sm transition-colors ${
                 isOnAnalytics
-                  ? 'font-semibold text-neutral-900'
-                  : 'text-neutral-600 hover:text-neutral-900'
+                  ? `font-semibold ${theme.textAccentClass || 'text-content'}`
+                  : 'text-content-secondary hover:text-content'
               }`}
               onClick={() => trackClickNav('Analytics', analyticsHref)}
             >
