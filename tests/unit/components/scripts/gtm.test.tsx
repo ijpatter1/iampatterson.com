@@ -72,18 +72,19 @@ describe('GtmScript', () => {
     expect(gtmScript?.textContent).toContain('GTM-TEST123');
   });
 
-  it('loads GTM from sGTM domain when NEXT_PUBLIC_SGTM_URL is set', () => {
+  it('always loads GTM from Google CDN regardless of sGTM URL', () => {
     process.env.NEXT_PUBLIC_GTM_ID = 'GTM-TEST123';
     process.env.NEXT_PUBLIC_SGTM_URL = 'io.example.com';
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { GtmScript } = require('@/components/scripts/gtm');
     const { container } = render(<GtmScript />);
     const gtmScript = container.querySelector('#gtm-script');
-    expect(gtmScript?.textContent).toContain('https://io.example.com/gtm.js');
-    expect(gtmScript?.textContent).not.toContain('googletagmanager.com');
+    // gtm.js should always come from Google CDN — sGTM handles data
+    // transport via server_container_url in the web GTM config tag
+    expect(gtmScript?.textContent).toContain('www.googletagmanager.com/gtm.js');
   });
 
-  it('falls back to googletagmanager.com when sGTM URL is not set', () => {
+  it('loads GTM from Google CDN when sGTM URL is not set', () => {
     process.env.NEXT_PUBLIC_GTM_ID = 'GTM-TEST123';
     delete process.env.NEXT_PUBLIC_SGTM_URL;
     // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -99,27 +100,6 @@ describe('GtmScript', () => {
     const { GtmScript } = require('@/components/scripts/gtm');
     const { container } = render(<GtmScript />);
     expect(container.innerHTML).toBe('');
-  });
-
-  it('strips protocol prefix from sGTM URL to avoid double-protocol', () => {
-    process.env.NEXT_PUBLIC_GTM_ID = 'GTM-TEST123';
-    process.env.NEXT_PUBLIC_SGTM_URL = 'https://io.example.com';
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { GtmScript } = require('@/components/scripts/gtm');
-    const { container } = render(<GtmScript />);
-    const gtmScript = container.querySelector('#gtm-script');
-    expect(gtmScript?.textContent).toContain('https://io.example.com/gtm.js');
-    expect(gtmScript?.textContent).not.toContain('https://https://');
-  });
-
-  it('strips trailing slash from sGTM URL', () => {
-    process.env.NEXT_PUBLIC_GTM_ID = 'GTM-TEST123';
-    process.env.NEXT_PUBLIC_SGTM_URL = 'io.example.com/';
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { GtmScript } = require('@/components/scripts/gtm');
-    const { container } = render(<GtmScript />);
-    const gtmScript = container.querySelector('#gtm-script');
-    expect(gtmScript?.textContent).toContain('https://io.example.com/gtm.js');
   });
 });
 
@@ -142,16 +122,16 @@ describe('GtmNoscript', () => {
     expect(html).toContain('GTM-TEST123');
   });
 
-  it('uses sGTM URL for noscript iframe when set', () => {
+  it('always uses Google CDN for noscript iframe', () => {
     process.env.NEXT_PUBLIC_GTM_ID = 'GTM-TEST123';
     process.env.NEXT_PUBLIC_SGTM_URL = 'io.example.com';
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { GtmNoscript } = require('@/components/scripts/gtm');
     const html = renderStatic(<GtmNoscript />);
-    expect(html).toContain('https://io.example.com/ns.html?id=GTM-TEST123');
+    expect(html).toContain('https://www.googletagmanager.com/ns.html?id=GTM-TEST123');
   });
 
-  it('falls back to googletagmanager.com for noscript iframe', () => {
+  it('uses Google CDN for noscript iframe when sGTM URL is not set', () => {
     process.env.NEXT_PUBLIC_GTM_ID = 'GTM-TEST123';
     delete process.env.NEXT_PUBLIC_SGTM_URL;
     // eslint-disable-next-line @typescript-eslint/no-require-imports

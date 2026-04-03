@@ -2,26 +2,25 @@
 
 import Script from 'next/script';
 
-function getHost(sgtmUrl?: string): string {
-  if (!sgtmUrl) return 'https://www.googletagmanager.com';
-  const cleaned = sgtmUrl.replace(/^https?:\/\//, '').replace(/\/+$/, '');
-  return `https://${cleaned}`;
+const GTM_CDN = 'https://www.googletagmanager.com';
+
+function getGtmScriptUrl(): string {
+  // gtm.js is always loaded from Google's CDN. The sGTM handles data
+  // transport via server_container_url in the web GTM config tag, not
+  // script serving. Stape's custom Data Client proxied gtm.js, but the
+  // standard GA4 client does not claim /gtm.js requests.
+  return `${GTM_CDN}/gtm.js`;
 }
 
-function getGtmScriptUrl(sgtmUrl?: string): string {
-  return `${getHost(sgtmUrl)}/gtm.js`;
-}
-
-function getNoscriptUrl(gtmId: string, sgtmUrl?: string): string {
-  return `${getHost(sgtmUrl)}/ns.html?id=${gtmId}`;
+function getNoscriptUrl(gtmId: string): string {
+  return `${GTM_CDN}/ns.html?id=${gtmId}`;
 }
 
 export function GtmScript() {
   const gtmId = process.env.NEXT_PUBLIC_GTM_ID;
-  const sgtmUrl = process.env.NEXT_PUBLIC_SGTM_URL;
   if (!gtmId) return null;
 
-  const scriptUrl = getGtmScriptUrl(sgtmUrl);
+  const scriptUrl = getGtmScriptUrl();
 
   return (
     <>
@@ -56,10 +55,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 
 export function GtmNoscript() {
   const gtmId = process.env.NEXT_PUBLIC_GTM_ID;
-  const sgtmUrl = process.env.NEXT_PUBLIC_SGTM_URL;
   if (!gtmId) return null;
 
-  const iframeSrc = getNoscriptUrl(gtmId, sgtmUrl);
+  const iframeSrc = getNoscriptUrl(gtmId);
 
   return (
     <noscript>
