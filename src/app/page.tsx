@@ -194,6 +194,51 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Pipeline Visualization — flip-the-card teaser */}
+      <section className="bg-surface-alt px-6 py-section">
+        <div className="section-container">
+          <ScrollReveal>
+            <h2 className="text-center font-display text-display-sm font-bold tracking-tight text-content sm:text-display-md">
+              See the stack running live.
+            </h2>
+            <p className="mx-auto mt-4 max-w-2xl text-center text-lg text-content-secondary">
+              Every interaction on this site flows through a real measurement pipeline. Here&apos;s
+              what happens when you scroll, click, or navigate.
+            </p>
+          </ScrollReveal>
+          <div className="mx-auto mt-12 grid max-w-4xl gap-4 sm:grid-cols-5">
+            {[
+              { step: '01', label: 'Your Browser', detail: 'Data layer event fires' },
+              { step: '02', label: 'Client GTM', detail: 'Consent check + enrichment' },
+              { step: '03', label: 'Server GTM', detail: 'Server-side processing' },
+              {
+                step: '04',
+                label: 'Destinations',
+                detail: 'GA4, BigQuery, Pub/Sub',
+              },
+              { step: '05', label: 'Real-Time', detail: 'SSE stream to overlay' },
+            ].map(({ step, label, detail }, i) => (
+              <ScrollReveal key={step} delay={i * 0.1} variant="slideUp">
+                <div className="group relative rounded-card border border-border bg-surface p-5 text-center transition-all hover:border-brand-300 hover:shadow-card">
+                  <span className="mb-2 block font-mono text-xs text-content-muted">{step}</span>
+                  <p className="text-sm font-semibold text-content">{label}</p>
+                  <p className="mt-1 text-xs text-content-muted">{detail}</p>
+                </div>
+              </ScrollReveal>
+            ))}
+          </div>
+          <ScrollReveal delay={0.6}>
+            <p className="mt-8 text-center text-sm text-content-muted">
+              Click the{' '}
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-surface-dark text-xs text-content-inverse">
+                ⟲
+              </span>{' '}
+              button in the bottom-right corner to see this pipeline in action for your session.
+            </p>
+          </ScrollReveal>
+        </div>
+      </section>
+
       {/* Demo Spotlights — Perry Wang–style gallery */}
       <section id="demos" className="bg-surface-dark px-6 py-section">
         <div className="section-container">

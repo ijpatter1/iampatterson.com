@@ -131,6 +131,22 @@ describe('HomePage', () => {
     });
   });
 
+  describe('Pipeline visualization section', () => {
+    it('renders pipeline stage labels', () => {
+      render(<HomePage />);
+      expect(screen.getByText('Your Browser')).toBeInTheDocument();
+      expect(screen.getByText('Client GTM')).toBeInTheDocument();
+      expect(screen.getByText('Server GTM')).toBeInTheDocument();
+      expect(screen.getByText('Destinations')).toBeInTheDocument();
+      expect(screen.getByText('Real-Time')).toBeInTheDocument();
+    });
+
+    it('renders the pipeline section heading', () => {
+      render(<HomePage />);
+      expect(screen.getByText(/see the stack running live/i)).toBeInTheDocument();
+    });
+  });
+
   describe('Demo spotlight section', () => {
     it('renders three demo spotlight cards', () => {
       render(<HomePage />);
