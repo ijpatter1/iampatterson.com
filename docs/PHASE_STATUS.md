@@ -1,7 +1,7 @@
 # Phase Status Tracker
 
-> **Current Phase: 9A — Homepage & Core Architecture** (NOT STARTED)
-> Last updated: 2026-04-03, session-2026-04-03-016
+> **Current Phase: 9A — Homepage & Core Architecture** (COMPLETE)
+> Last updated: 2026-04-03, session-2026-04-03-017
 
 ---
 
@@ -127,18 +127,18 @@
 
 ---
 
-## Phase 9A — Homepage & Core Architecture
+## Phase 9A — Homepage & Core Architecture (COMPLETE)
 
 *Goal: Rebuild the homepage interaction model. Replace the sidebar/bottom-sheet overlay with ambient event bubbles + full-page "under the hood" view. The homepage IS the Tier 1 showcase. Remove DemoNav. Full-width demo spotlight sections.*
 
-- ⬜ Strip "flip the card" language from all copy — footer, proof section, content guide, demo confirmations. Replace with "under the hood" language
-- ⬜ Ambient event bubbles (Layer 1) — ephemeral, non-interactive event indicators on homepage/consulting pages. Not on demo pages
-- ⬜ Full-page "under the hood" view (Layer 2) — replace Phase 3 sidebar/bottom-sheet overlay with full-page flip mechanic
-- ⬜ Homepage underside content (Tier 1 showcase) — consent visualization, live event stream with narrative, pipeline architecture with real events
-- ⬜ Replace "See the Stack Running Live" static section with live pipeline visualization or single CTA to trigger under-the-hood view
-- ⬜ Full-width demo spotlight sections — replace 3-card grid with 3 full-width scroll sections, each with its own color world and tier preview
-- ⬜ Kill DemoNav — browser back returns to homepage spotlight section via anchor/history state
-- ⬜ Kill `/demo` landing page — homepage spotlights replace it, redirect `/demo` to `/#demos`
+- ✅ 2026-04-03, session-2026-04-03-017 — Strip "flip the card" language from all copy — footer, proof section, content guide, demo confirmations. Replaced with "under the hood" language
+- ✅ 2026-04-03, session-2026-04-03-017 — Ambient event bubbles (Layer 1) — ephemeral, non-interactive event indicators on homepage/consulting pages. Route-aware (hidden on demo pages). Polls dataLayer, auto-fade after 3s
+- ✅ 2026-04-03, session-2026-04-03-017 — Full-page "under the hood" view (Layer 2) — replaces Phase 3 sidebar/bottom-sheet with fixed inset-0 full-page view. Old overlay components removed
+- ✅ 2026-04-03, session-2026-04-03-017 — Homepage underside content (Tier 1 showcase) — consent visualization, event stream reference, pipeline architecture. Overview tab default on homepage
+- ✅ 2026-04-03, session-2026-04-03-017 — Replaced "See the Stack Running Live" static section with dark CTA section featuring pipeline path diagram and "Look under the hood" button that opens overlay
+- ✅ 2026-04-03, session-2026-04-03-017 — Full-width demo spotlight sections — 3 full-width scroll sections with per-demo color world, tier badge, highlight bullets, and prominent CTAs
+- ✅ 2026-04-03, session-2026-04-03-017 — Kill DemoNav — replaced with DemoFooterNav at bottom of demo pages with cross-demo navigation and back-to-homepage link
+- ✅ 2026-04-03, session-2026-04-03-017 — Kill `/demo` landing page — redirects to `/#demos`
 
 ---
 

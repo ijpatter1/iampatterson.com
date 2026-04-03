@@ -18,7 +18,7 @@ This is the consulting website for Patterson Consulting **and** a live, interact
 
 ## Current Phase
 
-**Phase 9A — Homepage & Core Architecture** (NOT STARTED — Phase 8 Frontend Redesign complete)
+**Phase 9B — E-Commerce Demo: Tiers 2 & 3** (NOT STARTED — Phase 9A complete)
 
 See `docs/REQUIREMENTS.md` for the full development plan (Phases 1-8, 9A-9D, 10-11).
 See `docs/ARCHITECTURE.md` for technical architecture details.
