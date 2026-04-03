@@ -147,7 +147,7 @@ export default function HomePage() {
       {/* Demo Spotlights */}
       <div id="demos">
         {/* Demos intro */}
-        <section className="bg-surface-dark px-6 py-section pb-0">
+        <section className="bg-surface-dark px-6 py-section">
           <div className="section-container">
             <ScrollReveal variant="fade">
               <h2 className="font-display text-display-sm font-bold tracking-tight text-content-inverse sm:text-display-md">
