@@ -1,7 +1,5 @@
 'use client';
 
-import Link from 'next/link';
-
 import { CtaLink } from '@/components/cta-link';
 import { ScrollReveal } from '@/components/scroll-reveal';
 
@@ -37,29 +35,52 @@ const demos = [
     href: '/demo/ecommerce',
     title: 'The Tuna Shop',
     type: 'E-Commerce',
+    tiers: 'Tiers 1–4',
     description:
-      'Product views, add to cart, checkout, purchase tracking. See how purchase events flow from click to warehouse to attribution model.',
-    accentClass: 'bg-demo-ecommerce-surface border-demo-ecommerce/20 hover:border-demo-ecommerce',
-    dotClass: 'bg-demo-ecommerce',
+      'A fully instrumented e-commerce storefront. Browse products, add to cart, and complete checkout — every interaction generates events that flow through the full measurement stack.',
+    highlights: [
+      'Campaign taxonomy classifies your UTM parameters with AI',
+      'Data quality assertions validate every event in real time',
+      'Revenue attribution compares Shapley value vs last-click',
+    ],
+    bgClass: 'bg-demo-ecommerce-surface',
+    accentClass: 'bg-demo-ecommerce',
+    borderClass: 'border-demo-ecommerce',
+    textClass: 'text-demo-ecommerce-dark',
   },
   {
     href: '/demo/subscription',
     title: 'Tuna Subscription',
     type: 'Subscription',
+    tiers: 'Tiers 1, 3 & 4',
     description:
-      'Trial signups, activations, renewals, churn. See how cohort analysis and LTV calculations are built on the same event infrastructure.',
-    accentClass:
-      'bg-demo-subscription-surface border-demo-subscription/20 hover:border-demo-subscription',
-    dotClass: 'bg-demo-subscription',
+      'A subscription product from signup to retention. Select a plan, start a trial, and explore the account dashboard — see how cohort analysis and LTV calculations are built on the same event infrastructure.',
+    highlights: [
+      'Cohort retention curves segmented by acquisition channel',
+      'LTV analysis reveals which channels produce lasting subscribers',
+      'Multi-touch attribution redistributes credit across the funnel',
+    ],
+    bgClass: 'bg-demo-subscription-surface',
+    accentClass: 'bg-demo-subscription',
+    borderClass: 'border-demo-subscription',
+    textClass: 'text-demo-subscription-dark',
   },
   {
     href: '/demo/leadgen',
     title: 'Tuna Partnerships',
     type: 'Lead Generation',
+    tiers: 'Tiers 1, 3 & AI',
     description:
-      'Form submissions, lead qualification, funnel tracking. See how marketing-qualified leads are scored and attributed to acquisition channels.',
-    accentClass: 'bg-demo-leadgen-surface border-demo-leadgen/20 hover:border-demo-leadgen',
-    dotClass: 'bg-demo-leadgen',
+      'A lead generation landing page with full funnel tracking. Fill out the partnership inquiry form and watch consent enforcement, PII handling, and lead qualification happen in real time.',
+    highlights: [
+      'Live consent enforcement — deny marketing consent and watch routing change',
+      'AI-powered lead scoring classifies inquiries automatically',
+      'Automated narrative reporting summarizes pipeline performance weekly',
+    ],
+    bgClass: 'bg-demo-leadgen-surface',
+    accentClass: 'bg-demo-leadgen',
+    borderClass: 'border-demo-leadgen',
+    textClass: 'text-demo-leadgen-dark',
   },
 ];
 
@@ -239,45 +260,73 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Demo Spotlights — Perry Wang–style gallery */}
-      <section id="demos" className="bg-surface-dark px-6 py-section">
-        <div className="section-container">
-          <ScrollReveal variant="fade">
-            <h2 className="font-display text-display-sm font-bold tracking-tight text-content-inverse sm:text-display-md">
-              Three business models. One stack.
-            </h2>
-            <p className="mt-4 max-w-2xl text-lg text-content-on-dark">
-              Each demo is a fully functional front-end generating real events through the
-              measurement pipeline. Interact with any demo, then look under the hood to watch your
-              session data propagate in real time.
-            </p>
-          </ScrollReveal>
-          <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            {demos.map(({ href, title, type, description, accentClass, dotClass }, i) => (
-              <ScrollReveal key={href} delay={i * 0.15} variant="scale">
-                <Link
-                  href={href}
-                  className={`group block h-full rounded-card border p-8 transition-all hover:shadow-elevated ${accentClass}`}
-                >
-                  <div className="mb-4 flex items-center gap-2">
-                    <span className={`inline-block h-2 w-2 rounded-full ${dotClass}`} />
-                    <span className="text-xs font-medium uppercase tracking-wider text-content-muted">
-                      {type}
-                    </span>
-                  </div>
-                  <h3 className="mb-3 text-xl font-semibold text-content group-hover:text-brand-600">
-                    {title}
-                  </h3>
-                  <p className="text-sm leading-relaxed text-content-secondary">{description}</p>
-                  <span className="mt-6 inline-block text-sm font-medium text-content transition-transform group-hover:translate-x-1">
-                    Explore demo →
-                  </span>
-                </Link>
-              </ScrollReveal>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* Demo Spotlights — full-width sections */}
+      <div id="demos">
+        {demos.map(
+          (
+            {
+              href,
+              title,
+              type,
+              tiers,
+              description,
+              highlights,
+              bgClass,
+              accentClass,
+              borderClass,
+              textClass,
+            },
+            i,
+          ) => (
+            <section key={href} className={`border-t ${borderClass} ${bgClass} px-6 py-section`}>
+              <div className="section-container">
+                <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
+                  <ScrollReveal variant={i % 2 === 0 ? 'slideUp' : 'slideLeft'}>
+                    <div>
+                      <div className="mb-4 flex items-center gap-3">
+                        <span className={`inline-block h-2.5 w-2.5 rounded-full ${accentClass}`} />
+                        <span className="text-xs font-medium uppercase tracking-wider text-content-muted">
+                          {type}
+                        </span>
+                        <span className="rounded-full bg-surface px-2.5 py-0.5 text-xs font-medium text-content-secondary">
+                          {tiers}
+                        </span>
+                      </div>
+                      <h2 className="font-display text-display-sm font-bold tracking-tight text-content sm:text-display-md">
+                        {title}
+                      </h2>
+                      <p className="mt-4 max-w-xl text-lg leading-relaxed text-content-secondary">
+                        {description}
+                      </p>
+                      <CtaLink
+                        href={href}
+                        ctaLocation={`demo-spotlight-${type.toLowerCase().replace(/\s/g, '-')}`}
+                        className={`mt-8 inline-flex items-center gap-2 rounded-card border ${borderClass} px-6 py-3 text-sm font-semibold ${textClass} transition-all hover:shadow-card`}
+                      >
+                        Explore {title} →
+                      </CtaLink>
+                    </div>
+                  </ScrollReveal>
+                  <ScrollReveal delay={0.2} variant="slideUp">
+                    <ul className="space-y-4">
+                      {highlights.map((highlight) => (
+                        <li key={highlight} className="flex items-start gap-3">
+                          <span
+                            className={`mt-1.5 inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full ${accentClass}`}
+                          />
+                          <span className="text-sm leading-relaxed text-content-secondary">
+                            {highlight}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </ScrollReveal>
+                </div>
+              </div>
+            </section>
+          ),
+        )}
+      </div>
     </main>
   );
 }

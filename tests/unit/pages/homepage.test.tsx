@@ -147,25 +147,25 @@ describe('HomePage', () => {
     });
   });
 
-  describe('Demo spotlight section', () => {
-    it('renders three demo spotlight cards', () => {
+  describe('Demo spotlight sections', () => {
+    it('renders three full-width demo spotlight sections', () => {
       render(<HomePage />);
       expect(screen.getByText('The Tuna Shop')).toBeInTheDocument();
       expect(screen.getByText('Tuna Subscription')).toBeInTheDocument();
       expect(screen.getByText('Tuna Partnerships')).toBeInTheDocument();
     });
 
-    it('links each demo card to its demo page', () => {
+    it('links each demo section to its demo page', () => {
       render(<HomePage />);
-      expect(screen.getByRole('link', { name: /the tuna shop/i })).toHaveAttribute(
+      expect(screen.getByRole('link', { name: /explore the tuna shop/i })).toHaveAttribute(
         'href',
         '/demo/ecommerce',
       );
-      expect(screen.getByRole('link', { name: /tuna subscription/i })).toHaveAttribute(
+      expect(screen.getByRole('link', { name: /explore tuna subscription/i })).toHaveAttribute(
         'href',
         '/demo/subscription',
       );
-      expect(screen.getByRole('link', { name: /tuna partnerships/i })).toHaveAttribute(
+      expect(screen.getByRole('link', { name: /explore tuna partnerships/i })).toHaveAttribute(
         'href',
         '/demo/leadgen',
       );
@@ -176,6 +176,14 @@ describe('HomePage', () => {
       expect(screen.getByText('E-Commerce')).toBeInTheDocument();
       expect(screen.getByText('Subscription')).toBeInTheDocument();
       expect(screen.getByText('Lead Generation')).toBeInTheDocument();
+    });
+
+    it('shows tier previews for each demo', () => {
+      render(<HomePage />);
+      // Each demo section should indicate which tiers it showcases
+      expect(screen.getByText(/tiers 1–4/i)).toBeInTheDocument();
+      expect(screen.getByText(/tiers 1, 3 & 4/i)).toBeInTheDocument();
+      expect(screen.getByText(/tiers 1, 3 & ai/i)).toBeInTheDocument();
     });
   });
 });
