@@ -18,7 +18,7 @@ This is the consulting website for Patterson Consulting **and** a live, interact
 
 ## Current Phase
 
-**Phase 7 — BI Layer & Demo Dashboards** (IN PROGRESS — dashboards built for all 3 demos with mock data, Looker Studio/Metabase and Narrative Reporting remaining)
+**Phase 8 — Frontend Redesign** (NOT STARTED — Phase 7 BI Layer complete, Frontend Redesign is next)
 
 See `docs/REQUIREMENTS.md` for the full 11-phase development plan.
 See `docs/ARCHITECTURE.md` for technical architecture details.
@@ -183,8 +183,8 @@ refactor(hooks): extract useEventStream from overlay component
   - `phase/5-data-infrastructure`
   - `phase/6-demo-front-ends`
   - `phase/7-bi-layer-dashboards`
-  - `phase/8-attribution-advanced-analytics`
-  - `phase/9-frontend-redesign`
+  - `phase/8-frontend-redesign`
+  - `phase/9-attribution-advanced-analytics`
   - `phase/10-polish-performance-launch`
   - `phase/11-operational-readiness`
 - `dataform` — dedicated branch for GCP Dataform integration. Mirrors `infrastructure/dataform/` at repo root (Dataform requires files at root). Auto-synced from `main` via GitHub Action (`.github/workflows/sync-dataform.yml`). **Do not edit Dataform models directly on this branch** — edit in `infrastructure/dataform/` on main and let the sync action propagate changes.

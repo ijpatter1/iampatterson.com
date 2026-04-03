@@ -131,30 +131,13 @@ iampatterson.com is simultaneously a consulting site for Patterson Consulting an
 1. **E-commerce dashboards:** Executive summary (revenue, AOV, conversion rate by channel), campaign performance (spend vs revenue by campaign with AI-classified taxonomy), product performance, customer acquisition funnel
 2. **Subscription dashboards:** Cohort retention curves, trial-to-paid conversion by channel, MRR/ARR trending, churn analysis, LTV by acquisition source
 3. **Lead gen dashboards:** Lead funnel (visits → form starts → submissions → qualified leads), cost per lead by channel, lead quality distribution, conversion timeline
-4. Built in Looker Studio and/or Metabase to demonstrate both options from the decision gate
-5. Automated Narrative Reporting: the RAG pipeline from Phase 5 wired to a scheduled job that generates weekly written summaries for each business model, viewable within the demo back-end
-6. Dashboard embed or deep-link integration with the flip-the-card UI so prospects can navigate from the event pipeline view to the aggregated dashboard view within the overlay
+4. Dashboard embed or deep-link integration with the flip-the-card UI so prospects can navigate from the event pipeline view to the aggregated dashboard view within the overlay
 
 **Why this is Phase 7:** Requires both the data infrastructure and the demo front-ends to be in place. The dashboards are the payoff — this is where a prospect sees the full pipeline from their click to the board-level KPI.
 
 ---
 
-## Phase 8 — Attribution & Advanced Analytics (Tier 4 Demonstration)
-
-**Goal:** Build lightweight MTA and/or MMM demonstrations on the simulated data.
-
-**Deliverables:**
-
-1. Multi-touch attribution model built in Dataform: Shapley value attribution across the simulated channel mix for the e-commerce business model. Comparison view showing MTA results versus last-click versus platform-reported attribution, making the discrepancies visible
-2. Lightweight MMM or geo-lift demonstration using the simulated historical data, if the background generator produces geographic segmentation. This may be a static analysis rather than a live model, depending on scope
-3. Attribution results surfaced in the demo dashboards and/or as a standalone interactive visualization accessible from the flip-the-card overlay
-4. Narrative explanation of methodology accessible within the demo — not just showing the numbers but explaining to a non-technical prospect why these results differ from what their ad platform tells them
-
-**Why this is Phase 8:** This is the final layer. It requires all preceding phases and the most historical data depth. It's also the most impressive demonstration for sophisticated prospects who understand that attribution is broken.
-
----
-
-## Phase 9 — Frontend Redesign
+## Phase 8 — Frontend Redesign
 
 **Goal:** Transform the site from a text-heavy consulting document into a scroll-driven, visually distinctive portfolio experience that demonstrates the same design sophistication as the technical infrastructure underneath it. All existing event tracking, data layer wiring, and backend functionality must be preserved.
 
@@ -193,7 +176,24 @@ iampatterson.com is simultaneously a consulting site for Patterson Consulting an
 - Demo pages get the color differentiation and dashboard integration treatment but not a full structural reimagining — they serve a functional purpose.
 - No new backend infrastructure. This is purely a presentation layer phase.
 
-**Why this is Phase 9:** Phases 1-8 built the complete technical stack and all functional content. The site works end-to-end. This phase makes it look and feel worthy of what's running underneath. It's the difference between a prospect thinking "this person knows their stuff" and "this person knows their stuff and I want to work with them."
+**Why this is Phase 8:** Phase 7 built the dashboards and data visualization layer. Before adding more analytical depth (attribution, MMM), the site needs to look and feel worthy of what's running underneath. The redesign also integrates the Phase 7 dashboards into the demo flow, completing the narrative arc. Phase 10 (Polish) provides a final opportunity to refine the design after the advanced analytics layer is added.
+
+---
+
+## Phase 9 — Attribution & Advanced Analytics (Tier 4 Demonstration)
+
+**Goal:** Build lightweight MTA and/or MMM demonstrations on the simulated data, plus external BI tool integration and automated narrative reporting.
+
+**Deliverables:**
+
+1. Multi-touch attribution model built in Dataform: Shapley value attribution across the simulated channel mix for the e-commerce business model. Comparison view showing MTA results versus last-click versus platform-reported attribution, making the discrepancies visible
+2. Lightweight MMM or geo-lift demonstration using the simulated historical data, if the background generator produces geographic segmentation. This may be a static analysis rather than a live model, depending on scope
+3. Attribution results surfaced in the demo dashboards and/or as a standalone interactive visualization accessible from the flip-the-card overlay
+4. Narrative explanation of methodology accessible within the demo — not just showing the numbers but explaining to a non-technical prospect why these results differ from what their ad platform tells them
+5. Built in Looker Studio and/or Metabase to demonstrate both BI tool options, connected to BigQuery mart tables
+6. Automated Narrative Reporting: the RAG pipeline from Phase 5 wired to a scheduled job that generates weekly written summaries for each business model, viewable within the demo back-end
+
+**Why this is Phase 9:** This is the deepest analytical layer. It requires all preceding phases, the most historical data depth, and benefits from the redesigned frontend to present results effectively. It's also the most impressive demonstration for sophisticated prospects who understand that attribution is broken.
 
 ---
 
