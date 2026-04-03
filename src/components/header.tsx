@@ -2,8 +2,12 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 import { trackClickNav } from '@/lib/events/track';
+
+/** Pages with dark hero sections where the header needs light text */
+const darkHeroPages = new Set(['/']);
 
 const navLinks = [
   { href: '/', label: 'Home' },
@@ -23,6 +27,9 @@ export function Header() {
   const [demosOpen, setDemosOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const demosRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
+  const hasDarkHero = darkHeroPages.has(pathname);
+  const useLight = hasDarkHero && !scrolled;
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -59,7 +66,9 @@ export function Header() {
         <Link
           href="/"
           className={`font-display font-semibold tracking-tight transition-all duration-300 ${
-            scrolled ? 'text-base text-content' : 'text-lg text-content'
+            scrolled
+              ? 'text-base text-content'
+              : `text-lg ${useLight ? 'text-content-inverse' : 'text-content'}`
           }`}
         >
           Patterson Consulting
@@ -72,7 +81,11 @@ export function Header() {
               <li key={href}>
                 <Link
                   href={href}
-                  className="text-sm font-medium text-content-secondary transition-colors hover:text-content"
+                  className={`text-sm font-medium transition-colors ${
+                    useLight
+                      ? 'text-content-on-dark hover:text-content-inverse'
+                      : 'text-content-secondary hover:text-content'
+                  }`}
                   onClick={() => trackClickNav(label, href)}
                 >
                   {label}
@@ -83,7 +96,11 @@ export function Header() {
               <div ref={demosRef} className="relative">
                 <button
                   type="button"
-                  className="text-sm font-medium text-content-secondary transition-colors hover:text-content"
+                  className={`text-sm font-medium transition-colors ${
+                    useLight
+                      ? 'text-content-on-dark hover:text-content-inverse'
+                      : 'text-content-secondary hover:text-content'
+                  }`}
                   onClick={() => setDemosOpen(!demosOpen)}
                   aria-expanded={demosOpen}
                 >
@@ -123,7 +140,7 @@ export function Header() {
         {/* Mobile menu button */}
         <button
           type="button"
-          className="text-content-secondary md:hidden"
+          className={`md:hidden ${useLight ? 'text-content-on-dark' : 'text-content-secondary'}`}
           onClick={() => setMenuOpen(!menuOpen)}
           aria-label={menuOpen ? 'Close menu' : 'Open menu'}
           aria-expanded={menuOpen}
