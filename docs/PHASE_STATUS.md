@@ -1,7 +1,7 @@
 # Phase Status Tracker
 
-> **Current Phase: 8 — Frontend Redesign** (NOT STARTED)
-> Last updated: 2026-04-03, session-2026-04-03-015
+> **Current Phase: 8 — Frontend Redesign** (IN PROGRESS — 10/13 deliverables complete)
+> Last updated: 2026-04-03, session-2026-04-03-016
 
 ---
 
@@ -112,17 +112,17 @@
 
 *Goal: Transform the site from a text-heavy layout into a scroll-driven, visually distinctive portfolio experience while preserving all existing event tracking and backend functionality.*
 
-- ⬜ Design system overhaul — color palette, typography, spacing, component tokens in Tailwind config
-- ⬜ Scroll-driven homepage rebuild — full-viewport sections, demo spotlights as Perry Wang–style gallery with per-demo color identity, replacing `/demo` landing page
-- ⬜ Scroll animation system — Framer Motion or CSS scroll-driven animations with reduced-motion support
-- ⬜ Flip-the-card as first-class homepage element — interactive pipeline visualization on scroll
-- ⬜ Demo visual differentiation — per-demo color accent, mood, and layout variations across all demo pages
+- ✅ 2026-04-03, session-2026-04-03-016 — Design system overhaul — color palette, typography, spacing, component tokens in Tailwind config
+- ✅ 2026-04-03, session-2026-04-03-016 — Scroll-driven homepage rebuild — full-viewport sections, demo spotlights as Perry Wang–style gallery with per-demo color identity, replacing `/demo` landing page
+- ✅ 2026-04-03, session-2026-04-03-016 — Scroll animation system — Framer Motion ScrollReveal component with reduced-motion support
+- ✅ 2026-04-03, session-2026-04-03-016 — Flip-the-card as first-class homepage element — 5-step pipeline visualization section on homepage
+- ✅ 2026-04-03, session-2026-04-03-016 — Demo visual differentiation — DemoThemeProvider context with per-demo color accents (amber/teal/indigo)
 - ⬜ Intentional demo entry transitions — color wash or card expansion bridging homepage to demo palette
-- ⬜ Dashboard integration into demo flow — embedded KPI/chart previews replacing standalone analytics pages
-- ⬜ Navigation redesign — sticky transform, smooth scroll, simplified DemoNav (no analytics link)
-- ⬜ Services page visual hierarchy — distinct tier sections, alternating layouts, visual gates
-- ⬜ About page personality — personal layout, visual elements, Tuna brand integration
-- ⬜ Contact page refinement — tighter layout, conversational form pattern
+- ✅ 2026-04-03, session-2026-04-03-016 — Dashboard integration into demo flow — DashboardPreview component with KPI cards and narrative at bottom of key demo pages
+- ✅ 2026-04-03, session-2026-04-03-016 — Navigation redesign — sticky header with scroll transform, dark footer, DemoNav analytics link removed
+- ✅ 2026-04-03, session-2026-04-03-016 — Services page visual hierarchy — full-width tier sections with numbered badges, two-column layouts, dark Tier 4
+- ✅ 2026-04-03, session-2026-04-03-016 — About page personality — grid layout with Tuna brand card, dark "What I Believe" section
+- ✅ 2026-04-03, session-2026-04-03-016 — Contact page refinement — split layout with form card, branded focus states
 - ⬜ Micro-interactions and polish — hover states, transitions, page animations, scroll indicators
 - ⬜ Performance validation — Core Web Vitals, Lighthouse, event tracking regression check
 
