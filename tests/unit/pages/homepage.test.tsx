@@ -77,13 +77,14 @@ describe('HomePage', () => {
       expect(screen.getByText(/this site runs on the same stack I sell/i)).toBeInTheDocument();
     });
 
-    it('renders the "See what\'s underneath" hero CTA that opens the overlay', async () => {
+    it('renders the "Look under the hood" hero CTA that opens the overlay', async () => {
       const user = userEvent.setup();
       render(<HomePage />);
-      const btn = screen.getByRole('button', { name: /see what.*s underneath/i });
-      await user.click(btn);
+      // Both hero and pipeline section have "Look under the hood" buttons
+      const buttons = screen.getAllByRole('button', { name: /look under the hood/i });
+      await user.click(buttons[0]);
       expect(mockOpen).toHaveBeenCalled();
-      expect(mockTrackClickCta).toHaveBeenCalledWith("See what's underneath", 'hero');
+      expect(mockTrackClickCta).toHaveBeenCalledWith('Look under the hood', 'hero');
     });
 
     it('renders the "Explore the demos" CTA linking to #demos', () => {
@@ -105,16 +106,15 @@ describe('HomePage', () => {
 
     it('renders the pipeline section heading', () => {
       render(<HomePage />);
-      expect(screen.getAllByText(/see what.*s running underneath/i).length).toBeGreaterThanOrEqual(
-        1,
-      );
+      expect(screen.getByText(/your session is being measured/i)).toBeInTheDocument();
     });
 
-    it('renders the "Look under the hood" button that opens the overlay', async () => {
+    it('renders a "Look under the hood" button that opens the overlay', async () => {
       const user = userEvent.setup();
       render(<HomePage />);
-      const btn = screen.getByRole('button', { name: /look under the hood/i });
-      await user.click(btn);
+      const buttons = screen.getAllByRole('button', { name: /look under the hood/i });
+      // Second instance is the pipeline CTA button
+      await user.click(buttons[1]);
       expect(mockOpen).toHaveBeenCalled();
     });
   });

@@ -11,7 +11,7 @@ const demos = [
     title: 'The Tuna Shop',
     type: 'E-Commerce',
     description:
-      'A fully instrumented e-commerce storefront. Browse products, add to cart, and complete checkout — every interaction generates events that flow through the full measurement stack.',
+      'A fully instrumented e-commerce storefront. Browse products, add to cart, and complete checkout. Every interaction generates events that flow through the full measurement stack.',
     highlights: [
       'Campaign taxonomy classifies your UTM parameters with AI',
       'Data quality assertions validate every event in real time',
@@ -27,7 +27,7 @@ const demos = [
     title: 'Tuna Subscription',
     type: 'Subscription',
     description:
-      'A subscription product from signup to retention. Select a plan, start a trial, and explore the account dashboard — see how cohort analysis and LTV calculations are built on the same event infrastructure.',
+      'A subscription product from signup to retention. Select a plan, start a trial, and explore the account dashboard to see how cohort analysis and LTV calculations work on the same event infrastructure.',
     highlights: [
       'Cohort retention curves segmented by acquisition channel',
       'LTV analysis reveals which channels produce lasting subscribers',
@@ -45,7 +45,7 @@ const demos = [
     description:
       'A lead generation landing page with full funnel tracking. Fill out the partnership inquiry form and watch consent enforcement, PII handling, and lead qualification happen in real time.',
     highlights: [
-      'Live consent enforcement — deny marketing consent and watch routing change',
+      'Live consent enforcement: deny marketing consent and watch routing change',
       'AI-powered lead scoring classifies inquiries automatically',
       'Automated narrative reporting summarizes pipeline performance weekly',
     ],
@@ -61,7 +61,7 @@ export default function HomePage() {
 
   return (
     <main>
-      {/* Hero — the site IS the portfolio */}
+      {/* Hero */}
       <section className="relative flex min-h-[90vh] items-center bg-surface-dark px-6">
         <div className="section-container">
           <ScrollReveal variant="fade" duration={0.8}>
@@ -73,7 +73,7 @@ export default function HomePage() {
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-content-on-dark sm:text-xl">
               This site runs on the same stack I sell. Consent management, server-side GTM, a
               real-time event pipeline into BigQuery, Dataform transformations, AI-enriched data
-              models, and live dashboards — all running right now, on your session. Instead of
+              models, and live dashboards. All running right now, on your session. Instead of
               describing what I build, I built this site on it.
             </p>
           </ScrollReveal>
@@ -82,12 +82,12 @@ export default function HomePage() {
               <button
                 type="button"
                 onClick={() => {
-                  trackClickCta("See what's underneath", 'hero');
+                  trackClickCta('Look under the hood', 'hero');
                   open();
                 }}
                 className="rounded-card bg-content-inverse px-8 py-3.5 text-sm font-semibold text-surface-dark transition-all hover:bg-brand-100 hover:shadow-glow"
               >
-                See what&apos;s underneath
+                Look under the hood
               </button>
               <CtaLink
                 href="#demos"
@@ -101,20 +101,20 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Pipeline CTA — under-the-hood teaser */}
-      <section className="bg-surface px-6 py-section">
+      {/* Pipeline CTA */}
+      <section className="bg-surface px-6 py-section-sm">
         <div className="section-container text-center">
           <ScrollReveal variant="fade">
             <h2 className="font-display text-display-sm font-bold tracking-tight text-content sm:text-display-md">
-              See what&apos;s running underneath.
+              Your session is being measured right now.
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-lg text-content-secondary">
               Every scroll, click, and page view on this site flows through a real measurement
-              pipeline. The same architecture I deploy for clients — running live, on your session.
+              pipeline. The same architecture I deploy for clients, running live on your session.
             </p>
           </ScrollReveal>
           <ScrollReveal delay={0.2}>
-            <div className="mx-auto mt-10 flex max-w-lg items-center justify-center gap-3">
+            <div className="mx-auto mt-8 flex max-w-lg items-center justify-center gap-3">
               {['Browser', 'GTM', 'sGTM', 'BigQuery', 'Dashboards'].map((node, i, arr) => (
                 <span key={node} className="flex items-center gap-3">
                   <span className="rounded-full border border-border px-3 py-1 text-xs font-medium text-content-secondary">
@@ -136,7 +136,7 @@ export default function HomePage() {
                 trackClickCta('Look under the hood', 'pipeline-cta');
                 open();
               }}
-              className="mt-10 inline-flex items-center gap-2 rounded-card border border-border px-8 py-3.5 text-sm font-semibold text-content transition-all hover:border-brand-300 hover:bg-surface-alt hover:shadow-card"
+              className="mt-8 inline-flex items-center gap-2 rounded-card border border-border px-8 py-3.5 text-sm font-semibold text-content transition-all hover:border-brand-300 hover:bg-surface-alt hover:shadow-card"
             >
               Look under the hood
             </button>
@@ -147,7 +147,7 @@ export default function HomePage() {
       {/* Demo Spotlights */}
       <div id="demos">
         {/* Demos intro */}
-        <section className="bg-surface-dark px-6 py-section">
+        <section className="bg-surface-dark px-6 py-section-sm">
           <div className="section-container">
             <ScrollReveal variant="fade">
               <h2 className="font-display text-display-sm font-bold tracking-tight text-content-inverse sm:text-display-md">
@@ -156,7 +156,7 @@ export default function HomePage() {
               <p className="mt-4 max-w-2xl text-lg text-content-on-dark">
                 Each demo below is a fully functional front-end generating real events through the
                 measurement pipeline. Browse a shop, sign up for a subscription, or submit a
-                partnership inquiry — then look under the hood to watch your session data flow
+                partnership inquiry, then look under the hood to watch your session data flow
                 through every layer.
               </p>
             </ScrollReveal>
@@ -179,34 +179,34 @@ export default function HomePage() {
             },
             i,
           ) => (
-            <section key={href} className={`border-t ${borderClass} ${bgClass} px-6 py-section`}>
+            <section key={href} className={`border-t ${borderClass} ${bgClass} px-6 py-section-sm`}>
               <div className="section-container">
-                <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
+                <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
                   <ScrollReveal variant={i % 2 === 0 ? 'slideUp' : 'slideLeft'}>
                     <div>
-                      <div className="mb-4 flex items-center gap-2">
+                      <div className="mb-3 flex items-center gap-2">
                         <span className={`inline-block h-2.5 w-2.5 rounded-full ${accentClass}`} />
                         <span className="text-xs font-medium uppercase tracking-wider text-content-muted">
                           {type}
                         </span>
                       </div>
-                      <h3 className="font-display text-display-sm font-bold tracking-tight text-content sm:text-display-md">
+                      <h3 className="font-display text-display-sm font-bold tracking-tight text-content">
                         {title}
                       </h3>
-                      <p className="mt-4 max-w-xl text-lg leading-relaxed text-content-secondary">
+                      <p className="mt-3 max-w-xl text-base leading-relaxed text-content-secondary">
                         {description}
                       </p>
                       <CtaLink
                         href={href}
                         ctaLocation={`demo-spotlight-${type.toLowerCase().replace(/\s/g, '-')}`}
-                        className={`mt-8 inline-flex items-center gap-2 rounded-card border ${borderClass} px-6 py-3 text-sm font-semibold ${textClass} transition-all hover:shadow-card`}
+                        className={`mt-6 inline-flex items-center gap-2 rounded-card border ${borderClass} px-6 py-3 text-sm font-semibold ${textClass} transition-all hover:shadow-card`}
                       >
                         Explore {title} →
                       </CtaLink>
                     </div>
                   </ScrollReveal>
                   <ScrollReveal delay={0.2} variant="slideUp">
-                    <ul className="space-y-4">
+                    <ul className="space-y-3">
                       {highlights.map((highlight) => (
                         <li key={highlight} className="flex items-start gap-3">
                           <span
