@@ -131,19 +131,17 @@ describe('HomePage', () => {
     });
   });
 
-  describe('Pipeline visualization section', () => {
-    it('renders pipeline stage labels', () => {
+  describe('Pipeline CTA section', () => {
+    it('renders a compact pipeline path', () => {
       render(<HomePage />);
-      expect(screen.getByText('Your Browser')).toBeInTheDocument();
-      expect(screen.getByText('Client GTM')).toBeInTheDocument();
-      expect(screen.getByText('Server GTM')).toBeInTheDocument();
-      expect(screen.getByText('Destinations')).toBeInTheDocument();
-      expect(screen.getByText('Real-Time')).toBeInTheDocument();
+      expect(screen.getByText('Browser')).toBeInTheDocument();
+      expect(screen.getByText('sGTM')).toBeInTheDocument();
+      expect(screen.getByText('BigQuery')).toBeInTheDocument();
     });
 
     it('renders the pipeline section heading', () => {
       render(<HomePage />);
-      expect(screen.getByText(/see the stack running live/i)).toBeInTheDocument();
+      expect(screen.getByText(/see what.*s running underneath/i)).toBeInTheDocument();
     });
   });
 
