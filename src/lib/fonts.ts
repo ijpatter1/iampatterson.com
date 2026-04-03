@@ -1,19 +1,18 @@
 import localFont from 'next/font/local';
 
 /**
- * Display font: Instrument Serif — editorial, warm, confident.
+ * Display font: Lora — elegant, well-balanced serif with roots in calligraphy.
+ * Variable font supporting weights 400–700 plus italic.
  * Used for hero text, section headings, and anywhere the visitor should slow down and read.
  */
-export const instrumentSerif = localFont({
+export const lora = localFont({
   src: [
     {
-      path: '../../public/fonts/instrument-serif-regular.ttf',
-      weight: '400',
+      path: '../../public/fonts/lora-var.ttf',
       style: 'normal',
     },
     {
-      path: '../../public/fonts/instrument-serif-italic.ttf',
-      weight: '400',
+      path: '../../public/fonts/lora-italic-var.ttf',
       style: 'italic',
     },
   ],

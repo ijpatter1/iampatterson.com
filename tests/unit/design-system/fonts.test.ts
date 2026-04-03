@@ -1,10 +1,10 @@
-import { instrumentSerif, plusJakarta, jetbrainsMono } from '@/lib/fonts';
+import { lora, plusJakarta, jetbrainsMono } from '@/lib/fonts';
 
 describe('Font configuration', () => {
-  it('exports instrumentSerif display font', () => {
-    expect(instrumentSerif).toBeDefined();
-    expect(instrumentSerif.variable).toBeDefined();
-    expect(typeof instrumentSerif.variable).toBe('string');
+  it('exports lora display font', () => {
+    expect(lora).toBeDefined();
+    expect(lora.variable).toBeDefined();
+    expect(typeof lora.variable).toBe('string');
   });
 
   it('exports plusJakarta body font', () => {
@@ -20,7 +20,7 @@ describe('Font configuration', () => {
   });
 
   it('all fonts have className for application', () => {
-    expect(typeof instrumentSerif.className).toBe('string');
+    expect(typeof lora.className).toBe('string');
     expect(typeof plusJakarta.className).toBe('string');
     expect(typeof jetbrainsMono.className).toBe('string');
   });

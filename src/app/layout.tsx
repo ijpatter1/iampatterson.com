@@ -11,7 +11,7 @@ import { ScrollDepthTracker } from '@/components/scroll-depth-tracker';
 import { CookiebotScript } from '@/components/scripts/cookiebot';
 import { CookiebotConsentListener } from '@/components/scripts/cookiebot-consent';
 import { GtmScript, GtmNoscript } from '@/components/scripts/gtm';
-import { instrumentSerif, plusJakarta, jetbrainsMono } from '@/lib/fonts';
+import { lora, plusJakarta, jetbrainsMono } from '@/lib/fonts';
 import '@/styles/globals.css';
 
 export const metadata: Metadata = {
@@ -26,7 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
-      className={`${instrumentSerif.variable} ${plusJakarta.variable} ${jetbrainsMono.variable}`}
+      className={`${lora.variable} ${plusJakarta.variable} ${jetbrainsMono.variable}`}
     >
       <head>
         <CookiebotScript />
