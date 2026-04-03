@@ -180,20 +180,128 @@ iampatterson.com is simultaneously a consulting site for Patterson Consulting an
 
 ---
 
-## Phase 9 — Attribution & Advanced Analytics (Tier 4 Demonstration)
+## Phase 9A — Homepage & Core Architecture
 
-**Goal:** Build lightweight MTA and/or MMM demonstrations on the simulated data, plus external BI tool integration and automated narrative reporting.
+**Goal:** Rebuild the homepage interaction model and core UX architecture. Replace the sidebar/bottom-sheet overlay with a two-layer system (ambient event indicators + full-page "under the hood" view). Restructure the homepage as the Tier 1 showcase. Remove DemoNav and make the homepage the primary navigation hub for demos.
+
+**Context:** The Phase 3 overlay system ("flip the card") uses a metaphor the UI doesn't deliver — there's no card, no flip. The sidebar/bottom sheet fights mobile scrolling and feels like a debug panel, not an integrated experience. This phase replaces it with an interaction model that earns the "under the hood" metaphor: the page literally has an underside that reveals the instrumentation engine.
 
 **Deliverables:**
 
-1. Multi-touch attribution model built in Dataform: Shapley value attribution across the simulated channel mix for the e-commerce business model. Comparison view showing MTA results versus last-click versus platform-reported attribution, making the discrepancies visible
-2. Lightweight MMM or geo-lift demonstration using the simulated historical data, if the background generator produces geographic segmentation. This may be a static analysis rather than a live model, depending on scope
-3. Attribution results surfaced in the demo dashboards and/or as a standalone interactive visualization accessible from the flip-the-card overlay
-4. Narrative explanation of methodology accessible within the demo — not just showing the numbers but explaining to a non-technical prospect why these results differ from what their ad platform tells them
-5. Built in Looker Studio and/or Metabase to demonstrate both BI tool options, connected to BigQuery mart tables
-6. Automated Narrative Reporting: the RAG pipeline from Phase 5 wired to a scheduled job that generates weekly written summaries for each business model, viewable within the demo back-end
+1. **Strip "flip the card" language** — Remove from all copy: footer, hero, proof section, content guide, demo post-submission confirmations. Replace with language that describes the actual interaction (e.g., "look under the hood," "see what's running underneath") or hold for the new mechanic. Update `docs/CONTENT_GUIDE.md` as the source of truth.
 
-**Why this is Phase 9:** This is the deepest analytical layer. It requires all preceding phases, the most historical data depth, and benefits from the redesigned frontend to present results effectively. It's also the most impressive demonstration for sophisticated prospects who understand that attribution is broken.
+2. **Ambient event bubbles (Layer 1)** — As the visitor interacts with the homepage and consulting pages, small non-interactive event indicators appear — floating up from the bottom edge or near the triggering element. Ephemeral, not clickable, no content blocking. They communicate "things are happening" without demanding attention or competing with scroll. This replaces the corner flip-trigger button as the "something is happening" signal. Not shown on demo pages (to avoid distraction during functional interactions).
+
+3. **Full-page "under the hood" view (Layer 2)** — A dedicated full-page view the visitor opts into. Not a sidebar, not a partial overlay. The page flips to reveal the instrumentation engine underneath. Triggered by a clear CTA (not a corner button). Should feel like lifting the hood of a car, not opening a drawer. Remove the Phase 3 sidebar/bottom-sheet overlay system entirely.
+
+4. **Homepage underside content (Tier 1 showcase)** — The homepage IS the Tier 1 demonstration. The underside shows: consent management visualization (the Cookiebot banner is right there — show what it controls), live event stream with narrative as the visitor scrolls/clicks, pipeline architecture with real events flowing through it (sGTM processing, destination routing). Every visitor experiences Tier 1 just by being on the site.
+
+5. **Replace "See the Stack Running Live" section** — The current static pipeline visualization (5 numbered cards) is prose describing what you could see. Replace with either a live animated pipeline diagram with events actually flowing through it, or collapse into a single compelling CTA to trigger the under-the-hood view. Don't describe what the visitor could see — show it or offer it.
+
+6. **Full-width demo spotlight sections** — Replace the 3-card demo grid with 3 full-width scroll sections, each with its own color world and visual identity. Each section gets enough room for a preview of what's inside and communicates which service tiers that demo showcases. The visitor should know what they're entering before they click. These sections are the primary entry point into each demo.
+
+7. **Kill DemoNav** — Remove the persistent DemoNav bar from demo pages. Set up demo entry so browser back navigation returns to the correct homepage spotlight section (anchor-based scroll positioning or history state). If cross-demo navigation is needed, put it in the demo page footer or at the end of the demo flow, not in a persistent bar.
+
+8. **Kill `/demo` landing page** — The homepage spotlight sections replace it entirely. The `/demo` route can redirect to `/#demos` or be removed.
+
+**Constraints:**
+
+- All existing data layer events must continue firing correctly through the architecture change.
+- The ambient bubbles must respect `prefers-reduced-motion`.
+- The full-page flip must work on mobile (not just desktop). Consider a slide-up full-screen view on mobile if a literal flip animation doesn't translate.
+- The event stream SSE connection (Phase 2) and pipeline event schema stay unchanged — only the presentation layer changes.
+
+**Why this is Phase 9A:** Everything in 9B–9D depends on the under-the-hood architecture and the homepage restructuring. The flip mechanic, ambient bubbles, and DemoNav removal are architectural foundations.
+
+---
+
+## Phase 9B — E-Commerce Demo: Tiers 2 & 3 (Data Infrastructure + Business Intelligence)
+
+**Goal:** Transform the e-commerce demo from "events fire when you click stuff" into a progressive showcase of Tier 2 (Data Infrastructure) and Tier 3 (Business Intelligence). Each page in the checkout funnel demonstrates a different Tier 2 deliverable. The confirmation page pivots to Tier 3 with actionable dashboard insights. External BI tool integration (Looker Studio / Metabase) is demonstrated here.
+
+**Context:** The e-commerce demo has the most page depth (listing → detail → cart → checkout → confirmation) making it the natural home for showing how data transforms at each step. The visitor doesn't just see events fire — they see what happens to the data after it fires.
+
+**Deliverables:**
+
+1. **Product listing underside: Campaign Taxonomy** — When the visitor views the under-the-hood layer on the product listing page, show how Automated Campaign Taxonomy cleaned up the UTM parameters that brought them here. "You arrived via `meta_prospecting_lal_tuna_q1` — the AI classified this as Meta / Prospecting / Lookalike." Show the raw → classified mapping. This demonstrates the Phase 5 AI.CLASSIFY model in a tangible, visitor-specific context.
+
+2. **Product detail underside: Staging Layer** — Show the `product_view` event being flattened and enriched in the staging layer. Visualize the raw event → `stg_events` transformation: field extraction, type casting, session stitching. The visitor sees their own event being processed.
+
+3. **Cart underside: Data Quality Framework** — Show the data quality assertions running on their `add_to_cart` event. "This event passed schema validation, null checks, and volume anomaly detection." Visualize the Dataform assertions from Phase 5 as a live checklist. If an assertion would theoretically fail, show what that looks like.
+
+4. **Checkout underside: Warehouse Write** — Show the real-time BigQuery write. The event flowing from sGTM → Pub/Sub → BigQuery `events_raw` table. Visualize the row being written with all 51 columns. This is the moment the data lands in the warehouse.
+
+5. **Confirmation page: Tier 3 pivot** — The visitor has seen how data is captured and structured. Now show what it tells you. Embed a dashboard preview with: funnel metrics (conversion rate by channel, drop-off at each stage), AOV trends, and an actionable insight: "Your checkout completion rate is 83.4% — visitors who see related products on the detail page convert at 2.3x the rate. Reducing the cart-to-checkout drop-off by 5% would add $14k in monthly revenue." This is BI doing what BI is supposed to do — telling you where the money is.
+
+6. **Looker Studio / Metabase integration** — Build the e-commerce executive dashboard in Looker Studio and/or Metabase, connected to the BigQuery mart tables from Phase 5. Embed or deep-link from the confirmation page under-the-hood view. This demonstrates both BI tool options as referenced in the Tier 3 service description.
+
+7. **Services page cross-links** — Add contextual links from the Tier 2 service description to the ecommerce funnel: "See how Dataform transforms raw add_to_cart events into the mart tables that power checkout analytics — walk through the Tuna Shop funnel." Add Tier 3 link to the confirmation page: "See what 18 months of e-commerce data looks like when it's properly instrumented and dashboarded."
+
+**Constraints:**
+
+- The underside content must use real data from the visitor's session where possible (their actual UTM params, their actual events) and simulated/mock data where the visitor hasn't generated enough history.
+- The Looker Studio / Metabase dashboards connect to real BigQuery mart tables, not mock data.
+- The existing e-commerce demo flow (product listing → cart → checkout → confirmation) stays functionally unchanged. The under-the-hood layer adds depth, it doesn't change the demo UX.
+
+**Why this is Phase 9B:** The e-commerce demo has the most funnel depth. It's the natural first demo to build because it exercises every under-the-hood feature (taxonomy, staging, quality, warehouse write, dashboards) in sequence.
+
+---
+
+## Phase 9C — Lead Gen Demo: Tier 1 Privacy/Consent + Tier 3 BI + AI Narrative Reporting
+
+**Goal:** Transform the lead gen demo into the privacy and consent governance showcase. This is the only demo where the visitor types PII into form fields — making consent enforcement tangible rather than abstract. The thank-you page pivots to Tier 3 BI and AI-powered narrative reporting.
+
+**Context:** Every MarTech prospect has been told "consent state is enforced server-side" by a vendor. Nobody has ever shown them. The lead gen demo can: deny marketing consent, fill in the form, and watch the under-the-hood view show the lead event flowing to BigQuery and GA4 but being blocked from Meta and Google Ads. Grant consent, submit again, and see the full routing with hashed PII payloads. This is a live demonstration of Cookiebot → Consent Mode v2 → sGTM enforcement that no competitor's portfolio can match.
+
+**Deliverables:**
+
+1. **Form interaction underside: Consent & Privacy visualization** — As the visitor fills in the partnership inquiry form, the under-the-hood view shows what's actually happening to their data in real time: which consent signals are active (analytics, marketing, ad_user_data, ad_personalization), how consent state determines which platforms receive the lead event, what happens to the email address (hashed before it hits BigQuery, redacted entirely if marketing consent is denied), how `ad_user_data` consent specifically governs whether user-provided data flows to Meta CAPI and Google Ads Enhanced Conversions.
+
+2. **Live consent enforcement demonstration** — The visitor can interact with the Cookiebot consent banner to change their consent state, then submit the form and see the difference in the under-the-hood routing. With marketing consent denied: lead event flows to BigQuery and GA4 but is blocked from Meta CAPI and Google Ads EC. With consent granted: full routing with hashed PII payloads visible. Show the simulated Meta CAPI payload (already built in Phase 6 sGTM templates) with the hashed `user_data` fields. This makes the Tier 1 privacy promise concrete.
+
+3. **Thank-you page: Tier 3 BI** — Lead funnel dashboard (visits → form starts → submissions → qualified leads), cost per qualified lead by channel, lead quality distribution. Embed as a dashboard preview with narrative framing.
+
+4. **Automated Narrative Reporting (AI)** — Wire the Phase 5 RAG pipeline to generate written summaries for the lead gen business model. The thank-you page under-the-hood view shows a sample AI-generated weekly report: "This week, the Tuna Partnerships pipeline generated 47 qualified leads at $23 average CPL. Meta prospecting drove the highest volume (18 leads) but Google branded search produced the lowest CPL ($12). Qualification rate improved 3% week-over-week..." Viewable as part of the under-the-hood experience. Schedule the RAG pipeline via Cloud Scheduler to produce fresh reports.
+
+5. **Services page cross-links** — Tier 1 links to the lead gen form with: "See how Consent Mode v2 enforcement works in practice — submit a partnership inquiry and watch the consent-gated routing in real time." Tier 3 AI link: "See what Automated Narrative Reporting looks like — here's what it produced for the Tuna Partnerships lead pipeline this week."
+
+**Constraints:**
+
+- The consent enforcement demonstration must work with the actual Cookiebot integration, not a simulated consent banner. The visitor's real consent state drives the routing visualization.
+- PII handling visualization must not expose actual PII — show hashed values and the hashing process, not cleartext.
+- The RAG pipeline uses the Phase 5 BigQuery infrastructure (vector embeddings, stored procedures). No external AI infrastructure.
+
+**Why this is Phase 9C:** The lead gen demo is the shortest in page count but the most conceptually dense. It carries Tier 1 privacy, Tier 3 BI, and AI narrative reporting. Building it after the ecommerce demo means the under-the-hood architecture is proven and the BI integration patterns are established.
+
+---
+
+## Phase 9D — Subscription Demo: Tier 4 (Attribution & Advanced Analytics)
+
+**Goal:** Transform the subscription demo into the attribution and advanced analytics showcase. Subscription businesses live and die by understanding which channels produce high-LTV subscribers, not just which channels produce the most trials. This demo houses multi-touch attribution, cohort analysis by acquisition source, and the "what's actually working" narrative — the most analytically sophisticated tier.
+
+**Context:** The subscription model is the natural home for attribution because the value of a subscriber is realized over time (LTV), not at the point of conversion. Last-click attribution massively over-credits branded search and under-credits upper-funnel channels that drive awareness. This is the demo that makes the discrepancy visible and explains why it matters.
+
+**Deliverables:**
+
+1. **Multi-touch attribution model (Dataform)** — Build Shapley value attribution across the simulated channel mix for the subscription business model in Dataform. Comparison view showing MTA results versus last-click versus platform-reported attribution, making the discrepancies visible. Build on the BigQuery mart tables from Phase 5.
+
+2. **Attribution comparison visualization** — The subscription demo under-the-hood view shows the attribution comparison: three columns (Shapley, last-click, platform-reported) showing how credit allocation differs for the same conversions. Highlight the channels where the discrepancy is largest (typically: upper-funnel paid social gets more credit under Shapley, branded search gets less). Include narrative explanation accessible within the demo — not just showing numbers but explaining to a non-technical prospect why these results differ from what their ad platform tells them.
+
+3. **Cohort retention by acquisition source** — Visualize cohort retention curves segmented by the channel that acquired the subscriber. Show that a channel producing fewer trials but higher retention (higher LTV) is more valuable than a channel producing many trials with high churn. This is the "what's actually working" insight.
+
+4. **LTV by channel analysis** — Compute and visualize customer lifetime value by acquisition channel using the Phase 5 `mart_customer_ltv` and `mart_subscription_cohorts` tables. Show how LTV-informed budget allocation differs from volume-based allocation.
+
+5. **Lightweight MMM or geo-lift demonstration** — If the background generator data supports geographic segmentation: build a lightweight media mix model or geo-lift analysis using the simulated historical data. This may be a static analysis rather than a live model. If geo data is insufficient, present as a methodology explanation with the subscription data as a case study for what MMM would answer.
+
+6. **Services page cross-links** — Tier 4 links to the subscription demo: "See how Shapley value attribution redistributes credit across channels compared to last-click and platform-reported — using 18 months of subscription data from the Tuna Box demo." Link to the cohort retention visualization: "See which channels produce subscribers who stay versus subscribers who churn."
+
+**Constraints:**
+
+- The attribution models must run in Dataform on the BigQuery mart tables. No external analytics tools or Python notebooks — the demonstration value is that this runs inside the warehouse.
+- The comparison visualization must clearly communicate to a non-technical audience. Use progressive disclosure: simple comparison first, methodology detail available for those who want it.
+- The subscription demo flow (plan selection → signup → dashboard) stays functionally unchanged. Attribution content lives in the under-the-hood view and dashboard previews.
+
+**Why this is Phase 9D:** Attribution requires the most data depth, the most analytical sophistication, and benefits from all preceding phases. The e-commerce and lead gen demos establish the under-the-hood patterns; the subscription demo adds the deepest analytical layer on top.
 
 ---
 
@@ -238,10 +346,13 @@ iampatterson.com is simultaneously a consulting site for Patterson Consulting an
 - Phases 1-3 can be built without any simulated data — they work on real visitor events to the consulting site
 - Phase 4 (background generator) is the critical path item for Phases 5-8. If it slips, everything downstream slips
 - The Dataform models built in Phase 5 are directly reusable for real client work — this is not throwaway code
-- The flip-the-card UI (Phase 3) will likely need iteration after the demos are built (Phase 6) because the demo contexts surface UX requirements that the consulting pages alone don't reveal
+- Phase 9A (core architecture) is the critical path for 9B–9D. The full-page flip mechanic, ambient bubbles, and DemoNav removal must be stable before building demo-specific underside content
+- Phase 9B should be built first among the demo phases — it exercises every under-the-hood feature in sequence and establishes patterns for 9C and 9D
+- Phase 9D (attribution) requires the most analytical depth and may need additional Dataform models beyond what Phase 5 built. Shapley value computation and cohort-by-channel analysis should be planned as Dataform extensions
+- The full-page flip interaction is the highest-risk UX element in the project. It must work on mobile. Consider progressive enhancement: the underside content is valuable even without the flip animation. Build the content first, refine the animation after
 - BigQuery managed AI functions (AI.CLASSIFY, AI.IF) are currently in public preview. If they reach GA during development, the implementation stays the same. If Google changes the API surface during preview, Dataform models may need adjustment
 - sGTM is self-hosted on Cloud Run (migrated from Stape in Phase 6). The `gtm-cloud-image` must be kept up to date when Google releases new versions. Cloud Run costs are negligible for current traffic volume but should be monitored
-- The three demo front-ends are the most scope-creep-prone phase. Each one could absorb unlimited design time. Define a "good enough" visual standard early and stick to it
+- The demo-specific underside content is the most scope-creep-prone area. Each demo's under-the-hood view could absorb unlimited polish. Define a "good enough" standard for the visualization fidelity and stick to it — the narrative framing matters more than pixel-perfect pipeline diagrams
 
 ---
 
