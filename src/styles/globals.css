@@ -23,10 +23,10 @@
     }
   }
 
-  /* Selection styling */
+  /* Selection styling — sage accent */
   ::selection {
-    background-color: theme('colors.brand.200');
-    color: theme('colors.brand.900');
+    background-color: theme('colors.sage.200');
+    color: theme('colors.sage.900');
   }
 }
 

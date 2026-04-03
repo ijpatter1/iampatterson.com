@@ -15,7 +15,7 @@ export function FlipTrigger() {
       }}
       aria-label="Look under the hood"
       aria-expanded={isOpen}
-      className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-neutral-200 bg-white shadow-lg transition-all hover:shadow-xl hover:border-neutral-300 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-offset-2 md:bottom-8 md:right-8"
+      className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-neutral-200 bg-neutral-50 shadow-lg transition-all hover:shadow-xl hover:border-sage-500 focus:outline-none focus:ring-2 focus:ring-sage-400 focus:ring-offset-2 md:bottom-8 md:right-8"
     >
       <svg
         width="20"

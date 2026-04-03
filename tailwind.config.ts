@@ -3,26 +3,37 @@ import type { Config } from 'tailwindcss';
 /**
  * Patterson Consulting Design System
  *
- * Brand identity: Deep midnight navy (#0f1729) as the anchor color,
- * with a warm amber primary for CTAs and energy. Three demo accent
- * palettes carry through from homepage spotlight to demo pages.
- *
- * Philosophy: Dark, confident, distinctive. Not another gray-on-white
- * consulting template.
+ * Sage green primary, dusty plum secondary, warm neutrals.
+ * Cream background (#F5F2EE), editorial serif for headings.
+ * See docs/STYLE_GUIDE.md for full specification.
  */
 
-const brand = {
-  50: '#f0f4ff',
-  100: '#dbe4ff',
-  200: '#b5c7ff',
-  300: '#8aa6ff',
-  400: '#5f82ff',
-  500: '#3b5bdb',
-  600: '#2b44b8',
-  700: '#1e3395',
-  800: '#142472',
-  900: '#0f1729',
-  950: '#090e1a',
+// Raw palette scales
+const sage = {
+  100: '#E8EFE4',
+  200: '#C8D5C0',
+  400: '#A8BF9A',
+  500: '#8FA680',
+  700: '#6B7F5E',
+  900: '#4A5640',
+};
+
+const plum = {
+  100: '#EDE7F1',
+  200: '#D0C3D8',
+  400: '#A891B0',
+  500: '#8B7193',
+  700: '#5C4B63',
+  900: '#3D2F43',
+};
+
+const neutral = {
+  100: '#F5F2EE',
+  200: '#DDD6CC',
+  400: '#B5A899',
+  500: '#8C7B6B',
+  700: '#5C4A3D',
+  900: '#2B2424',
 };
 
 const config: Config = {
@@ -30,35 +41,69 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Brand palette — deep midnight navy to light wash
-        brand,
+        // Override Tailwind's default cool neutral with warm neutrals
+        // so existing neutral-* classes throughout the codebase resolve warm
+        neutral: {
+          50: '#FAF8F5',
+          100: neutral[100],
+          200: neutral[200],
+          300: '#CABFB3',
+          400: neutral[400],
+          500: neutral[500],
+          600: neutral[700],
+          700: neutral[700],
+          800: neutral[900],
+          900: neutral[900],
+          950: '#1A1515',
+        },
+
+        // Raw palette scales (for explicit use)
+        sage,
+        plum,
+        warm: neutral,
+
+        // Brand — maps to sage
+        brand: {
+          50: sage[100],
+          100: sage[100],
+          200: sage[200],
+          300: sage[400],
+          400: sage[500],
+          500: sage[700],
+          600: sage[700],
+          700: sage[900],
+          800: sage[900],
+          900: sage[900],
+          950: sage[900],
+        },
 
         // Semantic surface tokens
         surface: {
-          DEFAULT: '#ffffff',
-          alt: '#f8f9fc',
-          hover: '#f0f2f7',
-          dark: brand[900],
-          'dark-alt': brand[950],
+          DEFAULT: neutral[100],
+          alt: '#EFEBE5',
+          hover: neutral[200],
+          dark: sage[900],
+          'dark-alt': plum[900],
         },
 
         // Semantic border tokens
         border: {
-          DEFAULT: '#e2e5ed',
-          strong: '#c8cdd8',
-          muted: '#f0f2f7',
-          brand: brand[500],
+          DEFAULT: neutral[200],
+          strong: neutral[400],
+          muted: '#EFEBE5',
+          subtle: neutral[200],
+          brand: sage[700],
         },
 
         // Semantic content tokens
         content: {
-          DEFAULT: brand[900],
-          secondary: '#3d4663',
-          muted: '#6b7394',
-          disabled: '#9ca3be',
-          inverse: '#ffffff',
-          'on-dark': '#c8cdd8',
-          'on-brand': '#ffffff',
+          DEFAULT: neutral[900],
+          secondary: neutral[700],
+          muted: neutral[500],
+          disabled: neutral[400],
+          inverse: neutral[100],
+          'on-dark': neutral[400],
+          'on-brand': neutral[100],
         },
 
         // Accent tokens for status states
@@ -74,47 +119,47 @@ const config: Config = {
           'error-text': '#7f1d1d',
         },
 
-        // Demo accent palettes — each demo has its own color world
+        // Demo accent palettes
         demo: {
-          // E-commerce (Tuna Shop): warm amber/terracotta — playful, energetic
+          // E-commerce (Tuna Shop): amber/terracotta — warm, playful
           ecommerce: {
-            DEFAULT: '#d97706',
-            light: '#fef3c7',
-            dark: '#92400e',
-            muted: '#fde68a',
-            surface: '#fffbeb',
+            DEFAULT: '#C4703A',
+            light: '#FDF0E6',
+            dark: '#8B4E28',
+            muted: '#E8C4A0',
+            surface: '#FDF8F3',
           },
-          // Subscription (Tuna Box): deep teal/emerald — premium, curated
+          // Subscription (Tuna Box): deep plum — premium, curated
           subscription: {
-            DEFAULT: '#0d9488',
-            light: '#ccfbf1',
-            dark: '#134e4a',
-            muted: '#99f6e4',
-            surface: '#f0fdfa',
+            DEFAULT: plum[700],
+            light: plum[100],
+            dark: plum[900],
+            muted: plum[200],
+            surface: '#F7F3F9',
           },
-          // Lead gen (Tuna Partnerships): cool slate/indigo — editorial, polished
+          // Lead gen (Tuna Partnerships): sage — professional, editorial
           leadgen: {
-            DEFAULT: '#6366f1',
-            light: '#e0e7ff',
-            dark: '#3730a3',
-            muted: '#c7d2fe',
-            surface: '#eef2ff',
+            DEFAULT: sage[700],
+            light: sage[100],
+            dark: sage[900],
+            muted: sage[200],
+            surface: '#F5F8F3',
           },
         },
       },
 
       fontFamily: {
-        display: ['var(--font-display)', 'system-ui', 'sans-serif'],
-        sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
+        display: ['var(--font-display)', 'Georgia', 'serif'],
+        sans: ['var(--font-body)', 'system-ui', 'sans-serif'],
         mono: ['var(--font-mono)', 'ui-monospace', 'monospace'],
       },
 
       fontSize: {
-        // Display scale for hero/section headings
-        'display-xl': ['4.5rem', { lineHeight: '1.05', letterSpacing: '-0.03em' }],
-        'display-lg': ['3.5rem', { lineHeight: '1.1', letterSpacing: '-0.025em' }],
-        'display-md': ['2.5rem', { lineHeight: '1.15', letterSpacing: '-0.02em' }],
-        'display-sm': ['2rem', { lineHeight: '1.2', letterSpacing: '-0.015em' }],
+        // Display scale for hero/section headings (serif)
+        'display-xl': ['4.5rem', { lineHeight: '1.05', letterSpacing: '-0.02em' }],
+        'display-lg': ['3.5rem', { lineHeight: '1.1', letterSpacing: '-0.015em' }],
+        'display-md': ['2.5rem', { lineHeight: '1.15', letterSpacing: '-0.01em' }],
+        'display-sm': ['2rem', { lineHeight: '1.2', letterSpacing: '-0.005em' }],
       },
 
       spacing: {
@@ -128,9 +173,9 @@ const config: Config = {
       },
 
       boxShadow: {
-        card: '0 1px 3px 0 rgba(15, 23, 41, 0.06), 0 1px 2px -1px rgba(15, 23, 41, 0.06)',
-        elevated: '0 10px 25px -3px rgba(15, 23, 41, 0.08), 0 4px 10px -4px rgba(15, 23, 41, 0.04)',
-        glow: '0 0 20px rgba(59, 91, 219, 0.15)',
+        card: '0 1px 3px 0 rgba(43, 36, 36, 0.06), 0 1px 2px -1px rgba(43, 36, 36, 0.06)',
+        elevated: '0 10px 25px -3px rgba(43, 36, 36, 0.08), 0 4px 10px -4px rgba(43, 36, 36, 0.04)',
+        glow: '0 0 20px rgba(107, 127, 94, 0.2)',
       },
 
       borderRadius: {
