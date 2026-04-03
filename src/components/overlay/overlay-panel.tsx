@@ -3,6 +3,7 @@
 import { useState } from 'react';
 
 import { ConsentView } from '@/components/overlay/consent-view';
+import { DashboardView } from '@/components/overlay/dashboard-view';
 import { DesktopOverlayShell } from '@/components/overlay/desktop-overlay-shell';
 import { EventDetail } from '@/components/overlay/event-detail';
 import { EventTimeline } from '@/components/overlay/event-timeline';
@@ -13,13 +14,14 @@ import { useEventStream } from '@/hooks/useEventStream';
 import { useFilteredEvents } from '@/hooks/useFilteredEvents';
 import type { PipelineEvent } from '@/lib/events/pipeline-schema';
 
-type ViewMode = 'timeline' | 'narrative' | 'consent';
+type ViewMode = 'timeline' | 'narrative' | 'consent' | 'dashboards';
 
 function ViewTabs({ active, onChange }: { active: ViewMode; onChange: (mode: ViewMode) => void }) {
   const tabs: { mode: ViewMode; label: string }[] = [
     { mode: 'timeline', label: 'Timeline' },
     { mode: 'narrative', label: 'Narrative' },
     { mode: 'consent', label: 'Consent' },
+    { mode: 'dashboards', label: 'Dashboards' },
   ];
   return (
     <div className="flex border-b border-neutral-100 px-4">
@@ -72,6 +74,7 @@ function OverlayContent({
         )}
         {viewMode === 'narrative' && <NarrativeFlow event={events[0] ?? null} />}
         {viewMode === 'consent' && <ConsentView events={events} />}
+        {viewMode === 'dashboards' && <DashboardView />}
       </div>
     </>
   );
