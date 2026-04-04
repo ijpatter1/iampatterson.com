@@ -10,6 +10,7 @@ import { EventTimeline } from '@/components/overlay/event-timeline';
 import { HomepageUnderside } from '@/components/overlay/homepage-underside';
 import { NarrativeFlow } from '@/components/overlay/narrative-flow';
 import { useOverlay } from '@/components/overlay/overlay-context';
+import { useDataLayerEvents } from '@/hooks/useDataLayerEvents';
 import { useEventStream } from '@/hooks/useEventStream';
 import { useFilteredEvents } from '@/hooks/useFilteredEvents';
 import type { PipelineEvent } from '@/lib/events/pipeline-schema';
@@ -61,10 +62,15 @@ export function UnderTheHoodView() {
   // Keep SSE connection alive even when overlay is closed so events
   // accumulate in the buffer. When the user opens the view, they see
   // their full session history — not just events fired after opening.
-  const { events, status } = useEventStream({
+  const sseEnabled = baseUrl.length > 0;
+  const { events: sseEvents, status } = useEventStream({
     url: eventStreamUrl,
-    enabled: baseUrl.length > 0,
+    enabled: sseEnabled,
   });
+  // Client-side fallback: poll dataLayer directly so the timeline
+  // populates even without the SSE pipeline running.
+  const { events: dlEvents } = useDataLayerEvents();
+  const events = sseEnabled && sseEvents.length > 0 ? sseEvents : dlEvents;
   const { filteredEvents } = useFilteredEvents(events, false);
   const [viewMode, setViewMode] = useState<ViewMode>(isHomepage ? 'overview' : 'timeline');
   const [selectedEvent, setSelectedEvent] = useState<PipelineEvent | null>(null);
