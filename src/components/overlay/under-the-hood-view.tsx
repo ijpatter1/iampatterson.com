@@ -41,8 +41,8 @@ function ViewTabs({
           onClick={() => onChange(mode)}
           className={`px-4 py-3 text-sm font-medium transition-colors ${
             active === mode
-              ? 'border-b-2 border-sage-700 text-sage-900'
-              : 'text-content-muted hover:text-plum-700'
+              ? 'border-b-2 border-black text-black'
+              : 'text-neutral-400 hover:text-neutral-700'
           }`}
         >
           {label}
@@ -76,7 +76,7 @@ export function UnderTheHoodView() {
       {/* Header */}
       <header className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sage-700">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-black">
             <svg
               width="16"
               height="16"

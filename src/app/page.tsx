@@ -17,10 +17,6 @@ const demos = [
       'Data quality assertions validate every event in real time',
       'Revenue attribution compares Shapley value vs last-click',
     ],
-    bgClass: 'bg-demo-ecommerce-surface',
-    accentClass: 'bg-demo-ecommerce',
-    borderClass: 'border-demo-ecommerce',
-    textClass: 'text-demo-ecommerce-dark',
   },
   {
     href: '/demo/subscription',
@@ -33,10 +29,6 @@ const demos = [
       'LTV analysis reveals which channels produce lasting subscribers',
       'Multi-touch attribution redistributes credit across the funnel',
     ],
-    bgClass: 'bg-demo-subscription-surface',
-    accentClass: 'bg-demo-subscription',
-    borderClass: 'border-demo-subscription',
-    textClass: 'text-demo-subscription-dark',
   },
   {
     href: '/demo/leadgen',
@@ -49,10 +41,6 @@ const demos = [
       'AI-powered lead scoring classifies inquiries automatically',
       'Automated narrative reporting summarizes pipeline performance weekly',
     ],
-    bgClass: 'bg-demo-leadgen-surface',
-    accentClass: 'bg-demo-leadgen',
-    borderClass: 'border-demo-leadgen',
-    textClass: 'text-demo-leadgen-dark',
   },
 ];
 
@@ -85,14 +73,14 @@ export default function HomePage() {
                   trackClickCta('Look under the hood', 'hero');
                   open();
                 }}
-                className="rounded-card bg-sage-700 px-8 py-3.5 text-sm font-semibold text-neutral-100 transition-all hover:bg-sage-500 hover:shadow-glow"
+                className="rounded-card bg-black px-8 py-3.5 text-sm font-semibold text-white transition-all hover:bg-neutral-800"
               >
                 Look under the hood
               </button>
               <CtaLink
                 href="#demos"
                 ctaLocation="hero"
-                className="rounded-card border border-plum-400/40 px-8 py-3.5 text-sm font-semibold text-neutral-100 transition-all hover:border-plum-400 hover:bg-plum-400/10"
+                className="rounded-card border border-white/30 px-8 py-3.5 text-sm font-semibold text-white transition-all hover:border-white hover:bg-white/10"
               >
                 Explore the demos
               </CtaLink>
@@ -102,7 +90,7 @@ export default function HomePage() {
       </section>
 
       {/* Pipeline CTA */}
-      <section className="bg-plum-100 px-6 py-section-sm">
+      <section className="bg-white px-6 py-section-sm">
         <div className="section-container text-center">
           <ScrollReveal variant="fade">
             <h2 className="font-display text-display-sm font-bold tracking-tight text-content sm:text-display-md">
@@ -117,11 +105,11 @@ export default function HomePage() {
             <div className="mx-auto mt-8 flex max-w-lg items-center justify-center gap-3">
               {['Browser', 'GTM', 'sGTM', 'BigQuery', 'Dashboards'].map((node, i, arr) => (
                 <span key={node} className="flex items-center gap-3">
-                  <span className="rounded-full border border-plum-200 px-3 py-1 text-xs font-medium text-plum-700">
+                  <span className="rounded-full border border-neutral-200 px-3 py-1 text-xs font-medium text-neutral-600">
                     {node}
                   </span>
                   {i < arr.length - 1 && (
-                    <span className="text-plum-400" aria-hidden="true">
+                    <span className="text-neutral-300" aria-hidden="true">
                       &rarr;
                     </span>
                   )}
@@ -136,7 +124,7 @@ export default function HomePage() {
                 trackClickCta('Look under the hood', 'pipeline-cta');
                 open();
               }}
-              className="mt-8 inline-flex items-center gap-2 rounded-card bg-sage-700 px-8 py-3.5 text-sm font-semibold text-neutral-100 transition-all hover:bg-sage-500 hover:shadow-card"
+              className="mt-8 inline-flex items-center gap-2 rounded-card bg-black px-8 py-3.5 text-sm font-semibold text-white transition-all hover:bg-neutral-800"
             >
               Look under the hood
             </button>
@@ -147,13 +135,13 @@ export default function HomePage() {
       {/* Demo Spotlights */}
       <div id="demos">
         {/* Demos intro */}
-        <section className="bg-neutral-900 px-6 py-section-sm">
+        <section className="bg-white px-6 py-section-sm">
           <div className="section-container">
             <ScrollReveal variant="fade">
-              <h2 className="font-display text-display-sm font-bold tracking-tight text-neutral-100 sm:text-display-md">
+              <h2 className="font-display text-display-sm font-bold tracking-tight text-black sm:text-display-md">
                 Three business models. Same stack.
               </h2>
-              <p className="mt-4 max-w-2xl text-lg text-neutral-400">
+              <p className="mt-4 max-w-2xl text-lg text-neutral-500">
                 Each demo below is a fully functional front-end generating real events through the
                 measurement pipeline. Browse a shop, sign up for a subscription, or submit a
                 partnership inquiry, then look under the hood to watch your session data flow
@@ -164,66 +152,49 @@ export default function HomePage() {
         </section>
 
         {/* Individual demo sections */}
-        {demos.map(
-          (
-            {
-              href,
-              title,
-              type,
-              description,
-              highlights,
-              bgClass,
-              accentClass,
-              borderClass,
-              textClass,
-            },
-            i,
-          ) => (
-            <section key={href} className={`border-t ${borderClass} ${bgClass} px-6 py-section-sm`}>
-              <div className="section-container">
-                <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
-                  <ScrollReveal variant={i % 2 === 0 ? 'slideUp' : 'slideLeft'}>
-                    <div>
-                      <div className="mb-3 flex items-center gap-2">
-                        <span className={`inline-block h-2.5 w-2.5 rounded-full ${accentClass}`} />
-                        <span className="text-xs font-medium uppercase tracking-wider text-content-muted">
-                          {type}
-                        </span>
-                      </div>
-                      <h3 className="font-display text-display-sm font-bold tracking-tight text-content">
-                        {title}
-                      </h3>
-                      <p className="mt-3 max-w-xl text-base leading-relaxed text-content-secondary">
-                        {description}
-                      </p>
-                      <CtaLink
-                        href={href}
-                        ctaLocation={`demo-spotlight-${type.toLowerCase().replace(/\s/g, '-')}`}
-                        className={`mt-6 inline-flex items-center gap-2 rounded-card border ${borderClass} px-6 py-3 text-sm font-semibold ${textClass} transition-all hover:shadow-card`}
-                      >
-                        Explore {title} →
-                      </CtaLink>
+        {demos.map(({ href, title, type, description, highlights }, i) => (
+          <section key={href} className="border-t border-neutral-100 bg-white px-6 py-section-sm">
+            <div className="section-container">
+              <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
+                <ScrollReveal variant={i % 2 === 0 ? 'slideUp' : 'slideLeft'}>
+                  <div>
+                    <div className="mb-3 flex items-center gap-2">
+                      <span className="inline-block h-2.5 w-2.5 rounded-full bg-neutral-400" />
+                      <span className="text-xs font-medium uppercase tracking-wider text-content-muted">
+                        {type}
+                      </span>
                     </div>
-                  </ScrollReveal>
-                  <ScrollReveal delay={0.2} variant="slideUp">
-                    <ul className="space-y-3">
-                      {highlights.map((highlight) => (
-                        <li key={highlight} className="flex items-start gap-3">
-                          <span
-                            className={`mt-1.5 inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full ${accentClass}`}
-                          />
-                          <span className="text-sm leading-relaxed text-content-secondary">
-                            {highlight}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </ScrollReveal>
-                </div>
+                    <h3 className="font-display text-display-sm font-bold tracking-tight text-content">
+                      {title}
+                    </h3>
+                    <p className="mt-3 max-w-xl text-base leading-relaxed text-content-secondary">
+                      {description}
+                    </p>
+                    <CtaLink
+                      href={href}
+                      ctaLocation={`demo-spotlight-${type.toLowerCase().replace(/\s/g, '-')}`}
+                      className="mt-6 inline-flex items-center gap-2 rounded-card border border-neutral-200 px-6 py-3 text-sm font-semibold text-black transition-all hover:border-neutral-400 hover:shadow-card"
+                    >
+                      Explore {title} →
+                    </CtaLink>
+                  </div>
+                </ScrollReveal>
+                <ScrollReveal delay={0.2} variant="slideUp">
+                  <ul className="space-y-3">
+                    {highlights.map((highlight) => (
+                      <li key={highlight} className="flex items-start gap-3">
+                        <span className="mt-1.5 inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-neutral-300" />
+                        <span className="text-sm leading-relaxed text-content-secondary">
+                          {highlight}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </ScrollReveal>
               </div>
-            </section>
-          ),
-        )}
+            </div>
+          </section>
+        ))}
       </div>
     </main>
   );
