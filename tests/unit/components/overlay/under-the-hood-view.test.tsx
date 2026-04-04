@@ -28,6 +28,13 @@ jest.mock('@/hooks/useEventStream', () => ({
   }),
 }));
 
+jest.mock('@/hooks/useDataLayerEvents', () => ({
+  useDataLayerEvents: () => ({
+    events: [],
+    clearEvents: jest.fn(),
+  }),
+}));
+
 jest.mock('@/hooks/useFilteredEvents', () => ({
   useFilteredEvents: (events: unknown[]) => ({
     filteredEvents: events,
