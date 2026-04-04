@@ -53,7 +53,7 @@ export default function HomePage() {
       <section className="relative flex min-h-[90vh] items-center bg-surface-dark px-6">
         <div className="section-container">
           <ScrollReveal variant="fade" duration={0.8}>
-            <h1 className="max-w-4xl font-display text-display-lg font-bold tracking-tight text-content-inverse sm:text-display-xl">
+            <h1 className="max-w-4xl font-display text-3xl font-bold tracking-tight text-content-inverse sm:text-display-lg lg:text-display-xl">
               I build measurement infrastructure for marketing teams.
             </h1>
           </ScrollReveal>
