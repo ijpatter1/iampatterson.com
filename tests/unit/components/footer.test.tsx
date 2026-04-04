@@ -5,7 +5,7 @@ import { Footer } from '@/components/footer';
 describe('Footer', () => {
   it('renders the company location', () => {
     render(<Footer />);
-    expect(screen.getByText(/atlanta, ga/i)).toBeInTheDocument();
+    expect(screen.getByText(/patterson consulting/i)).toBeInTheDocument();
   });
 
   it('renders the email link', () => {

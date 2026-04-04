@@ -15,7 +15,7 @@ export function KpiCard({ metric }: KpiCardProps) {
   const showRed = isChurnMetric ? isPositive : isNegative;
 
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-4">
+    <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
       <p className="text-sm text-neutral-500">{metric.label}</p>
       <p className="mt-1 text-2xl font-semibold text-neutral-900">{metric.value}</p>
       <p

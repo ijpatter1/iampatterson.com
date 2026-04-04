@@ -40,17 +40,27 @@ jest.mock('framer-motion', () => ({
 }));
 
 describe('ServicesPage', () => {
-  it('renders the page heading', () => {
+  it('renders the positioning heading', () => {
     render(<ServicesPage />);
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/four tiers/i);
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+      /end-to-end measurement infrastructure/i,
+    );
+  });
+
+  it('renders the engagement structure heading', () => {
+    render(<ServicesPage />);
+    expect(screen.getByText(/four tiers/i)).toBeInTheDocument();
   });
 
   it('renders all four tier headings', () => {
     render(<ServicesPage />);
-    expect(screen.getByText('Measurement Foundation')).toBeInTheDocument();
-    expect(screen.getByText('Data Infrastructure')).toBeInTheDocument();
-    expect(screen.getByText('Business Intelligence')).toBeInTheDocument();
-    expect(screen.getByText('Attribution & Advanced Analytics')).toBeInTheDocument();
+    // Titles appear in both positioning overview and detailed tier sections
+    expect(screen.getAllByText('Measurement Foundation').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('Data Infrastructure').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('Business Intelligence').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('Attribution & Advanced Analytics').length).toBeGreaterThanOrEqual(
+      2,
+    );
   });
 
   it('renders tier subheadings', () => {
@@ -71,9 +81,10 @@ describe('ServicesPage', () => {
 
   it('renders tier numbers', () => {
     render(<ServicesPage />);
-    expect(screen.getByText('01')).toBeInTheDocument();
-    expect(screen.getByText('02')).toBeInTheDocument();
-    expect(screen.getByText('03')).toBeInTheDocument();
-    expect(screen.getByText('04')).toBeInTheDocument();
+    // Numbers appear in both the positioning cards and the tier sections
+    expect(screen.getAllByText('01').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('02').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('03').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('04').length).toBeGreaterThanOrEqual(1);
   });
 });

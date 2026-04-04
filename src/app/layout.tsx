@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
@@ -11,8 +11,13 @@ import { ScrollDepthTracker } from '@/components/scroll-depth-tracker';
 import { CookiebotScript } from '@/components/scripts/cookiebot';
 import { CookiebotConsentListener } from '@/components/scripts/cookiebot-consent';
 import { GtmScript, GtmNoscript } from '@/components/scripts/gtm';
-import { inter, spaceGrotesk } from '@/lib/fonts';
+import { lora, plusJakarta, jetbrainsMono } from '@/lib/fonts';
 import '@/styles/globals.css';
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+};
 
 export const metadata: Metadata = {
   title: {
@@ -24,7 +29,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable}`}>
+    <html
+      lang="en"
+      className={`${lora.variable} ${plusJakarta.variable} ${jetbrainsMono.variable}`}
+    >
       <head>
         <CookiebotScript />
         <GtmScript />

@@ -68,76 +68,31 @@ describe('HomePage', () => {
     it('renders the hero heading', () => {
       render(<HomePage />);
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-        'Your marketing data is lying to you.',
+        /I build measurement infrastructure/i,
       );
     });
 
-    it('renders the hero subheading', () => {
+    it('describes the live stack running on this site', () => {
       render(<HomePage />);
-      expect(
-        screen.getByText(/platform-reported attribution is self-grading homework/i),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/this site runs on the same stack I sell/i)).toBeInTheDocument();
     });
 
-    it('renders the See how it works CTA as a link to /services', () => {
-      render(<HomePage />);
-      expect(screen.getByRole('link', { name: /see how it works/i })).toHaveAttribute(
-        'href',
-        '/services',
-      );
-    });
-
-    it('fires trackClickCta when a CTA link is clicked', async () => {
+    it('renders the "Look under the hood" hero CTA that opens the overlay', async () => {
       const user = userEvent.setup();
       render(<HomePage />);
-      await user.click(screen.getByRole('link', { name: /see how it works/i }));
-      expect(mockTrackClickCta).toHaveBeenCalledWith('See how it works', 'hero');
-    });
-  });
-
-  describe('Problem section', () => {
-    it('renders the problem section heading', () => {
-      render(<HomePage />);
-      expect(screen.getByText(/the measurement gap is getting wider/i)).toBeInTheDocument();
+      // Both hero and pipeline section have "Look under the hood" buttons
+      const buttons = screen.getAllByRole('button', { name: /look under the hood/i });
+      await user.click(buttons[0]);
+      expect(mockOpen).toHaveBeenCalled();
+      expect(mockTrackClickCta).toHaveBeenCalledWith('Look under the hood', 'hero');
     });
 
-    it('renders the closing statement', () => {
+    it('renders the "Explore the demos" CTA linking to #demos', () => {
       render(<HomePage />);
-      expect(screen.getByText(/that's what I build/i)).toBeInTheDocument();
-    });
-  });
-
-  describe('What I Deliver section', () => {
-    it('renders the section heading', () => {
-      render(<HomePage />);
-      expect(screen.getByText(/end-to-end measurement infrastructure/i)).toBeInTheDocument();
-    });
-
-    it('renders the four tier cards with headings', () => {
-      render(<HomePage />);
-      expect(screen.getByText('Measurement Foundation')).toBeInTheDocument();
-      expect(screen.getByText('Data Infrastructure')).toBeInTheDocument();
-      expect(screen.getByText('Business Intelligence')).toBeInTheDocument();
-      expect(screen.getByText('Attribution & Advanced Analytics')).toBeInTheDocument();
-    });
-
-    it('renders the services CTA link', () => {
-      render(<HomePage />);
-      expect(
-        screen.getByRole('link', { name: /explore the full service offering/i }),
-      ).toHaveAttribute('href', '/services');
-    });
-  });
-
-  describe('Proof section', () => {
-    it('renders the proof section heading', () => {
-      render(<HomePage />);
-      expect(screen.getByText(/this site is the case study/i)).toBeInTheDocument();
-    });
-
-    it('renders the under-the-hood call to action text', () => {
-      render(<HomePage />);
-      expect(screen.getByText(/look under the hood and see for yourself/i)).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /explore the demos/i })).toHaveAttribute(
+        'href',
+        '#demos',
+      );
     });
   });
 
@@ -151,7 +106,30 @@ describe('HomePage', () => {
 
     it('renders the pipeline section heading', () => {
       render(<HomePage />);
-      expect(screen.getByText(/see what.*s running underneath/i)).toBeInTheDocument();
+      expect(screen.getByText(/your session is being measured/i)).toBeInTheDocument();
+    });
+
+    it('renders a "Look under the hood" button that opens the overlay', async () => {
+      const user = userEvent.setup();
+      render(<HomePage />);
+      const buttons = screen.getAllByRole('button', { name: /look under the hood/i });
+      // Second instance is the pipeline CTA button
+      await user.click(buttons[1]);
+      expect(mockOpen).toHaveBeenCalled();
+    });
+  });
+
+  describe('Demos intro', () => {
+    it('renders the demos section heading', () => {
+      render(<HomePage />);
+      expect(screen.getByText(/three business models/i)).toBeInTheDocument();
+    });
+
+    it('renders the demos intro copy', () => {
+      render(<HomePage />);
+      expect(
+        screen.getByText(/each demo below is a fully functional front-end/i),
+      ).toBeInTheDocument();
     });
   });
 
@@ -184,14 +162,6 @@ describe('HomePage', () => {
       expect(screen.getByText('E-Commerce')).toBeInTheDocument();
       expect(screen.getByText('Subscription')).toBeInTheDocument();
       expect(screen.getByText('Lead Generation')).toBeInTheDocument();
-    });
-
-    it('shows tier previews for each demo', () => {
-      render(<HomePage />);
-      // Each demo section should indicate which tiers it showcases
-      expect(screen.getByText(/tiers 1–4/i)).toBeInTheDocument();
-      expect(screen.getByText(/tiers 1, 3 & 4/i)).toBeInTheDocument();
-      expect(screen.getByText(/tiers 1, 3 & ai/i)).toBeInTheDocument();
     });
   });
 });

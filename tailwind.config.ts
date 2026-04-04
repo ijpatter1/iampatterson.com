@@ -3,62 +3,58 @@ import type { Config } from 'tailwindcss';
 /**
  * Patterson Consulting Design System
  *
- * Brand identity: Deep midnight navy (#0f1729) as the anchor color,
- * with a warm amber primary for CTAs and energy. Three demo accent
- * palettes carry through from homepage spotlight to demo pages.
- *
- * Philosophy: Dark, confident, distinctive. Not another gray-on-white
- * consulting template.
+ * Clean slate: white backgrounds, black text, no color palette.
+ * Fonts: Lora (display), Plus Jakarta Sans (body), JetBrains Mono (mono).
+ * Accent color TBD — will be added once the clean foundation feels right.
  */
-
-const brand = {
-  50: '#f0f4ff',
-  100: '#dbe4ff',
-  200: '#b5c7ff',
-  300: '#8aa6ff',
-  400: '#5f82ff',
-  500: '#3b5bdb',
-  600: '#2b44b8',
-  700: '#1e3395',
-  800: '#142472',
-  900: '#0f1729',
-  950: '#090e1a',
-};
 
 const config: Config = {
   content: ['./src/app/**/*.{js,ts,jsx,tsx,mdx}', './src/components/**/*.{js,ts,jsx,tsx,mdx}'],
   theme: {
     extend: {
       colors: {
-        // Brand palette — deep midnight navy to light wash
-        brand,
-
-        // Semantic surface tokens
+        // Semantic surface tokens — all white
         surface: {
           DEFAULT: '#ffffff',
-          alt: '#f8f9fc',
-          hover: '#f0f2f7',
-          dark: brand[900],
-          'dark-alt': brand[950],
+          alt: '#fafafa',
+          hover: '#f5f5f5',
+          dark: '#111111',
+          'dark-alt': '#1a1a1a',
         },
 
         // Semantic border tokens
         border: {
-          DEFAULT: '#e2e5ed',
-          strong: '#c8cdd8',
-          muted: '#f0f2f7',
-          brand: brand[500],
+          DEFAULT: '#e5e5e5',
+          strong: '#d4d4d4',
+          muted: '#f5f5f5',
+          subtle: '#e5e5e5',
+          brand: '#111111',
         },
 
-        // Semantic content tokens
+        // Semantic content tokens — black and grey
         content: {
-          DEFAULT: brand[900],
-          secondary: '#3d4663',
-          muted: '#6b7394',
-          disabled: '#9ca3be',
+          DEFAULT: '#111111',
+          secondary: '#525252',
+          muted: '#a3a3a3',
+          disabled: '#d4d4d4',
           inverse: '#ffffff',
-          'on-dark': '#c8cdd8',
+          'on-dark': '#a3a3a3',
           'on-brand': '#ffffff',
+        },
+
+        // Brand — placeholder black, will be replaced with accent
+        brand: {
+          50: '#fafafa',
+          100: '#f5f5f5',
+          200: '#e5e5e5',
+          300: '#d4d4d4',
+          400: '#a3a3a3',
+          500: '#525252',
+          600: '#404040',
+          700: '#262626',
+          800: '#1a1a1a',
+          900: '#111111',
+          950: '#0a0a0a',
         },
 
         // Accent tokens for status states
@@ -74,47 +70,43 @@ const config: Config = {
           'error-text': '#7f1d1d',
         },
 
-        // Demo accent palettes — each demo has its own color world
+        // Demo accent palettes — all neutral for now
         demo: {
-          // E-commerce (Tuna Shop): warm amber/terracotta — playful, energetic
           ecommerce: {
-            DEFAULT: '#d97706',
-            light: '#fef3c7',
-            dark: '#92400e',
-            muted: '#fde68a',
-            surface: '#fffbeb',
+            DEFAULT: '#525252',
+            light: '#f5f5f5',
+            dark: '#262626',
+            muted: '#d4d4d4',
+            surface: '#ffffff',
           },
-          // Subscription (Tuna Box): deep teal/emerald — premium, curated
           subscription: {
-            DEFAULT: '#0d9488',
-            light: '#ccfbf1',
-            dark: '#134e4a',
-            muted: '#99f6e4',
-            surface: '#f0fdfa',
+            DEFAULT: '#525252',
+            light: '#f5f5f5',
+            dark: '#262626',
+            muted: '#d4d4d4',
+            surface: '#ffffff',
           },
-          // Lead gen (Tuna Partnerships): cool slate/indigo — editorial, polished
           leadgen: {
-            DEFAULT: '#6366f1',
-            light: '#e0e7ff',
-            dark: '#3730a3',
-            muted: '#c7d2fe',
-            surface: '#eef2ff',
+            DEFAULT: '#525252',
+            light: '#f5f5f5',
+            dark: '#262626',
+            muted: '#d4d4d4',
+            surface: '#ffffff',
           },
         },
       },
 
       fontFamily: {
-        display: ['var(--font-display)', 'system-ui', 'sans-serif'],
-        sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
+        display: ['var(--font-display)', 'Georgia', 'serif'],
+        sans: ['var(--font-body)', 'system-ui', 'sans-serif'],
         mono: ['var(--font-mono)', 'ui-monospace', 'monospace'],
       },
 
       fontSize: {
-        // Display scale for hero/section headings
-        'display-xl': ['4.5rem', { lineHeight: '1.05', letterSpacing: '-0.03em' }],
-        'display-lg': ['3.5rem', { lineHeight: '1.1', letterSpacing: '-0.025em' }],
-        'display-md': ['2.5rem', { lineHeight: '1.15', letterSpacing: '-0.02em' }],
-        'display-sm': ['2rem', { lineHeight: '1.2', letterSpacing: '-0.015em' }],
+        'display-xl': ['4.5rem', { lineHeight: '1.05', letterSpacing: '-0.02em' }],
+        'display-lg': ['3.5rem', { lineHeight: '1.1', letterSpacing: '-0.015em' }],
+        'display-md': ['2.5rem', { lineHeight: '1.15', letterSpacing: '-0.01em' }],
+        'display-sm': ['2rem', { lineHeight: '1.2', letterSpacing: '-0.005em' }],
       },
 
       spacing: {
@@ -128,9 +120,9 @@ const config: Config = {
       },
 
       boxShadow: {
-        card: '0 1px 3px 0 rgba(15, 23, 41, 0.06), 0 1px 2px -1px rgba(15, 23, 41, 0.06)',
-        elevated: '0 10px 25px -3px rgba(15, 23, 41, 0.08), 0 4px 10px -4px rgba(15, 23, 41, 0.04)',
-        glow: '0 0 20px rgba(59, 91, 219, 0.15)',
+        card: '0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.03)',
+        elevated: '0 4px 12px -2px rgba(0, 0, 0, 0.08), 0 2px 6px -2px rgba(0, 0, 0, 0.04)',
+        glow: '0 0 20px rgba(0, 0, 0, 0.08)',
       },
 
       borderRadius: {

@@ -25,8 +25,8 @@
 
   /* Selection styling */
   ::selection {
-    background-color: theme('colors.brand.200');
-    color: theme('colors.brand.900');
+    background-color: theme('colors.neutral.200');
+    color: theme('colors.black');
   }
 }
 

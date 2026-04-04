@@ -42,7 +42,7 @@ export function DashboardView() {
               key={d.href}
               href={d.href}
               className={`block rounded-lg border p-3 transition-colors hover:border-neutral-400 ${
-                isActive ? 'border-neutral-900 bg-neutral-50' : 'border-neutral-200 bg-white'
+                isActive ? 'border-neutral-900 bg-neutral-50' : 'border-neutral-200 bg-neutral-50'
               }`}
             >
               <span className="text-sm font-medium text-neutral-900">{d.label}</span>

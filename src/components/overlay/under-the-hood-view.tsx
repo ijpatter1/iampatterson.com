@@ -41,8 +41,8 @@ function ViewTabs({
           onClick={() => onChange(mode)}
           className={`px-4 py-3 text-sm font-medium transition-colors ${
             active === mode
-              ? 'border-b-2 border-content text-content'
-              : 'text-content-muted hover:text-content-secondary'
+              ? 'border-b-2 border-black text-black'
+              : 'text-neutral-400 hover:text-neutral-700'
           }`}
         >
           {label}
@@ -58,9 +58,12 @@ export function UnderTheHoodView() {
   const isHomepage = pathname === '/';
   const baseUrl = process.env.NEXT_PUBLIC_EVENT_STREAM_URL ?? '';
   const eventStreamUrl = baseUrl.endsWith('/events') ? baseUrl : `${baseUrl}/events`;
+  // Keep SSE connection alive even when overlay is closed so events
+  // accumulate in the buffer. When the user opens the view, they see
+  // their full session history — not just events fired after opening.
   const { events, status } = useEventStream({
     url: eventStreamUrl,
-    enabled: isOpen && baseUrl.length > 0,
+    enabled: baseUrl.length > 0,
   });
   const { filteredEvents } = useFilteredEvents(events, false);
   const [viewMode, setViewMode] = useState<ViewMode>(isHomepage ? 'overview' : 'timeline');
@@ -73,7 +76,7 @@ export function UnderTheHoodView() {
       {/* Header */}
       <header className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-dark">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-black">
             <svg
               width="16"
               height="16"

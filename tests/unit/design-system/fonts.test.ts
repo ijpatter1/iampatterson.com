@@ -1,25 +1,27 @@
-import { inter, spaceGrotesk } from '@/lib/fonts';
+import { lora, plusJakarta, jetbrainsMono } from '@/lib/fonts';
 
 describe('Font configuration', () => {
-  it('exports inter font object with variable property', () => {
-    expect(inter).toBeDefined();
-    expect(inter.variable).toBeDefined();
-    expect(typeof inter.variable).toBe('string');
+  it('exports lora display font', () => {
+    expect(lora).toBeDefined();
+    expect(lora.variable).toBeDefined();
+    expect(typeof lora.variable).toBe('string');
   });
 
-  it('exports spaceGrotesk font object with variable property', () => {
-    expect(spaceGrotesk).toBeDefined();
-    expect(spaceGrotesk.variable).toBeDefined();
-    expect(typeof spaceGrotesk.variable).toBe('string');
+  it('exports plusJakarta body font', () => {
+    expect(plusJakarta).toBeDefined();
+    expect(plusJakarta.variable).toBeDefined();
+    expect(typeof plusJakarta.variable).toBe('string');
   });
 
-  it('inter has className for application', () => {
-    expect(inter.className).toBeDefined();
-    expect(typeof inter.className).toBe('string');
+  it('exports jetbrainsMono mono font', () => {
+    expect(jetbrainsMono).toBeDefined();
+    expect(jetbrainsMono.variable).toBeDefined();
+    expect(typeof jetbrainsMono.variable).toBe('string');
   });
 
-  it('spaceGrotesk has className for application', () => {
-    expect(spaceGrotesk.className).toBeDefined();
-    expect(typeof spaceGrotesk.className).toBe('string');
+  it('all fonts have className for application', () => {
+    expect(typeof lora.className).toBe('string');
+    expect(typeof plusJakarta.className).toBe('string');
+    expect(typeof jetbrainsMono.className).toBe('string');
   });
 });

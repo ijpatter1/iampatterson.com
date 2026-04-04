@@ -53,20 +53,70 @@ const tiers = [
     number: '04',
     title: 'Attribution & Advanced Analytics',
     subtitle: 'Finally answering "what\u2019s actually working."',
-    bg: 'bg-surface-dark',
+    bg: 'bg-white',
   },
 ];
 
 export default function ServicesPage() {
   return (
     <main>
-      {/* Page intro */}
+      {/* Positioning */}
       <section className="px-6 py-section">
         <div className="prose-container">
           <ScrollReveal>
-            <h1 className="font-display text-display-sm font-bold tracking-tight text-content sm:text-display-md">
-              Four tiers. Each one delivers standalone value. Each one makes the next one possible.
+            <h1 className="max-w-3xl font-display text-display-sm font-bold tracking-tight text-content sm:text-display-md">
+              End-to-end measurement infrastructure. Not just another tag implementation.
             </h1>
+          </ScrollReveal>
+          <ScrollReveal delay={0.1}>
+            <div className="mt-8 grid gap-6 sm:grid-cols-2">
+              {[
+                {
+                  tier: '01',
+                  title: 'Measurement Foundation',
+                  description:
+                    'Consent management, server-side Google Tag Manager, and event delivery to your ad platforms. Better data quality, longer cookie life, improved match rates, privacy compliance. This is where every engagement starts.',
+                },
+                {
+                  tier: '02',
+                  title: 'Data Infrastructure',
+                  description:
+                    'Your marketing data in BigQuery, transformed and modeled by Dataform, with AI-native enrichment built into every layer. A single source of truth that replaces the six-platform CSV export your team does every Monday morning.',
+                },
+                {
+                  tier: '03',
+                  title: 'Business Intelligence',
+                  description:
+                    'Dashboards your team can actually use, AI-powered data exploration, and automated weekly reporting that reads like an analyst wrote it. Built on the infrastructure from the previous phases, not bolted on top of raw data.',
+                },
+                {
+                  tier: '04',
+                  title: 'Attribution & Advanced Analytics',
+                  description:
+                    'Multi-touch attribution, media mix modeling, and incrementality testing. The only way to honestly answer "what\u2019s actually working." Available exclusively to clients whose measurement foundation I\u2019ve built, because the models are only as good as the data feeding them.',
+                },
+              ].map(({ tier, title, description }) => (
+                <div
+                  key={tier}
+                  className="rounded-card border border-neutral-200 bg-white p-6 shadow-card transition-all hover:shadow-elevated"
+                >
+                  <span className="mb-3 block font-mono text-sm text-content-muted">{tier}</span>
+                  <h2 className="mb-2 text-lg font-semibold text-content">{title}</h2>
+                  <p className="text-sm leading-relaxed text-content-secondary">{description}</p>
+                </div>
+              ))}
+            </div>
+          </ScrollReveal>
+        </div>
+      </section>
+
+      {/* Engagement structure */}
+      <section className="bg-surface-alt px-6 py-section">
+        <div className="prose-container">
+          <ScrollReveal>
+            <h2 className="font-display text-display-sm font-bold tracking-tight text-content sm:text-display-md">
+              Four tiers. Each one delivers standalone value. Each one makes the next one possible.
+            </h2>
           </ScrollReveal>
           <ScrollReveal delay={0.1}>
             <p className="mt-6 text-lg leading-relaxed text-content-secondary">
@@ -338,32 +388,30 @@ export default function ServicesPage() {
         <div className="section-container">
           <ScrollReveal>
             <div className="mb-8">
-              <span className="font-mono text-sm text-content-on-dark">{tiers[3].number}</span>
-              <h2 className="mt-1 font-display text-display-sm font-bold tracking-tight text-content-inverse">
+              <span className="font-mono text-sm text-content-muted">{tiers[3].number}</span>
+              <h2 className="mt-1 font-display text-display-sm font-bold tracking-tight text-content">
                 {tiers[3].title}
               </h2>
-              <p className="mt-2 text-lg text-content-on-dark">{tiers[3].subtitle}</p>
+              <p className="mt-2 text-lg text-content-muted">{tiers[3].subtitle}</p>
             </div>
           </ScrollReveal>
 
           <div className="grid gap-12 lg:grid-cols-2">
             <ScrollReveal delay={0.1}>
-              <div className="space-y-4 text-content-on-dark">
+              <div className="space-y-4 text-content-secondary">
                 <p>
                   This tier is only available to clients who have completed Tiers 1 and 2 with
                   Patterson Consulting. Not because of a commercial requirement — because the models
                   are only as good as the data feeding them, and I need to know the data is right.
                 </p>
 
-                <h3 className="mt-8 text-lg font-semibold text-content-inverse">
+                <h3 className="mt-8 text-lg font-semibold text-content">
                   Components (scoped independently based on readiness):
                 </h3>
                 <dl className="mt-4 space-y-4">
                   <div>
-                    <dt className="font-semibold text-content-inverse">
-                      Multi-Touch Attribution Modeling
-                    </dt>
-                    <dd className="mt-1 text-content-on-dark">
+                    <dt className="font-semibold text-content">Multi-Touch Attribution Modeling</dt>
+                    <dd className="mt-1 text-content-secondary">
                       Shapley value or position-based attribution models built in Dataform on your
                       event data in BigQuery. Replaces platform-reported attribution with logic you
                       own, can inspect, and can trust. Privacy-compliant by design — built on
@@ -371,10 +419,8 @@ export default function ServicesPage() {
                     </dd>
                   </div>
                   <div>
-                    <dt className="font-semibold text-content-inverse">
-                      Geo-Lift Incrementality Testing
-                    </dt>
-                    <dd className="mt-1 text-content-on-dark">
+                    <dt className="font-semibold text-content">Geo-Lift Incrementality Testing</dt>
+                    <dd className="mt-1 text-content-secondary">
                       The most rigorous, privacy-friendly method for measuring whether a channel is
                       driving incremental revenue or just capturing existing demand. Uses synthetic
                       control methodology (the same statistical framework used in econometrics and
@@ -384,8 +430,8 @@ export default function ServicesPage() {
                     </dd>
                   </div>
                   <div>
-                    <dt className="font-semibold text-content-inverse">Media Mix Modeling</dt>
-                    <dd className="mt-1 text-content-on-dark">
+                    <dt className="font-semibold text-content">Media Mix Modeling</dt>
+                    <dd className="mt-1 text-content-secondary">
                       Bayesian media mix modeling using Google&apos;s open-source Meridian
                       framework, running on BigQuery. Requires 2+ years of historical spend and
                       outcome data. Answers &quot;how should I allocate my budget across
@@ -395,10 +441,10 @@ export default function ServicesPage() {
                     </dd>
                   </div>
                   <div>
-                    <dt className="font-semibold text-content-inverse">
+                    <dt className="font-semibold text-content">
                       Measurement Strategy & Testing Roadmap
                     </dt>
-                    <dd className="mt-1 text-content-on-dark">
+                    <dd className="mt-1 text-content-secondary">
                       Ongoing advisory on what to test next, which channels to validate, and how to
                       build a culture of measurement within your marketing team. This is the
                       retainer component — not maintaining infrastructure, but guiding the questions
@@ -410,12 +456,12 @@ export default function ServicesPage() {
             </ScrollReveal>
 
             <ScrollReveal delay={0.2}>
-              <p className="mt-8 rounded-card border-l-4 border-brand-400 bg-surface-dark-alt py-4 pl-5 pr-4 text-content-on-dark">
-                <strong className="text-content-inverse">What you get at the end of Tier 4:</strong>{' '}
-                An honest answer to the hardest question in marketing. Not &quot;what did the
-                platform report&quot; but &quot;what actually happened when we spent this
-                money.&quot; Attribution you own, methodology you can defend to your CFO, and a
-                testing roadmap that gets smarter over time.
+              <p className="mt-8 rounded-card border-l-4 border-neutral-300 bg-neutral-50 py-4 pl-5 pr-4 text-content-secondary">
+                <strong className="text-content">What you get at the end of Tier 4:</strong> An
+                honest answer to the hardest question in marketing. Not &quot;what did the platform
+                report&quot; but &quot;what actually happened when we spent this money.&quot;
+                Attribution you own, methodology you can defend to your CFO, and a testing roadmap
+                that gets smarter over time.
               </p>
             </ScrollReveal>
           </div>
