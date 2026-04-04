@@ -53,7 +53,7 @@ export default function HomePage() {
       <section className="relative flex min-h-[90vh] items-center bg-surface-dark px-6">
         <div className="section-container">
           <ScrollReveal variant="fade" duration={0.8}>
-            <h1 className="max-w-4xl font-display text-display-lg font-bold tracking-tight text-content-inverse sm:text-display-xl">
+            <h1 className="max-w-4xl font-display text-3xl font-bold tracking-tight text-content-inverse sm:text-display-lg lg:text-display-xl">
               I build measurement infrastructure for marketing teams.
             </h1>
           </ScrollReveal>
@@ -102,14 +102,14 @@ export default function HomePage() {
             </p>
           </ScrollReveal>
           <ScrollReveal delay={0.2}>
-            <div className="mx-auto mt-8 flex max-w-lg items-center justify-center gap-3">
+            <div className="mx-auto mt-8 flex max-w-lg flex-wrap items-center justify-center gap-2">
               {['Browser', 'GTM', 'sGTM', 'BigQuery', 'Dashboards'].map((node, i, arr) => (
-                <span key={node} className="flex items-center gap-3">
-                  <span className="rounded-full border border-neutral-200 px-3 py-1 text-xs font-medium text-neutral-600">
+                <span key={node} className="flex items-center gap-2">
+                  <span className="whitespace-nowrap rounded-full border border-neutral-200 px-3 py-1 text-xs font-medium text-neutral-600">
                     {node}
                   </span>
                   {i < arr.length - 1 && (
-                    <span className="text-neutral-300" aria-hidden="true">
+                    <span className="hidden text-neutral-300 sm:inline" aria-hidden="true">
                       &rarr;
                     </span>
                   )}

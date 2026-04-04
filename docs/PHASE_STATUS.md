@@ -1,7 +1,7 @@
 # Phase Status Tracker
 
-> **Current Phase: 9A — Homepage & Core Architecture** (COMPLETE)
-> Last updated: 2026-04-03, session-2026-04-03-017
+> **Current Phase: 9A — Homepage & Core Architecture** (COMPLETE — design iteration ongoing)
+> Last updated: 2026-04-04, session-2026-04-04-018
 
 ---
 
@@ -139,6 +139,9 @@
 - ✅ 2026-04-03, session-2026-04-03-017 — Full-width demo spotlight sections — 3 full-width scroll sections with per-demo color world, tier badge, highlight bullets, and prominent CTAs
 - ✅ 2026-04-03, session-2026-04-03-017 — Kill DemoNav — replaced with DemoFooterNav at bottom of demo pages with cross-demo navigation and back-to-homepage link
 - ✅ 2026-04-03, session-2026-04-03-017 — Kill `/demo` landing page — redirects to `/#demos`
+- ✅ 2026-04-04, session-2026-04-04-018 — Homepage restructured: hero-first narrative, event stream fix, tier overview moved to Services, demos intro added
+- ✅ 2026-04-04, session-2026-04-04-018 — Design system: fonts finalized (Lora + Plus Jakarta Sans + JetBrains Mono), real font files, viewport meta tag
+- 🔄 2026-04-04, session-2026-04-04-018 — Color palette: clean slate (white/black/grey). Sage/plum tried and rejected. Accent color TBD
 
 ---
 
