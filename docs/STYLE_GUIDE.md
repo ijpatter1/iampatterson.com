@@ -1,5 +1,7 @@
 # Patterson Consulting — Style Guide
 
+> **Status: CLEAN SLATE (as of session 018).** The color palette sections below were tried and rejected during design iteration. The site currently uses white backgrounds, black text, and no accent color. Fonts (Lora, Plus Jakarta Sans, JetBrains Mono) are finalized. The next step is choosing a single accent color. The Voice & Tone, Typography, Spacing, and Component Patterns sections remain valid. Color sections are preserved as historical context for what was tried.
+
 ## Design Intent
 
 This is the portfolio site for Patterson Consulting — a MarTech consulting practice that also runs a 2.5M-follower pet brand and produced AI-generated calendars that made $45k. The site itself is proof of craft: the measurement infrastructure running underneath it is the product, and the visual layer should signal that the person who built that backend also cares about the frontend.
