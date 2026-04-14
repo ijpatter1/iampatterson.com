@@ -27,10 +27,13 @@ secrets/
 # ─────────────────────────────────────────────
 # Claude Code
 # ─────────────────────────────────────────────
-# Local settings — personal overrides, not committed
-.claude/settings.local.json
-# Auto-generated agent memory (project-scoped, can be committed if desired)
-# .claude/agent-memory/
+.claude/
+CLAUDE.md
+
+# ─────────────────────────────────────────────
+# Docker sandbox (Claude Code isolation)
+# ─────────────────────────────────────────────
+sandbox/
 
 # ─────────────────────────────────────────────
 # Testing
@@ -91,11 +94,6 @@ __pycache__/
 venv/
 *.egg-info/
 
-# ─────────────────────────────────────────────
-# Docker sandbox
-# ─────────────────────────────────────────────
-sandbox/*.log
-sandbox/tmp/
 
 # ─────────────────────────────────────────────
 # Misc
@@ -105,3 +103,15 @@ sandbox/tmp/
 *.temp
 docs/tag_assistant_*.json
 docs/input_artifacts/
+
+# ─────────────────────────────────────────────
+# Internal docs (not for public repo)
+# ─────────────────────────────────────────────
+docs/sessions/
+docs/CREDENTIALS_NEEDED.md
+docs/DEPLOYMENT_*.md
+docs/PHASE_6_DEPLOYMENT_GUIDE.md
+docs/gtm-web-template.json
+docs/gtm-server-template.json
+docs/template.tpl
+docs/Wikipedia_Signs_of_AI_writing.pdf
