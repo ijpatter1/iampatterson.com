@@ -142,14 +142,14 @@ export function pushEvent(event: BaseEvent & Record<string, unknown>): void {
 
 **Relationship with Stape auto-generated templates:**
 
-Stape auto-generates a starter GTM web + sGTM container pair when you set up a new site (`docs/gtm-web-template.json` and `docs/gtm-server-template.json`). These are reference templates for a lead gen site (container IDs `GTM-NW698GF4` / `GTM-KNTVZ3JW`) — **not our production containers**. Our site uses its own containers (`GTM-MWHFMTZN` web, sGTM on `io.iampatterson.com`) with our own event taxonomy. We keep Stape's infrastructure (hosting, GA4 client, Data Client, BigQuery tag template) and build our own tag/trigger/variable configuration on top.
+Stape auto-generates a starter GTM web + sGTM container pair when you set up a new site. These are reference templates for a lead gen site, **not our production containers**. Our site uses its own containers (`GTM-MWHFMTZN` web, sGTM on `io.iampatterson.com`) with our own event taxonomy. We keep Stape's infrastructure (hosting, GA4 client, Data Client, BigQuery tag template) and build our own tag/trigger/variable configuration on top.
 
 **What Stape provides (infrastructure):**
 
 - sGTM container hosting on `io.iampatterson.com` (custom domain, same-origin)
 - GA4 client — standard sGTM client that parses incoming GA4 hits
 - Stape Data Client — proprietary client for routing events to external destinations
-- "Write to BigQuery" community tag template (`docs/template.tpl`)
+- "Write to BigQuery" community tag template
 
 **What we configure ourselves:**
 
@@ -186,7 +186,7 @@ Stape auto-generates a starter GTM web + sGTM container pair when you set up a n
 
 **Dataset:** `iampatterson_raw`
 **Table:** `events_raw`
-**Tag:** Stape "Write to BigQuery" community template (`docs/template.tpl`)
+**Tag:** Stape "Write to BigQuery" community template
 **Setup:** `infrastructure/bigquery/setup.sh` (idempotent)
 
 The sGTM BigQuery tag uses "All Event Data" mode — `getAllEventData()` writes the full sGTM event object. Column names align with sGTM's Common Event Data model (`page_location`, `ip_override`, etc.) and our custom event parameters (`session_id`, `cta_text`, etc.). Fields not matching a BQ column are silently dropped (`ignoreUnknownValues: true`).

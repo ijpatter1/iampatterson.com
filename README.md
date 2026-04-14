@@ -57,7 +57,6 @@ docs/
   REQUIREMENTS.md    Development plan
   ARCHITECTURE.md    Technical architecture
   PHASE_STATUS.md    Phase completion tracker
-  sessions/          Session handoff artifacts
 ```
 
 ## Demo environments
@@ -87,7 +86,7 @@ Consent state from Cookiebot determines which destinations receive each event. T
 
 ## Testing
 
-486 tests across 57 suites. All features are built with red/green TDD: test written first, then implementation. Coverage includes components, event schemas, pipeline logic, and data layer pushes.
+All features are built with red/green TDD: test written first, then implementation. Coverage includes components, event schemas, pipeline logic, and data layer pushes. Run `npm test` to see current counts.
 
 ## Development phases
 
