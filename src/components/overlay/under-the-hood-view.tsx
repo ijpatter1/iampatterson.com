@@ -5,6 +5,7 @@ import { useState } from 'react';
 
 import { ConsentView } from '@/components/overlay/consent-view';
 import { DashboardView } from '@/components/overlay/dashboard-view';
+import { EcommerceUnderside } from '@/components/overlay/ecommerce/ecommerce-underside';
 import { EventDetail } from '@/components/overlay/event-detail';
 import { EventTimeline } from '@/components/overlay/event-timeline';
 import { HomepageUnderside } from '@/components/overlay/homepage-underside';
@@ -57,6 +58,8 @@ export function UnderTheHoodView() {
   const { isOpen, close } = useOverlay();
   const pathname = usePathname();
   const isHomepage = pathname === '/';
+  const isEcommerce = pathname.startsWith('/demo/ecommerce');
+  const showOverview = isHomepage || isEcommerce;
   const baseUrl = process.env.NEXT_PUBLIC_EVENT_STREAM_URL ?? '';
   const eventStreamUrl = baseUrl.endsWith('/events') ? baseUrl : `${baseUrl}/events`;
   // Keep SSE connection alive even when overlay is closed so events
@@ -72,7 +75,7 @@ export function UnderTheHoodView() {
   const { events: dlEvents } = useDataLayerEvents();
   const events = sseEnabled && sseEvents.length > 0 ? sseEvents : dlEvents;
   const { filteredEvents } = useFilteredEvents(events, false);
-  const [viewMode, setViewMode] = useState<ViewMode>(isHomepage ? 'overview' : 'timeline');
+  const [viewMode, setViewMode] = useState<ViewMode>(showOverview ? 'overview' : 'timeline');
   const [selectedEvent, setSelectedEvent] = useState<PipelineEvent | null>(null);
 
   if (!isOpen) return null;
@@ -116,7 +119,7 @@ export function UnderTheHoodView() {
       </header>
 
       {/* View tabs */}
-      <ViewTabs active={viewMode} onChange={setViewMode} showOverview={isHomepage} />
+      <ViewTabs active={viewMode} onChange={setViewMode} showOverview={showOverview} />
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
@@ -130,7 +133,10 @@ export function UnderTheHoodView() {
             </>
           ) : (
             <>
-              {viewMode === 'overview' && <HomepageUnderside />}
+              {viewMode === 'overview' && isHomepage && <HomepageUnderside />}
+              {viewMode === 'overview' && isEcommerce && (
+                <EcommerceUnderside pathname={pathname} events={filteredEvents} />
+              )}
               {viewMode === 'timeline' && (
                 <EventTimeline events={filteredEvents} onSelectEvent={setSelectedEvent} />
               )}

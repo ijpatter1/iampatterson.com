@@ -122,8 +122,8 @@ export default function ServicesPage() {
             <p className="mt-6 text-lg leading-relaxed text-content-secondary">
               I structure engagements as discrete tiers with decision gates between them. You buy
               what you need, see the results, and decide whether to go further. The first two tiers
-              have non-negotiable components — these are the things that must be done properly or
-              not at all. Everything else is modular and scoped to your specific situation.
+              have non-negotiable components. These are the things that must be done properly or not
+              at all. Everything else is modular and scoped to your specific situation.
             </p>
           </ScrollReveal>
         </div>
@@ -171,8 +171,8 @@ export default function ServicesPage() {
                   </ServiceItem>
                   <ServiceItem title="Warehouse Event Sink">
                     Your sGTM event stream flows directly into a data warehouse from day one. This
-                    is the bridge to everything downstream — without it, Tier 1 is a dead end and
-                    you should hire a GTM specialist, not me.
+                    is the bridge to everything downstream. Without it, Tier 1 is a dead end and you
+                    should hire a GTM specialist, not me.
                   </ServiceItem>
                 </dl>
               </div>
@@ -250,10 +250,10 @@ export default function ServicesPage() {
                   <ServiceItem title="Dataform Transformation Models">
                     A standardized transformation pipeline following a medallion architecture: raw
                     events are cleaned and flattened in staging, then assembled into business-ready
-                    mart tables — campaign performance, channel attribution, customer lifetime
-                    value, session events. These models are the intellectual property of the
-                    engagement and the single most valuable deliverable. Clients with existing dbt
-                    implementations stay on dbt, with a migration conversation available.
+                    mart tables: campaign performance, channel attribution, customer lifetime value,
+                    session events. These models are the intellectual property of the engagement and
+                    the single most valuable deliverable. Clients with existing dbt implementations
+                    stay on dbt, with a migration conversation available.
                   </ServiceItem>
                   <ServiceItem title="Automated Data Quality Framework">
                     Dataform assertions that continuously validate your data: schema checks, null
@@ -266,7 +266,7 @@ export default function ServicesPage() {
                     AI-generated, human-reviewed documentation of every model, every column, every
                     business logic definition, and every upstream dependency. This ships as a
                     deliverable and lives in the Dataform repository. It&apos;s what makes your data
-                    self-describing — both for your team and for any AI system that needs to work
+                    self-describing, both for your team and for any AI system that needs to work
                     with it.
                   </ServiceItem>
                   <ServiceItem title="AI Access Layer">
