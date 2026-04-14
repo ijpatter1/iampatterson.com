@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { CartView } from '@/components/demo/ecommerce/cart-view';
 
 export const metadata: Metadata = {
-  title: 'Cart — The Tuna Shop',
+  title: 'Cart | The Tuna Shop',
 };
 
 export default function CartPage() {

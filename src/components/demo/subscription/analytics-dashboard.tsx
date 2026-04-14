@@ -60,7 +60,7 @@ export function SubscriptionDashboard() {
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-semibold text-neutral-900">
-          Tuna Subscription Box — Analytics Dashboard
+          Tuna Subscription Box | Analytics Dashboard
         </h2>
         <p className="text-sm text-neutral-500">
           Subscription metrics from BigQuery mart tables via Dataform

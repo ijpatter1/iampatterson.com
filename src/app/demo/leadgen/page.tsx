@@ -23,7 +23,7 @@ export default function LeadgenDemoPage() {
       </div>
       <DashboardPreview
         kpis={leadGenDashboardData.kpis.slice(0, 3)}
-        narrative="Every form interaction — from first field focus to qualified submission — feeds the lead funnel metrics below. The qualification scoring and cost-per-lead calculations are all computed from the same event pipeline."
+        narrative="Every form interaction, from first field focus to qualified submission, feeds the lead funnel metrics below. The qualification scoring and cost-per-lead calculations are all computed from the same event pipeline."
         analyticsHref="/demo/leadgen/analytics"
       />
     </main>

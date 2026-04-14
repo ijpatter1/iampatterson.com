@@ -53,7 +53,7 @@ export function DashboardView() {
       </div>
       <div className="mt-4 rounded-lg border border-neutral-100 bg-neutral-50 p-3">
         <p className="text-xs text-neutral-500">
-          Data flows through the same pipeline you see in the Timeline tab — from the browser data
+          Data flows through the same pipeline you see in the Timeline tab, from the browser data
           layer through sGTM into BigQuery, then transformed by Dataform into the mart tables that
           power these dashboards.
         </p>

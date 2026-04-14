@@ -65,7 +65,7 @@ export function CheckoutForm() {
       <div className="space-y-4">
         <h2 className="text-lg font-semibold text-neutral-900">Shipping Information</h2>
         <p className="text-sm text-neutral-500">
-          This is a demo — no real data is collected or stored.
+          This is a demo. No real data is collected or stored.
         </p>
 
         <div className="grid gap-4 sm:grid-cols-2">

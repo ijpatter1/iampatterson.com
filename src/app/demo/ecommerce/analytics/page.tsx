@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { EcommerceDashboard } from '@/components/demo/ecommerce/analytics-dashboard';
 
 export const metadata: Metadata = {
-  title: 'Tuna Shop Analytics — Dashboard',
+  title: 'Tuna Shop Analytics | Dashboard',
   description:
     'E-commerce analytics dashboard built on BigQuery mart tables via Dataform. Revenue trends, channel attribution, product performance, and campaign ROAS.',
 };

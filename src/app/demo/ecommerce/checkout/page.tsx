@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { CheckoutForm } from '@/components/demo/ecommerce/checkout-form';
 
 export const metadata: Metadata = {
-  title: 'Checkout — The Tuna Shop',
+  title: 'Checkout | The Tuna Shop',
 };
 
 export default function CheckoutPage() {

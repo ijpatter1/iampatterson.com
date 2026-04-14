@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { LeadgenThankYou } from '@/components/demo/leadgen/leadgen-thank-you';
 
 export const metadata: Metadata = {
-  title: 'Inquiry Submitted — Tuna Partnerships',
+  title: 'Inquiry Submitted | Tuna Partnerships',
 };
 
 export default function ThanksPage() {

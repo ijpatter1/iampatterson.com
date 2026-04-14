@@ -29,7 +29,7 @@ export function LeadgenLanding() {
         2.5 million followers. 5,000 calendars sold. Real engagement, real conversions.
       </p>
       <p className="mt-4 text-base leading-relaxed text-neutral-600">
-        Tuna Melts My Heart isn&apos;t just a social media account — it&apos;s a consumer brand with
+        Tuna Melts My Heart isn&apos;t just a social media account. It&apos;s a consumer brand with
         a proven audience and a track record of turning followers into buyers. We work with brands
         that want to reach an engaged, passionate community of pet lovers and lifestyle consumers.
       </p>
