@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { LeadGenDashboard } from '@/components/demo/leadgen/analytics-dashboard';
 
 export const metadata: Metadata = {
-  title: 'Tuna Partnerships Analytics — Dashboard',
+  title: 'Tuna Partnerships Analytics | Dashboard',
   description:
     'Lead generation analytics dashboard built on BigQuery mart tables via Dataform. Lead funnel, cost per lead, quality distribution, and conversion trends.',
 };

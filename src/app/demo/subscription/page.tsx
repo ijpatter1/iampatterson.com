@@ -19,11 +19,11 @@ export default function SubscriptionDemoPage() {
         </h1>
         <p className="mt-2 text-lg text-content-secondary">Monthly Tuna-branded joy, delivered.</p>
         <p className="mt-4 text-base text-content-secondary">
-          Every month, a curated box of Tuna Melts My Heart exclusives — apparel, accessories, art
+          Every month, a curated box of Tuna Melts My Heart exclusives: apparel, accessories, art
           prints, and surprises you can&apos;t get anywhere else. Cancel anytime.
         </p>
         <p className="mt-2 text-sm font-medium text-content">
-          First box 50% off with any plan. No commitment — cancel before your second box ships and
+          First box 50% off with any plan. No commitment. Cancel before your second box ships and
           pay nothing more.
         </p>
       </div>

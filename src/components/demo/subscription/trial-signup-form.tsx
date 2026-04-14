@@ -41,7 +41,7 @@ export function TrialSignupForm({ planId }: TrialSignupFormProps) {
         <h2 className="font-semibold text-neutral-900">{plan.name}</h2>
         <p className="text-sm text-neutral-600">{plan.itemCount} per box</p>
         <p className="mt-2 text-sm text-neutral-600">
-          First box <span className="font-semibold text-neutral-900">50% off</span> — $
+          First box <span className="font-semibold text-neutral-900">50% off</span>: $
           {discountedPrice}{' '}
           <span className="text-neutral-400 line-through">${plan.price.toFixed(2)}</span>
         </p>

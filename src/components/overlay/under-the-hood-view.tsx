@@ -103,7 +103,7 @@ export function UnderTheHoodView() {
             <h1 className="text-sm font-semibold text-content">Under the Hood</h1>
             <p className="text-xs text-content-muted">
               {status === 'connected'
-                ? 'Live — streaming your session events'
+                ? 'Live: streaming your session events'
                 : 'Viewing instrumentation layer'}
             </p>
           </div>

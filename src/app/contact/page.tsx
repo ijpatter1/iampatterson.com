@@ -47,7 +47,7 @@ export default function ContactPage() {
                   If you&apos;re not sure where to start, that&apos;s fine. Most engagements begin
                   with a conversation about what&apos;s broken, what&apos;s missing, and what
                   you&apos;re trying to answer. From there, I&apos;ll scope the work and tell you
-                  honestly which tiers make sense for your situation — and which ones don&apos;t.
+                  honestly which tiers make sense for your situation, and which ones don&apos;t.
                 </p>
               </div>
             </ScrollReveal>

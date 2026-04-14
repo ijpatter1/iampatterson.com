@@ -9,7 +9,7 @@ const beliefs = [
   },
   {
     title: 'AI should be infrastructure, not an afterthought.',
-    body: 'Every layer of the stack I build has AI-native capabilities \u2014 from automated campaign taxonomy to natural language reporting to semantic data enrichment. Not because AI is trendy, but because these functions are genuinely better when they\u2019re embedded in the data pipeline rather than bolted on after the fact.',
+    body: 'Every layer of the stack I build has AI-native capabilities: automated campaign taxonomy, natural language reporting, semantic data enrichment. Not because AI is trendy, but because these functions are genuinely better when they\u2019re embedded in the data pipeline rather than bolted on after the fact.',
   },
   {
     title: 'You should own your data and your methodology.',
@@ -33,17 +33,17 @@ export default function AboutPage() {
               <ScrollReveal delay={0.1}>
                 <div className="mt-8 space-y-5 text-lg leading-relaxed text-content-secondary">
                   <p>
-                    I spent a decade working across marketing, data, and technology — starting in
-                    the hospitality industry, moving into social media and influencer marketing,
-                    then into full-stack engineering, and eventually leading data and technology as
-                    VP at Allied Global Marketing, a major entertainment marketing agency.
+                    I spent a decade working across marketing, data, and technology. Starting in the
+                    hospitality industry, moving into social media and influencer marketing, then
+                    into full-stack engineering, and eventually leading data and technology as VP at
+                    Allied Global Marketing, a major entertainment marketing agency.
                   </p>
                   <p>
                     That non-linear path is the point. I&apos;ve sat in the creative meetings and
                     the engineering standups. I&apos;ve presented attribution models to CMOs and
                     debugged data layer implementations at midnight before a launch. I&apos;ve built
                     the dashboards that executives use to make budget decisions and the pipelines
-                    that feed them. Most consultants in this space come from one side — either the
+                    that feed them. Most consultants in this space come from one side: either the
                     marketing strategy side or the data engineering side. I come from both, which
                     means I can translate between the two in a way that&apos;s rare and genuinely
                     useful.
@@ -56,15 +56,15 @@ export default function AboutPage() {
                 <div className="rounded-card bg-surface-alt p-8">
                   <p className="text-lg leading-relaxed text-content-secondary">
                     In parallel with consulting, I run{' '}
-                    <strong className="text-content">Tuna Melts My Heart</strong> — a major pet
+                    <strong className="text-content">Tuna Melts My Heart</strong>, a major pet
                     influencer brand built around Tuna, a Chiweenie with an exaggerated overbite and
                     2 million Instagram followers. It&apos;s a real business with multiple revenue
-                    streams — merchandise, brand partnerships, licensed content, and live events —
-                    and it serves as a live testing ground for everything I build.
+                    streams (merchandise, brand partnerships, licensed content, and live events) and
+                    it serves as a live testing ground for everything I build.
                   </p>
                   <p className="mt-4 text-lg leading-relaxed text-content-secondary">
                     The 2025 and 2026 Tuna calendars were produced using AI-generated imagery from
-                    fine-tuned FLUX models — 5,000 units sold, substantial profit, on a creative
+                    fine-tuned FLUX models. 5,000 units sold, substantial profit, on a creative
                     production cost of $400. That&apos;s not a case study I wrote. That&apos;s a
                     case study I lived.
                   </p>

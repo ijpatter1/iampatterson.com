@@ -84,8 +84,8 @@ export function HomepageUnderside() {
         </h3>
         <p className="text-sm leading-relaxed text-content-secondary">
           Every event follows the same path: from your browser through server-side GTM to its
-          destinations. The pipeline is the same infrastructure I deploy for clients — running live
-          on this site.
+          destinations. This is the same infrastructure I deploy for clients, running live on this
+          site.
         </p>
         <div className="mt-4 flex items-center justify-between gap-2 overflow-x-auto">
           {[

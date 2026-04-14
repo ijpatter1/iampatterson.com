@@ -60,7 +60,7 @@ export function CampaignTaxonomyUnderside({ events }: CampaignTaxonomyUndersideP
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-content-secondary">
           {isDirect
-            ? 'You arrived via direct traffic — no UTM parameters detected. In production, the taxonomy layer classifies every campaign string that enters the system.'
+            ? 'You arrived via direct traffic, so no UTM parameters were detected. In production, the taxonomy layer classifies every campaign string that enters the system.'
             : 'The AI-powered taxonomy layer classified the UTM parameters that brought you here into a standardized campaign structure.'}
         </p>
       </div>

@@ -107,7 +107,7 @@ export function NarrativeFlow({ event }: NarrativeFlowProps) {
           <StageCard
             key={`blocked-${i}`}
             title={destinationLabel(route.destination)}
-            description="Blocked by consent — ad tracking not permitted"
+            description="Blocked by consent. Ad tracking not permitted"
             variant="blocked"
           />
         ))}
@@ -115,7 +115,7 @@ export function NarrativeFlow({ event }: NarrativeFlowProps) {
           <StageCard
             key={`error-${i}`}
             title={destinationLabel(route.destination)}
-            description="Delivery error — event could not be sent"
+            description="Delivery error. Event could not be sent"
             variant="error"
           />
         ))}

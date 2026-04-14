@@ -28,7 +28,7 @@ export function LeadGenDashboard() {
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-semibold text-neutral-900">
-          Tuna Brand Partnerships — Analytics Dashboard
+          Tuna Brand Partnerships | Analytics Dashboard
         </h2>
         <p className="text-sm text-neutral-500">
           Lead generation metrics from BigQuery mart tables via Dataform

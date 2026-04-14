@@ -7,7 +7,7 @@ import { ecommerceDashboardData } from '@/lib/demo/dashboard-data';
 export const metadata: Metadata = {
   title: 'The Tuna Shop',
   description:
-    'A fully instrumented e-commerce storefront. Browse products, add to cart, and checkout — every interaction fires events through the full measurement stack.',
+    'A fully instrumented e-commerce storefront. Browse products, add to cart, and checkout. Every interaction fires events through the full measurement stack.',
 };
 
 export default function EcommerceDemoPage() {
@@ -18,7 +18,7 @@ export default function EcommerceDemoPage() {
           The Tuna Shop
         </h1>
         <p className="mt-2 text-base text-content-secondary">
-          A fully instrumented e-commerce storefront. Browse, add to cart, and checkout — every
+          A fully instrumented e-commerce storefront. Browse, add to cart, and checkout. Every
           interaction generates events that flow through the full measurement stack.
         </p>
       </div>

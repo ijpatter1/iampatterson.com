@@ -271,12 +271,11 @@ export default function ServicesPage() {
                   </ServiceItem>
                   <ServiceItem title="AI Access Layer">
                     A scheduled BigQuery export to Cloud Storage in standard formats (parquet or
-                    JSON), providing a clean handoff point for any AI tool — Claude, ChatGPT,
-                    Gemini, or your own internal systems — without requiring direct warehouse
-                    access. For clients who want direct database connections, a read-only BigQuery
-                    service account scoped to mart datasets. LLM-friendly naming conventions are
-                    enforced across all models so that any AI system can query your data
-                    effectively.
+                    JSON), providing a clean handoff point for any AI tool (Claude, ChatGPT, Gemini,
+                    or your own internal systems) without requiring direct warehouse access. For
+                    clients who want direct database connections, a read-only BigQuery service
+                    account scoped to mart datasets. LLM-friendly naming conventions are enforced
+                    across all models so that any AI system can query your data effectively.
                   </ServiceItem>
                 </dl>
               </div>
@@ -336,8 +335,8 @@ export default function ServicesPage() {
                 <p>
                   Dashboards are a means to an end. The end is your team being able to answer
                   questions about marketing performance without filing a ticket, without waiting
-                  three days, and without second-guessing the numbers. Tier 3 is entirely modular —
-                  you take what you need.
+                  three days, and without second-guessing the numbers. Tier 3 is entirely modular.
+                  You take what you need.
                 </p>
 
                 <h3 className="mt-8 text-lg font-semibold text-content">
@@ -354,9 +353,9 @@ export default function ServicesPage() {
                   <ServiceItem title="Natural Language Data Exploration">
                     Gemini-powered querying is available natively in the BigQuery console for
                     technical users. For most marketing teams, the AI Access Layer from Tier 2
-                    enables data exploration through whatever AI tool your team already uses —
-                    upload the export to ChatGPT, connect Claude, use Gemini directly. Custom AI
-                    workflow implementations for more sophisticated setups are scoped as a separate
+                    enables data exploration through whatever AI tool your team already uses: upload
+                    the export to ChatGPT, connect Claude, use Gemini directly. Custom AI workflow
+                    implementations for more sophisticated setups are scoped as a separate
                     engagement.
                   </ServiceItem>
                   <ServiceItem title="Automated Narrative Reporting">
@@ -364,7 +363,7 @@ export default function ServicesPage() {
                     retrieves semantically relevant data, and generates written performance
                     summaries delivered to Slack or email on a schedule you define. Replaces the
                     weekly reporting meeting where someone reads a dashboard aloud. No external AI
-                    infrastructure required — the entire pipeline runs inside BigQuery using native
+                    infrastructure required. The entire pipeline runs inside BigQuery using native
                     AI functions.
                   </ServiceItem>
                 </dl>
@@ -383,7 +382,7 @@ export default function ServicesPage() {
         </div>
       </section>
 
-      {/* Tier 4 — dark section */}
+      {/* Tier 4 */}
       <section className={`${tiers[3].bg} px-6 py-section-sm`}>
         <div className="section-container">
           <ScrollReveal>
@@ -401,8 +400,9 @@ export default function ServicesPage() {
               <div className="space-y-4 text-content-secondary">
                 <p>
                   This tier is only available to clients who have completed Tiers 1 and 2 with
-                  Patterson Consulting. Not because of a commercial requirement — because the models
-                  are only as good as the data feeding them, and I need to know the data is right.
+                  Patterson Consulting. Not because of a commercial requirement, but because the
+                  models are only as good as the data feeding them, and I need to know the data is
+                  right.
                 </p>
 
                 <h3 className="mt-8 text-lg font-semibold text-content">
@@ -414,7 +414,7 @@ export default function ServicesPage() {
                     <dd className="mt-1 text-content-secondary">
                       Shapley value or position-based attribution models built in Dataform on your
                       event data in BigQuery. Replaces platform-reported attribution with logic you
-                      own, can inspect, and can trust. Privacy-compliant by design — built on
+                      own, can inspect, and can trust. Privacy-compliant by design, built on
                       first-party data collected through your Tier 1 infrastructure.
                     </dd>
                   </div>
@@ -447,7 +447,7 @@ export default function ServicesPage() {
                     <dd className="mt-1 text-content-secondary">
                       Ongoing advisory on what to test next, which channels to validate, and how to
                       build a culture of measurement within your marketing team. This is the
-                      retainer component — not maintaining infrastructure, but guiding the questions
+                      retainer component: not maintaining infrastructure, but guiding the questions
                       you ask of it.
                     </dd>
                   </div>

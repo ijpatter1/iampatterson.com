@@ -83,7 +83,7 @@ export function WarehouseWriteUnderside({ events }: WarehouseWriteUndersideProps
       {/* Row preview */}
       <section className="rounded-card border border-border p-6">
         <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-content-muted">
-          BigQuery Row — <span className="font-mono">events_raw</span>
+          BigQuery Row: <span className="font-mono">events_raw</span>
         </h3>
         {event ? (
           <div className="overflow-x-auto">

@@ -61,7 +61,7 @@ export function Tier3Underside({ events }: Tier3UndersideProps) {
         <p className="mt-2 text-sm leading-relaxed text-content-secondary">
           {purchaseEvent
             ? "You've completed the full funnel. Here's what 18 months of this data looks like when it's properly instrumented and dashboarded."
-            : "Here's what the data you're generating looks like at scale — 18 months of e-commerce activity, structured and analyzed."}
+            : "Here's what the data you're generating looks like at scale. 18 months of e-commerce activity, structured and analyzed."}
         </p>
       </div>
 
@@ -100,7 +100,7 @@ export function Tier3Underside({ events }: Tier3UndersideProps) {
           Actionable Insight
         </h3>
         <p className="text-sm leading-relaxed text-content-secondary">
-          Your checkout completion rate is <strong className="text-content">83.4%</strong> —
+          Your checkout completion rate is <strong className="text-content">83.4%</strong>, and
           visitors who see related products on the detail page convert at{' '}
           <strong className="text-content">2.3x</strong> the rate of those who don&apos;t. The
           cart-to-checkout drop-off is the biggest leak: reducing it by 5% would add an estimated{' '}
