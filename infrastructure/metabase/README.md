@@ -162,11 +162,70 @@ ls -la *.json
 gcloud secrets versions access latest --secret=metabase-bq-sa-key
 ```
 
+## Task 3 — Cloud Run service deployment
+
+Deploys Metabase to Cloud Run gen2, reachable only via the Task 5 load
+balancer (ingress locked to `internal-and-cloud-load-balancing`).
+
+```bash
+# The plan pins to metabase/metabase:v0.59.6.x — resolve the patch
+# (check https://github.com/metabase/metabase/releases) and export before
+# running. The script refuses to deploy the '.x' placeholder.
+export METABASE_IMAGE=metabase/metabase:v0.59.6
+
+./deploy.sh              # render cloudrun.yaml + apply
+./deploy.sh --dry-run    # render + cat the spec; do not apply
+```
+
+Files:
+
+- `cloudrun.yaml` — templated Knative service spec. Placeholders (`${...}`)
+  are resolved by `deploy.sh`. Sizing, scaling, timeouts, and env var
+  sources are pinned in the file; edit the file to change sizing.
+- `deploy.sh` — renders the template (envsubst with sed fallback), checks
+  preconditions, applies via `gcloud run services replace`.
+
+Resources and behavior:
+
+- Image: `metabase/metabase:<pinned-tag>` — never `:latest`.
+- Sizing: 2Gi memory, 1 CPU, concurrency 10, timeout 300s, gen2.
+- Scaling: `minScale=1` (warm), `maxScale=3`. Cold start takes ~60–120s.
+- Service account: `metabase-runtime@iampatterson...`.
+- Cloud SQL: Auth Proxy sidecar via `run.googleapis.com/cloudsql-instances`;
+  Unix socket mounted at `/cloudsql/iampatterson:us-central1:metabase-app-db`.
+- Networking: Direct VPC egress (gen2) with `private-ranges-only` so the
+  Auth Proxy can reach the Cloud SQL instance on its private IP.
+- Env: `MB_DB_TYPE=postgres` set explicitly (prevents fallback to embedded
+  H2). `MB_DB_PASS` and `MB_ENCRYPTION_SECRET_KEY` sourced via
+  Secret Manager `valueFrom.secretKeyRef` (no secrets in the yaml).
+- Health: `startupProbe` on `/api/health`, 30s initial delay, 10s period,
+  12 failures (~120s) before Cloud Run gives up.
+
+**Verify:**
+
+```bash
+gcloud run services describe metabase \
+  --region=us-central1 --project=iampatterson \
+  --format='value(status.url,status.conditions[0].status,spec.template.spec.containers[0].image)'
+# expect: <run.app URL>, True, metabase/metabase:<pinned-tag>
+
+URL=$(gcloud run services describe metabase \
+  --region=us-central1 --project=iampatterson --format='value(status.url)')
+curl -sI "${URL}/api/health" | head -1
+# expect: 404 / 403 / connection refused — ingress blocks .run.app direct access.
+# Only the LB from Task 5 can reach the service.
+```
+
+**If deploy fails on the first attempt:** the most likely causes are
+(a) `servicenetworking` / VPC peering not reachable from the Cloud Run
+service (Task 1 prerequisite), (b) the `compute.googleapis.com` API not
+enabled (required for Direct VPC egress on gen2), or (c) a permission
+gap — the executing principal needs `roles/iam.serviceAccountUser` on
+`metabase-runtime` to deploy a service that runs as that SA.
+
 ## Upcoming tasks
 
 Not yet implemented; scripts land per-task.
-
-- Task 3 — Cloud Run service deployment (`cloudrun.yaml`, `deploy.sh`)
 - Task 4 — Environment variable documentation (`.env.example`)
 - Task 5 — Load balancer + custom domain (`setup-domain.sh`)
 - Task 6 — IAP configuration (`setup-iap.sh`)

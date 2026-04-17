@@ -1,0 +1,88 @@
+# Cloud Run service spec for Metabase — Task 3.
+# Rendered by deploy.sh via envsubst (or sed fallback) and applied via
+# `gcloud run services replace`. Placeholders use ${VAR} syntax.
+#
+# Placeholders resolved by deploy.sh:
+#   SERVICE_NAME              — metabase
+#   PROJECT                   — iampatterson
+#   IMAGE                     — metabase/metabase:<pinned-tag>
+#   RUNTIME_SA_EMAIL          — metabase-runtime@iampatterson...
+#   CLOUDSQL_CONNECTION_NAME  — iampatterson:us-central1:metabase-app-db
+#   DOMAIN                    — bi.iampatterson.com
+#
+# Every other value is pinned: sizing, scaling, timeouts, env var sources.
+# Edit this file to change sizing; edit deploy.sh defaults to change
+# placeholders.
+
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: ${SERVICE_NAME}
+  namespace: ${PROJECT}
+  annotations:
+    # Lock out direct .run.app access; traffic must arrive via the
+    # external HTTPS load balancer (Task 5) fronted by IAP (Task 6).
+    run.googleapis.com/ingress: internal-and-cloud-load-balancing
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: '1'
+        autoscaling.knative.dev/maxScale: '3'
+        # Mount Cloud SQL Auth Proxy sidecar. Unix socket appears at
+        # /cloudsql/${CLOUDSQL_CONNECTION_NAME} and is used by MB_DB_HOST.
+        run.googleapis.com/cloudsql-instances: ${CLOUDSQL_CONNECTION_NAME}
+        run.googleapis.com/execution-environment: gen2
+        # Direct VPC egress is required so the Cloud SQL Auth Proxy can
+        # reach the Cloud SQL instance on its private IP. private-ranges-only
+        # keeps public-internet traffic on the default Cloud Run egress path.
+        run.googleapis.com/vpc-access-egress: private-ranges-only
+        run.googleapis.com/network-interfaces: '[{"network":"default","subnetwork":"default"}]'
+    spec:
+      serviceAccountName: ${RUNTIME_SA_EMAIL}
+      containerConcurrency: 10
+      timeoutSeconds: 300
+      containers:
+        - image: ${IMAGE}
+          resources:
+            limits:
+              cpu: '1'
+              memory: 2Gi
+          # Metabase cold starts are slow (Java + JDBC warmup).
+          # Allow up to 120s before Cloud Run gives up on the container.
+          startupProbe:
+            httpGet:
+              path: /api/health
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 12
+          env:
+            # MB_DB_TYPE is explicitly set to prevent fallback to embedded H2.
+            - name: MB_DB_TYPE
+              value: postgres
+            - name: MB_DB_HOST
+              value: /cloudsql/${CLOUDSQL_CONNECTION_NAME}
+            - name: MB_DB_PORT
+              value: '5432'
+            - name: MB_DB_DBNAME
+              value: metabase
+            - name: MB_DB_USER
+              value: metabase
+            - name: MB_SITE_URL
+              value: https://${DOMAIN}
+            # JVM heap under the 2Gi container cap (leave room for
+            # Metaspace, native, and Cloud Run overhead).
+            - name: JAVA_TOOL_OPTIONS
+              value: -Xmx1800m
+            # Secrets via Secret Manager — no values in this file.
+            - name: MB_DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: metabase-db-password
+                  key: latest
+            - name: MB_ENCRYPTION_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: metabase-encryption-key
+                  key: latest
