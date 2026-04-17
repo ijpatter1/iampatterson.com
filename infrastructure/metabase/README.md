@@ -548,9 +548,139 @@ under-the-hood view.
   the restriction. Users can still log in with the admin password path
   while you sort this out.
 
-## Upcoming tasks
+## Task 8 — Backup, upgrade, and other operational runbooks
 
-Not yet implemented; scripts land per-task.
+Scripts: `backup.sh`, `upgrade.sh`.
+
+### Backup
+
+**Automated daily backups** are configured on the Cloud SQL instance
+itself (Task 1): 7-day retention, 03:00 UTC window. Nothing to run for
+the daily ones.
+
+**On-demand backup** before any state change you want rollback
+coverage for:
+
+```bash
+./backup.sh              # create + print backup ID
+./backup.sh --dry-run    # preview
+```
+
+The description records the currently-deployed Metabase image tag, so
+each backup is associated with a specific app DB schema version.
+
+### Restore
+
+Restoring is a **destructive operation on the target instance** — the
+instance stops, existing data is replaced, and all connected sessions
+drop. Expect ~5 minutes of downtime. Usage:
+
+```bash
+gcloud sql backups list --instance=metabase-app-db --project=iampatterson
+# pick the backup ID from the output
+
+gcloud sql backups restore <BACKUP_ID> \
+  --restore-instance=metabase-app-db --project=iampatterson
+```
+
+### Upgrade
+
+```bash
+./upgrade.sh v0.59.7               # back up, prompt, deploy, poll Ready
+./upgrade.sh v0.59.7 --dry-run     # preview (prints each step but doesn't run)
+./upgrade.sh v0.59.7 --skip-backup # dangerous — only if you just ran backup.sh
+```
+
+Flow:
+
+1. Validate target version matches the pinned-semver pattern.
+2. Record current image (for rollback).
+3. Run `backup.sh` (unless `--skip-backup`).
+4. Print the Metabase release notes URL and require explicit
+   confirmation (`[y/N]`). Reads from `/dev/tty`, so piped input
+   cannot bypass the prompt.
+5. Re-run `deploy.sh` with `METABASE_IMAGE` set to the target tag.
+6. Poll `gcloud run services describe` until the new revision reports
+   `Ready=True` and the image tag matches the target (up to 5 min).
+7. If Ready: print manual verification steps (login, dashboard load).
+   If not Ready: print rollback commands with the exact prior image
+   tag and backup ID.
+
+### Rollback a bad upgrade
+
+The previous image is still on Cloud Run's revision history, so
+redeploying by tag brings it back:
+
+```bash
+METABASE_IMAGE='metabase/metabase:v0.59.6' ./deploy.sh   # or whichever tag was prior
+```
+
+If the app DB schema migrated past the prior image's supported range
+(Metabase runs migrations on startup), rollback the container alone
+is not enough. Restore the Cloud SQL backup taken before the upgrade:
+
+```bash
+gcloud sql backups restore <BACKUP_ID> \
+  --restore-instance=metabase-app-db --project=iampatterson
+```
+
+`backup.sh` prints the ID; `upgrade.sh` prints the same ID on failure.
+
+### Rotate the BigQuery SA key
+
+Annual rotation keeps the long-lived JSON key from being the longest
+unchanged credential in the stack:
+
+1. Create a new key for `metabase-bigquery@...` and upload to Secret
+   Manager as a new version:
+
+   ```bash
+   KEY_TMP=$(mktemp)
+   gcloud iam service-accounts keys create "${KEY_TMP}" \
+     --iam-account=metabase-bigquery@iampatterson.iam.gserviceaccount.com \
+     --project=iampatterson
+   gcloud secrets versions add metabase-bq-sa-key \
+     --project=iampatterson --data-file="${KEY_TMP}"
+   shred -u "${KEY_TMP}" 2>/dev/null || rm -f "${KEY_TMP}"
+   ```
+
+2. Re-enter the BQ connection in Metabase UI (Task 7 step 7) with the
+   new key content. Metabase re-encrypts with the current encryption
+   key and starts using the new credential.
+
+3. List existing keys for the SA and delete the old one:
+
+   ```bash
+   gcloud iam service-accounts keys list \
+     --iam-account=metabase-bigquery@iampatterson.iam.gserviceaccount.com
+   gcloud iam service-accounts keys delete <OLD_KEY_ID> \
+     --iam-account=metabase-bigquery@iampatterson.iam.gserviceaccount.com
+   ```
+
+Do NOT rotate `metabase-encryption-key`. Rotating it breaks every
+encrypted row in the Metabase app DB. See `.env.example` for the full
+consequence statement.
+
+### Add or remove an IAP allowlist member
+
+Adding: edit the `ALLOWLIST` array at the top of `setup-iap.sh` and
+re-run the script. See the Task 6 "Editing the allowlist" section.
+
+Removing: manual, via `gcloud iap web remove-iam-policy-binding`. See
+Task 6 for the command.
+
+## Operational summary (quick reference)
+
+| Task | When | Command |
+|---|---|---|
+| Backup | Before any risky change | `./backup.sh` |
+| Upgrade | New Metabase stable released | `./upgrade.sh v0.59.7` |
+| Restore | Bad upgrade, instance issue | `gcloud sql backups restore <ID> ...` |
+| Rollback (image only) | Bad upgrade, no schema drift | `METABASE_IMAGE=<prior> ./deploy.sh` |
+| Rotate BQ key | Annually | See "Rotate the BigQuery SA key" |
+| Add allowlist member | Granting IAP access | Edit `setup-iap.sh` → re-run |
+| Remove allowlist member | Revoking IAP access | `gcloud iap web remove-iam-policy-binding ...` |
+| View daily backup | Check automated snapshots | `gcloud sql backups list --instance=metabase-app-db` |
 - Task 4 — Environment variable documentation (`.env.example`)
 - Task 5 — Load balancer + custom domain (`setup-domain.sh`)
 - Task 6 — IAP configuration (`setup-iap.sh`)
