@@ -77,6 +77,17 @@ access):
 gcloud secrets versions access latest --secret=metabase-db-password
 ```
 
+**Known limitations (tech debt, not blocking):**
+
+- Secret and Cloud SQL user are created in one branch. If the secret exists
+  but the user was deleted or a prior run failed between the two steps,
+  re-running skips both. Recovery is manual via
+  `gcloud sql users create --password=<from-secret>`. A future refinement
+  would split them into independent idempotency gates.
+- `gcloud sql users create --password=...` is briefly visible in the host's
+  process list. Acceptable on a single-user workstation; future hardening
+  could switch to `gcloud sql users set-password --password-file=-`.
+
 ## Upcoming tasks
 
 Not yet implemented; scripts land per-task.
