@@ -15,12 +15,16 @@ User (browser)
   → bi.iampatterson.com
   → Google Load Balancer + IAP (Google SSO gate, allowlist)
   → Cloud Run (metabase/metabase, ingress=internal-and-cloud-load-balancing)
-  → Cloud SQL Postgres (metabase-app-db, via Cloud SQL Auth Proxy, private IP)
+  → Cloud SQL Postgres (metabase-app-db, TCP to private IP via VPC peering)
   → BigQuery iampatterson_marts (dataset-scoped read-only SA key)
 ```
 
-Three security layers, any one stops an attacker: IAP (SSO allowlist),
-Metabase auth (password + 2FA), BigQuery IAM (dataset-scoped read-only).
+Three security layers, any one stops an attacker: IAP (Google SSO with
+explicit allowlist), Metabase admin auth (password; MFA is Pro/Enterprise
+only and not available on the OSS image we run), BigQuery IAM (dataset-
+scoped read-only SA key). Cloud Run ingress is locked to the load
+balancer so the `.run.app` URL is not directly reachable — a fourth
+layer at the network edge.
 
 ## Prerequisites
 
@@ -359,15 +363,24 @@ the first layer of defense is already in place even if Metabase is
 somehow exposed or misconfigured.
 
 > **Deprecation notice (tech debt):** `gcloud iap oauth-brands` and
-> `gcloud iap oauth-clients` are marked deprecated by Google. The
-> announced timeline: **Jan 19, 2026** — no new projects can use the
-> IAP OAuth Admin APIs; **Mar 19, 2026** — permanent shutdown. Projects
-> that already have an OAuth brand continue to work through the grace
-> period; this project is one of them. A rebuild on a fresh project
-> after the shutdown must use the replacement flow (GCP Console UI for
-> brand + client, or Identity Platform). The `setup-iap.sh` script
-> will need a rewrite at that point. Until the migration is required,
-> the current script is fine to continue running.
+> `gcloud iap oauth-clients` are marked deprecated by Google. Announced
+> timeline: **Jan 19, 2026** — no new projects can use the IAP OAuth
+> Admin APIs; **Mar 19, 2026** — permanent shutdown. Projects that
+> already have an OAuth brand (this one does) continue working through
+> the grace period. Migration references:
+>
+> - IAP OAuth deprecation: <https://cloud.google.com/iap/docs/deprecations/oauth-admin-api>
+> - Programmatic alternative: Identity Platform OAuth client API
+>   <https://cloud.google.com/identity-platform/docs/configuring-providers-oauth>
+> - Console-only path: manage brand + clients via the Cloud Console UI
+>   at APIs & Services → Credentials → OAuth 2.0 Client IDs
+>
+> When the shutdown forces a rewrite, the changes in `setup-iap.sh`
+> are localized to Step 1 (OAuth client create) — everything after
+> (secret storage, IAP enable, allowlist reconciliation, IAP service
+> agent provisioning) stays the same because those use non-deprecated
+> APIs (`gcloud compute backend-services`, `gcloud iap web`,
+> `gcloud secrets`, `gcloud beta services identity create`).
 
 ### One-time manual step (before running the script)
 
@@ -521,6 +534,25 @@ Open **Admin settings → Public sharing**. Verify:
 These are off by default in Metabase 0.59, but double-check after
 every upgrade — they are the most common way a Metabase instance
 accidentally leaks data.
+
+> **Note for Phase 9B deliverable 6 (Metabase embed on ecommerce
+> confirmation page):** before the embed is built, a decision is
+> needed:
+>
+> - **Signed embeds** (recommended): flip **Enable Embedding in other
+>   applications** ON, generate `MB_EMBEDDING_SECRET_KEY`, and sign
+>   dashboard URLs server-side in the Next.js app. Preserves access
+>   control; the site serves the embed token rather than relying on
+>   the visitor's Google auth. Requires server code.
+> - **Public sharing**: flip **Enable Public Sharing** ON and accept
+>   that anyone with a dashboard link can see it. Simpler, but weakens
+>   the IAP story.
+> - **Iframe the IAP-gated URL**: brittle for a public-facing site —
+>   the visitor must have a Google account in the allowlist, so the
+>   embed only renders for you. Not viable for a portfolio site.
+>
+> Recommendation: signed embeds. Do NOT turn Public Sharing on — keep
+> IAP as the access boundary on the admin UI side.
 
 ### 6. (Pro/Enterprise only) Turn on 2FA for the admin account
 

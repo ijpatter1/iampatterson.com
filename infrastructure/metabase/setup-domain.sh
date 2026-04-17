@@ -143,13 +143,38 @@ fi
 # NEGs reject any portName ('Port name is not supported for a backend
 # service with Serverless network endpoint groups'). If we detect a
 # non-empty portName on the existing backend, delete and recreate.
-# Downstream resources (url-map, target-proxy) are created in later steps,
-# so nothing references this backend yet — delete is safe.
+#
+# Safety check: refuse to destroy the backend if IAP is enabled on it.
+# Deleting a backend with IAP wired destroys the IAP config silently;
+# Task 6 would have to be re-run. A successful deploy won't hit this
+# path (backend is created without portName from the start), so the
+# guard only fires when someone re-runs after drift has accumulated.
 if $BACKEND_EXISTS; then
   CURRENT_PORT_NAME=$(gcloud compute backend-services describe "${BACKEND_NAME}" \
     --global --project="${PROJECT}" --format='value(portName)' 2>/dev/null || echo "")
+  CURRENT_IAP_ENABLED=$(gcloud compute backend-services describe "${BACKEND_NAME}" \
+    --global --project="${PROJECT}" --format='value(iap.enabled)' 2>/dev/null || echo "")
   if [[ -n "${CURRENT_PORT_NAME}" ]]; then
-    echo "Backend ${BACKEND_NAME} has portName='${CURRENT_PORT_NAME}' — incompatible with serverless NEG. Recreating."
+    if [[ "${CURRENT_IAP_ENABLED}" == "True" ]]; then
+      cat <<EOF
+ERROR: Backend ${BACKEND_NAME} has portName='${CURRENT_PORT_NAME}' (incompatible
+with serverless NEG) AND IAP is enabled. The only way to clear portName is
+to delete and recreate the backend, which destroys the IAP config.
+
+Manual steps (one-time):
+  1. Disable IAP temporarily:
+       gcloud iap web disable --resource-type=backend-services \\
+         --service=${BACKEND_NAME} --project=${PROJECT}
+  2. Re-run this script to heal the backend.
+  3. Re-run ./setup-iap.sh to re-enable IAP and restore the allowlist.
+
+This path should never fire on a clean deploy; you only see it if a
+prior run used an older version of this script that created the
+backend with --protocol=HTTPS.
+EOF
+      exit 1
+    fi
+    echo "Backend ${BACKEND_NAME} has portName='${CURRENT_PORT_NAME}' — incompatible with serverless NEG. Recreating (IAP not enabled, safe)."
     run gcloud compute backend-services delete "${BACKEND_NAME}" \
       --global --project="${PROJECT}" --quiet
     BACKEND_EXISTS=false

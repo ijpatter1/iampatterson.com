@@ -161,6 +161,7 @@ EXISTING_CLIENT=$(gcloud iap oauth-clients list "${BRAND_NAME}" \
   --filter="displayName=${OAUTH_CLIENT_NAME}" \
   --format="value(name)" 2>/dev/null || true)
 
+CLIENT_CREATED_THIS_RUN=false
 if [[ -n "${EXISTING_CLIENT}" ]]; then
   echo "OAuth client ${OAUTH_CLIENT_NAME} exists, skipping create."
   CLIENT_RESOURCE="${EXISTING_CLIENT}"
@@ -174,6 +175,7 @@ else
       --display_name="${OAUTH_CLIENT_NAME}" \
       --project="${PROJECT}" \
       --format="value(name)")
+    CLIENT_CREATED_THIS_RUN=true
   fi
 fi
 
@@ -194,14 +196,26 @@ fi
 # -----------------------------------------------------------------------------
 # 2. Store client ID + secret in Secret Manager
 # -----------------------------------------------------------------------------
+# When a new OAuth client was created this run (e.g., prior client was
+# deleted outside the script), existing secrets hold STALE values that
+# will authenticate against the gone-away client. Add a new secret
+# version instead of skipping. Only the secret *container* is considered
+# existing — version content must always match the current client.
 echo "==> 2/4 Secret ${IAP_CLIENT_ID_SECRET}..."
-if gcloud secrets describe "${IAP_CLIENT_ID_SECRET}" --project="${PROJECT}" >/dev/null 2>&1; then
-  echo "Secret ${IAP_CLIENT_ID_SECRET} exists, skipping."
-else
+if ! gcloud secrets describe "${IAP_CLIENT_ID_SECRET}" --project="${PROJECT}" >/dev/null 2>&1; then
   run gcloud secrets create "${IAP_CLIENT_ID_SECRET}" \
     --project="${PROJECT}" \
     --replication-policy=automatic \
     --labels=app=metabase,purpose=iap-client-id
+  ADD_CLIENT_ID_VERSION=true
+elif $CLIENT_CREATED_THIS_RUN; then
+  echo "OAuth client was recreated this run; adding new secret version."
+  ADD_CLIENT_ID_VERSION=true
+else
+  echo "Secret ${IAP_CLIENT_ID_SECRET} exists and client unchanged, skipping version add."
+  ADD_CLIENT_ID_VERSION=false
+fi
+if $ADD_CLIENT_ID_VERSION; then
   if $DRY_RUN; then
     echo "+ gcloud secrets versions add ${IAP_CLIENT_ID_SECRET} --data-file=- <<< <client-id>"
   else
@@ -211,13 +225,20 @@ else
 fi
 
 echo "==> Secret ${IAP_CLIENT_SECRET_SECRET}..."
-if gcloud secrets describe "${IAP_CLIENT_SECRET_SECRET}" --project="${PROJECT}" >/dev/null 2>&1; then
-  echo "Secret ${IAP_CLIENT_SECRET_SECRET} exists, skipping."
-else
+if ! gcloud secrets describe "${IAP_CLIENT_SECRET_SECRET}" --project="${PROJECT}" >/dev/null 2>&1; then
   run gcloud secrets create "${IAP_CLIENT_SECRET_SECRET}" \
     --project="${PROJECT}" \
     --replication-policy=automatic \
     --labels=app=metabase,purpose=iap-client-secret
+  ADD_CLIENT_SECRET_VERSION=true
+elif $CLIENT_CREATED_THIS_RUN; then
+  echo "OAuth client was recreated this run; adding new secret version."
+  ADD_CLIENT_SECRET_VERSION=true
+else
+  echo "Secret ${IAP_CLIENT_SECRET_SECRET} exists and client unchanged, skipping version add."
+  ADD_CLIENT_SECRET_VERSION=false
+fi
+if $ADD_CLIENT_SECRET_VERSION; then
   if $DRY_RUN; then
     echo "+ gcloud secrets versions add ${IAP_CLIENT_SECRET_SECRET} --data-file=- <<< <client-secret>"
   else
@@ -234,9 +255,20 @@ echo "==> 3/4 IAP on backend service ${BACKEND_NAME}..."
 IAP_STATUS=$(gcloud compute backend-services describe "${BACKEND_NAME}" \
   --global --project="${PROJECT}" \
   --format="value(iap.enabled)" 2>/dev/null || echo "")
-if [[ "${IAP_STATUS}" == "True" ]]; then
-  echo "IAP already enabled on ${BACKEND_NAME}, skipping."
+WIRED_CLIENT_ID=$(gcloud compute backend-services describe "${BACKEND_NAME}" \
+  --global --project="${PROJECT}" \
+  --format="value(iap.oauth2ClientId)" 2>/dev/null || echo "")
+
+# Re-wire IAP when either IAP isn't enabled OR the backend is wired to a
+# different (likely stale) OAuth client. Without this, rerunning after
+# deleting the OAuth client outside the script leaves IAP pointing at
+# the gone-away client and the gate silently breaks.
+if [[ "${IAP_STATUS}" == "True" && "${WIRED_CLIENT_ID}" == "${CLIENT_ID:-}" ]]; then
+  echo "IAP already enabled on ${BACKEND_NAME} with matching client, skipping."
 else
+  if [[ "${IAP_STATUS}" == "True" && -n "${WIRED_CLIENT_ID}" && "${WIRED_CLIENT_ID}" != "${CLIENT_ID:-}" ]]; then
+    echo "IAP wired to different client (${WIRED_CLIENT_ID}); re-wiring to ${CLIENT_ID}."
+  fi
   if $DRY_RUN; then
     echo "+ gcloud iap web enable --resource-type=backend-services \\"
     echo "    --service=${BACKEND_NAME} \\"
