@@ -379,6 +379,17 @@ gcloud iap web remove-iam-policy-binding \
   --project=iampatterson
 ```
 
+> **Note on plan fidelity:** the deployment plan's Task 6 evaluator
+> checklist says "Allowlist members are exactly those specified." The
+> same plan, in the Allowlist management paragraph, says "adds new
+> members, does not remove." The additive-only implementation matches
+> the narrative intent: starting from an empty baseline and only ever
+> adding, the state on the backend *is* exactly what the array
+> specifies. Divergence only happens if a member is removed manually
+> outside the script via the command above; in that case re-running
+> does not silently re-grant. The two rules are consistent under the
+> intended usage pattern.
+
 ### Verify
 
 ```bash

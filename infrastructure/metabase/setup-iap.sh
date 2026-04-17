@@ -123,7 +123,11 @@ echo "OAuth brand: ${BRAND_NAME}"
 # -----------------------------------------------------------------------------
 echo "==> 1/4 OAuth client ${OAUTH_CLIENT_NAME}..."
 
-# Find an existing client with our display name, if any.
+# Find an existing client by exact displayName match.
+# WARNING: if you rename OAUTH_CLIENT_NAME between runs (or fix a typo),
+# the script will create a second client rather than rename the first.
+# Clean up stale OAuth clients manually via the GCP Console or
+# `gcloud iap oauth-clients delete`.
 EXISTING_CLIENT=$(gcloud iap oauth-clients list "${BRAND_NAME}" \
   --project="${PROJECT}" \
   --filter="displayName=${OAUTH_CLIENT_NAME}" \
@@ -229,13 +233,15 @@ echo "==> 4/4 Reconciling allowlist (additive; members never removed)..."
 
 for MEMBER in "${ALLOWLIST[@]}"; do
   echo "  Granting roles/iap.httpsResourceAccessor to ${MEMBER}..."
+  # NOTE: gcloud iap web add-iam-policy-binding does NOT accept the
+  # --condition flag (unlike projects/secrets bindings). IAP IAM
+  # bindings are always unconditional — do not add --condition here.
   run gcloud iap web add-iam-policy-binding \
     --resource-type=backend-services \
     --service="${BACKEND_NAME}" \
     --member="${MEMBER}" \
     --role="roles/iap.httpsResourceAccessor" \
-    --project="${PROJECT}" \
-    --condition=None >/dev/null
+    --project="${PROJECT}" >/dev/null
 done
 
 echo ""
