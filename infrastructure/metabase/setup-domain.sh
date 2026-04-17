@@ -135,6 +135,9 @@ if gcloud compute backend-services describe "${BACKEND_NAME}" \
      --global --project="${PROJECT}" >/dev/null 2>&1; then
   echo "Backend service ${BACKEND_NAME} exists, skipping create."
 else
+  # EXTERNAL_MANAGED = Global External Application Load Balancer — the
+  # modern scheme that supports serverless NEGs, IAP attachment, and
+  # gRPC. Required for the forwarding rule below to use the same scheme.
   run gcloud compute backend-services create "${BACKEND_NAME}" \
     --global \
     --load-balancing-scheme=EXTERNAL_MANAGED \
@@ -142,11 +145,14 @@ else
     --project="${PROJECT}"
 fi
 
-# Attach the NEG (idempotent — add-backend is a no-op if already attached).
-EXISTING_BACKEND=$(gcloud compute backend-services describe "${BACKEND_NAME}" \
-  --global --project="${PROJECT}" \
-  --format="value(backends[].group)" 2>/dev/null || echo "")
-if [[ "${EXISTING_BACKEND}" == *"${NEG_NAME}"* ]]; then
+# Attach the NEG. add-backend is not natively idempotent — re-attaching
+# the same NEG errors. Detect via basename exact match (not substring —
+# that would false-positive on e.g. 'metabase-neg-v2' if one existed).
+if gcloud compute backend-services describe "${BACKEND_NAME}" \
+     --global --project="${PROJECT}" \
+     --format="value(backends[].group.basename())" 2>/dev/null \
+     | tr '[:space:]' '\n' \
+     | grep -Fxq "${NEG_NAME}"; then
   echo "NEG ${NEG_NAME} already attached to ${BACKEND_NAME}, skipping."
 else
   run gcloud compute backend-services add-backend "${BACKEND_NAME}" \
@@ -256,10 +262,25 @@ for ((i=1; i<=MAX_ATTEMPTS; i++)); do
     echo "==> SSL cert ACTIVE."
     break
   fi
-  if [[ "${STATUS}" == "FAILED_NOT_VISIBLE" ]]; then
+  # Any FAILED_* status is terminal — polling further is wasted time.
+  # Common ones: FAILED_NOT_VISIBLE (DNS not resolving to the LB),
+  # FAILED_CAA_CHECKING / FAILED_CAA_FORBIDDEN (CAA record blocks
+  # Google's issuer), FAILED_RATE_LIMITED (too many recent attempts).
+  if [[ "${STATUS}" == FAILED_* || "${DOMAIN_STATUS}" == FAILED_* ]]; then
     echo ""
-    echo "ERROR: Cert status FAILED_NOT_VISIBLE — Google could not reach the"
-    echo "domain. Verify DNS resolves to ${STATIC_IP} and re-run."
+    echo "ERROR: Cert reached terminal failure."
+    echo "  cert status:    ${STATUS}"
+    echo "  domain status:  ${DOMAIN_STATUS}"
+    case "${STATUS}${DOMAIN_STATUS}" in
+      *NOT_VISIBLE*)
+        echo "  fix: verify DNS resolves to ${STATIC_IP}"
+        echo "       (dig ${DOMAIN} +short)" ;;
+      *CAA*)
+        echo "  fix: update registrar CAA records to allow"
+        echo "       'pki.goog' or remove the CAA block entirely" ;;
+      *RATE_LIMITED*)
+        echo "  fix: wait before retrying (rate limits are per-domain, per-hour)" ;;
+    esac
     exit 1
   fi
 
