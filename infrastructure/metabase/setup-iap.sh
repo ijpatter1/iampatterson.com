@@ -26,6 +26,8 @@ set -euo pipefail
 export CLOUDSDK_CORE_DISABLE_PROMPTS=1
 
 PROJECT="${PROJECT:-iampatterson}"
+REGION="${REGION:-us-central1}"
+SERVICE_NAME="${SERVICE_NAME:-metabase}"
 BACKEND_NAME="${BACKEND_NAME:-metabase-backend}"
 OAUTH_CLIENT_NAME="${OAUTH_CLIENT_NAME:-metabase-iap-client}"
 IAP_CLIENT_ID_SECRET="metabase-iap-client-id"
@@ -251,6 +253,49 @@ fi
 
 # Clear secret material from the shell environment.
 unset CLIENT_SECRET
+
+# -----------------------------------------------------------------------------
+# 3b. Provision the IAP service agent and grant it run.invoker
+# -----------------------------------------------------------------------------
+# Once IAP is enforcing, the request path to Cloud Run is:
+#     browser → IAP → (as the IAP service agent) → Cloud Run
+# The IAP service agent has its own identity, separate from the anonymous
+# allUsers binding deploy.sh grants for the pre-IAP path. Without this
+# service agent + its run.invoker binding, browser requests through IAP
+# get Metabase's LB page replaced with: "The IAP service account is
+# not provisioned. Please follow the instructions to create service
+# account and rectify IAP and Cloud Run setup".
+#
+# `gcloud beta services identity create` is idempotent: re-runs return
+# the same agent and exit 0.
+echo "==> 3b/4 Provisioning IAP service agent..."
+if $DRY_RUN; then
+  echo "+ gcloud beta services identity create --service=iap.googleapis.com --project=${PROJECT}"
+  IAP_SA_EMAIL="service-<PROJECT_NUMBER>@gcp-sa-iap.iam.gserviceaccount.com"
+else
+  IAP_IDENTITY_OUT=$(gcloud beta services identity create \
+    --service=iap.googleapis.com \
+    --project="${PROJECT}" 2>&1)
+  echo "${IAP_IDENTITY_OUT}"
+  # Agent email is stable: service-<project-number>@gcp-sa-iap...
+  PROJECT_NUMBER=$(gcloud projects describe "${PROJECT}" --format='value(projectNumber)')
+  IAP_SA_EMAIL="service-${PROJECT_NUMBER}@gcp-sa-iap.iam.gserviceaccount.com"
+fi
+echo "IAP service agent: ${IAP_SA_EMAIL}"
+
+# Resolve the Cloud Run service name and region from the NEG attached to
+# the backend service. Keeps this script decoupled from deploy.sh's
+# hard-coded values while still reliable.
+CLOUD_RUN_SERVICE="${SERVICE_NAME:-metabase}"
+CLOUD_RUN_REGION="${REGION:-us-central1}"
+
+echo "==> Granting IAP agent run.invoker on Cloud Run service ${CLOUD_RUN_SERVICE}..."
+run gcloud run services add-iam-policy-binding "${CLOUD_RUN_SERVICE}" \
+  --region="${CLOUD_RUN_REGION}" \
+  --project="${PROJECT}" \
+  --member="serviceAccount:${IAP_SA_EMAIL}" \
+  --role="roles/run.invoker" \
+  --quiet
 
 # -----------------------------------------------------------------------------
 # 4. Reconcile the allowlist (additive only)

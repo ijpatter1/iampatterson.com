@@ -401,7 +401,15 @@ What it does:
    value appears on the command line or in logs.
 3. Enables IAP on the `metabase-backend` backend service, wired to the
    OAuth client.
-4. Grants `roles/iap.httpsResourceAccessor` to each member of the
+4. Provisions the IAP service agent
+   (`service-<PROJECT_NUMBER>@gcp-sa-iap.iam.gserviceaccount.com`) on the
+   project and grants it `roles/run.invoker` on the Cloud Run service.
+   Without this, IAP enforces successfully at the LB but fails to
+   invoke Cloud Run — the browser sees "The IAP service account is
+   not provisioned." The `allUsers run.invoker` binding `deploy.sh`
+   set is for the pre-IAP path; once IAP is enforcing, requests reach
+   Cloud Run as the IAP agent, not anonymously.
+5. Grants `roles/iap.httpsResourceAccessor` to each member of the
    `ALLOWLIST` array at the top of the script.
 
 ### Editing the allowlist
