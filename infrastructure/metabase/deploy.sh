@@ -209,11 +209,31 @@ if $DRY_RUN; then
   echo "==> DRY-RUN: would run"
   echo "    gcloud run services replace ${RENDERED} \\"
   echo "      --region=${REGION} --project=${PROJECT}"
+  echo "    gcloud run services add-iam-policy-binding ${SERVICE_NAME} \\"
+  echo "      --region=${REGION} --project=${PROJECT} \\"
+  echo "      --member=allUsers --role=roles/run.invoker"
 else
   echo "==> Applying service spec..."
   gcloud run services replace "${RENDERED}" \
     --region="${REGION}" \
     --project="${PROJECT}"
+
+  # Grant allUsers the run.invoker role so the external HTTPS LB's
+  # serverless NEG can invoke Cloud Run. This looks permissive but isn't:
+  # ingress=internal-and-cloud-load-balancing already blocks the .run.app
+  # URL, and IAP on the backend service (Task 6) gates who can reach the
+  # LB in the first place. Without this binding, Cloud Run returns a GFE
+  # 403 ("Your client does not have permission") on every LB request —
+  # serverless NEGs don't carry a service identity the LB could use to
+  # authenticate. gcloud treats an existing binding as a no-op here, so
+  # re-running this script is safe.
+  echo "==> Granting allUsers run.invoker (LB-via-serverless-NEG pattern)..."
+  gcloud run services add-iam-policy-binding "${SERVICE_NAME}" \
+    --region="${REGION}" \
+    --project="${PROJECT}" \
+    --member=allUsers \
+    --role=roles/run.invoker \
+    --quiet >/dev/null
 fi
 
 echo ""

@@ -205,6 +205,14 @@ Files:
 
 Resources and behavior:
 
+- **`allUsers` gets `roles/run.invoker`** on the service (applied by
+  `deploy.sh`). This reads as a security hole but is the documented
+  Google pattern for IAP-gated Cloud Run behind a serverless NEG: the
+  LB has no service identity to authenticate with, so the Cloud Run
+  IAM gate has to be wide open on *identity*, and access control
+  moves to (a) ingress locked to the LB and (b) IAP on the backend
+  service (Task 6). Without this binding, the LB gets a GFE 403 on
+  every request ("Your client does not have permission").
 - Image: `metabase/metabase:<pinned-tag>` — never `:latest`.
 - Sizing: 2Gi memory, 1 CPU, concurrency 10, timeout 300s, gen2.
 - Scaling: `minScale=1` (warm), `maxScale=3`. Cold start takes ~60–120s.
