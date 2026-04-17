@@ -1,6 +1,6 @@
 # Phase Status Tracker
 
-> **Current Phase: 9B — E-Commerce Demo: Tiers 2 & 3** (5 of 7 deliverables complete; 9B-infra done — deliverables 6 + 7 unblocked)
+> **Current Phase: 9B — E-Commerce Demo: Tiers 2 & 3** (5 of 8 deliverables complete; 9B-infra done — deliverables 6a, 6b, and 7 unblocked)
 > Last updated: 2026-04-17, session-2026-04-17-020
 
 ---
@@ -154,7 +154,8 @@
 - ✅ 2026-04-04, commit 389d086 — Cart underside: Data Quality Framework — live assertion checklist (schema validation, null checks, volume anomaly)
 - ✅ 2026-04-04, commit 389d086 — Checkout underside: Warehouse Write — real-time BigQuery write visualization
 - ✅ 2026-04-04, commit 389d086 — Confirmation page: Tier 3 pivot — funnel metrics, AOV trends, actionable insight with revenue impact
-- ⬜ Looker Studio / Metabase dashboard connected to BigQuery mart tables, embedded from confirmation page under-the-hood
+- ⬜ (6a) Metabase "E-Commerce Executive" dashboard — 6 questions as YAML specs in `infrastructure/metabase/dashboards/`, applied to the live instance via `apply.sh`
+- ⬜ (6b) Confirmation-page signed embed — 3 questions embedded in `/demo/ecommerce/confirmation` under-the-hood via Next.js signed-JWT iframe
 - ⬜ Services page cross-links: Tier 2 → ecommerce funnel, Tier 3 → confirmation page
 
 ---
