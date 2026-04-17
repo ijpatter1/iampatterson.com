@@ -89,10 +89,38 @@ EOF
 fi
 echo "Backend service present."
 
-echo "==> Checking precondition: OAuth consent screen / brand..."
-BRAND_COUNT=$(gcloud iap oauth-brands list \
+echo "==> Checking precondition: iap.googleapis.com enabled..."
+IAP_API_ENABLED=$(gcloud services list --enabled \
   --project="${PROJECT}" \
-  --format="value(name)" 2>/dev/null | wc -l | tr -d ' ' || echo "0")
+  --filter="config.name:iap.googleapis.com" \
+  --format="value(config.name)" 2>/dev/null || echo "")
+if [[ -z "${IAP_API_ENABLED}" ]]; then
+  if $DRY_RUN; then
+    echo "+ gcloud services enable iap.googleapis.com --project=${PROJECT}"
+  else
+    echo "iap.googleapis.com not enabled. Enabling now (takes ~30s)..."
+    gcloud services enable iap.googleapis.com --project="${PROJECT}"
+  fi
+fi
+
+echo "==> Checking precondition: OAuth consent screen / brand..."
+# Don't route gcloud stderr to /dev/null here — if this call fails, the
+# 'API not enabled' or permission error should reach the user. Earlier
+# versions suppressed stderr and the script exited silently, which was
+# unhelpful to debug. Pipeline now uses a tempfile so we can detect real
+# errors vs. empty output from a successful "no brands yet" response.
+BRAND_LIST=$(mktemp)
+trap 'rm -f "${BRAND_LIST}"' EXIT INT TERM
+if ! gcloud iap oauth-brands list \
+       --project="${PROJECT}" \
+       --format="value(name)" > "${BRAND_LIST}"; then
+  echo "ERROR: 'gcloud iap oauth-brands list' failed. See output above."
+  echo "       Common causes: iap.googleapis.com not enabled (auto-enabled"
+  echo "       above — check your gcloud is current), or roles/iap.admin"
+  echo "       missing on the executing principal."
+  exit 1
+fi
+BRAND_COUNT=$(wc -l < "${BRAND_LIST}" | tr -d ' ')
 
 if [[ "${BRAND_COUNT}" == "0" ]]; then
   cat <<EOF
@@ -113,9 +141,7 @@ EOF
   exit 1
 fi
 
-BRAND_NAME=$(gcloud iap oauth-brands list \
-  --project="${PROJECT}" \
-  --format="value(name)" 2>/dev/null | head -1)
+BRAND_NAME=$(head -1 "${BRAND_LIST}")
 echo "OAuth brand: ${BRAND_NAME}"
 
 # -----------------------------------------------------------------------------

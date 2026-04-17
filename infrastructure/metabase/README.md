@@ -358,6 +358,17 @@ allowlist of Google accounts. IAP runs BEFORE Metabase's own login, so
 the first layer of defense is already in place even if Metabase is
 somehow exposed or misconfigured.
 
+> **Deprecation notice (tech debt):** `gcloud iap oauth-brands` and
+> `gcloud iap oauth-clients` are marked deprecated by Google. The
+> announced timeline: **Jan 19, 2026** — no new projects can use the
+> IAP OAuth Admin APIs; **Mar 19, 2026** — permanent shutdown. Projects
+> that already have an OAuth brand continue to work through the grace
+> period; this project is one of them. A rebuild on a fresh project
+> after the shutdown must use the replacement flow (GCP Console UI for
+> brand + client, or Identity Platform). The `setup-iap.sh` script
+> will need a rewrite at that point. Until the migration is required,
+> the current script is fine to continue running.
+
 ### One-time manual step (before running the script)
 
 Configure the OAuth consent screen in the GCP Console. `gcloud` cannot
