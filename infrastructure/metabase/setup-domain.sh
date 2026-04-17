@@ -132,17 +132,41 @@ fi
 # 4. Backend service wrapping the NEG (IAP attaches here in Task 6)
 # -----------------------------------------------------------------------------
 echo "==> 4/7 Backend service ${BACKEND_NAME}..."
+BACKEND_EXISTS=false
 if gcloud compute backend-services describe "${BACKEND_NAME}" \
      --global --project="${PROJECT}" >/dev/null 2>&1; then
-  echo "Backend service ${BACKEND_NAME} exists, skipping create."
-else
+  BACKEND_EXISTS=true
+fi
+
+# Heal-in-place for a pre-fix misconfiguration: earlier versions of this
+# script passed --protocol=HTTPS, which auto-set portName=https. Serverless
+# NEGs reject any portName ('Port name is not supported for a backend
+# service with Serverless network endpoint groups'). If we detect a
+# non-empty portName on the existing backend, delete and recreate.
+# Downstream resources (url-map, target-proxy) are created in later steps,
+# so nothing references this backend yet — delete is safe.
+if $BACKEND_EXISTS; then
+  CURRENT_PORT_NAME=$(gcloud compute backend-services describe "${BACKEND_NAME}" \
+    --global --project="${PROJECT}" --format='value(portName)' 2>/dev/null || echo "")
+  if [[ -n "${CURRENT_PORT_NAME}" ]]; then
+    echo "Backend ${BACKEND_NAME} has portName='${CURRENT_PORT_NAME}' — incompatible with serverless NEG. Recreating."
+    run gcloud compute backend-services delete "${BACKEND_NAME}" \
+      --global --project="${PROJECT}" --quiet
+    BACKEND_EXISTS=false
+  else
+    echo "Backend service ${BACKEND_NAME} exists with compatible config, skipping create."
+  fi
+fi
+
+if ! $BACKEND_EXISTS; then
   # EXTERNAL_MANAGED = Global External Application Load Balancer — the
   # modern scheme that supports serverless NEGs, IAP attachment, and
   # gRPC. Required for the forwarding rule below to use the same scheme.
+  # No --protocol flag: serverless NEGs do not accept a portName, and
+  # --protocol=HTTPS auto-sets portName=https.
   run gcloud compute backend-services create "${BACKEND_NAME}" \
     --global \
     --load-balancing-scheme=EXTERNAL_MANAGED \
-    --protocol=HTTPS \
     --project="${PROJECT}"
 fi
 
