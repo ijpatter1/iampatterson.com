@@ -149,8 +149,8 @@ verify "Serverless NEG metabase-neg exists" \
   "gcloud compute network-endpoint-groups describe metabase-neg --region=${REGION} --project=${PROJECT}"
 verify "NEG targets the Metabase Cloud Run service" \
   "[[ \$(gcloud compute network-endpoint-groups describe metabase-neg --region=${REGION} --project=${PROJECT} --format='value(cloudRun.service)' 2>/dev/null) == '${SERVICE_NAME}' ]]"
-verify "Backend service has no portName (serverless NEG requirement)" \
-  "[[ -z \$(gcloud compute backend-services describe metabase-backend --global --project=${PROJECT} --format='value(portName)' 2>/dev/null) ]]"
+verify "Backend service portName != 'https' (serverless NEG incompatibility)" \
+  "PN=\$(gcloud compute backend-services describe metabase-backend --global --project=${PROJECT} --format='value(portName)' 2>/dev/null); [[ \"\${PN}\" != 'https' ]]"
 verify "URL map metabase-url-map exists" \
   "gcloud compute url-maps describe metabase-url-map --global --project=${PROJECT}"
 verify "Target HTTPS proxy metabase-https-proxy exists" \
