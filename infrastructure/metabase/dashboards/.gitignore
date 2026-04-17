@@ -1,0 +1,6 @@
+# Resolved Metabase IDs written by apply.sh after every run. Not meant
+# for version control — IDs are assigned by Metabase on first create and
+# regenerated on a from-scratch re-deploy. Consumers (deliverable 6b's
+# Next.js signer) read this file locally or the metabase-embed-config
+# Secret Manager secret in production.
+.ids.json

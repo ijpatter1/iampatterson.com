@@ -1,0 +1,34 @@
+name: 'Funnel conversion by channel'
+description: |
+  Ecommerce session funnel broken down by acquisition channel. Four stages
+  per channel: all sessions, sessions with a product_view, sessions with
+  an add_to_cart, and sessions with a purchase. Last 30 days.
+display: bar
+enable_embedding: true
+visualization_settings:
+  graph.dimensions:
+    - utm_source
+  graph.metrics:
+    - sessions
+    - viewers
+    - carters
+    - purchasers
+  stackable.stack_type: null
+  graph.x_axis.title_text: 'Channel'
+  graph.y_axis.title_text: 'Distinct sessions'
+  graph.x_axis.scale: 'ordinal'
+  graph.show_values: false
+query: |
+  SELECT
+    utm_source,
+    COUNT(DISTINCT session_id) AS sessions,
+    COUNT(DISTINCT IF(event_name = 'product_view', session_id, NULL)) AS viewers,
+    COUNT(DISTINCT IF(event_name = 'add_to_cart',  session_id, NULL)) AS carters,
+    COUNT(DISTINCT IF(event_name = 'purchase',     session_id, NULL)) AS purchasers
+  FROM `iampatterson.iampatterson_marts.mart_session_events`
+  WHERE business_model = 'ecommerce'
+    AND utm_source IS NOT NULL
+    AND DATE(event_timestamp) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
+  GROUP BY utm_source
+  HAVING sessions >= 10
+  ORDER BY sessions DESC

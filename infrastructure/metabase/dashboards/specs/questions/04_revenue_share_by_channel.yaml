@@ -1,0 +1,25 @@
+name: 'Revenue share by channel'
+description: |
+  Share of ecommerce attributed revenue by acquisition channel (utm_source),
+  most recent full month. Granularity from mart_channel_attribution is
+  monthly — the donut always reflects the latest completed month.
+display: pie
+visualization_settings:
+  pie.dimension: 'utm_source'
+  pie.metric: 'revenue'
+  pie.show_legend: true
+  pie.percent_visibility: 'inside'
+query: |
+  SELECT
+    utm_source,
+    SUM(attributed_revenue) AS revenue
+  FROM `iampatterson.iampatterson_marts.mart_channel_attribution`
+  WHERE business_model = 'ecommerce'
+    AND attributed_revenue > 0
+    AND report_month = (
+      SELECT MAX(report_month)
+      FROM `iampatterson.iampatterson_marts.mart_channel_attribution`
+      WHERE business_model = 'ecommerce'
+    )
+  GROUP BY utm_source
+  ORDER BY revenue DESC
