@@ -1,7 +1,7 @@
 # Phase Status Tracker
 
-> **Current Phase: 9B — E-Commerce Demo: Tiers 2 & 3** (5 of 7 deliverables complete)
-> Last updated: 2026-04-17, session-2026-04-04-018
+> **Current Phase: 9B — E-Commerce Demo: Tiers 2 & 3** (5 of 7 deliverables complete; 9B-infra done — deliverables 6 + 7 unblocked)
+> Last updated: 2026-04-17, session-2026-04-17-020
 
 ---
 
@@ -156,6 +156,25 @@
 - ✅ 2026-04-04, commit 389d086 — Confirmation page: Tier 3 pivot — funnel metrics, AOV trends, actionable insight with revenue impact
 - ⬜ Looker Studio / Metabase dashboard connected to BigQuery mart tables, embedded from confirmation page under-the-hood
 - ⬜ Services page cross-links: Tier 2 → ecommerce funnel, Tier 3 → confirmation page
+
+---
+
+## Phase 9B-infra — Metabase Deployment (COMPLETE)
+
+*Goal: Self-hosted Metabase on GCP, gated by IAP, connected to BigQuery mart tables. Enables Phase 9B deliverable 6 (Metabase dashboard embed). Full spec: `docs/input_artifacts/metabase-deployment-plan.md`.*
+
+*Phase 9B-infra is complete. Metabase is live at `https://bi.iampatterson.com/` behind the IAP gate, connected to the `iampatterson_marts` BigQuery dataset. Phase 9B application-layer deliverables 6 (Metabase embed in ecommerce confirmation page) and 7 (services cross-links) are now unblocked.*
+
+- ✅ 2026-04-17, commit d1c4086 — Task 1: Cloud SQL Postgres app DB — idempotent setup script, daily backups, PITR, password stored in Secret Manager
+- ✅ 2026-04-17, commit 9d38493 — Task 2: Service accounts + IAM — metabase-runtime (Cloud SQL + secrets) and metabase-bigquery (dataset-scoped read-only), keys in Secret Manager
+- ✅ 2026-04-17, commit 7b4708e — Task 3: Cloud Run service deployment — deployed `metabase/metabase:v0.59.6` to `https://metabase-eb4xrwmo3q-uc.a.run.app`, Ready=True, ingress locked to internal-and-cloud-load-balancing.
+  - First-deploy gotcha 1: Metabase's bundled pgjdbc concatenates `:PORT` onto `MB_DB_HOST`, so a Cloud SQL Auth Proxy socket path turns into a malformed JDBC URL. Switched to TCP via the Cloud SQL private IP over the existing VPC peering (resolved at render time in `deploy.sh`).
+  - First-deploy gotcha 2: Metabase's Jetty defaults to port 3000 and doesn't auto-read Cloud Run's `PORT`. Added `MB_JETTY_PORT=8080` to align with the container port + startup probe.
+- ✅ 2026-04-17, commit e60bd98 — Task 4: Environment variable documentation — .env.example covering every var with sources and the DO NOT REGENERATE warning on the encryption key
+- ✅ 2026-04-17, commit a77e431 — Task 5: Load balancer + SSL cert — static IP `34.102.206.180`, Google-managed cert ACTIVE for `bi.iampatterson.com`, all 7 LB components provisioned. `curl -sI https://bi.iampatterson.com/api/health` returns HTTP/2 200 from Metabase. Two first-run gotchas surfaced: serverless-NEG backend can't carry a portName (dropped `--protocol=HTTPS` + heal-in-place), and LB-via-serverless-NEG needs `allUsers run.invoker` on the Cloud Run service (added to deploy.sh; ingress lock + IAP in Task 6 are the real security)
+- ✅ 2026-04-17, commit 8366674 — Task 6: IAP configuration — OAuth consent screen configured (Internal, app `iampatterson BI`), OAuth client `metabase-iap-client` created, client ID/secret stored in Secret Manager, IAP enabled on `metabase-backend`, `ian@tunameltsmyheart.com` granted `roles/iap.httpsResourceAccessor`. `curl -sI https://bi.iampatterson.com/` returns HTTP/2 302 → `accounts.google.com`. Script hardened: auto-enables `iap.googleapis.com` (first run silent-failed because the API wasn't on); README flags the deprecated IAP OAuth Admin APIs (Mar 19, 2026 sunset for new projects — grandfathered for existing brands)
+- ✅ 2026-04-17, commit 927e8db — Task 7: Metabase initial setup — admin account created, user signups disabled, public sharing and embedding confirmed OFF, BigQuery data source `iampatterson marts` connected via SA key from `metabase-bq-sa-key`, dataset filter Inclusion=`iampatterson_marts`, `mart_campaign_performance` returns rows end-to-end. Caveats: 2FA skipped (Pro/Enterprise-only on Metabase; OSS image has no MFA option — README step 6 updated to reflect this); Google Sign-In skipped by choice (solo user, IAP allowlist is sufficient). Deployed on top of Task 6 fixes including the IAP service agent provisioning that surfaced during first browser access
+- ✅ 2026-04-17, commit 75035de — Task 8: Backup + upgrade runbooks — backup.sh, upgrade.sh, README sections complete and hardened. Execution deferred to first real upgrade (nothing to exercise on day zero). Cloud SQL automated daily backups (7-day retention) are already running independently via Task 1 config
 
 ---
 

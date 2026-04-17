@@ -247,6 +247,43 @@ iampatterson.com is simultaneously a consulting site for Patterson Consulting an
 
 ---
 
+## Phase 9B-infra — Metabase Deployment
+
+**Goal:** Stand up a self-hosted Metabase instance on GCP that can serve BI dashboards built on the Phase 5 BigQuery mart tables. This is the prerequisite infrastructure for Phase 9B deliverable 6 (embedding a Metabase dashboard in the confirmation page under-the-hood view). Authored as a discrete mini-phase because it is infrastructure work with no application-layer deliverables, and because it must complete before 9B deliverable 6 can ship.
+
+**Context:** Metabase runs as a Cloud Run container backed by a Cloud SQL Postgres app DB, reachable only via a Google-managed load balancer with IAP in front. IAP restricts access to a whitelisted set of Google accounts (single-user deployment initially). Metabase queries BigQuery via a dedicated dataset-scoped read-only service account. The full deployment specification — pinned versions, naming conventions, per-task evaluator checks, cost expectations, and open decisions — lives in `docs/input_artifacts/metabase-deployment-plan.md`. Scripts and runbook land at `infrastructure/metabase/`.
+
+**Deliverables:**
+
+1. **Task 1 — Cloud SQL Postgres app DB:** Idempotent `setup-cloudsql.sh` that creates a `metabase-app-db` Postgres 15 instance (`db-f1-micro`, us-central1), `metabase` database and user, daily automated backups with 7-day retention, point-in-time recovery, and a generated password stored in Secret Manager (`metabase-db-password`). Also provisions a $100/month project-level budget alert. Uses Cloud SQL Auth Proxy (private IP only, no public ingress).
+
+2. **Task 2 — Service accounts and IAM:** `setup-iam.sh` provisions two service accounts. `metabase-runtime` (Cloud Run identity) gets `cloudsql.client` and secret-scoped `secretmanager.secretAccessor`. `metabase-bigquery` (Metabase→BQ identity) gets `bigquery.dataViewer` scoped to `iampatterson_marts` only plus project-level `bigquery.jobUser`. Generates a JSON key for `metabase-bigquery`, uploads to Secret Manager as `metabase-bq-sa-key`, deletes the local copy. Generates the Metabase encryption key once and stores as `metabase-encryption-key` with a DO NOT REGENERATE warning (losing it invalidates the encrypted BQ credentials in the app DB).
+
+3. **Task 3 — Cloud Run service deployment:** Templated `cloudrun.yaml` plus idempotent `deploy.sh`. Pinned Metabase image (no `:latest`), 2Gi/1 CPU, `min-instances=1` (warm), `max-instances=3`, 300s timeout, concurrency 10, gen2 execution environment. Cloud SQL connected via `--add-cloudsql-instances`. Ingress locked to `internal-and-cloud-load-balancing` — the `.run.app` URL is unreachable. All environment variables sourced from Secret Manager or hardcoded constants; `MB_DB_TYPE=postgres` is explicitly set to prevent H2 fallback.
+
+4. **Task 4 — Environment variable documentation:** `.env.example` documenting every variable in Task 3's table — what it does, where it comes from, and critical warnings (notably the encryption key regeneration warning). No real secret values in the file. This is the contract for anyone rebuilding the setup from scratch.
+
+5. **Task 5 — Load balancer and custom domain:** `setup-domain.sh` provisions the external HTTPS load balancer (serverless NEG → backend service → URL map → target HTTPS proxy → global forwarding rule with reserved static IP), Google-managed SSL cert for `bi.iampatterson.com`, and prints the DNS A record to configure manually at the registrar. Polls cert status and exits when ACTIVE. Required for IAP, which only attaches to load-balancer-fronted services on Cloud Run.
+
+6. **Task 6 — IAP configuration:** `setup-iap.sh` creates an OAuth 2.0 client, stores ID and secret in Secret Manager, enables IAP on the Metabase backend service, and grants `roles/iap.httpsResourceAccessor` to an allowlist array defined at the top of the script. The OAuth consent screen is a one-time manual setup step documented in the README. Re-running the script reconciles the allowlist (additive). Verification: `.run.app` stays private; `bi.iampatterson.com` redirects to Google SSO.
+
+7. **Task 7 — Metabase initial setup runbook:** README section walking through the one-time UI configuration that cannot be scripted: create admin account, enable 2FA, disable public sharing and signups, optionally enable Google auth for auto-provisioning allowlisted IAP users, and add the BigQuery data source using the `metabase-bq-sa-key` secret as the service account credential (filtered to `iampatterson_marts`). Goal: anyone rebuilding from scratch can follow end to end.
+
+8. **Task 8 — Backup and upgrade runbooks:** `backup.sh` for on-demand Cloud SQL backups tagged with timestamp and Metabase version. `upgrade.sh` takes a version argument, runs a backup first, requires explicit confirmation that release notes have been reviewed, updates the pinned image tag, redeploys, polls `/api/health`, and runs a smoke query against the BigQuery connection. README sections cover backup/restore, upgrade, BigQuery SA key rotation (annual), allowlist additions, and rollback from a bad upgrade.
+
+**Constraints:**
+
+- No image tags may use `:latest`. Every Docker/container version is pinned explicitly.
+- Cloud Run ingress must remain locked to `internal-and-cloud-load-balancing`. The `.run.app` URL is never publicly reachable.
+- The BigQuery service account must be dataset-scoped (`iampatterson_marts` only) — no project-level `dataViewer`.
+- `MB_ENCRYPTION_SECRET_KEY` is generated once and never rotated. Losing it invalidates encrypted credentials in the app DB.
+- Every script must be idempotent (safe to re-run).
+- Each task is a discrete commit. The evaluator subagent must pass the task's checks before the next task begins. Tasks do not parallelize.
+
+**Why this is Phase 9B-infra (not a Phase 9B deliverable):** This is standalone infrastructure work with no Next.js application code. It stands up a new GCP service, configures IAM, provisions a load balancer, and enables IAP — scope that is larger than a single 9B deliverable but smaller than a full numbered phase. Treating it as a dedicated sub-phase keeps the deployment discipline (task-by-task evaluator gating) visible in the phase tracker and ensures it is not conflated with the application-layer work of 9B deliverable 6 (which embeds the resulting Metabase instance into the confirmation page under-the-hood view).
+
+---
+
 ## Phase 9C — Lead Gen Demo: Tier 1 Privacy/Consent + Tier 3 BI + AI Narrative Reporting
 
 **Goal:** Transform the lead gen demo into the privacy and consent governance showcase. This is the only demo where the visitor types PII into form fields — making consent enforcement tangible rather than abstract. The thank-you page pivots to Tier 3 BI and AI-powered narrative reporting.
