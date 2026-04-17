@@ -21,6 +21,11 @@
 
 set -euo pipefail
 
+# Prevent gcloud from blocking on hidden interactive prompts
+# (e.g., "API not enabled — enable and retry? (y/N)"). Any such condition
+# should surface as a visible error, not a silent hang.
+export CLOUDSDK_CORE_DISABLE_PROMPTS=1
+
 PROJECT="${PROJECT:-iampatterson}"
 REGION="${REGION:-us-central1}"
 NETWORK="${NETWORK:-default}"

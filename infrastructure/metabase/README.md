@@ -17,7 +17,13 @@ is idempotent and safe to re-run.
   - `roles/billing.viewer`, `roles/billing.projectManager` (Task 1 budget alert)
   - additional roles arrive with later tasks
 - APIs enabled (Task 1): `sqladmin`, `secretmanager`, `servicenetworking`,
-  `cloudbilling`, `billingbudgets`
+  `cloudbilling`, `billingbudgets`. Verify before running:
+  ```bash
+  gcloud services list --enabled \
+    --filter="config.name:(sqladmin OR secretmanager OR servicenetworking OR cloudbilling OR billingbudgets)" \
+    --format="value(config.name)"
+  ```
+  Enable any missing: `gcloud services enable <name>.googleapis.com`
 - One-time VPC peering for Google-managed services on the `default` network.
   Required because Cloud SQL uses private IP only:
 
