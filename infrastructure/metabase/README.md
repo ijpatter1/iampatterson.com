@@ -256,6 +256,61 @@ Key entries to read before changing anything:
 - **`MB_ENCRYPTION_SECRET_KEY`** — the DO NOT REGENERATE secret.
   Rotating breaks every encrypted row in the app DB.
 
+## Task 5 — Load balancer + custom domain
+
+External HTTPS load balancer in front of Cloud Run, with a
+Google-managed SSL cert for `bi.iampatterson.com`. The LB is a hard
+prerequisite for Task 6 — IAP on Cloud Run works only through a
+load-balancer-fronted backend service, not the direct `.run.app` URL.
+
+```bash
+./setup-domain.sh              # provision + print DNS + poll cert
+./setup-domain.sh --dry-run    # preview
+./setup-domain.sh --no-wait    # provision + print DNS; skip cert poll
+```
+
+Seven components created, each name-pinned for idempotent re-runs:
+
+1. **Static IP** `metabase-lb-ip` (global)
+2. **SSL cert** `metabase-cert` — Google-managed, for `bi.iampatterson.com`
+3. **Serverless NEG** `metabase-neg` targeting the Cloud Run service
+4. **Backend service** `metabase-backend` — IAP attaches here in Task 6
+5. **URL map** `metabase-url-map` — `/` → backend service
+6. **Target HTTPS proxy** `metabase-https-proxy` — binds URL map to cert
+7. **Global forwarding rule** `metabase-forwarding-rule` — static IP:443 → proxy
+
+**The manual step:** after components 1–7 are up, the script prints the
+static IP and an exact DNS A record. Create that record at your domain
+registrar. Google-managed certs will not provision until DNS resolves.
+
+The script then polls cert status every 30 seconds for up to 60 minutes.
+Cert provisioning typically takes 15–60 minutes once DNS is live. If the
+script is interrupted, re-run it — steps 1–7 skip and polling resumes.
+
+**Verify once cert is ACTIVE:**
+
+```bash
+curl -sI https://bi.iampatterson.com/api/health | head -3
+# expect: HTTP/2 200 (after Task 6 attaches IAP, this becomes a 302
+# redirect to accounts.google.com).
+
+URL=$(gcloud run services describe metabase \
+  --region=us-central1 --project=iampatterson --format='value(status.url)')
+curl -sI "${URL}/api/health" | head -1
+# expect: 404/403 — .run.app stays locked (ingress=internal-and-cloud-load-balancing).
+```
+
+**Failure modes:**
+
+- Cert stuck `PROVISIONING` >60 min: check DNS resolution
+  (`dig bi.iampatterson.com +short` should return the static IP), give
+  it more time, or re-run to keep polling.
+- Cert `FAILED_NOT_VISIBLE`: Google couldn't reach the domain. DNS not
+  set or propagating. Verify the A record and re-run.
+- Backend service shows no healthy endpoints: the serverless NEG isn't
+  routable — confirm the Cloud Run service is reachable from the LB
+  project (normally automatic when both are in the same project).
+
 ## Upcoming tasks
 
 Not yet implemented; scripts land per-task.
