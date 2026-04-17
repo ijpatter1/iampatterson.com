@@ -144,9 +144,10 @@ bq show --format=prettyjson iampatterson:iampatterson_marts \
 
 gcloud projects get-iam-policy iampatterson \
   --flatten='bindings[].members' \
-  --filter='bindings.members:metabase-*' \
+  --filter='bindings.members~metabase' \
   --format='value(bindings.role,bindings.members)'
-# expect: cloudsql.client for metabase-runtime; bigquery.jobUser for metabase-bigquery
+# expect: roles/cloudsql.client for metabase-runtime;
+#         roles/bigquery.jobUser for metabase-bigquery
 
 ls -la *.json
 # expect: no *-bigquery*.json or keyfile.json — the BQ SA key is only in Secret Manager
