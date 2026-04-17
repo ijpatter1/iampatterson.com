@@ -273,6 +273,43 @@ Three route namespaces within the Next.js app. Each with its own data layer spec
 ### Phase 7 — BI Layer
 Looker Studio and/or Metabase on Dataform mart tables. Embedded or deep-linked from the flip-the-card overlay.
 
+### Phase 9B-infra — Metabase Deployment
+
+Self-hosted Metabase on GCP, gated by IAP, connecting to the Phase 5 mart tables. Full task spec at `docs/input_artifacts/metabase-deployment-plan.md`; scripts and runbook land at `infrastructure/metabase/`.
+
+**Traffic path:**
+
+```
+Browser → bi.iampatterson.com
+       → Google Load Balancer + IAP (Google SSO gate, allowlist)
+       → Cloud Run (metabase/metabase container, ingress=internal-and-cloud-load-balancing)
+       → Cloud SQL Postgres (metabase-app-db, via Cloud SQL Auth Proxy, private IP)
+       → BigQuery iampatterson_marts (dataset-scoped read-only SA key)
+```
+
+**Three-layer security model:**
+
+1. **IAP (Google SSO)** — only allowlisted Google accounts reach the Metabase login page. Blocks "exposed Metabase on the internet" attack classes (auth bypass CVEs, credential stuffing, enumeration).
+2. **Metabase auth** — admin password + 2FA. Second layer if IAP is misconfigured.
+3. **BigQuery IAM** — `metabase-bigquery` service account is dataset-scoped read-only. Even full Metabase compromise cannot write to BigQuery or reach other datasets.
+
+The only long-lived credential material is the `metabase-bigquery` JSON key. Rotated annually per the runbook.
+
+**GCP resources provisioned:**
+
+- Cloud SQL: instance `metabase-app-db` (Postgres 15, db-f1-micro, us-central1), database `metabase`, user `metabase`, daily backups + PITR
+- Cloud Run: service `metabase` (gen2, 2Gi/1 CPU, min-instances=1, ingress locked to LB)
+- Load balancer: serverless NEG, backend service, URL map, target HTTPS proxy, global forwarding rule with reserved static IP, Google-managed SSL cert for `bi.iampatterson.com`
+- Service accounts: `metabase-runtime@` (Cloud Run identity — Cloud SQL client + scoped secret access) and `metabase-bigquery@` (Metabase→BQ identity — `bigquery.dataViewer` on `iampatterson_marts` only, project-level `bigquery.jobUser`)
+- Secret Manager: `metabase-db-password`, `metabase-encryption-key` (never rotate — decrypts credentials in app DB), `metabase-bq-sa-key`, `metabase-iap-client-id`, `metabase-iap-client-secret`
+- IAP: OAuth 2.0 client + `roles/iap.httpsResourceAccessor` allowlist on the backend service
+
+**Pinned versions (no `:latest`):** Metabase image tag recorded at deploy time, Cloud SQL Postgres 15, Cloud Run gen2.
+
+**Expected baseline cost:** $60–75/month (Cloud Run warm + Cloud SQL + LB + static IP), plus BigQuery query costs proportional to dashboard usage. Budget alert at $100/month.
+
+**Application-layer consumer:** Phase 9B deliverable 6 embeds or deep-links the Metabase dashboard from the `/demo/ecommerce/confirmation` under-the-hood view. The deployment does not, on its own, change the Next.js application surface.
+
 ### Phase 8 — Attribution
 Shapley value MTA in Dataform. Comparison views against last-click and platform-reported.
 

@@ -1,6 +1,6 @@
 # Phase Status Tracker
 
-> **Current Phase: 9B — E-Commerce Demo: Tiers 2 & 3** (5 of 7 deliverables complete)
+> **Current Phase: 9B — E-Commerce Demo: Tiers 2 & 3** (5 of 7 deliverables complete; 9B-infra pending)
 > Last updated: 2026-04-17, session-2026-04-04-018
 
 ---
@@ -156,6 +156,21 @@
 - ✅ 2026-04-04, commit 389d086 — Confirmation page: Tier 3 pivot — funnel metrics, AOV trends, actionable insight with revenue impact
 - ⬜ Looker Studio / Metabase dashboard connected to BigQuery mart tables, embedded from confirmation page under-the-hood
 - ⬜ Services page cross-links: Tier 2 → ecommerce funnel, Tier 3 → confirmation page
+
+---
+
+## Phase 9B-infra — Metabase Deployment
+
+*Goal: Self-hosted Metabase on GCP, gated by IAP, connected to BigQuery mart tables. Enables Phase 9B deliverable 6 (Metabase dashboard embed). Full spec: `docs/input_artifacts/metabase-deployment-plan.md`.*
+
+- ⬜ Task 1: Cloud SQL Postgres app DB — idempotent setup script, daily backups, PITR, password stored in Secret Manager
+- ⬜ Task 2: Service accounts + IAM — metabase-runtime (Cloud SQL + secrets) and metabase-bigquery (dataset-scoped read-only), keys in Secret Manager
+- ⬜ Task 3: Cloud Run service deployment — pinned Metabase image, gen2, min-instances=1, ingress locked to load balancer
+- ⬜ Task 4: Environment variable documentation — .env.example covering every var with sources and the DO NOT REGENERATE warning on the encryption key
+- ⬜ Task 5: Load balancer + custom domain — serverless NEG, managed SSL for bi.iampatterson.com, static IP, manual DNS step
+- ⬜ Task 6: IAP configuration — OAuth client, scripted allowlist, backend service gated behind Google SSO
+- ⬜ Task 7: Metabase initial setup runbook — documented manual first-run (admin account, 2FA, disable signups, add BigQuery connection)
+- ⬜ Task 8: Backup + upgrade runbooks — backup.sh, upgrade.sh with explicit confirmation, restore/rotate/allowlist/rollback procedures in README
 
 ---
 
