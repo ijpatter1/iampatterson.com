@@ -132,7 +132,7 @@ Creates two additional Secret Manager secrets:
 gcloud iam service-accounts list --filter='email:metabase-*' --format='value(email)'
 # expect: two lines — metabase-runtime and metabase-bigquery
 
-gcloud secrets list --filter='name:metabase-*' --format='value(name)'
+gcloud secrets list --filter='labels.app=metabase' --format='value(name)'
 # expect: three lines — metabase-db-password, metabase-encryption-key, metabase-bq-sa-key
 
 gcloud secrets get-iam-policy metabase-db-password --format='value(bindings.members)'

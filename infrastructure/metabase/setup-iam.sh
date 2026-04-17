@@ -170,15 +170,14 @@ done
 # IAM: metabase-bigquery → dataViewer (dataset-scoped) + jobUser (project)
 # -----------------------------------------------------------------------------
 echo "==> IAM: ${BQ_SA_EMAIL} → roles/bigquery.dataViewer on ${PROJECT}:${DATASET}..."
+# Use BigQuery DCL (GA) rather than `bq add-iam-policy-binding` (requires
+# allowlisting). GRANT is idempotent — re-running a binding that already
+# exists succeeds silently.
+GRANT_SQL="GRANT \`roles/bigquery.dataViewer\` ON SCHEMA \`${PROJECT}.${DATASET}\` TO 'serviceAccount:${BQ_SA_EMAIL}'"
 if $DRY_RUN; then
-  echo "+ bq --project_id=${PROJECT} add-iam-policy-binding \\"
-  echo "    --member=serviceAccount:${BQ_SA_EMAIL} \\"
-  echo "    --role=roles/bigquery.dataViewer ${PROJECT}:${DATASET}"
+  echo "+ bq query --project_id=${PROJECT} --use_legacy_sql=false --format=none \"${GRANT_SQL}\""
 else
-  bq --project_id="${PROJECT}" add-iam-policy-binding \
-    --member="serviceAccount:${BQ_SA_EMAIL}" \
-    --role="roles/bigquery.dataViewer" \
-    "${PROJECT}:${DATASET}" >/dev/null
+  bq query --project_id="${PROJECT}" --use_legacy_sql=false --format=none "${GRANT_SQL}"
 fi
 
 echo "==> IAM: ${BQ_SA_EMAIL} → roles/bigquery.jobUser (project)..."
