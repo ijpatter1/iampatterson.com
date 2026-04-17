@@ -18,7 +18,7 @@ This is the consulting website for Patterson Consulting **and** a live, interact
 
 ## Current Phase
 
-**Phase 9B-infra — Metabase Deployment** (IN PROGRESS — 2 of 8 tasks complete; Task 3 written, pending deploy)
+**Phase 9B-infra — Metabase Deployment** (IN PROGRESS — 2 of 8 tasks executed on GCP; remaining 6 tasks code-complete, evaluator-cleared, pending first-run execution)
 
 Phase 9B application-layer deliverables 1–5 merged on main (commit 389d086); deliverables 6–7 (Metabase embed + services cross-links) still ⬜ pending 9B-infra.
 
