@@ -522,16 +522,22 @@ These are off by default in Metabase 0.59, but double-check after
 every upgrade — they are the most common way a Metabase instance
 accidentally leaks data.
 
-### 6. Turn on 2FA for the admin account
+### 6. (Pro/Enterprise only) Turn on 2FA for the admin account
 
-Open **Admin settings → Authentication** and enable **Multi-factor
-authentication**. Use an authenticator app (Authy, 1Password, Google
-Authenticator). Save the recovery codes in a password manager.
+**Not available on Metabase OSS.** MFA is a Pro/Enterprise feature —
+`metabase/metabase:v0.59.6` (the pinned image) is OSS, so the option
+doesn't appear under Admin → Authentication. Skip this step.
 
-IAP is the first layer, Metabase login is the second, 2FA is the
-third — defense in depth. If IAP is ever misconfigured (e.g., an
-allowlist addition by mistake), 2FA is the last barrier before
-someone gets in.
+Defense in depth is still strong without it:
+
+- IAP allowlist is the first layer (gatekeeps who reaches the login
+  page at all — enforced by Google SSO).
+- Metabase admin password is the second layer (enforced in-app).
+- Cloud Run ingress lock is the network layer (the `.run.app` URL
+  stays unreachable; only the IAP-fronted LB gets through).
+
+If the deployment ever upgrades to Metabase Pro/Enterprise, revisit
+this step — MFA with recovery codes is worth enabling.
 
 ### 7. Add the BigQuery data source
 
