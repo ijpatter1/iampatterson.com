@@ -497,10 +497,12 @@ Open **Admin settings → Databases → Add database**.
   Metabase form. Do not save the file anywhere — the clipboard is fine,
   Metabase encrypts it with `MB_ENCRYPTION_SECRET_KEY` on save.
 
-- **Dataset filter:** include `iampatterson_marts` only. Metabase will
-  default to scanning every dataset the SA can see; the BQ SA is
-  already dataset-scoped from Task 2, but narrowing this keeps the
-  schema-sync fast and the data model focused.
+- **Dataset filter:** under the **Datasets** control, select
+  `Inclusion` from the dropdown and enter `iampatterson_marts` in the
+  comma-separated list field. Metabase will otherwise scan every
+  dataset the SA can see; the BQ SA is already dataset-scoped from
+  Task 2, but narrowing this keeps the schema-sync fast and the data
+  model focused.
 
 - **Advanced options:** leave defaults. Metabase will infer the schema
   automatically.
@@ -539,6 +541,12 @@ under-the-hood view.
   connection in step 7 (Metabase will re-encrypt with the current key).
   If it keeps happening, the key is getting rotated by mistake — check
   `setup-iam.sh`'s encryption-key branch.
+- **"Email domain not allowed" when signing in with Google** — Google
+  Sign-In from step 4 has a domain restriction that doesn't include the
+  user's address. Open **Admin settings → Authentication → Google
+  Sign-In** and either add the domain to the allowed list or disable
+  the restriction. Users can still log in with the admin password path
+  while you sort this out.
 
 ## Upcoming tasks
 
