@@ -25,17 +25,6 @@ secrets/
 *.key
 
 # ─────────────────────────────────────────────
-# Claude Code
-# ─────────────────────────────────────────────
-.claude/
-CLAUDE.md
-
-# ─────────────────────────────────────────────
-# Docker sandbox (Claude Code isolation)
-# ─────────────────────────────────────────────
-sandbox/
-
-# ─────────────────────────────────────────────
 # Testing
 # ─────────────────────────────────────────────
 coverage/
@@ -103,15 +92,3 @@ venv/
 *.temp
 docs/tag_assistant_*.json
 docs/input_artifacts/
-
-# ─────────────────────────────────────────────
-# Internal docs (not for public repo)
-# ─────────────────────────────────────────────
-docs/sessions/
-docs/CREDENTIALS_NEEDED.md
-docs/DEPLOYMENT_*.md
-docs/PHASE_6_DEPLOYMENT_GUIDE.md
-docs/gtm-web-template.json
-docs/gtm-server-template.json
-docs/template.tpl
-docs/Wikipedia_Signs_of_AI_writing.pdf
