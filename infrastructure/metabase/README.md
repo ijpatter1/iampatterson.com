@@ -692,8 +692,3 @@ Task 6 for the command.
 | Add allowlist member | Granting IAP access | Edit `setup-iap.sh` → re-run |
 | Remove allowlist member | Revoking IAP access | `gcloud iap web remove-iam-policy-binding ...` |
 | View daily backup | Check automated snapshots | `gcloud sql backups list --instance=metabase-app-db` |
-- Task 4 — Environment variable documentation (`.env.example`)
-- Task 5 — Load balancer + custom domain (`setup-domain.sh`)
-- Task 6 — IAP configuration (`setup-iap.sh`)
-- Task 7 — Metabase initial setup runbook (this README, expanded)
-- Task 8 — Backup + upgrade runbooks (`backup.sh`, `upgrade.sh`)

@@ -32,6 +32,13 @@ SERVICE_NAME="${SERVICE_NAME:-metabase}"
 DRY_RUN=false
 if [[ "${1:-}" == "--dry-run" ]]; then DRY_RUN=true; fi
 
+# Precondition: Cloud SQL instance exists. Matches the pattern used
+# across setup-iam.sh / deploy.sh / setup-domain.sh / setup-iap.sh.
+if ! gcloud sql instances describe "${INSTANCE}" --project="${PROJECT}" >/dev/null 2>&1; then
+  echo "ERROR: Cloud SQL instance '${INSTANCE}' not found. Task 1 must run first."
+  exit 1
+fi
+
 TS=$(date -u +%Y%m%dT%H%M%SZ)
 
 # Fetch the currently deployed Metabase image tag so the backup

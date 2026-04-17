@@ -217,7 +217,7 @@ if $READY; then
   echo "==> Upgrade to ${TARGET_VERSION} deployed successfully."
 else
   cat <<EOF
-==> Upgrade did not reach Ready=True within 5 minutes.
+==> Upgrade did not reach Ready=True within 10 minutes.
 
 Current state:
   Service:  ${SERVICE_NAME}

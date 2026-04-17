@@ -13,8 +13,9 @@
 #
 # Prerequisites:
 #   - Task 3 deployed: Cloud Run service `metabase` exists in us-central1.
-#   - APIs enabled: compute.googleapis.com, certificatemanager.googleapis.com
-#     (Google-managed certs use the compute.ssl-certificates API).
+#   - APIs enabled: compute.googleapis.com (Google-managed SSL certs and
+#     all LB components are compute API resources — Certificate Manager
+#     is a separate product we do NOT use here).
 #   - IAM on executing principal: roles/compute.loadBalancerAdmin,
 #     roles/compute.networkAdmin.
 #

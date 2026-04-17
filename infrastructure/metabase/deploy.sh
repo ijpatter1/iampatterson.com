@@ -102,6 +102,33 @@ for SECRET in metabase-db-password metabase-encryption-key; do
   fi
 done
 
+# The principal deploying this must have roles/iam.serviceAccountUser
+# on the runtime SA — Cloud Run refuses to deploy a service that runs
+# as an SA the deployer cannot "act as". The failure message from
+# `services replace` is cryptic; check up front and surface it clearly.
+EXECUTING_ACCOUNT=$(gcloud config get-value account 2>/dev/null || echo "")
+if [[ -n "${EXECUTING_ACCOUNT}" ]]; then
+  SA_MEMBER_CHECK=$(gcloud iam service-accounts get-iam-policy "${RUNTIME_SA_EMAIL}" \
+    --project="${PROJECT}" \
+    --flatten="bindings[].members" \
+    --filter="bindings.role=roles/iam.serviceAccountUser AND bindings.members~${EXECUTING_ACCOUNT}" \
+    --format="value(bindings.role)" 2>/dev/null || true)
+  # An Owner/Editor at the project level also satisfies this check
+  # implicitly — don't hard-fail on absence, just warn.
+  if [[ -z "${SA_MEMBER_CHECK}" ]]; then
+    echo "NOTE: Could not confirm ${EXECUTING_ACCOUNT} has"
+    echo "      roles/iam.serviceAccountUser on ${RUNTIME_SA_EMAIL}."
+    echo "      If the deploy fails with a 'cannot act as service account'"
+    echo "      error, grant it:"
+    echo ""
+    echo "  gcloud iam service-accounts add-iam-policy-binding ${RUNTIME_SA_EMAIL} \\"
+    echo "    --project=${PROJECT} \\"
+    echo "    --member='user:${EXECUTING_ACCOUNT}' \\"
+    echo "    --role='roles/iam.serviceAccountUser'"
+    echo ""
+  fi
+fi
+
 echo "Preconditions OK."
 
 # -----------------------------------------------------------------------------
