@@ -169,9 +169,12 @@ fi
 # Match ${NAME} where NAME is uppercase + underscore only — the envsubst
 # convention. Avoids tripping on legitimate $-prefixed content in env
 # values (e.g., a future property-expansion syntax in JAVA_TOOL_OPTIONS).
-if grep -q -E '\$\{[A-Z_]+\}' "${RENDERED}"; then
+# Strip YAML comments first: the template's header explains the placeholder
+# syntax and legitimately contains a `${VAR}` example, which must not trip
+# the leak guard on rendered output.
+if grep -vE '^[[:space:]]*#' "${RENDERED}" | grep -q -E '\$\{[A-Z_]+\}'; then
   echo "ERROR: Rendered spec contains unresolved \${VAR} placeholders:"
-  grep -n -E '\$\{[A-Z_]+\}' "${RENDERED}"
+  grep -nE '\$\{[A-Z_]+\}' "${RENDERED}" | grep -vE ':[[:space:]]*#'
   exit 1
 fi
 
