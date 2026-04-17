@@ -1,7 +1,7 @@
 # Phase Status Tracker
 
 > **Current Phase: 9B — E-Commerce Demo: Tiers 2 & 3** (5 of 7 deliverables complete; 9B-infra pending)
-> Last updated: 2026-04-17, session-2026-04-04-018
+> Last updated: 2026-04-17, session-2026-04-17-020
 
 ---
 
@@ -165,7 +165,7 @@
 
 - ✅ 2026-04-17, commit d1c4086 — Task 1: Cloud SQL Postgres app DB — idempotent setup script, daily backups, PITR, password stored in Secret Manager
 - ✅ 2026-04-17, commit 9d38493 — Task 2: Service accounts + IAM — metabase-runtime (Cloud SQL + secrets) and metabase-bigquery (dataset-scoped read-only), keys in Secret Manager
-- 🔄 2026-04-17, commit afa1d42 — Task 3: Cloud Run service deployment — cloudrun.yaml + deploy.sh written and hardened; evaluator PASS WITH ISSUES addressed; pending human deploy for runtime verification
+- ✅ 2026-04-17, commit 7b4708e — Task 3: Cloud Run service deployment — deployed `metabase/metabase:v0.59.6` to `https://metabase-eb4xrwmo3q-uc.a.run.app`, Ready=True, ingress locked to internal-and-cloud-load-balancing. First deploy surfaced two Metabase/Cloud Run gotchas (pgjdbc can't build a JDBC URL from the Auth Proxy socket path; Metabase's Jetty doesn't read Cloud Run's PORT env var) — switched to TCP via Cloud SQL private IP over the VPC peering and added MB_JETTY_PORT=8080
 - ✅ 2026-04-17, commit e60bd98 — Task 4: Environment variable documentation — .env.example covering every var with sources and the DO NOT REGENERATE warning on the encryption key
 - 🔄 2026-04-17, commit c5dea66 — Task 5: Load balancer + SSL cert — setup-domain.sh + README written and hardened; evaluator PASS WITH ISSUES addressed; pending human execution for static IP + DNS step + cert ACTIVE
 - 🔄 2026-04-17, commit 120d827 — Task 6: IAP configuration — setup-iap.sh + README written and hardened; evaluator PASS WITH ISSUES addressed; pending human OAuth consent screen setup + script execution
