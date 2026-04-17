@@ -42,6 +42,8 @@ if [[ "${1:-}" == "--dry-run" ]]; then
 fi
 
 run() {
+  # Echoes the command before executing — do NOT route commands that carry
+  # secret material on the command line through this wrapper.
   echo "+ $*"
   if ! $DRY_RUN; then
     "$@"

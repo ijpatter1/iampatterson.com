@@ -15,6 +15,9 @@ is idempotent and safe to re-run.
   - `roles/cloudsql.admin` (Task 1)
   - `roles/secretmanager.admin` (Tasks 1–2, 6)
   - `roles/billing.viewer`, `roles/billing.projectManager` (Task 1 budget alert)
+  - `roles/iam.serviceAccountAdmin`, `roles/iam.serviceAccountKeyAdmin` (Task 2)
+  - `roles/resourcemanager.projectIamAdmin` (Task 2 project-level bindings)
+  - `roles/bigquery.dataOwner` on `iampatterson_marts` (Task 2 dataset GRANT)
   - additional roles arrive with later tasks
 - APIs enabled (Task 1): `sqladmin`, `secretmanager`, `servicenetworking`,
   `cloudbilling`, `billingbudgets`. Verify before running:

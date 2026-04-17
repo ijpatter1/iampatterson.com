@@ -164,7 +164,7 @@
 *Goal: Self-hosted Metabase on GCP, gated by IAP, connected to BigQuery mart tables. Enables Phase 9B deliverable 6 (Metabase dashboard embed). Full spec: `docs/input_artifacts/metabase-deployment-plan.md`.*
 
 - ✅ 2026-04-17, commit d1c4086 — Task 1: Cloud SQL Postgres app DB — idempotent setup script, daily backups, PITR, password stored in Secret Manager
-- ⬜ Task 2: Service accounts + IAM — metabase-runtime (Cloud SQL + secrets) and metabase-bigquery (dataset-scoped read-only), keys in Secret Manager
+- ✅ 2026-04-17, commit 9d38493 — Task 2: Service accounts + IAM — metabase-runtime (Cloud SQL + secrets) and metabase-bigquery (dataset-scoped read-only), keys in Secret Manager
 - ⬜ Task 3: Cloud Run service deployment — pinned Metabase image, gen2, min-instances=1, ingress locked to load balancer
 - ⬜ Task 4: Environment variable documentation — .env.example covering every var with sources and the DO NOT REGENERATE warning on the encryption key
 - ⬜ Task 5: Load balancer + custom domain — serverless NEG, managed SSL for bi.iampatterson.com, static IP, manual DNS step
