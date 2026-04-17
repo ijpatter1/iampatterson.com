@@ -1,7 +1,7 @@
 # Phase Status Tracker
 
-> **Current Phase: 9A — Homepage & Core Architecture** (COMPLETE — design iteration ongoing)
-> Last updated: 2026-04-04, session-2026-04-04-018
+> **Current Phase: 9B — E-Commerce Demo: Tiers 2 & 3** (5 of 7 deliverables complete)
+> Last updated: 2026-04-17, session-2026-04-04-018
 
 ---
 
@@ -141,7 +141,7 @@
 - ✅ 2026-04-03, session-2026-04-03-017 — Kill `/demo` landing page — redirects to `/#demos`
 - ✅ 2026-04-04, session-2026-04-04-018 — Homepage restructured: hero-first narrative, event stream fix, tier overview moved to Services, demos intro added
 - ✅ 2026-04-04, session-2026-04-04-018 — Design system: fonts finalized (Lora + Plus Jakarta Sans + JetBrains Mono), real font files, viewport meta tag
-- 🔄 2026-04-04, session-2026-04-04-018 — Color palette: clean slate (white/black/grey). Sage/plum tried and rejected. Accent color TBD
+- ✅ 2026-04-17, session-2026-04-04-018 — Color palette finalized: white/black/grey clean slate, no accent color. Lets the measurement pipeline and under-the-hood features carry visual weight
 
 ---
 
@@ -149,11 +149,11 @@
 
 *Goal: Each page in the checkout funnel demonstrates a different Tier 2 deliverable. Confirmation page pivots to Tier 3 with actionable insights. Looker Studio / Metabase integration.*
 
-- ⬜ Product listing underside: Campaign Taxonomy — AI-classified UTM parameters shown for visitor's session
-- ⬜ Product detail underside: Staging Layer — event flattening and enrichment visualization
-- ⬜ Cart underside: Data Quality Framework — live assertion checklist (schema validation, null checks, volume anomaly)
-- ⬜ Checkout underside: Warehouse Write — real-time BigQuery write visualization
-- ⬜ Confirmation page: Tier 3 pivot — funnel metrics, AOV trends, actionable insight with revenue impact
+- ✅ 2026-04-04, commit 389d086 — Product listing underside: Campaign Taxonomy — AI-classified UTM parameters shown for visitor's session
+- ✅ 2026-04-04, commit 389d086 — Product detail underside: Staging Layer — event flattening and enrichment visualization
+- ✅ 2026-04-04, commit 389d086 — Cart underside: Data Quality Framework — live assertion checklist (schema validation, null checks, volume anomaly)
+- ✅ 2026-04-04, commit 389d086 — Checkout underside: Warehouse Write — real-time BigQuery write visualization
+- ✅ 2026-04-04, commit 389d086 — Confirmation page: Tier 3 pivot — funnel metrics, AOV trends, actionable insight with revenue impact
 - ⬜ Looker Studio / Metabase dashboard connected to BigQuery mart tables, embedded from confirmation page under-the-hood
 - ⬜ Services page cross-links: Tier 2 → ecommerce funnel, Tier 3 → confirmation page
 
