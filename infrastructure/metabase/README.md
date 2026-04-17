@@ -410,6 +410,136 @@ Open `https://bi.iampatterson.com/` in a browser:
 - An allowlisted Google account → Google login → Metabase login page
 - An incognito / non-allowlisted account → "You don't have access"
 
+## Task 7 — Metabase initial setup (manual)
+
+The one task with no script. Metabase's first-run wizard and admin UI
+cannot be driven from the command line reliably. This runbook is the
+source of truth — someone rebuilding the deployment from scratch
+should be able to follow it end to end.
+
+### 1. Open the instance
+
+Navigate to <https://bi.iampatterson.com/> in a browser. You'll be
+redirected to `accounts.google.com` for the IAP gate. Log in with an
+account on the `ALLOWLIST` from Task 6. You should land on Metabase's
+first-run wizard.
+
+If you get "You don't have access": the Google account isn't in the
+IAP allowlist. Add it to `setup-iap.sh` and re-run, or grant ad-hoc
+via the manual `gcloud iap web add-iam-policy-binding` command.
+
+### 2. Create the admin account
+
+Metabase prompts for a name, email, and password.
+
+- Use a strong password (20+ characters, password manager generated).
+- This admin identity lives in the Postgres app DB — it is **separate
+  from** the IAP identity. IAP gates access to the Metabase login page;
+  this password gates access inside Metabase.
+- Save the credentials somewhere retrievable (password manager).
+
+### 3. Skip "Add your data"
+
+The wizard offers to add a data source immediately. Skip it. The
+BigQuery data source is added in step 7 below with the proper service
+account key from Secret Manager.
+
+Finish the wizard.
+
+### 4. Admin Settings → Authentication
+
+1. Open **Admin settings** (top-right gear menu → Admin settings).
+2. Navigate to **Authentication**.
+3. Disable **Allow user signups**. Only the admin should provision
+   Metabase accounts; IAP already controls who can reach the login page.
+4. (Optional) Enable **Google Sign-In**. This lets allowlisted IAP
+   users auto-provision Metabase accounts on their first visit,
+   avoiding shared logins. If enabled, set the allowed email domain
+   to `tunameltsmyheart.com` (or whichever you use).
+
+### 5. Admin Settings → Public Sharing
+
+Open **Admin settings → Public sharing**. Verify:
+
+- **Enable Public Sharing**: OFF
+- **Enable Embedding in other applications**: OFF
+
+These are off by default in Metabase 0.59, but double-check after
+every upgrade — they are the most common way a Metabase instance
+accidentally leaks data.
+
+### 6. Turn on 2FA for the admin account
+
+Open **Admin settings → Authentication** and enable **Multi-factor
+authentication**. Use an authenticator app (Authy, 1Password, Google
+Authenticator). Save the recovery codes in a password manager.
+
+IAP is the first layer, Metabase login is the second, 2FA is the
+third — defense in depth. If IAP is ever misconfigured (e.g., an
+allowlist addition by mistake), 2FA is the last barrier before
+someone gets in.
+
+### 7. Add the BigQuery data source
+
+Open **Admin settings → Databases → Add database**.
+
+- **Database type:** BigQuery
+- **Display name:** `iampatterson marts`
+- **Project ID:** `iampatterson`
+- **Service account JSON:** paste the contents of the
+  `metabase-bq-sa-key` secret. Retrieve it via:
+
+  ```bash
+  gcloud secrets versions access latest --secret=metabase-bq-sa-key
+  ```
+
+  The command prints the JSON to stdout. Copy it and paste into the
+  Metabase form. Do not save the file anywhere — the clipboard is fine,
+  Metabase encrypts it with `MB_ENCRYPTION_SECRET_KEY` on save.
+
+- **Dataset filter:** include `iampatterson_marts` only. Metabase will
+  default to scanning every dataset the SA can see; the BQ SA is
+  already dataset-scoped from Task 2, but narrowing this keeps the
+  schema-sync fast and the data model focused.
+
+- **Advanced options:** leave defaults. Metabase will infer the schema
+  automatically.
+
+Save. Metabase kicks off a schema sync — expect a few minutes on the
+first run.
+
+### 8. Verify you can query
+
+Wait for the schema sync to complete (the database page shows a spinner
+while syncing). Then:
+
+1. Click **+ New** (top-right) → **Question**.
+2. **Pick your starting data**: `iampatterson marts` → `mart_campaign_performance`.
+3. **Visualize**. Rows should come back within a few seconds.
+
+If rows return, the full pipeline is working: IAP → Metabase →
+BigQuery (via the dataset-scoped SA) → `iampatterson_marts` tables
+from Phase 5. This is the Tier 3 demonstration surface that
+Phase 9B deliverable 6 will embed into the ecommerce confirmation
+under-the-hood view.
+
+### Troubleshooting
+
+- **BigQuery data source save fails with "Permission denied"** — the
+  `metabase-bq-sa-key` content is stale or was generated before the
+  dataViewer GRANT in Task 2. Re-run `setup-iam.sh` to regenerate the
+  key and upload a new secret version, then re-enter in Metabase UI.
+- **Schema sync hangs or skips tables** — check that the SA has both
+  `roles/bigquery.dataViewer` on `iampatterson_marts` AND
+  `roles/bigquery.jobUser` at project level. Either missing and queries
+  fail silently.
+- **Login succeeds but dashboards don't load** — the
+  `MB_ENCRYPTION_SECRET_KEY` changed since setup. Decryption of the
+  saved BigQuery connection fails. Recovery: re-enter the BigQuery
+  connection in step 7 (Metabase will re-encrypt with the current key).
+  If it keeps happening, the key is getting rotated by mistake — check
+  `setup-iam.sh`'s encryption-key branch.
+
 ## Upcoming tasks
 
 Not yet implemented; scripts land per-task.
