@@ -165,12 +165,12 @@
 
 - ✅ 2026-04-17, commit d1c4086 — Task 1: Cloud SQL Postgres app DB — idempotent setup script, daily backups, PITR, password stored in Secret Manager
 - ✅ 2026-04-17, commit 9d38493 — Task 2: Service accounts + IAM — metabase-runtime (Cloud SQL + secrets) and metabase-bigquery (dataset-scoped read-only), keys in Secret Manager
-- 🔄 2026-04-17, commit afa1d42 — Task 3: Cloud Run service deployment — cloudrun.yaml + deploy.sh written and committed; evaluator PASS WITH ISSUES (addressed); pending human deploy for runtime verification
+- 🔄 2026-04-17, commit afa1d42 — Task 3: Cloud Run service deployment — cloudrun.yaml + deploy.sh written and hardened; evaluator PASS WITH ISSUES addressed; pending human deploy for runtime verification
 - ✅ 2026-04-17, commit e60bd98 — Task 4: Environment variable documentation — .env.example covering every var with sources and the DO NOT REGENERATE warning on the encryption key
-- ⬜ Task 5: Load balancer + custom domain — serverless NEG, managed SSL for bi.iampatterson.com, static IP, manual DNS step
-- ⬜ Task 6: IAP configuration — OAuth client, scripted allowlist, backend service gated behind Google SSO
-- ⬜ Task 7: Metabase initial setup runbook — documented manual first-run (admin account, 2FA, disable signups, add BigQuery connection)
-- ⬜ Task 8: Backup + upgrade runbooks — backup.sh, upgrade.sh with explicit confirmation, restore/rotate/allowlist/rollback procedures in README
+- 🔄 2026-04-17, commit c5dea66 — Task 5: Load balancer + SSL cert — setup-domain.sh + README written and hardened; evaluator PASS WITH ISSUES addressed; pending human execution for static IP + DNS step + cert ACTIVE
+- 🔄 2026-04-17, commit 120d827 — Task 6: IAP configuration — setup-iap.sh + README written and hardened; evaluator PASS WITH ISSUES addressed; pending human OAuth consent screen setup + script execution
+- 🔄 2026-04-17, commit e1ba6ea — Task 7: Metabase initial setup runbook — README section written and hardened; evaluator PASS WITH ISSUES addressed; pending human Metabase UI walkthrough
+- 🔄 2026-04-17, commit 75035de — Task 8: Backup + upgrade runbooks — backup.sh, upgrade.sh, README sections written and hardened; evaluator PASS WITH ISSUES addressed (including Critical jq filter fix); pending human execution during first real upgrade
 
 ---
 
