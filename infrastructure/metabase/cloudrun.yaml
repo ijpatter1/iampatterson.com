@@ -7,7 +7,8 @@
 #   PROJECT                   — iampatterson
 #   IMAGE                     — metabase/metabase:<pinned-tag>
 #   RUNTIME_SA_EMAIL          — metabase-runtime@iampatterson...
-#   CLOUDSQL_CONNECTION_NAME  — iampatterson:us-central1:metabase-app-db
+#   CLOUDSQL_PRIVATE_IP       — discovered at render time from the Cloud SQL
+#                               instance (private IP only; no public IP).
 #   DOMAIN                    — bi.iampatterson.com
 #
 # Every other value is pinned: sizing, scaling, timeouts, env var sources.
@@ -29,13 +30,16 @@ spec:
       annotations:
         autoscaling.knative.dev/minScale: '1'
         autoscaling.knative.dev/maxScale: '3'
-        # Mount Cloud SQL Auth Proxy sidecar. Unix socket appears at
-        # /cloudsql/${CLOUDSQL_CONNECTION_NAME} and is used by MB_DB_HOST.
-        run.googleapis.com/cloudsql-instances: ${CLOUDSQL_CONNECTION_NAME}
         run.googleapis.com/execution-environment: gen2
-        # Direct VPC egress is required so the Cloud SQL Auth Proxy can
-        # reach the Cloud SQL instance on its private IP. private-ranges-only
-        # keeps public-internet traffic on the default Cloud Run egress path.
+        # Direct VPC egress via the default VPC lets the Metabase container
+        # reach the Cloud SQL private IP through the project's
+        # google-managed-services VPC peering. No Auth Proxy sidecar —
+        # Metabase's bundled pgjdbc doesn't speak the Auth Proxy's socket
+        # protocol without the Cloud SQL JDBC Socket Factory (not shipped
+        # in the official image), and standard TCP via private IP is
+        # functionally equivalent for security (never leaves the VPC).
+        # private-ranges-only keeps public-internet traffic on the default
+        # Cloud Run egress path.
         run.googleapis.com/vpc-access-egress: private-ranges-only
         run.googleapis.com/network-interfaces: '[{"network":"default","subnetwork":"default"}]'
     spec:
@@ -63,11 +67,20 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 12
           env:
+            # Metabase's Jetty defaults to port 3000 and does NOT auto-read
+            # Cloud Run's injected PORT env var. Without this, the startup
+            # probe on 8080 never sees a listener and the container loops
+            # on deployment. Keep aligned with containerPort + probe port.
+            - name: MB_JETTY_PORT
+              value: '8080'
             # MB_DB_TYPE is explicitly set to prevent fallback to embedded H2.
             - name: MB_DB_TYPE
               value: postgres
+            # TCP to Cloud SQL private IP. Resolved by deploy.sh at
+            # render time; never hardcoded in repo. Reachable only from
+            # inside the VPC via google-managed-services peering.
             - name: MB_DB_HOST
-              value: /cloudsql/${CLOUDSQL_CONNECTION_NAME}
+              value: ${CLOUDSQL_PRIVATE_IP}
             - name: MB_DB_PORT
               value: '5432'
             - name: MB_DB_DBNAME

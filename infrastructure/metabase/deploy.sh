@@ -35,7 +35,7 @@ SERVICE_NAME="${SERVICE_NAME:-metabase}"
 # '.x' to the current stable patch before running.
 METABASE_IMAGE="${METABASE_IMAGE:-metabase/metabase:v0.59.6.x}"
 RUNTIME_SA_EMAIL="metabase-runtime@${PROJECT}.iam.gserviceaccount.com"
-CLOUDSQL_CONNECTION_NAME="${PROJECT}:${REGION}:metabase-app-db"
+CLOUDSQL_INSTANCE="${CLOUDSQL_INSTANCE:-metabase-app-db}"
 DOMAIN="${DOMAIN:-bi.iampatterson.com}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -51,7 +51,7 @@ echo "==> Region:     ${REGION}"
 echo "==> Service:    ${SERVICE_NAME}"
 echo "==> Image:      ${METABASE_IMAGE}"
 echo "==> Runtime SA: ${RUNTIME_SA_EMAIL}"
-echo "==> Cloud SQL:  ${CLOUDSQL_CONNECTION_NAME}"
+echo "==> Cloud SQL:  ${CLOUDSQL_INSTANCE} (private IP — resolved at render time)"
 echo "==> Domain:     ${DOMAIN}"
 if $DRY_RUN; then echo "==> DRY-RUN mode: no changes will be made"; fi
 echo ""
@@ -89,11 +89,31 @@ if ! gcloud iam service-accounts describe "${RUNTIME_SA_EMAIL}" \
   exit 1
 fi
 
-if ! gcloud sql instances describe metabase-app-db \
+if ! gcloud sql instances describe "${CLOUDSQL_INSTANCE}" \
      --project="${PROJECT}" >/dev/null 2>&1; then
-  echo "ERROR: Cloud SQL instance metabase-app-db not found. Run setup-cloudsql.sh first."
+  echo "ERROR: Cloud SQL instance ${CLOUDSQL_INSTANCE} not found. Run setup-cloudsql.sh first."
   exit 1
 fi
+
+# Resolve the Cloud SQL private IP. Metabase talks plain TCP to this —
+# no Auth Proxy sidecar. Filter for type=PRIVATE so we fail loudly if
+# the instance was accidentally granted a public IP (the setup script
+# provisions private-only, but a console edit could drift).
+if ! command -v jq >/dev/null 2>&1; then
+  echo "ERROR: jq required (used to filter Cloud SQL IP addresses by type)."
+  echo "Install: apt-get install -y jq  |  brew install jq"
+  exit 1
+fi
+CLOUDSQL_PRIVATE_IP=$(gcloud sql instances describe "${CLOUDSQL_INSTANCE}" \
+  --project="${PROJECT}" --format=json \
+  | jq -r '[.ipAddresses[]? | select(.type=="PRIVATE") | .ipAddress][0] // empty')
+if [[ -z "${CLOUDSQL_PRIVATE_IP}" ]]; then
+  echo "ERROR: No PRIVATE-type IP on Cloud SQL instance ${CLOUDSQL_INSTANCE}."
+  echo "       The instance must have a private IP (google-managed-services VPC peering)."
+  echo "       Inspect: gcloud sql instances describe ${CLOUDSQL_INSTANCE} --project=${PROJECT} --format=json"
+  exit 1
+fi
+echo "==> Cloud SQL private IP: ${CLOUDSQL_PRIVATE_IP}"
 
 for SECRET in metabase-db-password metabase-encryption-key; do
   if ! gcloud secrets describe "${SECRET}" --project="${PROJECT}" >/dev/null 2>&1; then
@@ -142,7 +162,7 @@ export SERVICE_NAME
 export PROJECT
 export IMAGE="${METABASE_IMAGE}"
 export RUNTIME_SA_EMAIL
-export CLOUDSQL_CONNECTION_NAME
+export CLOUDSQL_PRIVATE_IP
 export DOMAIN
 
 echo "==> Rendering service spec..."
@@ -153,7 +173,7 @@ echo "==> Rendering service spec..."
 #      (e.g., a new placeholder added to the yaml without updating this
 #      allowlist). Both checks must pass before the yaml is applied.
 if command -v envsubst >/dev/null 2>&1; then
-  envsubst '${SERVICE_NAME} ${PROJECT} ${IMAGE} ${RUNTIME_SA_EMAIL} ${CLOUDSQL_CONNECTION_NAME} ${DOMAIN}' \
+  envsubst '${SERVICE_NAME} ${PROJECT} ${IMAGE} ${RUNTIME_SA_EMAIL} ${CLOUDSQL_PRIVATE_IP} ${DOMAIN}' \
     < "${TEMPLATE}" > "${RENDERED}"
 else
   sed \
@@ -161,7 +181,7 @@ else
     -e "s|\${PROJECT}|${PROJECT}|g" \
     -e "s|\${IMAGE}|${IMAGE}|g" \
     -e "s|\${RUNTIME_SA_EMAIL}|${RUNTIME_SA_EMAIL}|g" \
-    -e "s|\${CLOUDSQL_CONNECTION_NAME}|${CLOUDSQL_CONNECTION_NAME}|g" \
+    -e "s|\${CLOUDSQL_PRIVATE_IP}|${CLOUDSQL_PRIVATE_IP}|g" \
     -e "s|\${DOMAIN}|${DOMAIN}|g" \
     "${TEMPLATE}" > "${RENDERED}"
 fi

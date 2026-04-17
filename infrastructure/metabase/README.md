@@ -209,13 +209,22 @@ Resources and behavior:
 - Sizing: 2Gi memory, 1 CPU, concurrency 10, timeout 300s, gen2.
 - Scaling: `minScale=1` (warm), `maxScale=3`. Cold start takes ~60–120s.
 - Service account: `metabase-runtime@iampatterson...`.
-- Cloud SQL: Auth Proxy sidecar via `run.googleapis.com/cloudsql-instances`;
-  Unix socket mounted at `/cloudsql/iampatterson:us-central1:metabase-app-db`.
-- Networking: Direct VPC egress (gen2) with `private-ranges-only` so the
-  Auth Proxy can reach the Cloud SQL instance on its private IP.
+- Cloud SQL connection: **TCP to the instance's private IP**. `deploy.sh`
+  resolves the IP at render time via `gcloud sql instances describe` and
+  injects it as `MB_DB_HOST`. No Auth Proxy sidecar: Metabase's bundled
+  pgjdbc constructs the JDBC URL by appending `:PORT` to `MB_DB_HOST`, so
+  a Unix socket path breaks the URL. TCP over the VPC peering is
+  functionally equivalent for security (traffic never leaves the VPC) and
+  matches what Metabase/Cloud SQL deployments use in practice.
+- Networking: Direct VPC egress (gen2) with `private-ranges-only` — the
+  Metabase container reaches the Cloud SQL private IP through the
+  `google-managed-services-default` VPC peering established in the
+  Prerequisites section above.
 - Env: `MB_DB_TYPE=postgres` set explicitly (prevents fallback to embedded
-  H2). `MB_DB_PASS` and `MB_ENCRYPTION_SECRET_KEY` sourced via
-  Secret Manager `valueFrom.secretKeyRef` (no secrets in the yaml).
+  H2). `MB_JETTY_PORT=8080` aligns Metabase's listener with Cloud Run's
+  injected `PORT` (Metabase does NOT auto-read `PORT`). `MB_DB_PASS` and
+  `MB_ENCRYPTION_SECRET_KEY` sourced via Secret Manager
+  `valueFrom.secretKeyRef` (no secrets in the yaml).
 - Health: `startupProbe` on `/api/health`, 30s initial delay, 10s period,
   12 failures (~120s) before Cloud Run gives up.
 
@@ -242,7 +251,8 @@ splits) will be wiped. Change `cloudrun.yaml` and re-run, don't click.
 **If deploy fails on the first attempt:** the most likely causes are:
 
 - (a) `servicenetworking` / VPC peering not reachable from the Cloud Run
-  service (Task 1 prerequisite).
+  service (Task 1 prerequisite). Symptom: container logs show
+  `Connection refused` on the Cloud SQL private IP.
 - (b) `compute.googleapis.com` API not enabled — required for Direct
   VPC egress on gen2.
 - (c) Permission gap — the executing principal needs
@@ -254,6 +264,10 @@ splits) will be wiped. Change `cloudrun.yaml` and re-run, don't click.
 - (e) Cold start exceeds the 120s startup-probe budget (initial 30s +
   12 × 10s). Re-run and Cloud Run retries; if consistently over 120s,
   bump `failureThreshold` in `cloudrun.yaml`.
+- (f) Cloud SQL private IP changed since last deploy (rare; happens if
+  the instance was recreated). `deploy.sh` resolves it on every run, so
+  re-running picks up the new value. Inspect the rendered spec to
+  confirm the IP matches the current `gcloud sql instances describe`.
 
 ## Task 4 — Environment variable reference
 
