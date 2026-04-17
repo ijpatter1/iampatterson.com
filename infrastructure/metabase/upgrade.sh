@@ -92,8 +92,41 @@ if ! $SKIP_BACKUP; then
   fi
   echo ""
 else
-  echo "==> --skip-backup set; skipping pre-upgrade backup."
-  echo "    Run backup.sh manually if the last backup is stale."
+  # Guardrail: refuse --skip-backup if the most recent backup is older
+  # than 24 hours, which almost always means the operator muscle-memoried
+  # the flag rather than actually running backup.sh just now.
+  echo "==> --skip-backup set; checking most recent backup freshness..."
+  LATEST_BACKUP_TIME=$(gcloud sql backups list \
+    --instance=metabase-app-db \
+    --project="${PROJECT}" \
+    --sort-by="~windowStartTime" \
+    --limit=1 \
+    --format="value(windowStartTime)" 2>/dev/null || echo "")
+
+  if [[ -z "${LATEST_BACKUP_TIME}" ]]; then
+    echo "ERROR: --skip-backup set but no backup found. Run backup.sh first"
+    echo "       or drop the flag."
+    exit 1
+  fi
+
+  # Portable epoch conversion (GNU date vs BSD date on macOS).
+  if EPOCH=$(date -d "${LATEST_BACKUP_TIME}" +%s 2>/dev/null); then
+    :
+  elif EPOCH=$(date -jf "%Y-%m-%dT%H:%M:%S" "${LATEST_BACKUP_TIME%.*}" +%s 2>/dev/null); then
+    :
+  else
+    echo "WARNING: Could not parse backup timestamp '${LATEST_BACKUP_TIME}'."
+    echo "         Proceeding anyway — verify manually that a recent backup exists."
+    EPOCH=$(date +%s)
+  fi
+
+  AGE=$(( $(date +%s) - EPOCH ))
+  if (( AGE > 86400 )); then
+    echo "ERROR: Most recent backup is $((AGE / 3600))h old (>24h). Refusing to skip."
+    echo "       Drop --skip-backup or run backup.sh first."
+    exit 1
+  fi
+  echo "Most recent backup: ${LATEST_BACKUP_TIME} ($((AGE / 60))m ago). Proceeding."
   echo ""
 fi
 
@@ -144,17 +177,30 @@ fi
 # ------------------------------------------------------------------------------
 # Wait for the new revision to report Ready=True
 # ------------------------------------------------------------------------------
-echo "==> Waiting for new revision to become Ready (up to 5 min)..."
-DEADLINE=$(( $(date +%s) + 300 ))
+# gcloud's format grammar does not support JMESPath-style predicate
+# filters on arrays (e.g., `conditions[?type=Ready]`), so use
+# --format=json and parse with jq. jq is a hard prerequisite for
+# upgrades — check up front.
+if ! command -v jq >/dev/null 2>&1; then
+  echo "ERROR: jq is required for upgrade.sh's Ready-state polling."
+  echo "       Install via 'brew install jq' (macOS) or 'apt-get install jq'."
+  exit 1
+fi
+
+echo "==> Waiting for new revision to become Ready (up to 10 min)..."
+# 10 min accommodates Metabase cold start (~60-120s) plus Liquibase
+# app-DB migrations on a major release, which can run several minutes.
+DEADLINE=$(( $(date +%s) + 600 ))
 READY=false
 while (( $(date +%s) < DEADLINE )); do
-  STATUS=$(gcloud run services describe "${SERVICE_NAME}" \
+  SERVICE_JSON=$(gcloud run services describe "${SERVICE_NAME}" \
     --region="${REGION}" --project="${PROJECT}" \
-    --format="value(status.conditions[?type=Ready].status)" 2>/dev/null \
-    | head -1 | tr -d '[:space:]' || echo "")
-  CURRENT_DEPLOYED=$(gcloud run services describe "${SERVICE_NAME}" \
-    --region="${REGION}" --project="${PROJECT}" \
-    --format="value(spec.template.spec.containers[0].image)" 2>/dev/null || echo "")
+    --format=json 2>/dev/null || echo "{}")
+  STATUS=$(echo "${SERVICE_JSON}" \
+    | jq -r '.status.conditions[]? | select(.type=="Ready") | .status' 2>/dev/null \
+    | head -1)
+  CURRENT_DEPLOYED=$(echo "${SERVICE_JSON}" \
+    | jq -r '.spec.template.spec.containers[0].image // empty' 2>/dev/null)
 
   TSNOW=$(date +%H:%M:%S)
   echo "[${TSNOW}] Ready=${STATUS:-Unknown}, deployed=${CURRENT_DEPLOYED##*:}"

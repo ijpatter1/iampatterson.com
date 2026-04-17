@@ -616,15 +616,26 @@ METABASE_IMAGE='metabase/metabase:v0.59.6' ./deploy.sh   # or whichever tag was 
 ```
 
 If the app DB schema migrated past the prior image's supported range
-(Metabase runs migrations on startup), rollback the container alone
-is not enough. Restore the Cloud SQL backup taken before the upgrade:
+(Metabase runs migrations on startup automatically), rolling back the
+container alone is not enough. Restore the Cloud SQL backup taken
+before the upgrade:
+
+Find the backup ID:
+
+```bash
+# Option A: scroll up in your terminal — backup.sh printed it, as did
+# upgrade.sh if it failed.
+# Option B: list recent backups for the instance:
+gcloud sql backups list --instance=metabase-app-db --project=iampatterson \
+  --sort-by="~windowStartTime" --limit=5
+```
+
+Then restore (downtime: ~5 min, instance stops, sessions drop):
 
 ```bash
 gcloud sql backups restore <BACKUP_ID> \
   --restore-instance=metabase-app-db --project=iampatterson
 ```
-
-`backup.sh` prints the ID; `upgrade.sh` prints the same ID on failure.
 
 ### Rotate the BigQuery SA key
 
