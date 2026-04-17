@@ -311,6 +311,94 @@ curl -sI "${URL}/api/health" | head -1
   routable — confirm the Cloud Run service is reachable from the LB
   project (normally automatic when both are in the same project).
 
+## Task 6 — IAP configuration
+
+Gates the Metabase load balancer behind Google SSO, with an explicit
+allowlist of Google accounts. IAP runs BEFORE Metabase's own login, so
+the first layer of defense is already in place even if Metabase is
+somehow exposed or misconfigured.
+
+### One-time manual step (before running the script)
+
+Configure the OAuth consent screen in the GCP Console. `gcloud` cannot
+do this for Internal-user-type brands:
+
+1. Open
+   <https://console.cloud.google.com/apis/credentials/consent?project=iampatterson>
+2. User Type: **Internal**
+3. App name: `iampatterson BI`
+4. Support email: your Google account
+5. Scopes: defaults (email, profile, openid)
+6. Save
+
+After the consent screen is saved, the project has an OAuth brand that
+`setup-iap.sh` can use.
+
+### Then run the script
+
+```bash
+./setup-iap.sh              # configure IAP + reconcile allowlist
+./setup-iap.sh --dry-run    # preview
+```
+
+What it does:
+
+1. Creates an OAuth 2.0 client named `metabase-iap-client` (idempotent
+   via displayName match — re-runs find the existing one).
+2. Stores the OAuth client ID and secret in Secret Manager as
+   `metabase-iap-client-id` and `metabase-iap-client-secret`. Neither
+   value appears on the command line or in logs.
+3. Enables IAP on the `metabase-backend` backend service, wired to the
+   OAuth client.
+4. Grants `roles/iap.httpsResourceAccessor` to each member of the
+   `ALLOWLIST` array at the top of the script.
+
+### Editing the allowlist
+
+Open `setup-iap.sh`. The `ALLOWLIST` array is at the top, near line 50:
+
+```bash
+ALLOWLIST=(
+  "user:ian@tunameltsmyheart.com"
+  "user:newperson@example.com"   # add a line like this
+)
+```
+
+Re-run the script. Additions land; existing members are left alone.
+
+**Removal is deliberately manual.** If a member is removed from the
+array and the script re-runs, they stay granted. This is by design —
+a config that removes on drift would silently lock people out if a
+line gets commented or removed accidentally. To revoke:
+
+```bash
+gcloud iap web remove-iam-policy-binding \
+  --resource-type=backend-services --service=metabase-backend \
+  --member="user:someone@example.com" \
+  --role="roles/iap.httpsResourceAccessor" \
+  --project=iampatterson
+```
+
+### Verify
+
+```bash
+curl -sI https://bi.iampatterson.com/ | head -3
+# expect: HTTP/2 302, Location: https://accounts.google.com/...
+
+gcloud compute backend-services describe metabase-backend \
+  --global --project=iampatterson --format='value(iap.enabled)'
+# expect: True
+
+gcloud iap web get-iam-policy \
+  --resource-type=backend-services --service=metabase-backend \
+  --project=iampatterson --format='value(bindings.members)'
+# expect: all ALLOWLIST members
+```
+
+Open `https://bi.iampatterson.com/` in a browser:
+- An allowlisted Google account → Google login → Metabase login page
+- An incognito / non-allowlisted account → "You don't have access"
+
 ## Upcoming tasks
 
 Not yet implemented; scripts land per-task.
