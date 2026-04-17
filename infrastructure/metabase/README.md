@@ -237,6 +237,25 @@ splits) will be wiped. Change `cloudrun.yaml` and re-run, don't click.
   12 × 10s). Re-run and Cloud Run retries; if consistently over 120s,
   bump `failureThreshold` in `cloudrun.yaml`.
 
+## Task 4 — Environment variable reference
+
+`.env.example` documents every environment variable the Metabase
+container receives from `cloudrun.yaml`, what it does, and where the
+value comes from. **No real secret values** are in the file — secret
+entries have empty RHS values and a `Source: Secret Manager (...)` line
+pointing at the Secret Manager secret that actually holds the value.
+
+Use it as a reference when rebuilding the deployment from scratch,
+or copy it locally when running Metabase on a laptop (fill values
+yourself; don't commit a filled copy).
+
+Key entries to read before changing anything:
+
+- **`MB_DB_TYPE=postgres`** — explicit, prevents silent fallback to
+  the embedded H2 database.
+- **`MB_ENCRYPTION_SECRET_KEY`** — the DO NOT REGENERATE secret.
+  Rotating breaks every encrypted row in the app DB.
+
 ## Upcoming tasks
 
 Not yet implemented; scripts land per-task.
