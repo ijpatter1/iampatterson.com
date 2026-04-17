@@ -108,4 +108,4 @@ The Dockerfile is configured for Phase 1-3 out of the box (Node.js, Python, Clau
 
 - **DNS resolution is static.** IPs are resolved at container start. If a service's IP changes during a long session (common with CDN-hosted services like npm), restart the container
 - **No Docker-in-Docker.** If your project needs to build Docker images (e.g., for Cloud Run), run those from the host
-- **Multi-arch.** The base image (`node:20-slim`) is multi-arch — works on Apple Silicon (M-series) and x86_64 with no configuration changes
+- **Multi-arch.** The base image (`node:22-slim`) is multi-arch — works on Apple Silicon (M-series) and x86_64 with no configuration changes

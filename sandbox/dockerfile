@@ -11,7 +11,7 @@
 # that merge at runtime — project-level settings from the workspace, user-level state
 # from the volume.
 
-FROM node:20-slim
+FROM node:22-slim
 
 # Avoid interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
