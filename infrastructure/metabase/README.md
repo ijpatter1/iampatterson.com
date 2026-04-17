@@ -8,6 +8,20 @@ naming conventions, evaluator checks, cost expectations — lives at
 Scripts are sequenced and land task-by-task: do not jump ahead. Each task
 is idempotent and safe to re-run.
 
+## Traffic path
+
+```
+User (browser)
+  → bi.iampatterson.com
+  → Google Load Balancer + IAP (Google SSO gate, allowlist)
+  → Cloud Run (metabase/metabase, ingress=internal-and-cloud-load-balancing)
+  → Cloud SQL Postgres (metabase-app-db, via Cloud SQL Auth Proxy, private IP)
+  → BigQuery iampatterson_marts (dataset-scoped read-only SA key)
+```
+
+Three security layers, any one stops an attacker: IAP (SSO allowlist),
+Metabase auth (password + 2FA), BigQuery IAM (dataset-scoped read-only).
+
 ## Prerequisites
 
 - `gcloud` CLI authenticated: `gcloud auth login && gcloud config set project iampatterson`
@@ -18,7 +32,11 @@ is idempotent and safe to re-run.
   - `roles/iam.serviceAccountAdmin`, `roles/iam.serviceAccountKeyAdmin` (Task 2)
   - `roles/resourcemanager.projectIamAdmin` (Task 2 project-level bindings)
   - `roles/bigquery.dataOwner` on `iampatterson_marts` (Task 2 dataset GRANT)
-  - additional roles arrive with later tasks
+  - `roles/run.admin` (Task 3 Cloud Run deploy)
+  - `roles/iam.serviceAccountUser` on `metabase-runtime` (Task 3 — deploy a service that runs as that SA)
+  - `roles/compute.loadBalancerAdmin`, `roles/compute.networkAdmin` (Task 5 LB components)
+  - `roles/iap.admin` (Task 6 IAP config and allowlist)
+  - All of the above roll up naturally into `roles/owner` if the executing account is a project owner. Otherwise, grant each role individually.
 - APIs enabled (Task 1): `sqladmin`, `secretmanager`, `servicenetworking`,
   `cloudbilling`, `billingbudgets`. Verify before running:
   ```bash
@@ -379,16 +397,11 @@ gcloud iap web remove-iam-policy-binding \
   --project=iampatterson
 ```
 
-> **Note on plan fidelity:** the deployment plan's Task 6 evaluator
-> checklist says "Allowlist members are exactly those specified." The
-> same plan, in the Allowlist management paragraph, says "adds new
-> members, does not remove." The additive-only implementation matches
-> the narrative intent: starting from an empty baseline and only ever
-> adding, the state on the backend *is* exactly what the array
-> specifies. Divergence only happens if a member is removed manually
-> outside the script via the command above; in that case re-running
-> does not silently re-grant. The two rules are consistent under the
-> intended usage pattern.
+> **Plan fidelity:** the deployment plan contains two allowlist rules
+> that look contradictory ("exactly those specified" vs "adds new
+> members, does not remove"). Additive-only is the safer failure mode
+> — accidental removal of an array line can't silently lock someone
+> out. The two rules are equivalent under the intended usage pattern.
 
 ### Verify
 
@@ -494,8 +507,11 @@ Open **Admin settings → Databases → Add database**.
   ```
 
   The command prints the JSON to stdout. Copy it and paste into the
-  Metabase form. Do not save the file anywhere — the clipboard is fine,
-  Metabase encrypts it with `MB_ENCRYPTION_SECRET_KEY` on save.
+  Metabase form. Do not save the file anywhere — writing the key to
+  disk creates a persistent copy of credential material that could
+  survive the session and doesn't need to. The clipboard is fine
+  because it's volatile; Metabase encrypts the pasted JSON with
+  `MB_ENCRYPTION_SECRET_KEY` the moment you save the data source.
 
 - **Dataset filter:** under the **Datasets** control, select
   `Inclusion` from the dropdown and enter `iampatterson_marts` in the
