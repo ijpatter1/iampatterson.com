@@ -216,12 +216,26 @@ curl -sI "${URL}/api/health" | head -1
 # Only the LB from Task 5 can reach the service.
 ```
 
-**If deploy fails on the first attempt:** the most likely causes are
-(a) `servicenetworking` / VPC peering not reachable from the Cloud Run
-service (Task 1 prerequisite), (b) the `compute.googleapis.com` API not
-enabled (required for Direct VPC egress on gen2), or (c) a permission
-gap — the executing principal needs `roles/iam.serviceAccountUser` on
-`metabase-runtime` to deploy a service that runs as that SA.
+**Drift warning:** `gcloud run services replace` applies the *full* spec
+from `cloudrun.yaml` on every run. Any manual edits made in the Cloud
+Run console between deploys (extra env vars, scaling tweaks, traffic
+splits) will be wiped. Change `cloudrun.yaml` and re-run, don't click.
+
+**If deploy fails on the first attempt:** the most likely causes are:
+
+- (a) `servicenetworking` / VPC peering not reachable from the Cloud Run
+  service (Task 1 prerequisite).
+- (b) `compute.googleapis.com` API not enabled — required for Direct
+  VPC egress on gen2.
+- (c) Permission gap — the executing principal needs
+  `roles/iam.serviceAccountUser` on `metabase-runtime` to deploy a
+  service that runs as that SA.
+- (d) `metabase-runtime` missing `roles/secretmanager.secretAccessor` on
+  `metabase-db-password` or `metabase-encryption-key` (Task 2's concern,
+  but container startup will crash if either binding is wrong).
+- (e) Cold start exceeds the 120s startup-probe budget (initial 30s +
+  12 × 10s). Re-run and Cloud Run retries; if consistently over 120s,
+  bump `failureThreshold` in `cloudrun.yaml`.
 
 ## Upcoming tasks
 

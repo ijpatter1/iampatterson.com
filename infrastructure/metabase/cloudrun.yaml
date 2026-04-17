@@ -44,6 +44,10 @@ spec:
       timeoutSeconds: 300
       containers:
         - image: ${IMAGE}
+          # Cloud Run sets PORT=8080 and Metabase honors it via Jetty;
+          # declaring containerPort explicitly aligns the probe below.
+          ports:
+            - containerPort: 8080
           resources:
             limits:
               cpu: '1'
@@ -53,6 +57,7 @@ spec:
           startupProbe:
             httpGet:
               path: /api/health
+              port: 8080
             initialDelaySeconds: 30
             periodSeconds: 10
             timeoutSeconds: 5

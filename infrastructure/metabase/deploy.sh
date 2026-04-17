@@ -57,11 +57,18 @@ if $DRY_RUN; then echo "==> DRY-RUN mode: no changes will be made"; fi
 echo ""
 
 # -----------------------------------------------------------------------------
-# Refuse to deploy a placeholder image tag
+# Refuse to deploy anything other than a pinned Metabase semver tag
 # -----------------------------------------------------------------------------
-if [[ "${METABASE_IMAGE}" == *.x || "${METABASE_IMAGE}" == *latest ]]; then
+# Positive allowlist: metabase/metabase:vMAJOR.MINOR.PATCH with optional
+# .BUILD. Rejects 'latest', 'stable', partial versions, 'x' placeholders,
+# and any other floating tag.
+METABASE_IMAGE_RE='^metabase/metabase:v[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$'
+if [[ ! "${METABASE_IMAGE}" =~ ${METABASE_IMAGE_RE} ]]; then
   cat <<EOF
-ERROR: METABASE_IMAGE must be pinned to an exact tag. Got: ${METABASE_IMAGE}
+ERROR: METABASE_IMAGE must be pinned to an exact version tag. Got:
+  ${METABASE_IMAGE}
+
+Expected shape: metabase/metabase:vMAJOR.MINOR.PATCH[.BUILD]
 
 Check https://github.com/metabase/metabase/releases for the current
 stable patch of v0.59.6, then re-run with:
@@ -112,6 +119,12 @@ export CLOUDSQL_CONNECTION_NAME
 export DOMAIN
 
 echo "==> Rendering service spec..."
+# Two-layer placeholder defense:
+#   1. envsubst allowlist restricts substitution to the known variables,
+#      so stray env-var-like strings in the yaml are not expanded.
+#   2. Post-render grep catches any ${VAR} pattern the allowlist missed
+#      (e.g., a new placeholder added to the yaml without updating this
+#      allowlist). Both checks must pass before the yaml is applied.
 if command -v envsubst >/dev/null 2>&1; then
   envsubst '${SERVICE_NAME} ${PROJECT} ${IMAGE} ${RUNTIME_SA_EMAIL} ${CLOUDSQL_CONNECTION_NAME} ${DOMAIN}' \
     < "${TEMPLATE}" > "${RENDERED}"
@@ -126,10 +139,12 @@ else
     "${TEMPLATE}" > "${RENDERED}"
 fi
 
-# Guard against unresolved placeholders leaking into a deploy.
-if grep -q '\${' "${RENDERED}"; then
-  echo "ERROR: Rendered spec contains unresolved \${...} placeholders:"
-  grep -n '\${' "${RENDERED}"
+# Match ${NAME} where NAME is uppercase + underscore only — the envsubst
+# convention. Avoids tripping on legitimate $-prefixed content in env
+# values (e.g., a future property-expansion syntax in JAVA_TOOL_OPTIONS).
+if grep -q -E '\$\{[A-Z_]+\}' "${RENDERED}"; then
+  echo "ERROR: Rendered spec contains unresolved \${VAR} placeholders:"
+  grep -n -E '\$\{[A-Z_]+\}' "${RENDERED}"
   exit 1
 fi
 
