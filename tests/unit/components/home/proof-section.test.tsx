@@ -14,7 +14,7 @@ describe('ProofSection', () => {
   it('renders the editorial headline with italic "same one" emphasis', () => {
     render(<ProofSection />);
     const h2 = screen.getByRole('heading', { level: 2 });
-    expect(h2.textContent).toMatch(/stack running.*same one.*deploy/s);
+    expect(h2.textContent).toMatch(/stack running[\s\S]*same one[\s\S]*deploy/);
     const em = screen.getByText(/^same one$/);
     expect(em.tagName).toBe('EM');
     expect(em.className).toContain('accent-current');

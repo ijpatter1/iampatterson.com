@@ -1,6 +1,6 @@
 # Phase Status Tracker
 
-> **Current Phase: 9A-redesign — Editorial Homepage, Services, and Under-the-Hood Overlay** (new phase; 0 of 10 deliverables complete. Reskins the Phase 9A surfaces per `docs/input_artifacts/iampatterson-com/`. Phase 9B is paused and resumes after 9A-redesign completes — including the 6a manual apply.)
+> **Current Phase: 9A-redesign — Editorial Homepage, Services, and Under-the-Hood Overlay** (10 of 10 deliverables complete. 577 tests passing, build clean. Phase 9B is paused — resumes after this handoff, including the 6a manual apply.)
 > Last updated: 2026-04-18, session-2026-04-18-022
 
 ---
@@ -148,16 +148,18 @@
 
 *Goal: Reskin the Phase 9A surfaces (homepage, services, under-the-hood overlay) per the editorial direction in `docs/input_artifacts/iampatterson-com/` — serif-forward magazine-grid on paper, terminal/CRT vocabulary in the overlay, persimmon accent that flips to phosphor amber during the overlay boot. Prototype copy verbatim where strong; current-site copy pulled in only where the prototype is thin. Demo front-ends out of scope.*
 
-- ⬜ Design tokens + typography — Instrument Serif added to font stack; persimmon (`#EA5F2A`) / phosphor amber (`#FFA400`) accent tokens; `--accent` CSS variable driven by overlay state; neutral palette aligned with clean-slate scale
-- ⬜ Editorial chrome — `SessionPulse` header button, `LiveStrip` ticker bar, `MobileSheet` menu, 4-column editorial footer
-- ⬜ Homepage hero masthead — Instrument Serif display, lede+body deck, primary/ghost CTAs
-- ⬜ Pipeline section — 5-stage animated pipeline with dashed connector, packet motion, live log feed wired to real `useEventStream` hook, "Watch it live" button
-- ⬜ Demos section — horizontal-scroll card track with swipe indicator, 3 cards linking to existing demo routes
-- ⬜ Services teaser + full Services page — sticky tier-nav sidebar with scroll-spy, per-tier core/optional/summary blocks, closer CTA
-- ⬜ Proof section — "Evidence" kicker, serif headline, 3-metric grid (2.5M / $45K / 24/7)
-- ⬜ Final CTA — "Watch it run first. Then hire me." section with contact eyebrow
-- ⬜ Under-the-hood overlay redesign — full-page terminal/CRT view, 4 tabs (Overview/Timeline/Consent/Dashboards), two-step boot with accent flip, CRT flicker/bloom/scanlines layers, Timeline wired to real event stream
-- ⬜ Wiring & route integration — `OverlayProvider` retargeted at full-page overlay, demo routes untouched, ambient bubbles preserved on consulting surfaces, removed Phase 9A overlay components cleaned up
+- ✅ 2026-04-18, commit 9c0dc7c — Design tokens + typography — Instrument Serif added (local font files bundled from google/fonts OFL; Lora removed); persimmon `#EA5F2A` + phosphor amber `#FFA400` tokens; dynamic `accent-current` Tailwind utility reading `var(--accent)`; paper/ink/rule scales; OverlayProvider sets `--accent` on `documentElement` with 130ms delay on open (lands mid-boot), instant revert on close, instant flip under prefers-reduced-motion, cancels pending swap if overlay closes during the hold
+- ✅ 2026-04-18, commit a101fbb — Editorial chrome — `SessionPulse` (pulsing dot + session ID + live event count from useDataLayerEvents; clickable opens overlay), `LiveStrip` (SESSION/STACK/CONSENT/PIPELINE/DASHBOARDS/ATTRIB ticker, seamless loop), `MobileSheet` (numbered full-height slide-in menu), 4-column editorial Footer (brand/pages/demos/under-the-hood). FlipTrigger component and associated tests deleted.
+- ✅ 2026-04-18, commit e36e9ca — Homepage hero masthead — "I build / *measurement* / infrastructure." three-line Instrument Serif display, deck with italic lede + body, primary/ghost CTAs. Shared `EditorialButton` / `EditorialLink` components.
+- ✅ 2026-04-18, commit b013a0c — Pipeline section — 5-stage grid (Browser → Client GTM → sGTM → BigQuery → Dashboards) with 1400ms active-stage rotation, new `useLiveEvents` hook merging SSE+dataLayer sources, live log feed showing real events, "Watch it live" pill CTA
+- ✅ 2026-04-18, commit cd0e5ba — Demos section — horizontal-scroll card track (mobile) / 3-col grid (desktop), swipe-bar indicator, 3 cards linking to `/demo/ecommerce`, `/demo/subscription`, `/demo/leadgen`
+- ✅ 2026-04-18, commit ddbf5a1 — Services teaser + full Services page — TIERS content extracted to `src/lib/content/tiers.ts`; homepage 4-tier teaser list; services page rewritten with sticky tier-nav sidebar (scroll-spy, scroll listener, accent active), per-tier numbered core/optional grids, tier-summary blocks with accent left-border, "Watch it run first" closer
+- ✅ 2026-04-18, commit e6e2f82 — Proof section — "Evidence" kicker, editorial headline, 3-metric grid (2.5M audience / $45K revenue / 24/7 live events) with oversized serif metrics + accent-colored unit suffixes
+- ✅ 2026-04-18, commit d6f4227 — Final CTA — persimmon contact eyebrow (mailto), "Watch it / run first. / Then hire me." three-line headline, sub copy, primary/ghost CTAs
+- ✅ 2026-04-18, commit 54aeef4 — Under-the-hood overlay redesign — full-page ink/terminal chrome with paper content pane, boot phase state machine (idle → boot → on, 260ms hold, skipped under prefers-reduced-motion), CRT flicker/bloom/scanlines layers gated by phase-on, tab-flash settle animation on open/tab-change, Tabs reduced to 4 (Overview/Timeline/Consent/Dashboards), Narrative moved to contextual-only (below event detail), backdrop click closes, uses useLiveEvents
+- ✅ 2026-04-18 — Wiring & route integration — `OverlayProvider` drives `--accent` and opens full-page view; demo routes untouched; ambient bubbles preserved via existing `AmbientBubblesWrapper` (`/demo/*` guard unchanged); `/demo` redirect preserved; flip-trigger / header-demos components fully removed; `Narrative` standalone tab removed from overlay
+
+*Homepage composition: Hero → Pipeline → Demos → ServicesTeaser → Proof → FinalCta. Test suite: 527 → 577 (+50 net). Production build clean.*
 
 ---
 

@@ -35,7 +35,7 @@ describe('HeroEditorial', () => {
   it('renders the three-line masthead', () => {
     renderHero();
     const h1 = screen.getByRole('heading', { level: 1 });
-    expect(h1.textContent).toMatch(/I build.*measurement.*infrastructure/s);
+    expect(h1.textContent).toMatch(/I build[\s\S]*measurement[\s\S]*infrastructure/);
   });
 
   it('sets the accent-current color on the italic emphasis word', () => {

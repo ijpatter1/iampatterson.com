@@ -68,7 +68,7 @@ describe('PipelineSection', () => {
   it('renders the editorial heading with measurement emphasis', () => {
     renderSection();
     const h2 = screen.getByRole('heading', { level: 2 });
-    expect(h2.textContent).toMatch(/Your session is.*being.*measured.*right now/s);
+    expect(h2.textContent).toMatch(/Your session is[\s\S]*being[\s\S]*measured[\s\S]*right now/);
   });
 
   it('renders all five pipeline stages', () => {

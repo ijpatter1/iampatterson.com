@@ -35,7 +35,7 @@ describe('ServicesPage — editorial', () => {
   it('renders the positioning headline with italic "Not" emphasis', () => {
     renderPage();
     const h1 = screen.getByRole('heading', { level: 1 });
-    expect(h1.textContent).toMatch(/End-to-end.*measurement.*infrastructure.*Not/s);
+    expect(h1.textContent).toMatch(/End-to-end[\s\S]*measurement[\s\S]*infrastructure[\s\S]*Not/);
   });
 
   it('renders all four tier titles', () => {

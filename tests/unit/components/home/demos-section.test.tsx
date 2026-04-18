@@ -20,7 +20,7 @@ describe('DemosSection', () => {
   it('renders the editorial heading with italic "stack" emphasis', () => {
     render(<DemosSection />);
     const h2 = screen.getByRole('heading', { level: 2 });
-    expect(h2.textContent).toMatch(/Three business models.*Same.*stack/s);
+    expect(h2.textContent).toMatch(/Three business models[\s\S]*Same[\s\S]*stack/);
     const stack = screen.getByText(/^stack$/);
     expect(stack.tagName).toBe('EM');
     expect(stack.className).toContain('accent-current');

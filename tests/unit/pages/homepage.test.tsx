@@ -27,7 +27,7 @@ describe('HomePage composition', () => {
   it('renders the editorial hero masthead', () => {
     renderHome();
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-      /I build.*measurement.*infrastructure/s,
+      /I build[\s\S]*measurement[\s\S]*infrastructure/,
     );
   });
 });
