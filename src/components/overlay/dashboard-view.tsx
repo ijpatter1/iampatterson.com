@@ -29,6 +29,29 @@ const demoDashboards = [
 
 const METABASE_URL = 'https://bi.iampatterson.com/';
 
+// Phase 9B deliverable 6b — the three embeddable cards (funnel, AOV,
+// daily revenue) render inline on the confirmation page. The three
+// non-embeddable cards live here behind IAP, reachable from the overlay
+// Dashboards tab only when the visitor is on the confirmation route.
+const CONFIRMATION_EXTRAS = [
+  {
+    id: 42,
+    label: 'ROAS by campaign',
+    description: 'Grouped spend vs. revenue bars per campaign with AI-classified taxonomy labels.',
+  },
+  {
+    id: 43,
+    label: 'Revenue share by channel',
+    description: 'Donut of attributed revenue by channel for the most recent month.',
+  },
+  {
+    id: 44,
+    label: 'Customer LTV distribution',
+    description: 'Histogram of per-customer total revenue with channel overlay.',
+  },
+];
+const CONFIRMATION_ROUTE = '/demo/ecommerce/confirmation';
+
 export function DashboardView() {
   const pathname = usePathname() ?? '/';
 
@@ -107,6 +130,54 @@ export function DashboardView() {
           allowlist; reach out if you want a guided walkthrough.
         </p>
       </div>
+
+      {pathname === CONFIRMATION_ROUTE && (
+        <div className="mt-8 border-t border-u-rule-soft pt-8">
+          <h4 className="font-mono text-[10px] uppercase tracking-widest text-accent-current">
+            Three more reports behind IAP
+          </h4>
+          <p className="mt-2 max-w-[62ch] text-sm leading-relaxed text-u-ink-2">
+            The three inline embeds on the page above are the anonymous-visitor view. The full
+            E-Commerce Executive dashboard has three additional questions that require an IAP
+            allowlist.
+          </p>
+          <div className="mt-4 space-y-2">
+            {CONFIRMATION_EXTRAS.map((q) => (
+              <a
+                key={q.id}
+                href={`https://bi.iampatterson.com/question/${q.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-baseline gap-4 border-l-2 border-u-rule-soft bg-u-paper-alt/60 px-4 py-3 transition-colors hover:border-accent-current hover:bg-u-paper-alt"
+              >
+                <span className="font-mono text-[10px] tracking-widest text-u-ink-3">
+                  Q · {String(q.id).padStart(2, '0')}
+                </span>
+                <span className="flex-1">
+                  <span className="block font-display text-base text-u-ink">{q.label}</span>
+                  <span className="mt-0.5 block text-xs leading-relaxed text-u-ink-2">
+                    {q.description}
+                  </span>
+                </span>
+                <span
+                  aria-hidden="true"
+                  className="font-mono text-[10px] uppercase tracking-widest text-u-ink-4"
+                >
+                  ↗
+                </span>
+              </a>
+            ))}
+          </div>
+          <a
+            href="https://bi.iampatterson.com/dashboard/2"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-4 inline-block font-mono text-[10px] uppercase tracking-widest text-accent-current hover:underline"
+          >
+            See the full dashboard →
+          </a>
+        </div>
+      )}
     </div>
   );
 }
