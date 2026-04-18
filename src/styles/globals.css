@@ -7,6 +7,11 @@
      it to phosphor amber #FFA400 while the overlay is open. */
   :root {
     --accent: #ea5f2a;
+
+    /* Underside palette mirrored from tailwind.config.ts `u-paper.DEFAULT`.
+       Exposed as a CSS var so overlay CRT layers can reference the same value
+       without re-hardcoding the hex. Keep in sync with the Tailwind token. */
+    --u-paper: #0d0b0a;
   }
 
   /* Smooth scrolling with reduced-motion respect */
@@ -69,17 +74,25 @@
   }
 
   /* Black curtain that paints down during boot — the terminal "filling in".
-     Opaque (no blend mode) so it actually masks content during the boot hold. */
+     Opaque (no blend mode) so it actually masks content. At phase-on the
+     curtain snaps to fully-painted and fades opacity to 0 over 200ms (with
+     an 80ms delay that overlaps the tab-flash reveal), porting the
+     prototype's phase-on handoff rule verbatim. */
   .crt-bloom {
     position: absolute;
     inset: 0;
     pointer-events: none;
-    background: #0d0b0a;
+    background: var(--u-paper, #0d0b0a);
     clip-path: inset(0 0 100% 0);
     opacity: 0;
   }
   [data-phase='boot'] .crt-bloom {
-    animation: crt-paint-down 720ms steps(14, end) 1 both;
+    animation: crt-paint-down 720ms steps(14, end) 100ms 1 both;
+  }
+  [data-phase='on'] .crt-bloom {
+    clip-path: inset(0 0 0% 0);
+    opacity: 0;
+    transition: opacity 200ms ease 80ms;
   }
   @keyframes crt-paint-down {
     0% {

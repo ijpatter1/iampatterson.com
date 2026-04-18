@@ -130,4 +130,46 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
     expect(view.dataset.phase).toBe('on');
     expect(screen.getByTestId('crt-field')).toBeInTheDocument();
   });
+
+  it('renders the ambient amber glow as a sibling of the CRT field, not inside it', () => {
+    // The ambient layer is deliberately kept outside the z:3 CRT wrapper so
+    // its amber blend stays scoped to the header. If it drifts back inside
+    // crt-field it would cover tabs/body too, regressing the preserved effect.
+    render(<UnderTheHoodView />);
+    const ambient = screen.getByTestId('crt-ambient');
+    const crtField = screen.getByTestId('crt-field');
+    expect(ambient).toBeInTheDocument();
+    expect(crtField).toBeInTheDocument();
+    expect(crtField.contains(ambient)).toBe(false);
+  });
+
+  it('renders all three CRT boot layers inside the z-indexed field wrapper', () => {
+    // Prototype boot sequence is: flicker → bloom → scanlines, all inside a
+    // z:3 wrapper that covers positioned siblings. Guards against a layer
+    // being accidentally dropped during future refactors.
+    render(<UnderTheHoodView />);
+    const crtField = screen.getByTestId('crt-field');
+    expect(crtField.querySelector('.crt-flicker')).not.toBeNull();
+    expect(crtField.querySelector('.crt-bloom')).not.toBeNull();
+    expect(crtField.querySelector('.crt-scanlines')).not.toBeNull();
+    expect(crtField.style.zIndex).toBe('3');
+  });
+
+  it('mounts the ambient glow during the boot phase', () => {
+    // Ambient glow must be present from the moment the overlay opens so the
+    // amber reads on the header throughout boot, not just after phase-on.
+    jest.useFakeTimers();
+    render(<UnderTheHoodView />);
+    const view = screen.getByTestId('under-the-hood-view');
+    expect(view.dataset.phase).toBe('boot');
+    expect(screen.getByTestId('crt-ambient')).toBeInTheDocument();
+  });
+
+  it('wraps panel body content in a tab-flash element so boot-phase CSS can hide it', () => {
+    // During boot the `[data-phase='boot'] .tab-flash { opacity: 0 }` rule
+    // hides panel contents so the paint-down curtain reads as the terminal
+    // filling in. Verify the wrapper class is present on the body pane.
+    const { container } = render(<UnderTheHoodView />);
+    expect(container.querySelector('.tab-flash')).not.toBeNull();
+  });
 });

@@ -148,18 +148,31 @@ export function UnderTheHoodView() {
         className="absolute inset-0 -z-10 cursor-default"
       />
 
-      {/* CRT field — mounted during boot AND on so the paint-down curtain and
-          warm flicker can animate during the boot hold. Ambient glow and
-          scanlines sit above content via positioned/auto-z stacking. */}
+      {/* Ambient amber glow — rendered as a sibling of the CRT field, with
+          no explicit z-index. Paints in step 6 of the stacking context
+          (positioned, z:auto), ahead of the in-flow header (step 3) but
+          BEHIND the positioned tabs/body (step 6, later DOM order). Result:
+          the amber blend is scoped to the header surface — the specific
+          effect the user asked to preserve. */}
+      {(phase === 'boot' || phase === 'on') && (
+        <div aria-hidden="true" data-testid="crt-ambient" className="crt-ambient" />
+      )}
+
+      {/* Boot sequence + scanlines — z-index: 3 so the opaque paint-down
+          curtain, warm flicker, and persistent scanlines cover ALL overlay
+          content (including positioned tabs/body). Mirrors the prototype's
+          explicit `z-index: 3` on `.crt-field`. DOM order follows the
+          prototype: flicker → bloom → scanlines, so the warm pulse is
+          occluded by the black curtain while it's painting down. */}
       {(phase === 'boot' || phase === 'on') && (
         <div
           aria-hidden="true"
           data-testid="crt-field"
           className="pointer-events-none absolute inset-0"
+          style={{ zIndex: 3 }}
         >
-          <div className="crt-ambient" />
-          <div className="crt-bloom" />
           <div className="crt-flicker" />
+          <div className="crt-bloom" />
           <div className="crt-scanlines" />
         </div>
       )}
