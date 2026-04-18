@@ -148,13 +148,16 @@ export function UnderTheHoodView() {
         className="absolute inset-0 -z-10 cursor-default"
       />
 
-      {/* CRT field — only rendered once the boot hold is complete */}
-      {phase === 'on' && (
+      {/* CRT field — mounted during boot AND on so the paint-down curtain and
+          warm flicker can animate during the boot hold. Ambient glow and
+          scanlines sit above content via positioned/auto-z stacking. */}
+      {(phase === 'boot' || phase === 'on') && (
         <div
           aria-hidden="true"
           data-testid="crt-field"
           className="pointer-events-none absolute inset-0"
         >
+          <div className="crt-ambient" />
           <div className="crt-bloom" />
           <div className="crt-flicker" />
           <div className="crt-scanlines" />

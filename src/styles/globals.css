@@ -48,11 +48,14 @@
   }
 
   /* Under-the-hood overlay — CRT field layers.
-     Non-interactive siblings inside the overlay host. Overlay content pane
-     is dark (u-paper), so these layers use amber-tinted treatments that
-     register as luminous on dark — black overlays would vanish into the
-     near-black backdrop. Respect reduced-motion. */
-  .crt-bloom {
+     The CRT field is absolute-positioned *on top* of in-flow header/tabs/body
+     (positioned z:auto outranks in-flow block children in its stacking context),
+     so mix-blend-mode: screen on these layers reads across the whole surface
+     including the header. Respect reduced-motion. */
+
+  /* Persistent ambient glow — warm radial from top-center. Visible whenever
+     the CRT field is mounted (boot + on). This is the "screen is warm" feel. */
+  .crt-ambient {
     position: absolute;
     inset: 0;
     pointer-events: none;
@@ -65,6 +68,57 @@
     mix-blend-mode: screen;
   }
 
+  /* Black curtain that paints down during boot — the terminal "filling in".
+     Opaque (no blend mode) so it actually masks content during the boot hold. */
+  .crt-bloom {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: #0d0b0a;
+    clip-path: inset(0 0 100% 0);
+    opacity: 0;
+  }
+  [data-phase='boot'] .crt-bloom {
+    animation: crt-paint-down 720ms steps(14, end) 1 both;
+  }
+  @keyframes crt-paint-down {
+    0% {
+      clip-path: inset(0 0 100% 0);
+      opacity: 1;
+    }
+    100% {
+      clip-path: inset(0 0 0% 0);
+      opacity: 1;
+    }
+  }
+
+  /* One-shot warm pulse during boot — "power coming on". No persistent loop. */
+  .crt-flicker {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: rgba(255, 164, 0, 0);
+    mix-blend-mode: screen;
+  }
+  [data-phase='boot'] .crt-flicker {
+    animation: crt-flick 420ms steps(8, end) 1 both;
+  }
+  @keyframes crt-flick {
+    0% {
+      background: rgba(255, 164, 0, 0);
+    }
+    20% {
+      background: rgba(255, 164, 0, 0.1);
+    }
+    60% {
+      background: rgba(255, 164, 0, 0.04);
+    }
+    100% {
+      background: rgba(255, 164, 0, 0);
+    }
+  }
+
+  /* Subtle repeating scanlines — fade in after boot settles. */
   .crt-scanlines {
     position: absolute;
     inset: 0;
@@ -76,57 +130,54 @@
       transparent 1px,
       transparent 3px
     );
+    opacity: 0;
+    transition: opacity 260ms ease;
   }
-
-  .crt-flicker {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background: rgba(255, 164, 0, 0);
-    mix-blend-mode: screen;
-    animation: crt-pulse 3.2s ease-in-out infinite;
-  }
-
-  @keyframes crt-pulse {
-    0%,
-    46%,
-    54%,
-    100% {
-      background: rgba(255, 164, 0, 0);
-    }
-    48% {
-      background: rgba(255, 164, 0, 0.03);
-    }
-    50% {
-      background: rgba(255, 164, 0, 0.07);
-    }
-    52% {
-      background: rgba(255, 164, 0, 0.03);
-    }
+  [data-phase='on'] .crt-scanlines {
+    opacity: 1;
   }
 
   @media (prefers-reduced-motion: reduce) {
+    .crt-bloom,
     .crt-flicker {
-      animation: none;
-      background: rgba(255, 164, 0, 0);
+      animation: none !important;
+      opacity: 0 !important;
+    }
+    .crt-scanlines {
+      transition: none;
     }
   }
 
+  /* Panel contents: hidden while the black curtain is dropping, then strobe in
+     (hard steps) once phase flips to 'on'. The tab-flash element is also
+     remounted via key={...} on tab change, so a fresh flash fires each tab. */
   .tab-flash {
-    animation: tab-flash 420ms ease-out both;
+    animation: tab-flash 150ms steps(3, end) 1 both;
   }
-
+  [data-phase='boot'] .tab-flash {
+    animation: none;
+    opacity: 0;
+  }
   @keyframes tab-flash {
     0% {
       opacity: 0;
-      transform: translateY(4px);
     }
-    40% {
-      opacity: 0.85;
+    35% {
+      opacity: 0.9;
+    }
+    60% {
+      opacity: 0.2;
     }
     100% {
       opacity: 1;
-      transform: translateY(0);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tab-flash {
+      animation: none;
+    }
+    [data-phase='boot'] .tab-flash {
+      opacity: 1;
     }
   }
 }

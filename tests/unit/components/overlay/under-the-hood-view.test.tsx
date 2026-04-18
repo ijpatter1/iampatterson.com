@@ -112,8 +112,9 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
     render(<UnderTheHoodView />);
     const view = screen.getByTestId('under-the-hood-view');
     expect(view.dataset.phase).toBe('boot');
-    // CRT field is not rendered during boot
-    expect(screen.queryByTestId('crt-field')).not.toBeInTheDocument();
+    // CRT field is mounted during boot so the paint-down curtain and warm
+    // flicker can animate through the boot hold.
+    expect(screen.getByTestId('crt-field')).toBeInTheDocument();
 
     act(() => {
       jest.advanceTimersByTime(260);
