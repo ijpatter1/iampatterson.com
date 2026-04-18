@@ -163,6 +163,8 @@ const config: Config = {
         'fade-in': 'fadeIn 0.6s ease-out',
         'slide-up': 'slideUp 0.6s ease-out',
         'bubble-rise': 'bubble-rise 3s ease-in-out forwards',
+        'session-pulse': 'session-pulse 2.4s ease-out infinite',
+        'live-strip': 'live-strip 40s linear infinite',
       },
 
       keyframes: {
@@ -179,6 +181,15 @@ const config: Config = {
           '10%': { opacity: '1', transform: 'translateY(0) scale(1)' },
           '80%': { opacity: '1', transform: 'translateY(0) scale(1)' },
           '100%': { opacity: '0', transform: 'translateY(-0.5rem) scale(0.95)' },
+        },
+        'session-pulse': {
+          '0%': { opacity: '0.6', transform: 'scale(1)' },
+          '80%': { opacity: '0', transform: 'scale(2.2)' },
+          '100%': { opacity: '0', transform: 'scale(2.2)' },
+        },
+        'live-strip': {
+          '0%': { transform: 'translateX(0)' },
+          '100%': { transform: 'translateX(-50%)' },
         },
       },
     },
