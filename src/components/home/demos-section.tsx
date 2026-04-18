@@ -25,9 +25,9 @@ const DEMOS = [
     title: 'Tuna Subscription',
     desc: 'A subscription product from signup to retention. Every event — plan_select, trial_signup, upgrade, churn — flows through the same instrumentation.',
     highlights: [
-      'Full lifecycle instrumentation: signup → trial → paid → churn — live',
-      'Event schema designed for cohort retention and LTV modeling — live',
-      'Attribution surface planned for Phase 9D · Tier 4',
+      'plan_select + trial_signup events firing through the stack today',
+      'Event schema prepared for cohort retention and LTV modeling',
+      'Full lifecycle instrumentation + attribution planned for Phase 9D · Tier 4',
     ],
   },
   {
@@ -35,11 +35,11 @@ const DEMOS = [
     href: '/demo/leadgen',
     type: 'Lead Gen',
     title: 'Tuna Partnerships',
-    desc: 'A lead-gen landing page with full-funnel tracking. Consent enforcement, PII handling, and qualification scoring happen in real time.',
+    desc: 'A lead-gen landing page with full-funnel tracking. Consent enforcement and PII handling are scaffolded in the stack.',
     highlights: [
-      'Deny marketing consent → watch routing change immediately — live',
-      'PII hashing happens server-side in sGTM, not in your browser — live',
-      'Qualification scoring + narrative reporting planned for Phase 9C',
+      'Form events (start, field_focus, complete) firing through the stack today',
+      'Consent routing visible in the overlay Consent tab',
+      'Server-side PII hashing + qualification scoring planned for Phase 9C',
     ],
   },
 ];
