@@ -1,19 +1,23 @@
 name: 'ROAS by campaign'
 description: |
-  Return on ad spend per campaign, last 30 days. Top 10 campaigns by
-  spend. Campaign names use the AI-classified taxonomy (Phase 5) where
+  Ad spend vs. purchase revenue per campaign, last 30 days. Top 10
+  campaigns by spend. Shown as grouped bars (spend, revenue); the
+  implicit ROAS ratio is revenue-bar-height / spend-bar-height.
+  Campaign names use the AI-classified taxonomy (Phase 5) where
   available — raw UTMs are cleaned up before this mart is built.
 display: bar
 visualization_settings:
   graph.dimensions:
     - campaign_name
   graph.metrics:
-    - roas
+    - spend
+    - revenue
+  stackable.stack_type: null
   graph.x_axis.title_text: 'Campaign'
-  graph.y_axis.title_text: 'ROAS (revenue / spend)'
+  graph.y_axis.title_text: 'USD'
   graph.x_axis.scale: 'ordinal'
   graph.x_axis.axis_enabled: 'rotate-45'
-  graph.show_values: true
+  graph.show_values: false
 query: |
   SELECT
     campaign_name,

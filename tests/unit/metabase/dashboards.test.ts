@@ -209,6 +209,56 @@ describe('Dashboard spec', () => {
 });
 
 // ---------------------------------------------------------------------------
+// apply.sh behavioral invariants (regression guards for eval findings)
+// ---------------------------------------------------------------------------
+describe('apply.sh behavioral invariants', () => {
+  const applySh = fs.readFileSync(path.join(DASHBOARDS_ROOT, 'apply.sh'), 'utf-8');
+
+  test('uses numeric stub id (not string) for dry-run collection — jq --argjson compatible', () => {
+    expect(applySh).not.toMatch(/COLLECTION_ID=['"]dry-run/);
+    expect(applySh).toMatch(/COLLECTION_ID=0/);
+    expect(applySh).toMatch(/COLLECTION_IS_STUB/);
+  });
+
+  test('merges enable_embedding into the main card payload (no partial PUT)', () => {
+    // The regression this guards: a second PUT with only
+    // {"enable_embedding": true} could wipe dataset_query on some Metabase
+    // versions. The main payload should carry the flag.
+    expect(applySh).toMatch(/--argjson embed/);
+    expect(applySh).toMatch(/enable_embedding:\s*\$embed/);
+    expect(applySh).not.toMatch(
+      /mb_put "\/api\/card\/\$\{card_id\}" '\{"enable_embedding": true\}'/,
+    );
+  });
+
+  test('reuses existing dashcard IDs to prevent embed-URL churn', () => {
+    expect(applySh).toMatch(/EXISTING_DASHCARDS/);
+    expect(applySh).toMatch(/existing_dashcard_id/);
+  });
+
+  test('preflights that yq is mikefarah v4+', () => {
+    expect(applySh).toMatch(/mikefarah/);
+    expect(applySh).toMatch(/yq --version/);
+  });
+
+  test('publish-embed-config writes the friendly-key shape documented in ARCHITECTURE.md', () => {
+    // docs/ARCHITECTURE.md contract:
+    //   {dashboardId, cardIds: {funnel, aov, dailyRevenue}}
+    // The regression this guards: shipping the full {"card name": id}
+    // map, which would force the Next.js signer in 6b to string-match
+    // against display names.
+    expect(applySh).toMatch(/funnel:\s*\(\$cards\["Funnel conversion by channel"\]/);
+    expect(applySh).toMatch(/aov:\s*\(\$cards\["AOV trend \(90 days\)"\]/);
+    expect(applySh).toMatch(/dailyRevenue:\s*\(\$cards\["Daily revenue trend \(30 days\)"\]/);
+  });
+
+  test('--help does not leak the set -euo pipefail marker', () => {
+    // sed/awk range should stop before the set line, not include it
+    expect(applySh).not.toMatch(/sed -n '1,\/\^set -euo pipefail\/p'/);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // URL-map path split assertion on setup-domain.sh
 // ---------------------------------------------------------------------------
 describe('setup-domain.sh URL-map split (deliverable 6a prerequisite)', () => {

@@ -12,8 +12,8 @@ description: |
 #   │  Daily revenue trend (30d)                       │
 #   ├──────────────────────────┬───────────────────────┤ row  6  (size_y=6)
 #   │  AOV trend (90d)         │  Funnel by channel    │
-#   ├──────────────────┬───────┴───────────────────────┤ row 12  (size_y=6)
-#   │  ROAS by camp.   │  Revenue share   │
+#   ├──────────────────────────┬───────────────────────┤ row 12  (size_y=6)
+#   │  ROAS by campaign        │  Revenue share        │
 #   ├──────────────────┴───────────────────────────────┤ row 18  (size_y=6)
 #   │  Customer LTV distribution                       │
 #   └──────────────────────────────────────────────────┘
@@ -39,13 +39,13 @@ cards:
   - card: 'ROAS by campaign'
     row: 12
     col: 0
-    size_x: 16
+    size_x: 12
     size_y: 6
 
   - card: 'Revenue share by channel'
     row: 12
-    col: 16
-    size_x: 8
+    col: 12
+    size_x: 12
     size_y: 6
 
   - card: 'Customer LTV distribution'

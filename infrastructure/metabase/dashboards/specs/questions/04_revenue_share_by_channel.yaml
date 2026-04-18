@@ -1,8 +1,11 @@
 name: 'Revenue share by channel'
 description: |
   Share of ecommerce attributed revenue by acquisition channel (utm_source),
-  most recent full month. Granularity from mart_channel_attribution is
-  monthly — the donut always reflects the latest completed month.
+  most recent month of available data. Granularity from
+  mart_channel_attribution is monthly — if the current month is in
+  progress, the donut reflects current-month-to-date, not a completed
+  month. Read alongside the daily revenue trend for context on how
+  far into the month the data extends.
 display: pie
 visualization_settings:
   pie.dimension: 'utm_source'

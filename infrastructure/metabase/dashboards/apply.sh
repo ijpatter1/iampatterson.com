@@ -61,7 +61,10 @@ for arg in "$@"; do
     --dry-run) DRY_RUN=true ;;
     --publish-embed-config) PUBLISH_EMBED_CONFIG=true ;;
     -h|--help)
-      sed -n '1,/^set -euo pipefail/p' "$0" | sed 's/^# \{0,1\}//' | grep -v '^!'
+      # Print the file header up to (but not including) the first blank line
+      # after the shebang block. Avoids leaking the `set -euo pipefail` marker
+      # into the help output.
+      awk 'NR==1 && /^#!/ {next} /^$/ {exit} /^#/ {sub(/^# ?/,""); print}' "$0"
       exit 0
       ;;
     *)
@@ -80,6 +83,18 @@ for tool in yq jq curl gcloud; do
     exit 1
   }
 done
+
+# There are two incompatible `yq` implementations in the wild: mikefarah/yq
+# (Go, v4+) and kislyuk/yq (Python wrapper around jq). The spec-parsing
+# invocations in this script use mikefarah syntax (`-o=json`, `.field`
+# without a `.` pipe prefix). Fail fast with a clear message if the
+# wrong one is installed.
+if ! yq --version 2>&1 | grep -qE 'mikefarah|version v?[45]'; then
+  echo "ERROR: 'yq' in PATH is not mikefarah/yq v4+." >&2
+  echo "       apply.sh uses mikefarah syntax. Install from" >&2
+  echo "       https://github.com/mikefarah/yq (brew install yq on macOS)." >&2
+  exit 1
+fi
 
 echo "==> Fetching API key from Secret Manager (${API_KEY_SECRET})..."
 MB_API_KEY="$(gcloud secrets versions access latest \
@@ -118,11 +133,15 @@ echo "==> Ensuring collection '${COLLECTION_NAME}' exists..."
 COLLECTION_ID="$(mb_get "/api/collection" | jq -r --arg n "${COLLECTION_NAME}" '
   map(select(.name == $n and (.archived // false) == false)) | .[0].id // empty
 ')"
+# When dry-running on a fresh instance, use 0 as a numeric placeholder so
+# downstream `jq --argjson` calls that embed the ID in payloads still parse.
+COLLECTION_IS_STUB=false
 if [[ -z "${COLLECTION_ID}" ]]; then
   echo "  Not found — creating."
   if ${DRY_RUN}; then
-    COLLECTION_ID="dry-run-collection-id"
-    echo "  [dry-run] would POST /api/collection"
+    COLLECTION_ID=0
+    COLLECTION_IS_STUB=true
+    echo "  [dry-run] would POST /api/collection (using stub id=0 for payload construction)"
   else
     COLLECTION_ID="$(mb_post "/api/collection" \
       "$(jq -n --arg n "${COLLECTION_NAME}" '{name: $n, color: "#509EE3"}')" \
@@ -146,7 +165,7 @@ save_card_id() {
 }
 
 echo "==> Fetching existing cards in collection..."
-if ${DRY_RUN} && [[ "${COLLECTION_ID}" == "dry-run-collection-id" ]]; then
+if ${COLLECTION_IS_STUB}; then
   EXISTING_CARDS='{"data":[]}'
 else
   EXISTING_CARDS="$(mb_get "/api/collection/${COLLECTION_ID}/items?models=card")"
@@ -174,6 +193,10 @@ for spec in "${question_specs[@]}"; do
     .data | map(select(.name == $n)) | .[0].id // empty
   ' <<<"${EXISTING_CARDS}")"
 
+  # Merge enable_embedding into the full card payload. An earlier draft did
+  # this as a follow-up PUT with a partial body, but Metabase's /api/card/{id}
+  # PUT has historically treated missing fields as nulls in some versions —
+  # which would nuke dataset_query. One full payload per card is safer.
   payload="$(jq -n \
     --arg name "${name}" \
     --arg desc "${description}" \
@@ -182,6 +205,7 @@ for spec in "${question_specs[@]}"; do
     --argjson db "${DB_ID}" \
     --argjson coll "${COLLECTION_ID}" \
     --argjson viz "${viz_settings}" \
+    --argjson embed "${enable_embedding}" \
     '{
       name: $name,
       description: ($desc | if . == "" then null else . end),
@@ -192,30 +216,31 @@ for spec in "${question_specs[@]}"; do
         database: $db,
         native: { query: $q, "template-tags": {} }
       },
-      visualization_settings: $viz
+      visualization_settings: $viz,
+      enable_embedding: $embed
     }')"
 
   if [[ -n "${existing_id}" ]]; then
-    echo "  [${name}] — exists (id=${existing_id}), updating"
+    if [[ "${enable_embedding}" == "true" ]]; then
+      echo "  [${name}] — exists (id=${existing_id}), updating (with embedding enabled)"
+    else
+      echo "  [${name}] — exists (id=${existing_id}), updating"
+    fi
     if ! ${DRY_RUN}; then
       mb_put "/api/card/${existing_id}" "${payload}" >/dev/null
     fi
     save_card_id "${name}" "${existing_id}"
   else
-    echo "  [${name}] — new, creating"
+    if [[ "${enable_embedding}" == "true" ]]; then
+      echo "  [${name}] — new, creating (with embedding enabled)"
+    else
+      echo "  [${name}] — new, creating"
+    fi
     if ${DRY_RUN}; then
       save_card_id "${name}" "0"
     else
       new_id="$(mb_post "/api/card" "${payload}" | jq -r '.id')"
       save_card_id "${name}" "${new_id}"
-    fi
-  fi
-
-  if [[ "${enable_embedding}" == "true" ]]; then
-    card_id="$(jq -r --arg n "${name}" '.[$n]' <<<"${CARD_IDS_JSON}")"
-    echo "    └ enabling embedding on card ${card_id}"
-    if ! ${DRY_RUN}; then
-      mb_put "/api/card/${card_id}" '{"enable_embedding": true}' >/dev/null
     fi
   fi
 done
@@ -233,7 +258,7 @@ echo "==> Upserting dashboard from $(basename "${DASH_SPEC}")..."
 dash_name="$(yq -r '.name' "${DASH_SPEC}")"
 dash_desc="$(yq -r '.description // ""' "${DASH_SPEC}")"
 
-if ${DRY_RUN} && [[ "${COLLECTION_ID}" == "dry-run-collection-id" ]]; then
+if ${COLLECTION_IS_STUB}; then
   EXISTING_DASHBOARDS='{"data":[]}'
 else
   EXISTING_DASHBOARDS="$(mb_get "/api/collection/${COLLECTION_ID}/items?models=dashboard")"
@@ -243,10 +268,12 @@ DASHBOARD_ID="$(jq -r --arg n "${dash_name}" '
   .data | map(select(.name == $n)) | .[0].id // empty
 ' <<<"${EXISTING_DASHBOARDS}")"
 
+DASHBOARD_IS_STUB=false
 if [[ -z "${DASHBOARD_ID}" ]]; then
   echo "  Dashboard not found — creating"
   if ${DRY_RUN}; then
-    DASHBOARD_ID="0"
+    DASHBOARD_ID=0
+    DASHBOARD_IS_STUB=true
   else
     DASHBOARD_ID="$(mb_post "/api/dashboard" \
       "$(jq -n --arg n "${dash_name}" --arg d "${dash_desc}" --argjson c "${COLLECTION_ID}" \
@@ -256,8 +283,20 @@ if [[ -z "${DASHBOARD_ID}" ]]; then
 fi
 echo "  Dashboard ID: ${DASHBOARD_ID}"
 
+# Fetch existing dashcards so we can reuse their IDs when the same card_id
+# already has a placement. Without this reuse, every apply would churn the
+# dashcards (Metabase treats id=-1 as "new" and deletes unreferenced ones),
+# which would also churn the signed-embed URLs 6b depends on.
+if ${DASHBOARD_IS_STUB} || ${COLLECTION_IS_STUB}; then
+  EXISTING_DASHCARDS='[]'
+else
+  EXISTING_DASHCARDS="$(mb_get "/api/dashboard/${DASHBOARD_ID}" \
+    | jq '[.dashcards[]? | {card_id, id}]')"
+fi
+
 # Build dashcards array from spec. Each entry refers to a card by name;
-# we resolve the name to an ID from CARD_IDS_JSON.
+# we resolve the name to an ID from CARD_IDS_JSON, then look up an existing
+# dashcard by card_id to preserve its dashcard ID (stable for 6b embeds).
 dash_card_count="$(yq -r '.cards | length' "${DASH_SPEC}")"
 dashcards='[]'
 for ((i=0; i<dash_card_count; i++)); do
@@ -273,25 +312,37 @@ for ((i=0; i<dash_card_count; i++)); do
     exit 1
   }
 
-  # id: -1 signals "new dashcard" to Metabase. row/col/size_x/size_y are
-  # the grid position (24-column grid; each unit ~ 22px wide).
+  # Reuse existing dashcard id if we've placed this card before; otherwise
+  # use -1 to signal a new dashcard to Metabase.
+  existing_dashcard_id="$(jq -r --argjson cid "${card_id}" \
+    '[.[] | select(.card_id == $cid) | .id] | .[0] // -1' \
+    <<<"${EXISTING_DASHCARDS}")"
+
   dashcards="$(jq -c \
+    --argjson dcid "${existing_dashcard_id}" \
     --argjson id "${card_id}" \
     --argjson r "${row}" \
     --argjson c "${col}" \
     --argjson sx "${size_x}" \
     --argjson sy "${size_y}" \
-    '. + [{id: -1, card_id: $id, row: $r, col: $c, size_x: $sx, size_y: $sy, parameter_mappings: [], visualization_settings: {}}]' \
+    '. + [{id: $dcid, card_id: $id, row: $r, col: $c, size_x: $sx, size_y: $sy, parameter_mappings: [], visualization_settings: {}}]' \
     <<<"${dashcards}")"
 done
 
-echo "  Writing ${dash_card_count} dashcards + enabling embedding"
-if ! ${DRY_RUN}; then
-  dash_update="$(jq -n \
-    --argjson dc "${dashcards}" \
-    --arg name "${dash_name}" \
-    --arg desc "${dash_desc}" \
-    '{name: $name, description: ($desc | if . == "" then null else . end), dashcards: $dc, enable_embedding: true}')"
+dash_update="$(jq -n \
+  --argjson dc "${dashcards}" \
+  --arg name "${dash_name}" \
+  --arg desc "${dash_desc}" \
+  '{name: $name, description: ($desc | if . == "" then null else . end), dashcards: $dc, enable_embedding: true}')"
+
+reused_count="$(jq '[.[] | select(.id != -1)] | length' <<<"${dashcards}")"
+new_count="$(jq '[.[] | select(.id == -1)] | length' <<<"${dashcards}")"
+echo "  Writing ${dash_card_count} dashcards (${reused_count} reused, ${new_count} new) + enabling embedding"
+
+if ${DRY_RUN}; then
+  echo "  [dry-run] would PUT /api/dashboard/${DASHBOARD_ID} with:"
+  echo "${dash_update}" | jq '{name, dashcards_count: (.dashcards | length), enable_embedding}'
+else
   mb_put "/api/dashboard/${DASHBOARD_ID}" "${dash_update}" >/dev/null
 fi
 
@@ -315,18 +366,45 @@ fi
 
 # -----------------------------------------------------------------------------
 # Optionally publish embed config to Secret Manager (6b consumer)
+#
+# The published shape matches the contract in docs/ARCHITECTURE.md:
+#   { dashboardId, cardIds: { funnel, aov, dailyRevenue } }
+# Friendly keys (not literal question display names) so deliverable 6b's
+# Next.js signer can reference cardIds.funnel without string-matching
+# against a particular question title that might be renamed.
 # -----------------------------------------------------------------------------
 if ${PUBLISH_EMBED_CONFIG}; then
+  embed_config="$(jq -n \
+    --argjson dash "${DASHBOARD_ID}" \
+    --argjson cards "${CARD_IDS_JSON}" \
+    '{
+      dashboardId: $dash,
+      cardIds: {
+        funnel:       ($cards["Funnel conversion by channel"]     // null),
+        aov:          ($cards["AOV trend (90 days)"]              // null),
+        dailyRevenue: ($cards["Daily revenue trend (30 days)"]    // null)
+      }
+    }')"
+
+  missing="$(jq -r '.cardIds | to_entries | map(select(.value == null)) | map(.key) | join(", ")' <<<"${embed_config}")"
+  if [[ -n "${missing}" ]] && ! ${DRY_RUN}; then
+    echo "ERROR: embed config missing card IDs for: ${missing}." >&2
+    echo "       Check that those questions are present in specs/questions/ and" >&2
+    echo "       that they apply cleanly (they are deliverable 6b dependencies)." >&2
+    exit 1
+  fi
+
   echo "==> Publishing ${EMBED_CONFIG_SECRET} to Secret Manager..."
   if ${DRY_RUN}; then
-    echo "[dry-run] would gcloud secrets versions add ${EMBED_CONFIG_SECRET}"
+    echo "[dry-run] would publish embed config:"
+    echo "${embed_config}" | jq .
   else
     if gcloud secrets describe "${EMBED_CONFIG_SECRET}" \
          --project="${PROJECT}" >/dev/null 2>&1; then
-      echo "${final_json}" | gcloud secrets versions add "${EMBED_CONFIG_SECRET}" \
+      echo "${embed_config}" | gcloud secrets versions add "${EMBED_CONFIG_SECRET}" \
         --data-file=- --project="${PROJECT}"
     else
-      echo "${final_json}" | gcloud secrets create "${EMBED_CONFIG_SECRET}" \
+      echo "${embed_config}" | gcloud secrets create "${EMBED_CONFIG_SECRET}" \
         --data-file=- --project="${PROJECT}" \
         --replication-policy="automatic"
     fi
