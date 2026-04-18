@@ -392,6 +392,48 @@ echo "  → Repeat the click-then-immediate-close cycle 2-3 times in a row."
 confirm "Accent remains persimmon throughout; no accumulated amber state" \
   "Repeated fast-close stays persimmon"
 
+# ── Session-024 addendum — CRT boot fidelity + once-per-session ─────
+
+section "Addendum-1 — Once-per-session boot (sessionStorage scope)"
+echo "  Exercises: D9 once-per-session spec refinement (session-024)"
+
+echo ""
+echo "  → Open a NEW incognito/private window (or a fresh tab with sessionStorage cleared)."
+echo "  → Navigate to the homepage. Click SessionPulse to open the overlay for the FIRST time."
+confirm "Boot sequence plays: ~260ms black hold, warm amber flicker pulse, content blinks/strobes in with hard steps (not smooth fade). Accent flips persimmon → amber during the hold." \
+  "First-open boot sequence plays as specified"
+
+echo ""
+echo "  → Close the overlay via Back-to-site or backdrop click."
+echo "  → Click SessionPulse again to REOPEN in the same tab/session."
+confirm "No boot hold. Panel contents are present immediately. Scanlines/ambient already on. Accent still amber." \
+  "Second-open-in-session skips boot"
+
+echo ""
+echo "  → Open a NEW tab, navigate to the homepage."
+echo "  → Click SessionPulse to open the overlay in the new tab."
+confirm "Boot sequence plays again (new sessionStorage scope)" \
+  "New tab / new session re-fires boot"
+
+section "Addendum-2 — CRT boot visual fidelity (split-layer)"
+echo "  Exercises: D9 CRT four-layer structure (session-024 commits 4e185f7 + 1ca8233)"
+
+echo ""
+echo "  → From a fresh session (new incognito window), open the overlay."
+echo "  → WATCH THE TOP NAV AREA of the overlay during the 260ms boot hold."
+confirm "A warm amber glow is visible behind the 'Under the Hood' header. NOT a plain dark band." \
+  "Ambient amber glow scoped to header (user-preserved effect)"
+
+echo ""
+echo "  → Once the boot settles, look at the tabs row and the content body."
+confirm "Subtle amber horizontal scanlines visible across the ENTIRE overlay, including tabs and body — not just the header." \
+  "Scanlines cover full surface (z:3 CRT wrapper)"
+
+echo ""
+echo "  → Watch the content pane while tabs transition. Click Timeline, then Consent, then Dashboards."
+confirm "Each tab switch triggers a hard strobing reveal (~150ms, visibly stepped), not a gentle ease-out fade" \
+  "tab-flash steps(3, end) strobe on tab change"
+
 # ── Results ──────────────────────────────────────────
 section "Results"
 echo "  Pass:    ${PASS}"

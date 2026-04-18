@@ -159,7 +159,7 @@
 - ✅ 2026-04-18, commit 54aeef4 — Under-the-hood overlay redesign — full-page ink/terminal chrome with paper content pane, boot phase state machine (idle → boot → on, 260ms hold, skipped under prefers-reduced-motion and on re-opens within the same browser session via `sessionStorage`), CRT flicker/bloom/scanlines layers gated by phase-on, tab-flash settle animation on open/tab-change, Tabs reduced to 4 (Overview/Timeline/Consent/Dashboards), Narrative moved to contextual-only (below event detail), backdrop click closes, uses useLiveEvents
 - ✅ 2026-04-18 — Wiring & route integration — `OverlayProvider` drives `--accent` and opens full-page view; demo routes untouched; ambient bubbles preserved via existing `AmbientBubblesWrapper` (`/demo/*` guard unchanged); `/demo` redirect preserved; flip-trigger / header-demos components fully removed; `Narrative` standalone tab removed from overlay
 
-*Homepage composition: Hero → Pipeline → Demos → ServicesTeaser → Proof → FinalCta. Test suite: 527 → 593 (+66 net) after evaluation passes 1-3 + handoff close-out. Production build clean.*
+*Homepage composition: Hero → Pipeline → Demos → ServicesTeaser → Proof → FinalCta. Test suite: 527 → 599 (+72 net) after evaluation passes 1-3 + handoff close-out + session-024 CRT boot fidelity/once-per-session refinement. Production build clean.*
 
 ---
 
