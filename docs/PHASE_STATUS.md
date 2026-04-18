@@ -141,7 +141,6 @@
 - ✅ 2026-04-03, session-2026-04-03-017 — Kill `/demo` landing page — redirects to `/#demos`
 - ✅ 2026-04-04, session-2026-04-04-018 — Homepage restructured: hero-first narrative, event stream fix, tier overview moved to Services, demos intro added
 - ✅ 2026-04-04, session-2026-04-04-018 — Design system: fonts finalized (Lora + Plus Jakarta Sans + JetBrains Mono), real font files, viewport meta tag
-- ✅ 2026-04-17, session-2026-04-04-018 — Color palette finalized: white/black/grey clean slate, no accent color. Lets the measurement pipeline and under-the-hood features carry visual weight
 
 ---
 
