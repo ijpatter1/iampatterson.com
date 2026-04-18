@@ -10,6 +10,7 @@ import jwt from 'jsonwebtoken';
 import {
   DEFAULT_EMBED_TTL_SECONDS,
   METABASE_BASE_URL,
+  mintConfirmationEmbedUrls,
   parseEmbedConfig,
   signEmbedUrl,
 } from '@/lib/metabase/embed';
@@ -133,3 +134,50 @@ function extractToken(url: string): string {
   const hashIdx = url.indexOf('#');
   return url.slice(prefix.length, hashIdx);
 }
+
+describe('mintConfirmationEmbedUrls', () => {
+  const VALID_CONFIG = '{"dashboardId":2,"cardIds":{"funnel":40,"aov":41,"dailyRevenue":45}}';
+
+  let warnSpy: jest.SpyInstance;
+  beforeEach(() => {
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    warnSpy.mockRestore();
+  });
+
+  it('returns null when secret is missing', () => {
+    expect(mintConfirmationEmbedUrls({ configRaw: VALID_CONFIG })).toBeNull();
+  });
+
+  it('returns null when configRaw is missing', () => {
+    expect(mintConfirmationEmbedUrls({ secret: TEST_SECRET })).toBeNull();
+  });
+
+  it('returns null and warns when configRaw is malformed (does not throw)', () => {
+    const result = mintConfirmationEmbedUrls({ secret: TEST_SECRET, configRaw: '{not json' });
+    expect(result).toBeNull();
+    expect(warnSpy).toHaveBeenCalled();
+  });
+
+  it('returns three signed URLs when both env inputs are present', () => {
+    const result = mintConfirmationEmbedUrls({ secret: TEST_SECRET, configRaw: VALID_CONFIG });
+    expect(result).not.toBeNull();
+    expect(result!.dailyRevenue.startsWith(METABASE_BASE_URL)).toBe(true);
+    expect(result!.funnel.startsWith(METABASE_BASE_URL)).toBe(true);
+    expect(result!.aov.startsWith(METABASE_BASE_URL)).toBe(true);
+  });
+
+  it('each URL carries a JWT whose resource.question matches the config card id', () => {
+    const result = mintConfirmationEmbedUrls({ secret: TEST_SECRET, configRaw: VALID_CONFIG })!;
+    expect(
+      (jwt.verify(extractToken(result.dailyRevenue), TEST_SECRET) as jwt.JwtPayload).resource,
+    ).toEqual({ question: 45 });
+    expect(
+      (jwt.verify(extractToken(result.funnel), TEST_SECRET) as jwt.JwtPayload).resource,
+    ).toEqual({ question: 40 });
+    expect((jwt.verify(extractToken(result.aov), TEST_SECRET) as jwt.JwtPayload).resource).toEqual({
+      question: 41,
+    });
+  });
+});

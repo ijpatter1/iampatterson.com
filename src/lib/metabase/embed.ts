@@ -60,6 +60,38 @@ export function parseEmbedConfig(raw: string | undefined): EmbedConfig {
   return parsed;
 }
 
+export interface ConfirmationEmbedUrls {
+  dailyRevenue: string;
+  funnel: string;
+  aov: string;
+}
+
+/**
+ * Glue helper for the confirmation page Server Component: read raw env
+ * inputs, mint the three embeddable URLs, or return null if anything is
+ * missing or malformed. Returning null (not throwing) lets the page
+ * render without the Tier 3 section in local dev / preview envs where
+ * the secret isn't wired up.
+ */
+export function mintConfirmationEmbedUrls(env: {
+  secret?: string;
+  configRaw?: string;
+}): ConfirmationEmbedUrls | null {
+  const { secret, configRaw } = env;
+  if (!secret || !configRaw) return null;
+  try {
+    const config = parseEmbedConfig(configRaw);
+    return {
+      dailyRevenue: signEmbedUrl({ cardId: config.cardIds.dailyRevenue, secret }),
+      funnel: signEmbedUrl({ cardId: config.cardIds.funnel, secret }),
+      aov: signEmbedUrl({ cardId: config.cardIds.aov, secret }),
+    };
+  } catch (err) {
+    console.warn('[metabase/embed] skipping confirmation embeds:', (err as Error).message);
+    return null;
+  }
+}
+
 function isEmbedConfig(x: unknown): x is EmbedConfig {
   if (typeof x !== 'object' || x === null) return false;
   const obj = x as Record<string, unknown>;

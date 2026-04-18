@@ -1,23 +1,33 @@
-'use client';
-
-import { useSearchParams } from 'next/navigation';
-import { Suspense } from 'react';
-
 import { OrderConfirmation } from '@/components/demo/ecommerce/order-confirmation';
+import { Tier3Embeds } from '@/components/demo/ecommerce/tier3-embeds';
+import { mintConfirmationEmbedUrls } from '@/lib/metabase/embed';
 
-function ConfirmationContent() {
-  const searchParams = useSearchParams();
-  const orderId = searchParams.get('order_id') ?? 'ORD-UNKNOWN';
-  const total = parseFloat(searchParams.get('total') ?? '0');
-  const items = parseInt(searchParams.get('items') ?? '0', 10);
-
-  return <OrderConfirmation orderId={orderId} orderTotal={total} itemCount={items} />;
+interface ConfirmationPageProps {
+  searchParams: {
+    order_id?: string;
+    total?: string;
+    items?: string;
+  };
 }
 
-export default function ConfirmationPage() {
+export default function ConfirmationPage({ searchParams }: ConfirmationPageProps) {
+  const orderId = searchParams.order_id ?? 'ORD-UNKNOWN';
+  const orderTotal = parseFloat(searchParams.total ?? '0');
+  const itemCount = parseInt(searchParams.items ?? '0', 10);
+
+  // Secret + card IDs come from env at render time. If either is missing
+  // (local dev, preview without the Vercel env wired up), we skip the
+  // Tier 3 section rather than crash the page — the order confirmation
+  // UX is still the core deliverable.
+  const embedUrls = mintConfirmationEmbedUrls({
+    secret: process.env.MB_EMBEDDING_SECRET_KEY,
+    configRaw: process.env.METABASE_EMBED_CONFIG,
+  });
+
   return (
-    <Suspense fallback={<div className="py-12 text-center text-neutral-500">Loading...</div>}>
-      <ConfirmationContent />
-    </Suspense>
+    <>
+      <OrderConfirmation orderId={orderId} orderTotal={orderTotal} itemCount={itemCount} />
+      {embedUrls && <Tier3Embeds urls={embedUrls} />}
+    </>
   );
 }
