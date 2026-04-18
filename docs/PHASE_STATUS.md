@@ -1,7 +1,7 @@
 # Phase Status Tracker
 
 > **Current Phase: 9A-redesign — Editorial Homepage, Services, and Under-the-Hood Overlay** (10 of 10 deliverables complete. UAT accepted by user in session-023; session-024 followed up with CRT boot fidelity fixes, a once-per-session boot refinement, and a debt-cleanup pass. 609 tests passing, build clean. Phase 9B is paused — resumes after 9A-redesign merges to main, including the 6a manual apply.)
-> Last updated: 2026-04-18, session-2026-04-18-024
+> Last updated: 2026-04-18, session-2026-04-18-025
 
 ---
 
