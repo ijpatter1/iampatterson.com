@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 
+import Link from 'next/link';
+
 import { EditorialButton, EditorialLink } from '@/components/chrome/editorial-button';
 import { useOverlay } from '@/components/overlay/overlay-context';
 import { TIERS } from '@/lib/content/tiers';
@@ -202,6 +204,15 @@ export default function ServicesPage() {
                     What you get at the end of Tier {t.num}
                   </div>
                   <p className="mt-2 text-base leading-[1.6] text-ink">{t.summary}</p>
+                  {t.seeItLive && (
+                    <Link
+                      href={t.seeItLive.href}
+                      onClick={() => trackClickCta('See it live', `services-tier-${t.num}`)}
+                      className="mt-4 inline-block text-sm text-accent-current underline-offset-4 hover:underline"
+                    >
+                      See it live →
+                    </Link>
+                  )}
                 </div>
               </section>
             ))}

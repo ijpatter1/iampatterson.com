@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import ServicesPage from '@/app/services/page';
@@ -148,5 +148,37 @@ describe('ServicesPage — editorial', () => {
     renderPage();
     const contactLink = screen.getByRole('link', { name: /start a conversation/i });
     expect(contactLink).toHaveAttribute('href', '/contact');
+  });
+
+  // -------------------------------------------------------------------------
+  // Phase 9B deliverable 7 — services cross-links
+  // -------------------------------------------------------------------------
+  it('Tier 2 summary box links to the ecommerce demo', () => {
+    renderPage();
+    const tier2 = screen.getByTestId('tier-02');
+    const link = within(tier2).getByRole('link', { name: /see it live/i });
+    expect(link).toHaveAttribute('href', '/demo/ecommerce');
+  });
+
+  it('Tier 3 summary box links to the ecommerce confirmation page with a pre-filled order', () => {
+    renderPage();
+    const tier3 = screen.getByTestId('tier-03');
+    const link = within(tier3).getByRole('link', { name: /see it live/i });
+    const href = link.getAttribute('href') ?? '';
+    // Confirmation page reads order_id, total, items from the query string —
+    // pre-filling them makes the inline Tier 3 embeds meaningful on arrival
+    // rather than landing on an empty-order state.
+    expect(href).toMatch(/^\/demo\/ecommerce\/confirmation\?/);
+    expect(href).toMatch(/order_id=/);
+    expect(href).toMatch(/total=/);
+    expect(href).toMatch(/items=/);
+  });
+
+  it('does not add "See it live" links to Tier 1 or Tier 4 summary boxes', () => {
+    renderPage();
+    const tier1 = screen.getByTestId('tier-01');
+    const tier4 = screen.getByTestId('tier-04');
+    expect(within(tier1).queryByRole('link', { name: /see it live/i })).toBeNull();
+    expect(within(tier4).queryByRole('link', { name: /see it live/i })).toBeNull();
   });
 });
