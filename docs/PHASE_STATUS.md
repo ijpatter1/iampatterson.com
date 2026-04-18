@@ -1,7 +1,7 @@
 # Phase Status Tracker
 
-> **Current Phase: 9A-redesign — Editorial Homepage, Services, and Under-the-Hood Overlay** (10 of 10 deliverables complete. UAT accepted by user in session-023; session-024 followed up with CRT boot fidelity fixes, a once-per-session boot refinement, and a debt-cleanup pass. 609 tests passing, build clean. Phase 9B is paused — resumes after 9A-redesign merges to main, including the 6a manual apply.)
-> Last updated: 2026-04-18, session-2026-04-18-025
+> **Current Phase: 9B — E-Commerce Demo: Tiers 2 & 3** (9A-redesign merged to main at commit d8ae8f2. Phase 9B deliverable 6a verified live on Metabase at `https://bi.iampatterson.com/dashboard/2`; 6b and the services cross-links remain. 611 tests passing, build clean.)
+> Last updated: 2026-04-18, session-2026-04-18-026
 
 ---
 
@@ -174,7 +174,7 @@
 - ✅ 2026-04-04, commit 389d086 — Cart underside: Data Quality Framework — live assertion checklist (schema validation, null checks, volume anomaly)
 - ✅ 2026-04-04, commit 389d086 — Checkout underside: Warehouse Write — real-time BigQuery write visualization
 - ✅ 2026-04-04, commit 389d086 — Confirmation page: Tier 3 pivot — funnel metrics, AOV trends, actionable insight with revenue impact
-- 🔄 (6a) Metabase "E-Commerce Executive" dashboard — 6 questions as YAML specs in `infrastructure/metabase/dashboards/`, applied to the live instance via `apply.sh` — *dev-complete session-2026-04-18-021 (commits 493aad0…3d3dde0); awaiting execution of `docs/manual/task-2026-04-17-005.md` to apply against live Metabase and flip to ✅*
+- ✅ 2026-04-18, commit 7d8a683 — (6a) Metabase "E-Commerce Executive" dashboard — 6 questions as YAML specs in `infrastructure/metabase/dashboards/`, applied to the live instance via `apply.sh`. Dev commits 493aad0…3d3dde0 (session-2026-04-18-021), Metabase v0.59+ compatibility fix 7d8a683, live apply verified 2026-04-18 per `docs/manual/task-2026-04-17-005.md`. Dashboard at `https://bi.iampatterson.com/dashboard/2` (cards 40-45); `metabase-embed-config` published to Secret Manager (`{dashboardId: 2, cardIds: {funnel: 40, aov: 41, dailyRevenue: 45}}`) for deliverable 6b's signer.
 - ⬜ (6b) Confirmation-page signed embed — 3 questions embedded in `/demo/ecommerce/confirmation` under-the-hood via Next.js signed-JWT iframe
 - ⬜ Services page cross-links: Tier 2 → ecommerce funnel, Tier 3 → confirmation page
 
