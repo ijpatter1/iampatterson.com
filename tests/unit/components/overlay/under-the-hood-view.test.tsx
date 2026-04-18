@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { UnderTheHoodView } from '@/components/overlay/under-the-hood-view';
@@ -21,69 +21,112 @@ jest.mock('@/components/overlay/overlay-context', () => ({
   }),
 }));
 
-jest.mock('@/hooks/useEventStream', () => ({
-  useEventStream: () => ({
-    events: [],
-    status: 'disconnected',
-  }),
-}));
-
-jest.mock('@/hooks/useDataLayerEvents', () => ({
-  useDataLayerEvents: () => ({
-    events: [],
-    clearEvents: jest.fn(),
-  }),
+jest.mock('@/hooks/useLiveEvents', () => ({
+  useLiveEvents: () => ({ events: [], source: 'dataLayer' }),
 }));
 
 jest.mock('@/hooks/useFilteredEvents', () => ({
-  useFilteredEvents: (events: unknown[]) => ({
-    filteredEvents: events,
-  }),
+  useFilteredEvents: (events: unknown[]) => ({ filteredEvents: events }),
 }));
+
+function mockReducedMotion(matches: boolean) {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    configurable: true,
+    value: jest.fn().mockImplementation((query: string) => ({
+      matches: query.includes('prefers-reduced-motion') ? matches : false,
+      media: query,
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn(),
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+      dispatchEvent: jest.fn(),
+    })),
+  });
+}
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockReducedMotion(false);
 });
 
-describe('UnderTheHoodView', () => {
-  it('renders as a full-page view when overlay is open', () => {
+afterEach(() => {
+  jest.useRealTimers();
+});
+
+describe('UnderTheHoodView — editorial / CRT redesign', () => {
+  it('renders as a full-page overlay when isOpen is true', () => {
     render(<UnderTheHoodView />);
-    // Should render a full-page container
     const view = screen.getByTestId('under-the-hood-view');
     expect(view).toBeInTheDocument();
     expect(view.className).toContain('fixed');
     expect(view.className).toContain('inset-0');
   });
 
-  it('renders a close button', () => {
+  it('renders the "Back to site" close button', () => {
     render(<UnderTheHoodView />);
-    expect(screen.getByRole('button', { name: /close|back to site/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /back to site/i })).toBeInTheDocument();
   });
 
-  it('calls close when the close button is clicked', async () => {
+  it('renders a backdrop close button behind the panel', () => {
+    render(<UnderTheHoodView />);
+    expect(screen.getByRole('button', { name: /close overlay/i })).toBeInTheDocument();
+  });
+
+  it('calls close when "Back to site" is clicked', async () => {
     const user = userEvent.setup();
     render(<UnderTheHoodView />);
-    const closeBtn = screen.getByRole('button', { name: /close|back to site/i });
-    await user.click(closeBtn);
+    await user.click(screen.getByRole('button', { name: /back to site/i }));
     expect(mockClose).toHaveBeenCalled();
   });
 
-  it('renders view mode tabs including Overview on homepage', () => {
+  it('calls close when the backdrop is clicked', async () => {
+    const user = userEvent.setup();
     render(<UnderTheHoodView />);
-    expect(screen.getByText('Overview')).toBeInTheDocument();
-    expect(screen.getByText('Timeline')).toBeInTheDocument();
-    expect(screen.getByText('Narrative')).toBeInTheDocument();
-    expect(screen.getByText('Consent')).toBeInTheDocument();
-    expect(screen.getByText('Dashboards')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /close overlay/i }));
+    expect(mockClose).toHaveBeenCalled();
   });
 
-  it('shows HomepageUnderside content by default on homepage', () => {
+  it('renders exactly four tabs on the homepage (Overview/Timeline/Consent/Dashboards)', () => {
     render(<UnderTheHoodView />);
+    expect(screen.getByRole('button', { name: /^Overview$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Timeline/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Consent$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Dashboards/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Narrative$/i })).not.toBeInTheDocument();
+  });
+
+  it('renders HomepageUnderside content by default on homepage', () => {
+    render(<UnderTheHoodView />);
+    // HomepageUnderside surfaces a recognizable section heading
     expect(screen.getByText(/tier 1 in action/i)).toBeInTheDocument();
   });
 
-  it('renders a heading identifying the view', () => {
+  it('renders the "Under the Hood" header label', () => {
     render(<UnderTheHoodView />);
-    expect(screen.getByText(/under the hood/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /under the hood/i })).toBeInTheDocument();
+  });
+
+  it('enters boot phase on open and transitions to on after ~260ms', () => {
+    jest.useFakeTimers();
+    render(<UnderTheHoodView />);
+    const view = screen.getByTestId('under-the-hood-view');
+    expect(view.dataset.phase).toBe('boot');
+    // CRT field is not rendered during boot
+    expect(screen.queryByTestId('crt-field')).not.toBeInTheDocument();
+
+    act(() => {
+      jest.advanceTimersByTime(260);
+    });
+    expect(view.dataset.phase).toBe('on');
+    expect(screen.getByTestId('crt-field')).toBeInTheDocument();
+  });
+
+  it('skips the boot phase under prefers-reduced-motion', () => {
+    mockReducedMotion(true);
+    render(<UnderTheHoodView />);
+    const view = screen.getByTestId('under-the-hood-view');
+    expect(view.dataset.phase).toBe('on');
+    expect(screen.getByTestId('crt-field')).toBeInTheDocument();
   });
 });

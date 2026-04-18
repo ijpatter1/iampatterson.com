@@ -46,4 +46,73 @@
   .prose-container {
     @apply mx-auto w-full max-w-prose px-6;
   }
+
+  /* Under-the-hood overlay — CRT field layers.
+     Non-interactive siblings inside .overlay-host. Gated by .phase-on so
+     they only render once the boot hold is complete. Respect reduced-motion. */
+  .crt-flicker {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, rgba(255, 164, 0, 0.04) 0%, transparent 70%);
+    animation: crt-flicker 120ms steps(2) infinite;
+    mix-blend-mode: screen;
+  }
+
+  .crt-bloom {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, rgba(255, 164, 0, 0.08) 0%, transparent 55%);
+    mix-blend-mode: screen;
+  }
+
+  .crt-scanlines {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0) 0px,
+      rgba(0, 0, 0, 0) 1px,
+      rgba(0, 0, 0, 0.08) 2px,
+      rgba(0, 0, 0, 0) 3px
+    );
+    mix-blend-mode: multiply;
+  }
+
+  @keyframes crt-flicker {
+    0%,
+    100% {
+      opacity: 0.96;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .crt-flicker {
+      animation: none;
+      opacity: 1;
+    }
+  }
+
+  .tab-flash {
+    animation: tab-flash 420ms ease-out both;
+  }
+
+  @keyframes tab-flash {
+    0% {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    40% {
+      opacity: 0.85;
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 }
