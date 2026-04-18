@@ -355,10 +355,10 @@ infrastructure/metabase/dashboards/
 
 | # | Question | Source mart | Viz |
 |---|---|---|---|
-| 1 | Funnel conversion by channel | `mart_session_events` | Stacked bar |
+| 1 | Funnel conversion by channel | `mart_session_events` | Grouped bar (4 stages per channel) |
 | 2 | AOV trend (90d) | `mart_session_events` | Line |
 | 3 | ROAS by campaign | `mart_campaign_performance` | Bar |
-| 4 | Revenue share by channel (30d) | `mart_channel_attribution` | Donut |
+| 4 | Revenue share by channel (latest month) | `mart_channel_attribution` | Donut |
 | 5 | Customer LTV distribution | `mart_customer_ltv` | Histogram |
 | 6 | Daily revenue trend (30d) | `mart_session_events` | Line |
 

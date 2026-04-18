@@ -137,6 +137,23 @@ When deliverable 6b is ready, pass `--publish-embed-config` to also push the IDs
 ./apply.sh --publish-embed-config
 ```
 
+**Note: `.ids.json` and the `metabase-embed-config` secret have intentionally different shapes.**
+
+- `.ids.json` (local, for debugging) keys cards by their full display name: `{ "Funnel conversion by channel": 101, ... }`.
+- `metabase-embed-config` (Secret Manager, consumed by 6b's Next.js signer) uses friendly keys: `{ dashboardId, cardIds: { funnel, aov, dailyRevenue } }`.
+
+The friendly-key mapping is hard-coded in `apply.sh`'s `--publish-embed-config` block. If you rename one of the three embeddable questions (funnel, aov, daily revenue) in its YAML `name:` field, the preflight will fail with `ERROR: embed config missing card IDs for: ...`. Update the literal in `apply.sh` to match.
+
+### Prerequisite: enable static embedding in Metabase UI
+
+`enable_embedding: true` on a card or dashboard is a no-op until the **global** Metabase setting `enable-embedding-static` is turned on. This is a one-time toggle:
+
+1. Open `https://bi.iampatterson.com/admin/settings/embedding-in-other-applications`.
+2. Under **Static embedding**, click **Enable**.
+3. Copy the auto-generated **Embedding secret key** (`MB_EMBEDDING_SECRET_KEY`) — deliverable 6b's Next.js signer will use this to mint JWTs.
+
+Until this toggle is flipped, the signed-embed URLs deliverable 6b produces will return 404 from `/embed/*` even though `apply.sh` happily sets `enable_embedding: true` on individual cards.
+
 ---
 
 ## Authoring new questions

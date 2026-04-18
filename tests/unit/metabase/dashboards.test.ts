@@ -252,6 +252,27 @@ describe('apply.sh behavioral invariants', () => {
     expect(applySh).toMatch(/dailyRevenue:\s*\(\$cards\["Daily revenue trend \(30 days\)"\]/);
   });
 
+  test('embed-config hard-coded literals match actual YAML name fields', () => {
+    // Guards against the rename drift that the regex above cannot catch:
+    // if 01_funnel_conversion_by_channel.yaml's name: is changed but
+    // apply.sh isn't updated in the same commit, --publish-embed-config
+    // silently emits {funnel: null, ...}. This test pins the three
+    // embeddable questions' names to the script literals.
+    const funnel = loadQuestion('01_funnel_conversion_by_channel.yaml').name;
+    const aov = loadQuestion('02_aov_trend_90d.yaml').name;
+    const dr = loadQuestion('06_daily_revenue_trend.yaml').name;
+    expect(applySh.includes(`$cards["${funnel}"]`)).toBe(true);
+    expect(applySh.includes(`$cards["${aov}"]`)).toBe(true);
+    expect(applySh.includes(`$cards["${dr}"]`)).toBe(true);
+  });
+
+  test('embed-config missing-cards preflight is not suppressed in dry-run', () => {
+    // First-pass evaluator caught: `if [[ -n "${missing}" ]] && ! ${DRY_RUN}`
+    // silently tolerated renames during --dry-run --publish-embed-config.
+    // The guard should fire regardless of DRY_RUN.
+    expect(applySh).not.toMatch(/if \[\[ -n "\$\{missing\}" \]\] && ! \$\{DRY_RUN\}/);
+  });
+
   test('--help does not leak the set -euo pipefail marker', () => {
     // sed/awk range should stop before the set line, not include it
     expect(applySh).not.toMatch(/sed -n '1,\/\^set -euo pipefail\/p'/);

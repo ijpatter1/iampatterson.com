@@ -89,12 +89,20 @@ done
 # invocations in this script use mikefarah syntax (`-o=json`, `.field`
 # without a `.` pipe prefix). Fail fast with a clear message if the
 # wrong one is installed.
-if ! yq --version 2>&1 | grep -qE 'mikefarah|version v?[45]'; then
+yq_version_output="$(yq --version 2>&1 || true)"
+# mikefarah/yq >= v4 is required. Match both markers: the 'mikefarah' origin
+# string and a 'v4' or later version number. Either alone is too loose —
+# 'mikefarah' could theoretically appear in v3 banner output, and 'v4' could
+# match an unrelated yq implementation's version number.
+if ! (echo "${yq_version_output}" | grep -q 'mikefarah' \
+   && echo "${yq_version_output}" | grep -qE 'v?[4-9]\.[0-9]'); then
   echo "ERROR: 'yq' in PATH is not mikefarah/yq v4+." >&2
+  echo "       Detected: ${yq_version_output}" >&2
   echo "       apply.sh uses mikefarah syntax. Install from" >&2
   echo "       https://github.com/mikefarah/yq (brew install yq on macOS)." >&2
   exit 1
 fi
+unset yq_version_output
 
 echo "==> Fetching API key from Secret Manager (${API_KEY_SECRET})..."
 MB_API_KEY="$(gcloud secrets versions access latest \
@@ -314,6 +322,11 @@ for ((i=0; i<dash_card_count; i++)); do
 
   # Reuse existing dashcard id if we've placed this card before; otherwise
   # use -1 to signal a new dashcard to Metabase.
+  # Limitation: if the same card appears in two positions on the dashboard
+  # (a valid Metabase pattern), both dashcards in the PUT body get the same
+  # reused id, and Metabase will 400. Current specs place each card once;
+  # if that changes, switch to an index-based dedup or place-count-aware
+  # resolver.
   existing_dashcard_id="$(jq -r --argjson cid "${card_id}" \
     '[.[] | select(.card_id == $cid) | .id] | .[0] // -1' \
     <<<"${EXISTING_DASHCARDS}")"
@@ -349,7 +362,6 @@ fi
 # -----------------------------------------------------------------------------
 # Write .ids.json
 # -----------------------------------------------------------------------------
-echo "==> Writing ${IDS_FILE}..."
 final_json="$(jq -n \
   --argjson db "${DB_ID}" \
   --argjson coll "${COLLECTION_ID}" \
@@ -358,9 +370,10 @@ final_json="$(jq -n \
   '{databaseId: $db, collectionId: $coll, dashboardId: $dash, cardIds: $cards}')"
 
 if ${DRY_RUN}; then
-  echo "[dry-run] would write:"
+  echo "==> Would write ${IDS_FILE}:"
   echo "${final_json}" | jq .
 else
+  echo "==> Writing ${IDS_FILE}..."
   echo "${final_json}" > "${IDS_FILE}"
 fi
 
@@ -387,10 +400,17 @@ if ${PUBLISH_EMBED_CONFIG}; then
     }')"
 
   missing="$(jq -r '.cardIds | to_entries | map(select(.value == null)) | map(.key) | join(", ")' <<<"${embed_config}")"
-  if [[ -n "${missing}" ]] && ! ${DRY_RUN}; then
+  # Surface missing-card errors even in dry-run — otherwise a rename of an
+  # embeddable question YAML silently produces {funnel: null, ...} in
+  # preview, hiding the broken 6b dependency. The expected literal display
+  # names are in the apply.sh --publish-embed-config block (search for the
+  # $cards[...] expressions); if this error fires after renaming a YAML,
+  # update both places.
+  if [[ -n "${missing}" ]]; then
     echo "ERROR: embed config missing card IDs for: ${missing}." >&2
-    echo "       Check that those questions are present in specs/questions/ and" >&2
-    echo "       that they apply cleanly (they are deliverable 6b dependencies)." >&2
+    echo "       The --publish-embed-config block hard-codes question" >&2
+    echo "       display names; check that specs/questions/<funnel|aov|" >&2
+    echo "       daily-revenue>.yaml 'name:' matches the literal in apply.sh." >&2
     exit 1
   fi
 
