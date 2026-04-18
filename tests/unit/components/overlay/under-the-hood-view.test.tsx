@@ -192,4 +192,30 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
     render(<UnderTheHoodView />);
     expect(window.sessionStorage.getItem('iampatterson.overlay.booted')).toBe('1');
   });
+
+  it('sets the boot-once flag even on the reduced-motion path', () => {
+    // D9 says "once per session, period" — a visitor who opens the overlay
+    // with reduced-motion on, then later disables reduced-motion and reopens,
+    // should NOT see the boot sequence again. Setting the flag on both
+    // branches preserves the once-per-session guarantee.
+    mockReducedMotion(true);
+    render(<UnderTheHoodView />);
+    expect(window.sessionStorage.getItem('iampatterson.overlay.booted')).toBe('1');
+  });
+
+  it('marks the header and tabs wrapper with an overlay-chrome class for boot-phase hiding', () => {
+    // During boot, a `[data-phase='boot'] .overlay-chrome { opacity: 0 }` rule
+    // hides the header and tabs so they don't paint under the curtain. Verify
+    // the contract classes are on both elements — the CSS rule keys off them.
+    const { container } = render(<UnderTheHoodView />);
+    const header = container.querySelector('header');
+    expect(header).not.toBeNull();
+    expect(header?.className).toMatch(/overlay-chrome/);
+
+    // Tabs wrapper is the parent div of the tab buttons.
+    const tabButton = screen.getByRole('button', { name: /^Overview$/i });
+    const tabsWrapper = tabButton.parentElement;
+    expect(tabsWrapper).not.toBeNull();
+    expect(tabsWrapper?.className).toMatch(/overlay-chrome/);
+  });
 });

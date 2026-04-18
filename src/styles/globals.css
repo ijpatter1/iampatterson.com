@@ -84,6 +84,7 @@
     pointer-events: none;
     background: var(--u-paper, #0d0b0a);
     clip-path: inset(0 0 100% 0);
+    transform-origin: top;
     opacity: 0;
   }
   [data-phase='boot'] .crt-bloom {
@@ -190,6 +191,20 @@
       animation: none;
     }
     [data-phase='boot'] .tab-flash {
+      opacity: 1;
+    }
+  }
+
+  /* Overlay chrome — header + tabs wrapper. Hidden during phase-boot so they
+     don't paint under the curtain if the curtain misses a frame (low-end
+     device, reconciliation jank). Matches the prototype's `.overlay-panel > *`
+     opacity:0 behavior, just scoped to the structural chrome rather than
+     every direct child. Panel body is hidden via the .tab-flash rule above. */
+  [data-phase='boot'] .overlay-chrome {
+    opacity: 0;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    [data-phase='boot'] .overlay-chrome {
       opacity: 1;
     }
   }

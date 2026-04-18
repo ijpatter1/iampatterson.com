@@ -63,7 +63,7 @@ function Tabs({
   tabs: TabDef[];
 }) {
   return (
-    <div className="flex gap-1 border-b border-u-rule-soft bg-u-paper-alt px-4">
+    <div className="overlay-chrome flex gap-1 border-b border-u-rule-soft bg-u-paper-alt px-4">
       {tabs.map((t) => (
         <button
           key={t.mode}
@@ -140,11 +140,17 @@ export function UnderTheHoodView() {
       typeof window !== 'undefined' &&
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduced || hasBootedThisSession()) {
+    // Capture whether the session was already booted BEFORE we mark it.
+    // We always mark on open (both branches) so that D9's "once per session"
+    // guarantee survives a reduced-motion → normal-motion transition mid-
+    // session: a visitor who first opens with reduced-motion on, then later
+    // disables it and reopens, should not see the boot sequence.
+    const alreadyBooted = hasBootedThisSession();
+    markBootedThisSession();
+    if (reduced || alreadyBooted) {
       setPhase('on');
       return;
     }
-    markBootedThisSession();
     setPhase('boot');
     const id = window.setTimeout(() => setPhase('on'), BOOT_DURATION_MS);
     return () => window.clearTimeout(id);
@@ -206,7 +212,7 @@ export function UnderTheHoodView() {
       )}
 
       {/* Header */}
-      <header className="flex items-center justify-between border-b border-u-rule-soft bg-u-paper px-6 py-4">
+      <header className="overlay-chrome flex items-center justify-between border-b border-u-rule-soft bg-u-paper px-6 py-4">
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center border border-accent-current text-accent-current">
             <svg
