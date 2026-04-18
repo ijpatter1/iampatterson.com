@@ -11,11 +11,12 @@ export function HomepageUnderside() {
           Tier 1 · running under your session
         </div>
         <h2 className="font-display text-2xl font-normal leading-tight text-u-ink sm:text-3xl">
-          Tier 1 in Action
+          Every page on this site is <em className="text-accent-current">instrumented</em> with the
+          same foundation I build for clients.
         </h2>
         <p className="mt-3 max-w-[62ch] text-sm leading-relaxed text-u-ink-2">
-          Every page on this site is instrumented with the same measurement foundation I build for
-          clients. Here&apos;s what&apos;s running right now, underneath your session.
+          Here&apos;s what&apos;s running right now, underneath your session. Three systems, one
+          session, no mocks.
         </p>
       </div>
 

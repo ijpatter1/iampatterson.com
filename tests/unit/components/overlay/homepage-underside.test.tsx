@@ -6,9 +6,12 @@ import { render, screen } from '@testing-library/react';
 import { HomepageUnderside } from '@/components/overlay/homepage-underside';
 
 describe('HomepageUnderside', () => {
-  it('renders the Tier 1 showcase heading', () => {
+  it('renders the editorial tier-1 kicker and instrumented headline', () => {
     render(<HomepageUnderside />);
-    expect(screen.getByRole('heading', { name: /tier 1.*in action/i })).toBeInTheDocument();
+    expect(screen.getByText(/tier 1 · running under your session/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toMatch(
+      /instrumented with the same foundation/i,
+    );
   });
 
   it('renders three showcase sections: consent, events, and pipeline', () => {

@@ -79,6 +79,36 @@ describe('ServicesPage — editorial', () => {
     expect(first.dataset.active).toBe('true');
   });
 
+  it('syncs the active tier on mount when already scrolled past tier boundaries', () => {
+    // Pretend the user hash-navigated or refreshed while scrolled. The scroll-spy
+    // must pick the correct tier from offsetTop rather than leaving the default '01'.
+    Object.defineProperty(window, 'scrollY', { value: 1500, configurable: true });
+    // Stub offsetTop on each tier section so the scan can choose one
+    const origGet = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetTop');
+    Object.defineProperty(HTMLElement.prototype, 'offsetTop', {
+      configurable: true,
+      get() {
+        // Fire only on the tier sections
+        if (this.id === 'tier-01') return 400;
+        if (this.id === 'tier-02') return 1200;
+        if (this.id === 'tier-03') return 2000;
+        if (this.id === 'tier-04') return 2800;
+        return 0;
+      },
+    });
+
+    try {
+      renderPage();
+      const nav = screen.getByTestId('tier-nav');
+      const active = nav.querySelector('a[data-active="true"]') as HTMLElement;
+      // y = scrollY + 200 = 1700 → matches tier-02 (offsetTop 1200) but not tier-03 (2000)
+      expect(active.getAttribute('href')).toBe('#tier-02');
+    } finally {
+      if (origGet) Object.defineProperty(HTMLElement.prototype, 'offsetTop', origGet);
+      Object.defineProperty(window, 'scrollY', { value: 0, configurable: true });
+    }
+  });
+
   it('distinguishes non-negotiable core from optional components on Tier 1 and 2', () => {
     renderPage();
     // "non-negotiable" appears once in the hero paragraph and once per section header (Tiers 1 + 2)

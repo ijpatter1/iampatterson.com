@@ -13,9 +13,9 @@ const DEMOS = [
     title: 'The Tuna Shop',
     desc: 'A fully instrumented storefront. Browse, add to cart, checkout. Every interaction generates events that flow through the full stack.',
     highlights: [
-      'Campaign taxonomy classifies your UTMs with AI',
-      'Data-quality assertions validate every event',
-      'Shapley vs. last-click attribution side by side',
+      'Campaign taxonomy classifies your UTMs with AI — live',
+      'Data-quality assertions validate every event — live',
+      'Shapley vs. last-click attribution planned for Phase 9D · Tier 4',
     ],
   },
   {

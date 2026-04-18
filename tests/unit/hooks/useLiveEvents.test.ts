@@ -80,4 +80,19 @@ describe('useLiveEvents', () => {
     expect(result.current.source).toBe('sse');
     expect(result.current.events[0].pipeline_id).toBe('sse-1');
   });
+
+  it('sticks to SSE once it has ever delivered, even if the buffer later empties', () => {
+    process.env.NEXT_PUBLIC_EVENT_STREAM_URL = 'https://events.example.com';
+    mockSseEvents = [makeEvent('sse-1', 'page_view')];
+    mockDlEvents = [makeEvent('dl-1', 'scroll_depth')];
+    const { result, rerender } = renderHook(() => useLiveEvents());
+    expect(result.current.source).toBe('sse');
+
+    // Simulate SSE buffer draining while dataLayer still has events
+    mockSseEvents = [];
+    rerender();
+
+    // Source stays on 'sse' — the sticky flag prevents a visible flip
+    expect(result.current.source).toBe('sse');
+  });
 });

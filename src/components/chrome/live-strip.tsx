@@ -35,8 +35,8 @@ export function LiveStrip() {
     { label: 'STACK', value: 'GTM → sGTM → BigQuery' },
     { label: 'CONSENT', value: consentLabel(events) },
     { label: 'PIPELINE', value: 'live' },
-    { label: 'DASHBOARDS', value: 'Metabase · Looker' },
-    { label: 'ATTRIB', value: 'Shapley · last-click' },
+    { label: 'DASHBOARDS', value: 'Metabase' },
+    { label: 'ATTRIB', value: 'last-click · Shapley planned' },
   ];
 
   // Duplicate items so the translate loop wraps seamlessly at 50%.

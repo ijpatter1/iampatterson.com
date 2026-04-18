@@ -128,7 +128,7 @@ export function UnderTheHoodView() {
     ...(showOverview ? [{ mode: 'overview' as ViewMode, label: 'Overview' }] : []),
     { mode: 'timeline', label: 'Timeline', count: filteredEvents.length },
     { mode: 'consent', label: 'Consent' },
-    { mode: 'dashboards', label: 'Dashboards', count: 6 },
+    { mode: 'dashboards', label: 'Dashboards' },
   ];
 
   return (

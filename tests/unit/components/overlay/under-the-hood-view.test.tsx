@@ -98,8 +98,8 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
 
   it('renders HomepageUnderside content by default on homepage', () => {
     render(<UnderTheHoodView />);
-    // HomepageUnderside surfaces a recognizable section heading
-    expect(screen.getByText(/tier 1 in action/i)).toBeInTheDocument();
+    // HomepageUnderside surfaces a recognizable editorial kicker
+    expect(screen.getByText(/tier 1 · running under your session/i)).toBeInTheDocument();
   });
 
   it('renders the "Under the Hood" header label', () => {
