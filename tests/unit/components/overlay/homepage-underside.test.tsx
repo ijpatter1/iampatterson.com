@@ -14,11 +14,19 @@ describe('HomepageUnderside', () => {
     );
   });
 
-  it('renders three showcase sections: consent, events, and pipeline', () => {
+  it('renders three showcase section headings: consent, events, and pipeline', () => {
     render(<HomepageUnderside />);
-    expect(screen.getByText(/consent management/i)).toBeInTheDocument();
-    expect(screen.getByText(/live event stream/i)).toBeInTheDocument();
-    expect(screen.getByText(/pipeline architecture/i)).toBeInTheDocument();
+    // Scoped to mono h3 section labels so the supporting paragraph doesn't
+    // collide with getByText.
+    const headings = screen.getAllByRole('heading', { level: 3 });
+    const labels = headings.map((h) => h.textContent?.toLowerCase() ?? '');
+    expect(labels).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('consent management'),
+        expect.stringContaining('live event stream'),
+        expect.stringContaining('pipeline architecture'),
+      ]),
+    );
   });
 
   it('explains what the consent banner controls', () => {

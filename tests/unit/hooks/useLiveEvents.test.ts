@@ -87,12 +87,16 @@ describe('useLiveEvents', () => {
     mockDlEvents = [makeEvent('dl-1', 'scroll_depth')];
     const { result, rerender } = renderHook(() => useLiveEvents());
     expect(result.current.source).toBe('sse');
+    expect(result.current.events[0].pipeline_id).toBe('sse-1');
 
     // Simulate SSE buffer draining while dataLayer still has events
     mockSseEvents = [];
     rerender();
 
-    // Source stays on 'sse' — the sticky flag prevents a visible flip
+    // Source stays on 'sse' — the sticky flag prevents a visible flip.
+    // `events` returns the empty SSE buffer, NOT the dataLayer fallback
+    // (a silent swap would be worse UX than a momentarily-empty feed).
     expect(result.current.source).toBe('sse');
+    expect(result.current.events).toHaveLength(0);
   });
 });

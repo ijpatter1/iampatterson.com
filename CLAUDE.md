@@ -18,9 +18,9 @@ This is the consulting website for Patterson Consulting **and** a live, interact
 
 ## Current Phase
 
-**Phase 9A-redesign — Editorial Homepage, Services, and Under-the-Hood Overlay** (new phase; 0 of 10 deliverables complete. Reskins the Phase 9A surfaces per the editorial prototype in `docs/input_artifacts/iampatterson-com/` — serif-forward magazine-grid on paper, terminal/CRT vocabulary in the overlay, persimmon accent flipping to phosphor amber during the overlay boot.)
+**Phase 9A-redesign — Editorial Homepage, Services, and Under-the-Hood Overlay** (10 of 10 deliverables complete; evaluated through pass 3 with both reviewers returning PASS. Editorial prototype in `docs/input_artifacts/iampatterson-com/` — serif-forward magazine-grid on paper, terminal/CRT vocabulary in the overlay, persimmon accent flipping to phosphor amber during the overlay boot.)
 
-Phase 9B is paused while 9A-redesign is in flight. All remaining 9B work is frozen, including the 6a manual apply (`docs/manual/task-2026-04-17-005.md`). 9B resumes cleanly once 9A-redesign completes — existing 9B status markers in `docs/PHASE_STATUS.md` are preserved.
+Phase 9B remains paused until 9A-redesign is merged to main. All remaining 9B work is frozen, including the 6a manual apply (`docs/manual/task-2026-04-17-005.md`). 9B resumes cleanly on merge — existing 9B status markers in `docs/PHASE_STATUS.md` are preserved.
 
 See `docs/REQUIREMENTS.md` for the full development plan (Phases 1-8, 9A / 9A-redesign / 9B-9D, 10-11).
 See `docs/ARCHITECTURE.md` for technical architecture details.

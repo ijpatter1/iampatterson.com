@@ -15,8 +15,9 @@ export function HomepageUnderside() {
           same foundation I build for clients.
         </h2>
         <p className="mt-3 max-w-[62ch] text-sm leading-relaxed text-u-ink-2">
-          Here&apos;s what&apos;s running right now, underneath your session. Three systems, one
-          session, no mocks.
+          Here&apos;s what&apos;s running right now, underneath your session — consent management,
+          the live event stream, and the pipeline architecture. One session, three systems, no
+          mocks.
         </p>
       </div>
 
