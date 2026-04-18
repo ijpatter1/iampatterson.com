@@ -324,4 +324,17 @@ describe('setup-domain.sh URL-map split (deliverable 6a prerequisite)', () => {
       }),
     ).not.toThrow();
   });
+
+  test('trailing /embed/* verify message matches actual Metabase v0.59+ behavior', () => {
+    // Metabase v0.59+ returns 200 + HTML shell on a bad embed JWT; the
+    // JS parses the token client-side and renders an error UI. The
+    // earlier "expect 4xx" guidance was wrong and mislead the 6a live
+    // apply into thinking the path matcher hadn't landed.
+    //
+    // Critical signal is "NOT a 302 to accounts.google.com" (that's what
+    // confirms /embed/* bypasses IAP).
+    expect(setupDomain).not.toMatch(/expect HTTP\/2 4xx from Metabase \(bad JWT\)/);
+    expect(setupDomain).toMatch(/expect HTTP\/2 200/);
+    expect(setupDomain).toMatch(/NOT a 302/);
+  });
 });
