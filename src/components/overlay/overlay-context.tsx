@@ -3,11 +3,17 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 
+export type OverlayTab = 'overview' | 'timeline' | 'consent' | 'dashboards';
+
 interface OverlayContextValue {
   isOpen: boolean;
+  /** The tab requested by the last `open(tab)` call, or null. Consumed by the overlay host. */
+  pendingTab: OverlayTab | null;
   toggle: () => void;
-  open: () => void;
+  open: (tab?: OverlayTab) => void;
   close: () => void;
+  /** Clear pendingTab once the host has consumed it. */
+  consumePendingTab: () => void;
 }
 
 const OverlayContext = createContext<OverlayContextValue | null>(null);
@@ -18,10 +24,18 @@ const ACCENT_SWAP_DELAY_MS = 130;
 
 export function OverlayProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [pendingTab, setPendingTab] = useState<OverlayTab | null>(null);
 
   const toggle = useCallback(() => setIsOpen((prev) => !prev), []);
-  const open = useCallback(() => setIsOpen(true), []);
-  const close = useCallback(() => setIsOpen(false), []);
+  const open = useCallback((tab?: OverlayTab) => {
+    if (tab) setPendingTab(tab);
+    setIsOpen(true);
+  }, []);
+  const close = useCallback(() => {
+    setIsOpen(false);
+    setPendingTab(null);
+  }, []);
+  const consumePendingTab = useCallback(() => setPendingTab(null), []);
 
   // Accent flips orange→amber mid-boot when the overlay opens, and back to
   // orange immediately on close. Under prefers-reduced-motion, the swap is
@@ -48,7 +62,7 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
   }, [isOpen]);
 
   return (
-    <OverlayContext.Provider value={{ isOpen, toggle, open, close }}>
+    <OverlayContext.Provider value={{ isOpen, pendingTab, toggle, open, close, consumePendingTab }}>
       {children}
     </OverlayContext.Provider>
   );

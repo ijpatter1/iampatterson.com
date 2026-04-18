@@ -7,18 +7,21 @@ import { SessionPulse } from '@/components/chrome/session-pulse';
 import { useOverlay } from '@/components/overlay/overlay-context';
 import { trackClickCta, trackClickNav } from '@/lib/events/track';
 
-const UNDER_THE_HOOD_LINKS = [
-  'Live event stream',
-  'Pipeline architecture',
-  'Consent state',
-] as const;
+const UNDER_THE_HOOD_LINKS: {
+  label: string;
+  tab: 'timeline' | 'overview' | 'consent';
+}[] = [
+  { label: 'Live event stream', tab: 'timeline' },
+  { label: 'Pipeline architecture', tab: 'overview' },
+  { label: 'Consent state', tab: 'consent' },
+];
 
 export function Footer() {
   const { open } = useOverlay();
 
-  const openOverlay = (label: string) => {
+  const openOverlay = (label: string, tab: 'timeline' | 'overview' | 'consent') => {
     trackClickCta(label, 'footer-under-the-hood');
-    open();
+    open(tab);
   };
 
   return (
@@ -77,11 +80,11 @@ export function Footer() {
               Under the hood
             </h5>
             <ul className="mt-4 space-y-2">
-              {UNDER_THE_HOOD_LINKS.map((label) => (
+              {UNDER_THE_HOOD_LINKS.map(({ label, tab }) => (
                 <li key={label}>
                   <button
                     type="button"
-                    onClick={() => openOverlay(label)}
+                    onClick={() => openOverlay(label, tab)}
                     className="text-left text-sm text-ink-2 transition-colors hover:text-ink"
                   >
                     {label}

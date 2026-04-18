@@ -12,7 +12,9 @@ export default function ServicesPage() {
   const { open } = useOverlay();
 
   useEffect(() => {
-    const onScroll = () => {
+    let rafId: number | null = null;
+    const sync = () => {
+      rafId = null;
       const y = window.scrollY + 200;
       for (let i = TIERS.length - 1; i >= 0; i--) {
         const el = document.getElementById('tier-' + TIERS[i].num);
@@ -22,8 +24,20 @@ export default function ServicesPage() {
         }
       }
     };
+    const onScroll = () => {
+      if (rafId !== null) return;
+      rafId = window.requestAnimationFrame(sync);
+    };
+    // Initial sync — only when already scrolled. At scrollY=0 the default
+    // activeTier '01' is already correct; forcing sync() would match the
+    // last tier whose offsetTop (0 in jsdom / the topmost section in the
+    // browser) is ≤ y.
+    if (window.scrollY > 0) sync();
     window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (rafId !== null) window.cancelAnimationFrame(rafId);
+    };
   }, []);
 
   return (

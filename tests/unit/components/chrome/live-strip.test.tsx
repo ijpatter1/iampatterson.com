@@ -9,6 +9,10 @@ jest.mock('@/lib/events/session', () => ({
   getSessionId: () => 'aaaaaaaa-12345678',
 }));
 
+jest.mock('@/hooks/useDataLayerEvents', () => ({
+  useDataLayerEvents: () => ({ events: [] }),
+}));
+
 describe('LiveStrip', () => {
   it('mounts with the expected data-testid', () => {
     render(<LiveStrip />);
@@ -28,7 +32,8 @@ describe('LiveStrip', () => {
 
   it('includes the short session ID suffix in the SESSION field', () => {
     render(<LiveStrip />);
-    expect(screen.getAllByText(/12345678/).length).toBeGreaterThan(0);
+    // 6-char suffix to match SessionPulse — test mock returns 'aaaaaaaa-12345678'
+    expect(screen.getAllByText(/345678/).length).toBeGreaterThan(0);
   });
 
   it('declares the pipeline path in the STACK field', () => {

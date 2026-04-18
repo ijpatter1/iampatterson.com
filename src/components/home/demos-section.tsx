@@ -23,11 +23,11 @@ const DEMOS = [
     href: '/demo/subscription',
     type: 'Subscription',
     title: 'Tuna Subscription',
-    desc: 'A subscription product from signup to retention. Cohort curves and LTV on the same event infrastructure.',
+    desc: 'A subscription product from signup to retention. Every event — plan_select, trial_signup, upgrade, churn — flows through the same instrumentation.',
     highlights: [
-      'Cohort retention segmented by acquisition channel',
-      'LTV analysis by channel, over time',
-      'Multi-touch attribution across the full funnel',
+      'Full lifecycle instrumentation: signup → trial → paid → churn',
+      'Event schema designed for cohort retention and LTV modeling',
+      'Attribution surface planned for Phase 9D · Tier 4',
     ],
   },
   {
@@ -35,11 +35,11 @@ const DEMOS = [
     href: '/demo/leadgen',
     type: 'Lead Gen',
     title: 'Tuna Partnerships',
-    desc: 'A lead-gen landing page with full-funnel tracking. Consent enforcement, PII handling, and lead scoring happen in real time.',
+    desc: 'A lead-gen landing page with full-funnel tracking. Consent enforcement, PII handling, and qualification scoring happen in real time.',
     highlights: [
-      'Deny marketing consent → watch routing change',
-      'AI-powered lead scoring classifies inquiries',
-      'Weekly narrative reports generated automatically',
+      'Deny marketing consent → watch routing change immediately',
+      'PII hashing happens server-side in sGTM, not in your browser',
+      'Qualification scoring + narrative reporting planned for Phase 9C',
     ],
   },
 ];
@@ -68,7 +68,7 @@ export function DemosSection() {
       className="scroll-mt-24 border-t border-rule-soft bg-paper py-20 md:py-28"
     >
       <div className="mx-auto max-w-content px-5 md:px-10">
-        <div className="mb-10 flex flex-wrap items-end justify-between gap-5 border-b border-ink pb-5">
+        <div className="mb-10 flex flex-wrap items-end justify-between gap-5 border-b border-rule-soft pb-5">
           <h2
             className="font-display font-normal text-ink"
             style={{

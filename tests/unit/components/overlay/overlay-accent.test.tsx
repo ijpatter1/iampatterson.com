@@ -116,6 +116,22 @@ describe('OverlayProvider — accent flip', () => {
     expect(getAccent()).toBe(PHOSPHOR);
   });
 
+  it('reverts instantly to persimmon on close under prefers-reduced-motion', async () => {
+    mockReducedMotion(true);
+    const user = userEvent.setup();
+
+    render(
+      <OverlayProvider>
+        <Consumer />
+      </OverlayProvider>,
+    );
+
+    await user.click(screen.getByText('Open'));
+    expect(getAccent()).toBe(PHOSPHOR);
+    await user.click(screen.getByText('Close'));
+    expect(getAccent()).toBe(PERSIMMON);
+  });
+
   it('cancels the pending swap if the overlay closes during the boot hold', async () => {
     jest.useFakeTimers();
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });

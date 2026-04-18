@@ -61,7 +61,7 @@ function Tabs({
 }
 
 export function UnderTheHoodView() {
-  const { isOpen, close } = useOverlay();
+  const { isOpen, close, pendingTab, consumePendingTab } = useOverlay();
   const pathname = usePathname() ?? '/';
   const isHomepage = pathname === '/';
   const isEcommerce = pathname.startsWith('/demo/ecommerce');
@@ -84,6 +84,20 @@ export function UnderTheHoodView() {
       setViewMode('timeline');
     }
   }, [showOverview, viewMode]);
+
+  // If the opener requested a specific tab (e.g. footer "Consent state" link),
+  // switch to it and clear the request so a subsequent open without a hint
+  // doesn't re-select.
+  useEffect(() => {
+    if (pendingTab && isOpen) {
+      if (pendingTab === 'overview' && !showOverview) {
+        setViewMode('timeline');
+      } else {
+        setViewMode(pendingTab);
+      }
+      consumePendingTab();
+    }
+  }, [pendingTab, isOpen, showOverview, consumePendingTab]);
 
   useEffect(() => {
     if (!isOpen) {
