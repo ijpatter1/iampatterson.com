@@ -41,6 +41,31 @@ describe('Design System Tokens', () => {
       expect(accent['success-border']).toBeDefined();
       expect(accent['success-text']).toBeDefined();
     });
+
+    it('defines editorial persimmon + phosphor accent tokens', () => {
+      // Paper state — marketing surface
+      expect(colors.persimmon).toBe('#EA5F2A');
+      // Underside state — overlay / under-the-hood
+      expect(colors.phosphor).toBe('#FFA400');
+    });
+
+    it('defines a dynamic accent-current token bound to --accent', () => {
+      // Components consume the live accent via `text-accent-current`,
+      // `bg-accent-current`, etc. The value is a CSS variable so the
+      // OverlayProvider can swap it at runtime.
+      expect(colors['accent-current']).toBe('var(--accent)');
+    });
+
+    it('defines paper / ink / rule scales for the editorial surface', () => {
+      const paper = colors.paper as unknown as Record<string, string>;
+      const ink = colors.ink as unknown as Record<string, string>;
+      const rule = colors.rule as unknown as Record<string, string>;
+      expect(paper.DEFAULT).toBe('#FFFFFF');
+      expect(paper.alt).toBe('#F5F5F5');
+      expect(ink.DEFAULT).toBe('#111111');
+      expect(ink['3']).toBe('#5C5C5C');
+      expect(rule.soft).toBeDefined();
+    });
   });
 
   describe('Demo accent palettes', () => {

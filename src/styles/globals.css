@@ -3,6 +3,12 @@
 @tailwind utilities;
 
 @layer base {
+  /* Editorial accent (9A-redesign). Persimmon on paper; OverlayProvider flips
+     it to phosphor amber #FFA400 while the overlay is open. */
+  :root {
+    --accent: #ea5f2a;
+  }
+
   /* Smooth scrolling with reduced-motion respect */
   html {
     scroll-behavior: smooth;

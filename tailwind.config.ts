@@ -3,9 +3,13 @@ import type { Config } from 'tailwindcss';
 /**
  * Patterson Consulting Design System
  *
- * Clean slate: white backgrounds, black text, no color palette.
- * Fonts: Lora (display), Plus Jakarta Sans (body), JetBrains Mono (mono).
- * Accent color TBD — will be added once the clean foundation feels right.
+ * Editorial direction (9A-redesign): paper/ink neutral palette plus a single
+ * dynamic accent. Persimmon on the marketing surface, phosphor amber in the
+ * under-the-hood overlay. The swap is driven at runtime via the `--accent`
+ * CSS variable; use `text-accent-current` / `bg-accent-current` / etc. to
+ * consume it.
+ *
+ * Fonts: Instrument Serif (display), Plus Jakarta Sans (body), JetBrains Mono (mono).
  */
 
 const config: Config = {
@@ -68,6 +72,32 @@ const config: Config = {
           error: '#fef2f2',
           'error-border': '#fecaca',
           'error-text': '#7f1d1d',
+        },
+
+        // Editorial accent — persimmon on paper, phosphor amber under the hood.
+        // `accent-current` is dynamic: reads `--accent`, swapped by OverlayProvider.
+        persimmon: '#EA5F2A',
+        phosphor: '#FFA400',
+        'accent-current': 'var(--accent)',
+
+        // Paper / ink scale aligned with the prototype. Kept alongside the
+        // existing surface/content/border tokens so existing components keep
+        // working; new editorial surfaces consume these directly.
+        paper: {
+          DEFAULT: '#FFFFFF',
+          alt: '#F5F5F5',
+          deep: '#E8E8E8',
+        },
+        ink: {
+          DEFAULT: '#111111',
+          2: '#333333',
+          3: '#5C5C5C',
+          4: '#949494',
+        },
+        rule: {
+          DEFAULT: '#222222',
+          soft: 'rgba(17, 17, 17, 0.12)',
+          faint: 'rgba(17, 17, 17, 0.06)',
         },
 
         // Demo accent palettes — all neutral for now
