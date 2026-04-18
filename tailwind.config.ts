@@ -100,6 +100,26 @@ const config: Config = {
           faint: 'rgba(17, 17, 17, 0.06)',
         },
 
+        // Underside (overlay) scale — editorial's negative. Near-black paper,
+        // warm cream ink, amber as luminous signal. Used ONLY inside the
+        // under-the-hood overlay surface.
+        'u-paper': {
+          DEFAULT: '#0D0B0A',
+          alt: '#141210',
+          deep: '#1D1A17',
+        },
+        'u-ink': {
+          DEFAULT: '#F5EFE3',
+          2: '#D7CFC0',
+          3: '#A39A8A',
+          4: '#6E675C',
+        },
+        'u-rule': {
+          DEFAULT: 'rgba(245, 239, 227, 0.18)',
+          soft: 'rgba(245, 239, 227, 0.1)',
+          faint: 'rgba(245, 239, 227, 0.05)',
+        },
+
         // Demo accent palettes — all neutral for now
         demo: {
           ecommerce: {

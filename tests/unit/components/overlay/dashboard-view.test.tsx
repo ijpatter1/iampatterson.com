@@ -17,9 +17,12 @@ jest.mock('@/lib/events/track', () => ({
 import { DashboardView } from '@/components/overlay/dashboard-view';
 
 describe('DashboardView', () => {
-  it('renders dashboard navigation header', () => {
+  it('renders the BI-layer kicker and editorial headline', () => {
     render(<DashboardView />);
-    expect(screen.getByText('Dashboards')).toBeInTheDocument();
+    expect(screen.getByText(/BI layer · Metabase on BigQuery marts/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 3 })).toHaveTextContent(
+      /mart tables.*already modeled/i,
+    );
   });
 
   it('renders links for all three demo dashboards', () => {
@@ -36,16 +39,24 @@ describe('DashboardView', () => {
     expect(screen.getByText(/Lead funnel, cost per lead/)).toBeInTheDocument();
   });
 
-  it('renders data source info', () => {
+  it('links to the live Metabase instance', () => {
     render(<DashboardView />);
-    expect(screen.getAllByText(/BigQuery/).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/Dataform/).length).toBeGreaterThanOrEqual(1);
+    const liveLink = screen.getByRole('link', { name: /open →/i });
+    expect(liveLink).toHaveAttribute('href', 'https://bi.iampatterson.com/');
+    expect(liveLink).toHaveAttribute('target', '_blank');
+  });
+
+  it('mentions BigQuery marts and Dataform in the Metabase panel', () => {
+    render(<DashboardView />);
+    expect(screen.getAllByText(/BigQuery/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Dataform/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/iampatterson_marts/)).toBeInTheDocument();
   });
 
   it('highlights the current demo dashboard when on a demo route', () => {
     render(<DashboardView />);
-    // On /demo/ecommerce, e-commerce dashboard should be highlighted
     const ecomLink = screen.getByText('E-Commerce Dashboard').closest('a');
-    expect(ecomLink).toHaveClass('border-neutral-900');
+    // Active row uses the accent-current border in the underside token set
+    expect(ecomLink?.className).toContain('border-accent-current');
   });
 });

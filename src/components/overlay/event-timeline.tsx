@@ -17,12 +17,12 @@ function RoutingBadge({ route }: { route: RoutingResult }) {
   const errored = route.status === 'error';
   return (
     <span
-      className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${
+      className={`inline-flex items-center border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest ${
         blocked
-          ? 'bg-neutral-100 text-neutral-400 line-through'
+          ? 'border-u-rule-soft bg-u-paper-deep text-u-ink-4 line-through'
           : errored
-            ? 'bg-red-50 text-red-600'
-            : 'bg-green-50 text-green-700'
+            ? 'border-accent-current/40 bg-u-paper-alt text-accent-current'
+            : 'border-accent-current/40 bg-u-paper-alt text-u-ink'
       }`}
     >
       {destinationLabel(route.destination)}
@@ -39,52 +39,74 @@ interface EventTimelineProps {
 export function EventTimeline({ events, onSelectEvent, selectedEventId }: EventTimelineProps) {
   if (events.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center text-neutral-400">
-        <p className="text-sm">No events yet</p>
-        <p className="mt-1 text-xs">Interact with the page to see events appear here</p>
+      <div>
+        <div className="mb-3 font-mono text-[10px] uppercase tracking-widest text-accent-current">
+          Session timeline — streaming
+        </div>
+        <h3 className="font-display text-2xl font-normal leading-tight text-u-ink">
+          Waiting for events.
+        </h3>
+        <p className="mt-3 max-w-[62ch] text-sm leading-relaxed text-u-ink-2">
+          Interact with the page — scroll, click, navigate — and each event will appear here with
+          its routing destinations.
+        </p>
       </div>
     );
   }
 
   return (
-    <ul className="divide-y divide-neutral-100">
-      {events.map((event) => {
-        const isSelected = selectedEventId === event.pipeline_id;
-        return (
-          <li
-            key={event.pipeline_id}
-            role="button"
-            tabIndex={0}
-            className={`cursor-pointer px-4 py-3 transition-colors hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-neutral-400 ${
-              isSelected ? 'bg-neutral-50 ring-1 ring-inset ring-neutral-300' : ''
-            }`}
-            onClick={() => onSelectEvent?.(event)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                onSelectEvent?.(event);
-              }
-            }}
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-sm font-medium text-neutral-900">
-                    {event.event_name}
-                  </span>
-                  <span className="text-xs text-neutral-400">{formatTime(event.timestamp)}</span>
+    <div>
+      <div className="mb-3 font-mono text-[10px] uppercase tracking-widest text-accent-current">
+        Session timeline · {events.length} event{events.length === 1 ? '' : 's'}
+      </div>
+      <h3 className="font-display text-2xl font-normal leading-tight text-u-ink">
+        Every event, every destination.
+      </h3>
+      <p className="mt-3 max-w-[62ch] text-sm leading-relaxed text-u-ink-2">
+        Most recent first. Click any row for the step-by-step journey through the pipeline.
+      </p>
+
+      <ul className="mt-6 divide-y divide-u-rule-soft border-y border-u-rule-soft">
+        {events.map((event) => {
+          const isSelected = selectedEventId === event.pipeline_id;
+          return (
+            <li
+              key={event.pipeline_id}
+              role="button"
+              tabIndex={0}
+              className={`cursor-pointer px-4 py-3 transition-colors hover:bg-u-paper-alt focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-current ${
+                isSelected ? 'bg-u-paper-alt ring-1 ring-inset ring-accent-current' : ''
+              }`}
+              onClick={() => onSelectEvent?.(event)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onSelectEvent?.(event);
+                }
+              }}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline gap-3">
+                    <span className="font-mono text-[10px] uppercase tracking-widest text-u-ink-4">
+                      {formatTime(event.timestamp)}
+                    </span>
+                    <span className="font-mono text-sm text-accent-current">
+                      {event.event_name}
+                    </span>
+                  </div>
+                  <p className="mt-1 font-mono text-[11px] text-u-ink-3">{event.page_path}</p>
                 </div>
-                <p className="mt-0.5 text-xs text-neutral-500">{event.page_path}</p>
               </div>
-            </div>
-            <div className="mt-1.5 flex flex-wrap gap-1">
-              {event.routing.map((route, i) => (
-                <RoutingBadge key={`${route.destination}-${i}`} route={route} />
-              ))}
-            </div>
-          </li>
-        );
-      })}
-    </ul>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {event.routing.map((route, i) => (
+                  <RoutingBadge key={`${route.destination}-${i}`} route={route} />
+                ))}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }

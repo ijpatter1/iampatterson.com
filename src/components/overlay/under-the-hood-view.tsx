@@ -36,7 +36,7 @@ function Tabs({
   tabs: TabDef[];
 }) {
   return (
-    <div className="flex gap-1 border-b border-rule-soft bg-ink px-4">
+    <div className="flex gap-1 border-b border-u-rule-soft bg-u-paper-alt px-4">
       {tabs.map((t) => (
         <button
           key={t.mode}
@@ -45,12 +45,12 @@ function Tabs({
           className={`relative flex items-center gap-2 border-b-2 px-4 py-3 font-mono text-[11px] uppercase tracking-widest transition-colors ${
             active === t.mode
               ? 'border-accent-current text-accent-current'
-              : 'border-transparent text-ink-4 hover:text-paper'
+              : 'border-transparent text-u-ink-3 hover:text-u-ink'
           }`}
         >
           {t.label}
           {typeof t.count === 'number' && (
-            <span className="rounded-sm bg-ink-2 px-1.5 py-0.5 font-mono text-[9px] text-ink-4">
+            <span className="rounded-sm bg-u-paper-deep px-1.5 py-0.5 font-mono text-[9px] text-u-ink-3">
               {t.count}
             </span>
           )}
@@ -73,16 +73,28 @@ export function UnderTheHoodView() {
   const [viewMode, setViewMode] = useState<ViewMode>(showOverview ? 'overview' : 'timeline');
   const [selectedEvent, setSelectedEvent] = useState<PipelineEvent | null>(null);
   const [phase, setPhase] = useState<Phase>('idle');
-  const [openCount, setOpenCount] = useState(0);
+  const [flashKey, setFlashKey] = useState(false);
   const hasBooted = useRef(false);
+
+  // Reset viewMode if the current tab disappears (e.g. user navigates from /
+  // to /demo/subscription while the overlay is closed; Overview tab vanishes
+  // but stale 'overview' mode would leave the content pane blank on reopen).
+  useEffect(() => {
+    if (!showOverview && viewMode === 'overview') {
+      setViewMode('timeline');
+    }
+  }, [showOverview, viewMode]);
 
   useEffect(() => {
     if (!isOpen) {
-      if (phase !== 'idle') setPhase('idle');
+      // Close: reset to idle, clear any mid-investigation state so the next
+      // open lands on the tab-level view, not the visitor's stale selection.
+      setPhase((p) => (p === 'idle' ? p : 'idle'));
+      setSelectedEvent(null);
       return;
     }
     hasBooted.current = true;
-    setOpenCount((c) => c + 1);
+    setFlashKey((k) => !k);
     const reduced =
       typeof window !== 'undefined' &&
       typeof window.matchMedia === 'function' &&
@@ -94,8 +106,6 @@ export function UnderTheHoodView() {
     setPhase('boot');
     const id = window.setTimeout(() => setPhase('on'), BOOT_DURATION_MS);
     return () => window.clearTimeout(id);
-    // Only re-run when open state flips.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   if (!isOpen && !hasBooted.current) return null;
@@ -112,7 +122,7 @@ export function UnderTheHoodView() {
       data-testid="under-the-hood-view"
       data-phase={phase}
       aria-hidden={!isOpen}
-      className={`fixed inset-0 z-50 flex flex-col bg-ink text-paper transition-opacity duration-200 ${
+      className={`fixed inset-0 z-50 flex flex-col bg-u-paper text-u-ink transition-opacity duration-200 ${
         isOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
       }`}
     >
@@ -138,7 +148,7 @@ export function UnderTheHoodView() {
       )}
 
       {/* Header */}
-      <header className="flex items-center justify-between border-b border-ink-2 bg-ink px-6 py-4">
+      <header className="flex items-center justify-between border-b border-u-rule-soft bg-u-paper px-6 py-4">
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center border border-accent-current text-accent-current">
             <svg
@@ -154,8 +164,8 @@ export function UnderTheHoodView() {
             </svg>
           </div>
           <div>
-            <h1 className="font-display text-lg leading-none text-paper">Under the Hood</h1>
-            <p className="mt-1 flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-ink-4">
+            <h1 className="font-display text-lg leading-none text-u-ink">Under the Hood</h1>
+            <p className="mt-1 flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-u-ink-3">
               <span className="inline-block h-1.5 w-1.5 animate-session-pulse rounded-full bg-accent-current" />
               Live · streaming your session events
             </p>
@@ -164,7 +174,7 @@ export function UnderTheHoodView() {
         <button
           type="button"
           onClick={close}
-          className="rounded-sm border border-ink-2 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-ink-4 transition-colors hover:border-accent-current hover:text-accent-current"
+          className="rounded-sm border border-u-rule-soft px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-u-ink-3 transition-colors hover:border-accent-current hover:text-accent-current"
         >
           ← Back to site
         </button>
@@ -172,12 +182,15 @@ export function UnderTheHoodView() {
 
       <Tabs active={viewMode} onChange={setViewMode} tabs={tabs} />
 
-      <div className="relative flex-1 overflow-y-auto bg-paper text-ink">
-        <div key={`${openCount}-${viewMode}`} className="tab-flash mx-auto max-w-content px-6 py-8">
+      <div className="relative flex-1 overflow-y-auto bg-u-paper text-u-ink">
+        <div
+          key={`${String(flashKey)}-${viewMode}`}
+          className="tab-flash mx-auto max-w-content px-6 py-8"
+        >
           {selectedEvent ? (
             <>
               <EventDetail event={selectedEvent} onClose={() => setSelectedEvent(null)} />
-              <div className="mt-6 border-t border-rule-soft pt-6">
+              <div className="mt-6 border-t border-u-rule-soft pt-6">
                 <NarrativeFlow event={selectedEvent} />
               </div>
             </>
