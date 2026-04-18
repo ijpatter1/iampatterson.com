@@ -79,8 +79,9 @@ export function AmbientBubbles({ maxBubbles = 3, duration = 3000 }: AmbientBubbl
         <div
           key={bubble.id}
           role="status"
-          className="animate-bubble-rise rounded-full border border-neutral-200 bg-white/90 px-3 py-1.5 text-xs font-mono text-neutral-600 shadow-card backdrop-blur-sm"
+          className="animate-bubble-rise flex items-center gap-2 rounded-full border border-rule-soft bg-paper/90 px-3 py-1.5 font-mono text-[11px] text-ink-3 shadow-card backdrop-blur-sm"
         >
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-accent-current" />
           {bubble.eventName}
         </div>
       ))}

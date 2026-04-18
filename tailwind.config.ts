@@ -3,9 +3,13 @@ import type { Config } from 'tailwindcss';
 /**
  * Patterson Consulting Design System
  *
- * Clean slate: white backgrounds, black text, no color palette.
- * Fonts: Lora (display), Plus Jakarta Sans (body), JetBrains Mono (mono).
- * Accent color TBD — will be added once the clean foundation feels right.
+ * Editorial direction (9A-redesign): paper/ink neutral palette plus a single
+ * dynamic accent. Persimmon on the marketing surface, phosphor amber in the
+ * under-the-hood overlay. The swap is driven at runtime via the `--accent`
+ * CSS variable; use `text-accent-current` / `bg-accent-current` / etc. to
+ * consume it.
+ *
+ * Fonts: Instrument Serif (display), Plus Jakarta Sans (body), JetBrains Mono (mono).
  */
 
 const config: Config = {
@@ -68,6 +72,52 @@ const config: Config = {
           error: '#fef2f2',
           'error-border': '#fecaca',
           'error-text': '#7f1d1d',
+        },
+
+        // Editorial accent — persimmon on paper, phosphor amber under the hood.
+        // `accent-current` is dynamic: reads `--accent`, swapped by OverlayProvider.
+        persimmon: '#EA5F2A',
+        phosphor: '#FFA400',
+        'accent-current': 'var(--accent)',
+
+        // Paper / ink scale aligned with the prototype. Kept alongside the
+        // existing surface/content/border tokens so existing components keep
+        // working; new editorial surfaces consume these directly.
+        paper: {
+          DEFAULT: '#FFFFFF',
+          alt: '#F5F5F5',
+          deep: '#E8E8E8',
+        },
+        ink: {
+          DEFAULT: '#111111',
+          2: '#333333',
+          3: '#5C5C5C',
+          4: '#949494',
+        },
+        rule: {
+          DEFAULT: '#222222',
+          soft: 'rgba(17, 17, 17, 0.12)',
+          faint: 'rgba(17, 17, 17, 0.06)',
+        },
+
+        // Underside (overlay) scale — editorial's negative. Near-black paper,
+        // warm cream ink, amber as luminous signal. Used ONLY inside the
+        // under-the-hood overlay surface.
+        'u-paper': {
+          DEFAULT: '#0D0B0A',
+          alt: '#141210',
+          deep: '#1D1A17',
+        },
+        'u-ink': {
+          DEFAULT: '#F5EFE3',
+          2: '#D7CFC0',
+          3: '#A39A8A',
+          4: '#6E675C',
+        },
+        'u-rule': {
+          DEFAULT: 'rgba(245, 239, 227, 0.18)',
+          soft: 'rgba(245, 239, 227, 0.1)',
+          faint: 'rgba(245, 239, 227, 0.05)',
         },
 
         // Demo accent palettes — all neutral for now
@@ -133,6 +183,8 @@ const config: Config = {
         'fade-in': 'fadeIn 0.6s ease-out',
         'slide-up': 'slideUp 0.6s ease-out',
         'bubble-rise': 'bubble-rise 3s ease-in-out forwards',
+        'session-pulse': 'session-pulse 2.4s ease-out infinite',
+        'live-strip': 'live-strip 40s linear infinite',
       },
 
       keyframes: {
@@ -149,6 +201,15 @@ const config: Config = {
           '10%': { opacity: '1', transform: 'translateY(0) scale(1)' },
           '80%': { opacity: '1', transform: 'translateY(0) scale(1)' },
           '100%': { opacity: '0', transform: 'translateY(-0.5rem) scale(0.95)' },
+        },
+        'session-pulse': {
+          '0%': { opacity: '0.6', transform: 'scale(1)' },
+          '80%': { opacity: '0', transform: 'scale(2.2)' },
+          '100%': { opacity: '0', transform: 'scale(2.2)' },
+        },
+        'live-strip': {
+          '0%': { transform: 'translateX(0)' },
+          '100%': { transform: 'translateX(-50%)' },
         },
       },
     },

@@ -35,7 +35,7 @@ function makeEvent(overrides: Partial<PipelineEvent> = {}): PipelineEvent {
 describe('EventTimeline', () => {
   it('renders an empty state when no events', () => {
     render(<EventTimeline events={[]} />);
-    expect(screen.getByText(/no events/i)).toBeInTheDocument();
+    expect(screen.getByText(/waiting for events/i)).toBeInTheDocument();
   });
 
   it('renders event names', () => {

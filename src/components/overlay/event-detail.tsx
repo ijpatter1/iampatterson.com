@@ -4,18 +4,20 @@ import { destinationLabel } from '@/lib/events/destination-labels';
 import type { PipelineEvent, RoutingResult, ConsentState } from '@/lib/events/pipeline-schema';
 
 function StatusBadge({ status }: { status: RoutingResult['status'] }) {
-  const styles = {
-    sent: 'bg-green-50 text-green-700',
-    blocked_consent: 'bg-amber-50 text-amber-700',
-    error: 'bg-red-50 text-red-600',
-  };
+  const tone = {
+    sent: 'border-accent-current/40 text-accent-current',
+    blocked_consent: 'border-u-rule-soft text-u-ink-4 line-through',
+    error: 'border-accent-current/60 text-accent-current',
+  }[status];
   const labels = {
     sent: 'sent',
     blocked_consent: 'blocked',
     error: 'error',
   };
   return (
-    <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${styles[status]}`}>
+    <span
+      className={`inline-flex items-center border bg-u-paper-deep px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest ${tone}`}
+    >
       {labels[status]}
     </span>
   );
@@ -23,8 +25,8 @@ function StatusBadge({ status }: { status: RoutingResult['status'] }) {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="border-t border-neutral-100 py-3">
-      <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-400">
+    <div className="border-t border-u-rule-soft py-4">
+      <h4 className="mb-3 font-mono text-[10px] uppercase tracking-widest text-accent-current">
         {title}
       </h4>
       {children}
@@ -33,11 +35,14 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function ConsentRow({ signal, value }: { signal: string; value: string }) {
+  const granted = value === 'granted';
   return (
-    <div className="flex items-center justify-between py-0.5 text-xs">
-      <span className="font-mono text-neutral-600">{signal}</span>
+    <div className="flex items-center justify-between py-1 text-xs">
+      <span className="font-mono text-u-ink-2">{signal}</span>
       <span
-        className={`font-medium ${value === 'granted' ? 'text-green-700' : 'text-neutral-400'}`}
+        className={`font-mono text-[10px] uppercase tracking-widest ${
+          granted ? 'text-accent-current' : 'text-u-ink-4'
+        }`}
       >
         {value}
       </span>
@@ -56,15 +61,15 @@ export function EventDetail({ event, onClose }: EventDetailProps) {
   const consentEntries = Object.entries(event.consent) as [keyof ConsentState, string][];
 
   return (
-    <div className="flex flex-col">
-      <div className="flex items-center justify-between px-4 py-3">
-        <h3 className="font-mono text-sm font-semibold text-neutral-900">{event.event_name}</h3>
+    <div className="border border-u-rule-soft bg-u-paper-alt">
+      <div className="flex items-center justify-between px-5 py-4">
+        <h3 className="font-mono text-sm text-accent-current">{event.event_name}</h3>
         {onClose && (
           <button
             type="button"
             onClick={onClose}
             aria-label="Close detail panel"
-            className="rounded p-1 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
+            className="rounded-sm p-1 text-u-ink-3 transition-colors hover:bg-u-paper-deep hover:text-u-ink"
           >
             <svg
               width="16"
@@ -80,7 +85,7 @@ export function EventDetail({ event, onClose }: EventDetailProps) {
         )}
       </div>
 
-      <div className="px-4 text-xs text-neutral-500">
+      <div className="px-5 font-mono text-[11px] text-u-ink-3">
         <span>{event.page_path}</span>
         <span className="mx-1.5">·</span>
         <span>
@@ -92,17 +97,17 @@ export function EventDetail({ event, onClose }: EventDetailProps) {
         </span>
       </div>
 
-      <div className="mt-2 px-4">
+      <div className="mt-3 px-5 pb-4">
         <Section title="Data Layer">
           <div className="space-y-1">
             {Object.entries(event.parameters).map(([key, value]) => (
               <div key={key} className="flex items-start justify-between gap-2 text-xs">
-                <span className="font-mono text-neutral-600">{key}</span>
-                <span className="text-right font-mono text-neutral-900">{String(value)}</span>
+                <span className="font-mono text-u-ink-2">{key}</span>
+                <span className="text-right font-mono text-u-ink">{String(value)}</span>
               </div>
             ))}
             {Object.keys(event.parameters).length === 0 && (
-              <p className="text-xs text-neutral-400">No additional parameters</p>
+              <p className="font-mono text-[11px] text-u-ink-3">No additional parameters</p>
             )}
           </div>
         </Section>
@@ -121,7 +126,7 @@ export function EventDetail({ event, onClose }: EventDetailProps) {
                 data-routing-row
                 className="flex items-center justify-between text-xs"
               >
-                <span className="font-medium text-neutral-700">
+                <span className="font-mono text-u-ink-2">
                   {destinationLabel(route.destination)}
                 </span>
                 <StatusBadge status={route.status} />

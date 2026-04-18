@@ -1,7 +1,7 @@
 # Phase Status Tracker
 
-> **Current Phase: 9B — E-Commerce Demo: Tiers 2 & 3** (5 of 8 deliverables complete; 6a dev-complete in sandbox, awaiting manual apply against live Metabase; 6b and 7 remaining)
-> Last updated: 2026-04-18, session-2026-04-18-021
+> **Current Phase: 9A-redesign — Editorial Homepage, Services, and Under-the-Hood Overlay** (10 of 10 deliverables complete. UAT accepted by user in session-023; session-024 followed up with CRT boot fidelity fixes, a once-per-session boot refinement, and a debt-cleanup pass. 609 tests passing, build clean. Phase 9B is paused — resumes after 9A-redesign merges to main, including the 6a manual apply.)
+> Last updated: 2026-04-18, session-2026-04-18-025
 
 ---
 
@@ -141,11 +141,31 @@
 - ✅ 2026-04-03, session-2026-04-03-017 — Kill `/demo` landing page — redirects to `/#demos`
 - ✅ 2026-04-04, session-2026-04-04-018 — Homepage restructured: hero-first narrative, event stream fix, tier overview moved to Services, demos intro added
 - ✅ 2026-04-04, session-2026-04-04-018 — Design system: fonts finalized (Lora + Plus Jakarta Sans + JetBrains Mono), real font files, viewport meta tag
-- ✅ 2026-04-17, session-2026-04-04-018 — Color palette finalized: white/black/grey clean slate, no accent color. Lets the measurement pipeline and under-the-hood features carry visual weight
+
+---
+
+## Phase 9A-redesign — Editorial Homepage, Services, and Under-the-Hood Overlay
+
+*Goal: Reskin the Phase 9A surfaces (homepage, services, under-the-hood overlay) per the editorial direction in `docs/input_artifacts/iampatterson-com/` — serif-forward magazine-grid on paper, terminal/CRT vocabulary in the overlay, persimmon accent that flips to phosphor amber during the overlay boot. Prototype copy verbatim where strong; current-site copy pulled in only where the prototype is thin. Demo front-ends out of scope.*
+
+- ✅ 2026-04-18, commit 9c0dc7c — Design tokens + typography — Instrument Serif added (local font files bundled from google/fonts OFL; Lora removed); persimmon `#EA5F2A` + phosphor amber `#FFA400` tokens; dynamic `accent-current` Tailwind utility reading `var(--accent)`; paper/ink/rule scales; OverlayProvider sets `--accent` on `documentElement` with 130ms delay on open (lands mid-boot), instant revert on close, instant flip under prefers-reduced-motion, cancels pending swap if overlay closes during the hold
+- ✅ 2026-04-18, commit a101fbb — Editorial chrome — `SessionPulse` (pulsing dot + session ID + live event count from useDataLayerEvents; clickable opens overlay), `LiveStrip` (SESSION/STACK/CONSENT/PIPELINE/DASHBOARDS/ATTRIB ticker, seamless loop), `MobileSheet` (numbered full-height slide-in menu), 4-column editorial Footer (brand/pages/demos/under-the-hood). FlipTrigger component and associated tests deleted.
+- ✅ 2026-04-18, commit e36e9ca — Homepage hero masthead — "I build / *measurement* / infrastructure." three-line Instrument Serif display, deck with italic lede + body, primary/ghost CTAs. Shared `EditorialButton` / `EditorialLink` components.
+- ✅ 2026-04-18, commit b013a0c — Pipeline section — 5-stage grid (Browser → Client GTM → sGTM → BigQuery → Dashboards) with 1400ms active-stage rotation, new `useLiveEvents` hook merging SSE+dataLayer sources, live log feed showing real events, "Watch it live" pill CTA
+- ✅ 2026-04-18, commit cd0e5ba — Demos section — horizontal-scroll card track (mobile) / 3-col grid (desktop), swipe-bar indicator, 3 cards linking to `/demo/ecommerce`, `/demo/subscription`, `/demo/leadgen`
+- ✅ 2026-04-18, commit ddbf5a1 — Services teaser + full Services page — TIERS content extracted to `src/lib/content/tiers.ts`; homepage 4-tier teaser list; services page rewritten with sticky tier-nav sidebar (scroll-spy, scroll listener, accent active), per-tier numbered core/optional grids, tier-summary blocks with accent left-border, "Watch it run first" closer
+- ✅ 2026-04-18, commit e6e2f82 — Proof section — "Evidence" kicker, editorial headline, 3-metric grid (2.5M audience / $45K revenue / 24/7 live events) with oversized serif metrics + accent-colored unit suffixes
+- ✅ 2026-04-18, commit d6f4227 — Final CTA — persimmon contact eyebrow (mailto), "Watch it / run first. / Then hire me." three-line headline, sub copy, primary/ghost CTAs
+- ✅ 2026-04-18, commit 54aeef4 — Under-the-hood overlay redesign — full-page ink/terminal chrome with paper content pane, boot phase state machine (idle → boot → on, 260ms hold, skipped under prefers-reduced-motion and on re-opens within the same browser session via `sessionStorage`), CRT flicker/bloom/scanlines layers gated by phase-on, tab-flash settle animation on open/tab-change, Tabs reduced to 4 (Overview/Timeline/Consent/Dashboards), Narrative moved to contextual-only (below event detail), backdrop click closes, uses useLiveEvents
+- ✅ 2026-04-18 — Wiring & route integration — `OverlayProvider` drives `--accent` and opens full-page view; demo routes untouched; ambient bubbles preserved via existing `AmbientBubblesWrapper` (`/demo/*` guard unchanged); `/demo` redirect preserved; flip-trigger / header-demos components fully removed; `Narrative` standalone tab removed from overlay
+
+*Homepage composition: Hero → Pipeline → Demos → ServicesTeaser → Proof → FinalCta. Test suite: 527 → 609 (+82 net) after evaluation passes 1-3 + handoff close-out + session-024 CRT boot fidelity/once-per-session refinement + debt-cleanup pass. Production build clean.*
 
 ---
 
 ## Phase 9B — E-Commerce Demo: Tiers 2 & 3 (Data Infrastructure + BI)
+
+> ⏸ **PAUSED** — frozen pending completion of Phase 9A-redesign. All remaining 9B work is held, including the 6a manual apply (`docs/manual/task-2026-04-17-005.md`). Existing ✅/🔄/⬜ markers are preserved below for clean resume.
 
 *Goal: Each page in the checkout funnel demonstrates a different Tier 2 deliverable. Confirmation page pivots to Tier 3 with actionable insights. Looker Studio / Metabase integration.*
 

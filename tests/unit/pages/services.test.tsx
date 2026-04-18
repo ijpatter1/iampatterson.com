@@ -2,89 +2,151 @@
  * @jest-environment jsdom
  */
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import ServicesPage from '@/app/services/page';
+import { OverlayProvider, useOverlay } from '@/components/overlay/overlay-context';
 
-jest.mock('framer-motion', () => ({
-  motion: {
-    div: ({
-      children,
-      className,
-      ...rest
-    }: {
-      children: React.ReactNode;
-      className?: string;
-      [key: string]: unknown;
-    }) => {
-      const skip = new Set([
-        'initial',
-        'animate',
-        'exit',
-        'transition',
-        'variants',
-        'whileInView',
-        'viewport',
-      ]);
-      const filtered: Record<string, unknown> = {};
-      for (const [k, v] of Object.entries(rest)) {
-        if (!skip.has(k)) filtered[k] = v;
-      }
-      return (
-        <div className={className} {...filtered}>
-          {children}
-        </div>
-      );
-    },
-  },
-  useReducedMotion: () => false,
+jest.mock('@/lib/events/track', () => ({
+  trackClickCta: jest.fn(),
 }));
 
-describe('ServicesPage', () => {
-  it('renders the positioning heading', () => {
-    render(<ServicesPage />);
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-      /end-to-end measurement infrastructure/i,
-    );
+import { trackClickCta } from '@/lib/events/track';
+
+function Probe() {
+  const { isOpen } = useOverlay();
+  return <span data-testid="overlay-status">{isOpen ? 'open' : 'closed'}</span>;
+}
+
+function renderPage() {
+  return render(
+    <OverlayProvider>
+      <ServicesPage />
+      <Probe />
+    </OverlayProvider>,
+  );
+}
+
+beforeEach(() => {
+  jest.clearAllMocks();
+});
+
+describe('ServicesPage — editorial', () => {
+  it('renders the positioning headline with italic "Not" emphasis', () => {
+    renderPage();
+    const h1 = screen.getByRole('heading', { level: 1 });
+    expect(h1.textContent).toMatch(/End-to-end[\s\S]*measurement[\s\S]*infrastructure[\s\S]*Not/);
   });
 
-  it('renders the engagement structure heading', () => {
-    render(<ServicesPage />);
-    expect(screen.getByText(/four tiers/i)).toBeInTheDocument();
-  });
-
-  it('renders all four tier headings', () => {
-    render(<ServicesPage />);
-    // Titles appear in both positioning overview and detailed tier sections
+  it('renders all four tier titles', () => {
+    renderPage();
+    // Each tier title appears in the sticky nav AND the tier section
     expect(screen.getAllByText('Measurement Foundation').length).toBeGreaterThanOrEqual(2);
     expect(screen.getAllByText('Data Infrastructure').length).toBeGreaterThanOrEqual(2);
     expect(screen.getAllByText('Business Intelligence').length).toBeGreaterThanOrEqual(2);
-    expect(screen.getAllByText('Attribution & Advanced Analytics').length).toBeGreaterThanOrEqual(
-      2,
-    );
+    expect(screen.getAllByText('Attribution & Advanced').length).toBeGreaterThanOrEqual(2);
   });
 
-  it('renders tier subheadings', () => {
-    render(<ServicesPage />);
+  it('renders all four tier subtitles', () => {
+    renderPage();
     expect(screen.getByText(/get the data right at the source/i)).toBeInTheDocument();
     expect(screen.getByText(/turn raw events into a source of truth/i)).toBeInTheDocument();
     expect(screen.getByText(/answers, not dashboards/i)).toBeInTheDocument();
-    expect(screen.getByText(/finally answering/i)).toBeInTheDocument();
+    expect(screen.getByText(/actually working/i)).toBeInTheDocument();
   });
 
-  it('renders tier outcome summaries', () => {
-    render(<ServicesPage />);
-    expect(screen.getByText(/what you get at the end of tier 1/i)).toBeInTheDocument();
-    expect(screen.getByText(/what you get at the end of tier 2/i)).toBeInTheDocument();
-    expect(screen.getByText(/what you get at the end of tier 3/i)).toBeInTheDocument();
-    expect(screen.getByText(/what you get at the end of tier 4/i)).toBeInTheDocument();
+  it('renders tier outcome summaries for each tier', () => {
+    renderPage();
+    expect(screen.getByText(/what you get at the end of tier 01/i)).toBeInTheDocument();
+    expect(screen.getByText(/what you get at the end of tier 02/i)).toBeInTheDocument();
+    expect(screen.getByText(/what you get at the end of tier 03/i)).toBeInTheDocument();
+    expect(screen.getByText(/what you get at the end of tier 04/i)).toBeInTheDocument();
   });
 
-  it('renders tier numbers', () => {
-    render(<ServicesPage />);
-    // Numbers appear in both the positioning cards and the tier sections
-    expect(screen.getAllByText('01').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('02').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('03').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('04').length).toBeGreaterThanOrEqual(1);
+  it('renders the sticky tier nav with links to each tier section', () => {
+    renderPage();
+    const nav = screen.getByTestId('tier-nav');
+    expect(nav).toBeInTheDocument();
+    expect(nav.querySelectorAll('a')).toHaveLength(4);
+    const anchors = Array.from(nav.querySelectorAll('a')).map((a) => a.getAttribute('href'));
+    expect(anchors).toEqual(['#tier-01', '#tier-02', '#tier-03', '#tier-04']);
+  });
+
+  it('marks the first tier active by default in the tier nav', () => {
+    renderPage();
+    const nav = screen.getByTestId('tier-nav');
+    const first = nav.querySelector('a[href="#tier-01"]') as HTMLElement;
+    expect(first.dataset.active).toBe('true');
+  });
+
+  it('syncs the active tier on mount when already scrolled past tier boundaries', () => {
+    // Pretend the user hash-navigated or refreshed while scrolled. The scroll-spy
+    // must pick the correct tier from offsetTop rather than leaving the default '01'.
+    Object.defineProperty(window, 'scrollY', { value: 1500, configurable: true });
+    // Stub offsetTop on each tier section so the scan can choose one
+    const origGet = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetTop');
+    Object.defineProperty(HTMLElement.prototype, 'offsetTop', {
+      configurable: true,
+      get() {
+        // Fire only on the tier sections
+        if (this.id === 'tier-01') return 400;
+        if (this.id === 'tier-02') return 1200;
+        if (this.id === 'tier-03') return 2000;
+        if (this.id === 'tier-04') return 2800;
+        return 0;
+      },
+    });
+
+    try {
+      renderPage();
+      const nav = screen.getByTestId('tier-nav');
+      const active = nav.querySelector('a[data-active="true"]') as HTMLElement;
+      // y = scrollY + 200 = 1700 → matches tier-02 (offsetTop 1200) but not tier-03 (2000)
+      expect(active.getAttribute('href')).toBe('#tier-02');
+    } finally {
+      if (origGet) Object.defineProperty(HTMLElement.prototype, 'offsetTop', origGet);
+      Object.defineProperty(window, 'scrollY', { value: 0, configurable: true });
+    }
+  });
+
+  it('distinguishes non-negotiable core from optional components on Tier 1 and 2', () => {
+    renderPage();
+    // "non-negotiable" appears once in the hero paragraph and once per section header (Tiers 1 + 2)
+    const nonNegotiable = screen.getAllByText(/non-negotiable/i);
+    expect(nonNegotiable.length).toBeGreaterThanOrEqual(2);
+    // "scoped per client" is only used as the Tier 1 + 2 optional-components label
+    const scopedPerClient = screen.getAllByText(/scoped per client/i);
+    expect(scopedPerClient.length).toBe(2);
+  });
+
+  it('labels Tier 3 and Tier 4 as fully modular', () => {
+    renderPage();
+    const allModular = screen.getAllByText(/all modular/i);
+    expect(allModular.length).toBe(2);
+  });
+
+  it('renders each tier section with the expected id for anchor linking', () => {
+    renderPage();
+    expect(screen.getByTestId('tier-01').id).toBe('tier-01');
+    expect(screen.getByTestId('tier-02').id).toBe('tier-02');
+    expect(screen.getByTestId('tier-03').id).toBe('tier-03');
+    expect(screen.getByTestId('tier-04').id).toBe('tier-04');
+  });
+
+  it('renders the closer CTA that opens the overlay', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const closer = screen.getByText(/Not sure where you'd start/);
+    expect(closer).toBeInTheDocument();
+    const cta = screen.getByRole('button', { name: /look under the hood/i });
+    await user.click(cta);
+    expect(screen.getByTestId('overlay-status')).toHaveTextContent('open');
+    expect(trackClickCta).toHaveBeenCalledWith('Look under the hood', 'services-closer');
+  });
+
+  it('closer ghost CTA links to contact', () => {
+    renderPage();
+    const contactLink = screen.getByRole('link', { name: /start a conversation/i });
+    expect(contactLink).toHaveAttribute('href', '/contact');
   });
 });

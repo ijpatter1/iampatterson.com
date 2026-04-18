@@ -377,6 +377,30 @@ All six use native SQL (not MBQL), hand-written in the YAML specs so they're rea
    2. Proxy embeds through the Next.js server with an admin API key. No infra change; adds latency and a new trust boundary.
    3. Static-image embeds rendered at Next.js build time. Simplest; loses interactivity (no drill-down, no filter).
 
+### Phase 9A-redesign — Editorial Design System
+
+Reskin of the Phase 9A surfaces (homepage, `/services`, under-the-hood overlay) per `docs/input_artifacts/iampatterson-com/`. Demo routes and all data-pipeline code are untouched.
+
+**Design tokens.** Instrument Serif joins the existing Plus Jakarta Sans + JetBrains Mono stack as the display face. Accent is a single CSS custom property `--accent` that takes one of two values: persimmon `#EA5F2A` on the marketing/paper surface, phosphor amber `#FFA400` in the under-the-hood overlay. Neutral palette (paper/ink scale) aligns with the clean-slate scale finalized at the end of Phase 9A; no new greyscale tokens are introduced.
+
+**Accent-swap mechanism.** `OverlayProvider` exposes an `overlayOpen` boolean. An effect in the provider (or a dedicated `useAccent` hook) sets `document.documentElement.style.setProperty('--accent', value)` — delayed by ~130ms on open so the flip lands mid-boot (the overlay's own boot phase holds the screen black for ~260ms), and instant on close. Under `prefers-reduced-motion`, the flip is instant on both edges and boot is skipped. The accent is read by any component that wants it via `var(--accent)` in CSS — no React prop threading.
+
+**Overlay architecture.** The overlay is a full-page, position-fixed inset-0 host, not a sidebar or bottom sheet. It has three visual layers composed as siblings inside the host:
+
+1. **Backdrop** — captures outside-click close, no visual treatment.
+2. **CRT field** — three non-interactive `aria-hidden` divs stacked: flicker (low-opacity animated luminance wash), bloom (radial glow emanating from center), scanlines (horizontal gradient overlay at ~1.5px period). All three are gated by the `phase-on` state so they don't render during the boot hold.
+3. **Overlay panel** — the actual scrollable content surface with the header, tab strip, and tab body.
+
+The boot sequence is two-step: on open, phase goes `idle → boot` (black screen, accent swap initiates); after ~260ms, phase goes `boot → on` and panel content reveals with a one-shot tab-flash animation. On close, phase returns to `idle` and the accent flips back. Under `prefers-reduced-motion`, the `boot` phase is skipped — the panel renders immediately.
+
+**Event-stream integration.** The homepage pipeline-section log feed and the overlay Timeline tab both consume the existing `useEventStream` hook directly. No new pipeline code is introduced. The pipeline log shows the most recent ~5 events; the Timeline tab shows the full session buffer (up to the hook's 100-event cap). Session ID is read from the same `_iap_sid` cookie established in Phase 2.
+
+**Route integration.** The existing Next.js App Router routes (`/`, `/services`, `/about`, `/contact`, `/demo/*`) are preserved. The redesigned chrome (header, live strip, footer) wraps all consulting pages. Demo pages retain their existing Phase 9A `DemoFooterNav` and are not rewrapped. `OverlayProvider` stays route-aware: the overlay is reachable from consulting surfaces; the route guard continues to hide it on `/demo/*` paths so the demo instrumentation story stays contained to the demo's own under-the-hood pattern.
+
+**What's deliberately unchanged.** Ambient event bubbles (Phase 9A Layer 1) stay as-is on consulting surfaces. The session ID cookie mechanism, the `useEventStream` hook, the SSE Cloud Run service, the data-layer event schema, GTM configuration, sGTM, BigQuery tables, Dataform, and all demo front-ends are unchanged.
+
+**Phase 9B status.** Phase 9B is paused while 9A-redesign is in flight. The 9B-infra Metabase deployment (live at `https://bi.iampatterson.com/`) continues to run; only the 9B application-layer deliverables are frozen. The 6a manual apply is deferred until 9A-redesign completes.
+
 ### Phase 8 — Attribution
 Shapley value MTA in Dataform. Comparison views against last-click and platform-reported.
 

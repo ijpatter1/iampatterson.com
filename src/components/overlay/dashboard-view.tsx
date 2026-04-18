@@ -3,59 +3,108 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-const dashboards = [
+const demoDashboards = [
   {
+    n: '01',
     label: 'E-Commerce Dashboard',
     href: '/demo/ecommerce/analytics',
-    description: 'Revenue, AOV, channel attribution, product performance, campaign ROAS',
+    description: 'Revenue, AOV, channel attribution, product performance, campaign ROAS.',
     matchPrefix: '/demo/ecommerce',
   },
   {
+    n: '02',
     label: 'Subscription Dashboard',
     href: '/demo/subscription/analytics',
-    description: 'MRR, cohort retention, churn analysis, trial-to-paid conversion, LTV',
+    description: 'MRR, cohort retention, churn analysis, trial-to-paid conversion, LTV.',
     matchPrefix: '/demo/subscription',
   },
   {
+    n: '03',
     label: 'Lead Gen Dashboard',
     href: '/demo/leadgen/analytics',
-    description: 'Lead funnel, cost per lead, quality distribution, conversion trends',
+    description: 'Lead funnel, cost per lead, quality distribution, conversion trends.',
     matchPrefix: '/demo/leadgen',
   },
 ];
 
+const METABASE_URL = 'https://bi.iampatterson.com/';
+
 export function DashboardView() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '/';
 
   return (
-    <div className="p-4">
-      <h3 className="text-sm font-semibold text-neutral-900">Dashboards</h3>
-      <p className="mt-1 text-xs text-neutral-500">
-        Built on BigQuery mart tables via Dataform. Navigate from live event data to aggregated
-        business metrics.
-      </p>
-      <div className="mt-4 space-y-3">
-        {dashboards.map((d) => {
-          const isActive = pathname.startsWith(d.matchPrefix);
-          return (
-            <Link
-              key={d.href}
-              href={d.href}
-              className={`block rounded-lg border p-3 transition-colors hover:border-neutral-400 ${
-                isActive ? 'border-neutral-900 bg-neutral-50' : 'border-neutral-200 bg-neutral-50'
-              }`}
-            >
-              <span className="text-sm font-medium text-neutral-900">{d.label}</span>
-              <span className="mt-0.5 block text-xs text-neutral-500">{d.description}</span>
-            </Link>
-          );
-        })}
+    <div>
+      <div className="mb-3 font-mono text-[10px] uppercase tracking-widest text-accent-current">
+        BI layer · Metabase on BigQuery marts
       </div>
-      <div className="mt-4 rounded-lg border border-neutral-100 bg-neutral-50 p-3">
-        <p className="text-xs text-neutral-500">
-          Data flows through the same pipeline you see in the Timeline tab, from the browser data
-          layer through sGTM into BigQuery, then transformed by Dataform into the mart tables that
-          power these dashboards.
+      <h3 className="font-display text-2xl font-normal leading-tight text-u-ink">
+        The mart tables are already modeled.
+        <br />
+        The <em className="text-accent-current">dashboards</em> are already live.
+      </h3>
+      <p className="mt-3 max-w-[62ch] text-sm leading-relaxed text-u-ink-2">
+        Tier 3 turns raw events into answers. Every query you&apos;d ask of your marketing data is
+        already modeled in Dataform, indexed, and queryable from the same BigQuery warehouse that
+        powers the demo dashboards below.
+      </p>
+
+      <div className="mt-8">
+        <h4 className="font-mono text-[10px] uppercase tracking-widest text-u-ink-3">
+          Demo dashboards · live on mart tables
+        </h4>
+        <div className="mt-3 space-y-2">
+          {demoDashboards.map((d) => {
+            const isActive = pathname.startsWith(d.matchPrefix);
+            return (
+              <Link
+                key={d.href}
+                href={d.href}
+                className={`flex items-baseline gap-4 border-l-2 px-4 py-3 transition-colors hover:border-accent-current hover:bg-u-paper-alt ${
+                  isActive
+                    ? 'border-accent-current bg-u-paper-alt'
+                    : 'border-u-rule-soft bg-u-paper-alt/60'
+                }`}
+              >
+                <span className="font-mono text-[10px] tracking-widest text-u-ink-3">
+                  DASHBOARD · {d.n}
+                </span>
+                <span className="flex-1">
+                  <span className="block font-display text-base text-u-ink">{d.label}</span>
+                  <span className="mt-0.5 block text-xs leading-relaxed text-u-ink-2">
+                    {d.description}
+                  </span>
+                </span>
+                <span
+                  aria-hidden="true"
+                  className="font-mono text-[10px] uppercase tracking-widest text-u-ink-4"
+                >
+                  →
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="mt-8 border border-u-rule-soft bg-u-paper-alt p-5">
+        <div className="flex items-baseline justify-between gap-3">
+          <h4 className="font-mono text-[10px] uppercase tracking-widest text-accent-current">
+            Live Metabase · bi.iampatterson.com
+          </h4>
+          <a
+            href={METABASE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-mono text-[10px] uppercase tracking-widest text-u-ink-3 transition-colors hover:text-accent-current"
+          >
+            Open →
+          </a>
+        </div>
+        <p className="mt-3 text-sm leading-relaxed text-u-ink-2">
+          The production BI layer runs on self-hosted Metabase on Cloud Run, gated by Google IAP,
+          connected to the <span className="font-mono text-u-ink">iampatterson_marts</span> dataset
+          — dashboards as code via YAML specs + idempotent apply. Accessing it requires an IAP
+          allowlist; reach out if you want a guided walkthrough.
         </p>
       </div>
     </div>

@@ -1,18 +1,17 @@
 import localFont from 'next/font/local';
 
 /**
- * Display font: Lora — elegant, well-balanced serif with roots in calligraphy.
- * Variable font supporting weights 400–700 plus italic.
- * Used for hero text, section headings, and anywhere the visitor should slow down and read.
+ * Display font: Instrument Serif.
+ * Editorial, oversized; used for mastheads, section headlines, the overlay header.
  */
-export const lora = localFont({
+export const instrumentSerif = localFont({
   src: [
     {
-      path: '../../public/fonts/lora-var.ttf',
+      path: '../../public/fonts/instrument-serif.ttf',
       style: 'normal',
     },
     {
-      path: '../../public/fonts/lora-italic-var.ttf',
+      path: '../../public/fonts/instrument-serif-italic.ttf',
       style: 'italic',
     },
   ],
@@ -21,10 +20,6 @@ export const lora = localFont({
   fallback: ['Georgia', 'Times New Roman', 'serif'],
 });
 
-/**
- * Body font: Plus Jakarta Sans — clean geometric sans with warm rounded terminals.
- * Readable at every size, professional without being sterile.
- */
 export const plusJakarta = localFont({
   src: [
     {
@@ -37,10 +32,6 @@ export const plusJakarta = localFont({
   fallback: ['system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
 });
 
-/**
- * Mono font: JetBrains Mono — credibility signal for technical contexts.
- * Event names, data layer parameters, pipeline IDs, code snippets, dashboard metrics.
- */
 export const jetbrainsMono = localFont({
   src: [
     {

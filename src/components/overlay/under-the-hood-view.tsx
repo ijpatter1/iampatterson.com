@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { ConsentView } from '@/components/overlay/consent-view';
 import { DashboardView } from '@/components/overlay/dashboard-view';
@@ -11,43 +11,77 @@ import { EventTimeline } from '@/components/overlay/event-timeline';
 import { HomepageUnderside } from '@/components/overlay/homepage-underside';
 import { NarrativeFlow } from '@/components/overlay/narrative-flow';
 import { useOverlay } from '@/components/overlay/overlay-context';
-import { useDataLayerEvents } from '@/hooks/useDataLayerEvents';
-import { useEventStream } from '@/hooks/useEventStream';
 import { useFilteredEvents } from '@/hooks/useFilteredEvents';
+import { useLiveEvents } from '@/hooks/useLiveEvents';
 import type { PipelineEvent } from '@/lib/events/pipeline-schema';
 
-type ViewMode = 'overview' | 'timeline' | 'narrative' | 'consent' | 'dashboards';
+type ViewMode = 'overview' | 'timeline' | 'consent' | 'dashboards';
+type Phase = 'idle' | 'boot' | 'on';
 
-function ViewTabs({
+const BOOT_DURATION_MS = 260;
+
+// sessionStorage key recording that the boot sequence has already played this
+// browser session. First open of the session fires boot and sets the flag;
+// every subsequent open within the same tab lifetime goes straight to phase-on.
+// Scoped to sessionStorage (not localStorage) so a new browsing session — new
+// tab, new window — gets the boot gesture again. Exported so tests assert
+// against the same constant rather than a duplicated string literal.
+export const BOOT_SESSION_KEY = 'iampatterson.overlay.booted';
+
+function hasBootedThisSession(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.sessionStorage.getItem(BOOT_SESSION_KEY) === '1';
+  } catch {
+    // sessionStorage can throw under strict privacy settings — fail open so
+    // the overlay still works, accepting that boot will replay in that case.
+    return false;
+  }
+}
+
+function markBootedThisSession(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(BOOT_SESSION_KEY, '1');
+  } catch {
+    // See hasBootedThisSession — we silently fall back to "boot every open".
+  }
+}
+
+interface TabDef {
+  mode: ViewMode;
+  label: string;
+  count?: number;
+}
+
+function Tabs({
   active,
   onChange,
-  showOverview,
+  tabs,
 }: {
   active: ViewMode;
   onChange: (mode: ViewMode) => void;
-  showOverview: boolean;
+  tabs: TabDef[];
 }) {
-  const tabs: { mode: ViewMode; label: string }[] = [
-    ...(showOverview ? [{ mode: 'overview' as ViewMode, label: 'Overview' }] : []),
-    { mode: 'timeline', label: 'Timeline' },
-    { mode: 'narrative', label: 'Narrative' },
-    { mode: 'consent', label: 'Consent' },
-    { mode: 'dashboards', label: 'Dashboards' },
-  ];
   return (
-    <div className="flex border-b border-border px-6">
-      {tabs.map(({ mode, label }) => (
+    <div className="overlay-chrome flex gap-1 border-b border-u-rule-soft bg-u-paper-alt px-4">
+      {tabs.map((t) => (
         <button
-          key={mode}
+          key={t.mode}
           type="button"
-          onClick={() => onChange(mode)}
-          className={`px-4 py-3 text-sm font-medium transition-colors ${
-            active === mode
-              ? 'border-b-2 border-black text-black'
-              : 'text-neutral-400 hover:text-neutral-700'
+          onClick={() => onChange(t.mode)}
+          className={`relative flex items-center gap-2 border-b-2 px-4 py-3 font-mono text-[11px] uppercase tracking-widest transition-colors ${
+            active === t.mode
+              ? 'border-accent-current text-accent-current'
+              : 'border-transparent text-u-ink-3 hover:text-u-ink'
           }`}
         >
-          {label}
+          {t.label}
+          {typeof t.count === 'number' && (
+            <span className="rounded-sm bg-u-paper-deep px-1.5 py-0.5 font-mono text-[9px] text-u-ink-3">
+              {t.count}
+            </span>
+          )}
         </button>
       ))}
     </div>
@@ -55,79 +89,173 @@ function ViewTabs({
 }
 
 export function UnderTheHoodView() {
-  const { isOpen, close } = useOverlay();
-  const pathname = usePathname();
+  const { isOpen, close, pendingTab, consumePendingTab } = useOverlay();
+  const pathname = usePathname() ?? '/';
   const isHomepage = pathname === '/';
   const isEcommerce = pathname.startsWith('/demo/ecommerce');
   const showOverview = isHomepage || isEcommerce;
-  const baseUrl = process.env.NEXT_PUBLIC_EVENT_STREAM_URL ?? '';
-  const eventStreamUrl = baseUrl.endsWith('/events') ? baseUrl : `${baseUrl}/events`;
-  // Keep SSE connection alive even when overlay is closed so events
-  // accumulate in the buffer. When the user opens the view, they see
-  // their full session history — not just events fired after opening.
-  const sseEnabled = baseUrl.length > 0;
-  const { events: sseEvents, status } = useEventStream({
-    url: eventStreamUrl,
-    enabled: sseEnabled,
-  });
-  // Client-side fallback: poll dataLayer directly so the timeline
-  // populates even without the SSE pipeline running.
-  const { events: dlEvents } = useDataLayerEvents();
-  const events = sseEnabled && sseEvents.length > 0 ? sseEvents : dlEvents;
+
+  const { events } = useLiveEvents();
   const { filteredEvents } = useFilteredEvents(events, false);
+
   const [viewMode, setViewMode] = useState<ViewMode>(showOverview ? 'overview' : 'timeline');
   const [selectedEvent, setSelectedEvent] = useState<PipelineEvent | null>(null);
+  const [phase, setPhase] = useState<Phase>('idle');
+  const [flashKey, setFlashKey] = useState(false);
+  const hasBooted = useRef(false);
 
-  if (!isOpen) return null;
+  // Reset viewMode if the current tab disappears (e.g. user navigates from /
+  // to /demo/subscription while the overlay is closed; Overview tab vanishes
+  // but stale 'overview' mode would leave the content pane blank on reopen).
+  useEffect(() => {
+    if (!showOverview && viewMode === 'overview') {
+      setViewMode('timeline');
+    }
+  }, [showOverview, viewMode]);
+
+  // If the opener requested a specific tab (e.g. footer "Consent state" link),
+  // switch to it and clear the request so a subsequent open without a hint
+  // doesn't re-select.
+  useEffect(() => {
+    if (pendingTab && isOpen) {
+      if (pendingTab === 'overview' && !showOverview) {
+        setViewMode('timeline');
+      } else {
+        setViewMode(pendingTab);
+      }
+      consumePendingTab();
+    }
+  }, [pendingTab, isOpen, showOverview, consumePendingTab]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      // Close: reset to idle, clear any mid-investigation state so the next
+      // open lands on the tab-level view, not the visitor's stale selection.
+      setPhase((p) => (p === 'idle' ? p : 'idle'));
+      setSelectedEvent(null);
+      return;
+    }
+    hasBooted.current = true;
+    setFlashKey((k) => !k);
+    const reduced =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // Capture whether the session was already booted BEFORE we mark it.
+    // We always mark on open (both branches) so that D9's "once per session"
+    // guarantee survives a reduced-motion → normal-motion transition mid-
+    // session: a visitor who first opens with reduced-motion on, then later
+    // disables it and reopens, should not see the boot sequence.
+    const alreadyBooted = hasBootedThisSession();
+    markBootedThisSession();
+    if (reduced || alreadyBooted) {
+      setPhase('on');
+      return;
+    }
+    setPhase('boot');
+    const id = window.setTimeout(() => setPhase('on'), BOOT_DURATION_MS);
+    return () => window.clearTimeout(id);
+  }, [isOpen]);
+
+  if (!isOpen && !hasBooted.current) return null;
+
+  const tabs: TabDef[] = [
+    ...(showOverview ? [{ mode: 'overview' as ViewMode, label: 'Overview' }] : []),
+    { mode: 'timeline', label: 'Timeline', count: filteredEvents.length },
+    { mode: 'consent', label: 'Consent' },
+    { mode: 'dashboards', label: 'Dashboards' },
+  ];
 
   return (
-    <div data-testid="under-the-hood-view" className="fixed inset-0 z-50 flex flex-col bg-surface">
+    <div
+      data-testid="under-the-hood-view"
+      data-phase={phase}
+      aria-hidden={!isOpen}
+      className={`fixed inset-0 z-50 flex flex-col bg-u-paper text-u-ink transition-opacity duration-200 ${
+        isOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
+      }`}
+    >
+      {/* Backdrop click closes */}
+      <button
+        type="button"
+        aria-label="Close overlay"
+        onClick={close}
+        className="absolute inset-0 -z-10 cursor-default"
+      />
+
+      {/* Ambient amber glow — rendered as a sibling of the CRT field, with
+          no explicit z-index. Paints in step 6 of the stacking context
+          (positioned, z:auto), ahead of the in-flow header (step 3) but
+          BEHIND the positioned tabs/body (step 6, later DOM order). Result:
+          the amber blend is scoped to the header surface — the specific
+          effect the user asked to preserve. */}
+      {(phase === 'boot' || phase === 'on') && (
+        <div aria-hidden="true" data-testid="crt-ambient" className="crt-ambient" />
+      )}
+
+      {/* Boot sequence + scanlines — z-index: 3 so the opaque paint-down
+          curtain, warm flicker, and persistent scanlines cover ALL overlay
+          content (including positioned tabs/body). Mirrors the prototype's
+          explicit `z-index: 3` on `.crt-field`. DOM order follows the
+          prototype: flicker → bloom → scanlines, so the warm pulse is
+          occluded by the black curtain while it's painting down. */}
+      {(phase === 'boot' || phase === 'on') && (
+        <div
+          aria-hidden="true"
+          data-testid="crt-field"
+          className="pointer-events-none absolute inset-0"
+          style={{ zIndex: 3 }}
+        >
+          <div className="crt-flicker" />
+          <div className="crt-bloom" />
+          <div className="crt-scanlines" />
+        </div>
+      )}
+
       {/* Header */}
-      <header className="flex items-center justify-between border-b border-border px-6 py-4">
+      <header className="overlay-chrome flex items-center justify-between border-b border-u-rule-soft bg-u-paper px-6 py-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-black">
+          <div className="flex h-8 w-8 items-center justify-center border border-accent-current text-accent-current">
             <svg
-              width="16"
-              height="16"
+              width="14"
+              height="14"
               viewBox="0 0 20 20"
               fill="none"
               stroke="currentColor"
               strokeWidth="1.5"
-              className="text-content-inverse"
             >
-              <rect x="2" y="2" width="16" height="16" rx="2" />
+              <rect x="2" y="2" width="16" height="16" rx="1" />
               <path d="M10 2v16" />
             </svg>
           </div>
           <div>
-            <h1 className="text-sm font-semibold text-content">Under the Hood</h1>
-            <p className="text-xs text-content-muted">
-              {status === 'connected'
-                ? 'Live: streaming your session events'
-                : 'Viewing instrumentation layer'}
+            <h1 className="font-display text-lg leading-none text-u-ink">Under the Hood</h1>
+            <p className="mt-1 flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-u-ink-3">
+              <span className="inline-block h-1.5 w-1.5 animate-session-pulse rounded-full bg-accent-current" />
+              Live · streaming your session events
             </p>
           </div>
         </div>
         <button
           type="button"
           onClick={close}
-          aria-label="Back to site"
-          className="flex items-center gap-2 rounded-card border border-border px-4 py-2 text-sm font-medium text-content-secondary transition-colors hover:bg-surface-alt hover:text-content"
+          className="rounded-sm border border-u-rule-soft px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-u-ink-3 transition-colors hover:border-accent-current hover:text-accent-current"
         >
-          &larr; Back to site
+          ← Back to site
         </button>
       </header>
 
-      {/* View tabs */}
-      <ViewTabs active={viewMode} onChange={setViewMode} showOverview={showOverview} />
+      <Tabs active={viewMode} onChange={setViewMode} tabs={tabs} />
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-content px-6 py-8">
+      <div className="relative flex-1 overflow-y-auto bg-u-paper text-u-ink">
+        <div
+          key={`${String(flashKey)}-${viewMode}`}
+          className="tab-flash mx-auto max-w-content px-6 py-8"
+        >
           {selectedEvent ? (
             <>
               <EventDetail event={selectedEvent} onClose={() => setSelectedEvent(null)} />
-              <div className="mt-6 border-t border-border pt-6">
+              <div className="mt-6 border-t border-u-rule-soft pt-6">
                 <NarrativeFlow event={selectedEvent} />
               </div>
             </>
@@ -140,7 +268,6 @@ export function UnderTheHoodView() {
               {viewMode === 'timeline' && (
                 <EventTimeline events={filteredEvents} onSelectEvent={setSelectedEvent} />
               )}
-              {viewMode === 'narrative' && <NarrativeFlow event={filteredEvents[0] ?? null} />}
               {viewMode === 'consent' && <ConsentView events={filteredEvents} />}
               {viewMode === 'dashboards' && <DashboardView />}
             </>

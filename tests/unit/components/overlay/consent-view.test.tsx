@@ -34,9 +34,11 @@ function makeEvent(overrides: Partial<PipelineEvent> = {}): PipelineEvent {
 }
 
 describe('ConsentView', () => {
-  it('renders null when no events', () => {
-    const { container } = render(<ConsentView events={[]} />);
-    expect(container.firstChild).toBeNull();
+  it('renders an empty-state placeholder when no events have landed yet', () => {
+    render(<ConsentView events={[]} />);
+    // Editorial empty state: kicker + headline + prompt
+    expect(screen.getByText(/consent enforcement — live/i)).toBeInTheDocument();
+    expect(screen.getByText(/What happens when you/i)).toBeInTheDocument();
   });
 
   it('shows consent state from the most recent event', () => {
@@ -61,16 +63,16 @@ describe('ConsentView', () => {
 
   it('shows active destinations (not blocked by consent)', () => {
     render(<ConsentView events={[makeEvent()]} />);
-    expect(screen.getByText(/active/i)).toBeInTheDocument();
-    expect(screen.getByText('GA4')).toBeInTheDocument();
-    expect(screen.getByText('BigQuery')).toBeInTheDocument();
+    expect(screen.getByText(/active destinations/i)).toBeInTheDocument();
+    expect(screen.getByText('GA4', { exact: false })).toBeInTheDocument();
+    expect(screen.getByText('BigQuery', { exact: false })).toBeInTheDocument();
   });
 
   it('shows suppressed destinations (blocked by consent)', () => {
     render(<ConsentView events={[makeEvent()]} />);
-    expect(screen.getByText(/suppressed/i)).toBeInTheDocument();
-    expect(screen.getByText('Meta')).toBeInTheDocument();
-    expect(screen.getByText('Google Ads')).toBeInTheDocument();
+    expect(screen.getByText(/suppressed destinations/i)).toBeInTheDocument();
+    expect(screen.getByText('Meta', { exact: false })).toBeInTheDocument();
+    expect(screen.getByText('Google Ads', { exact: false })).toBeInTheDocument();
   });
 
   it('updates when events change (uses latest consent state)', () => {

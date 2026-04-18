@@ -3,7 +3,6 @@ import type { Metadata, Viewport } from 'next';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { AmbientBubblesWrapper } from '@/components/ambient-bubbles-wrapper';
-import { FlipTrigger } from '@/components/overlay/flip-trigger';
 import { OverlayProvider } from '@/components/overlay/overlay-context';
 import { UnderTheHoodView } from '@/components/overlay/under-the-hood-view';
 import { RouteTracker } from '@/components/route-tracker';
@@ -11,7 +10,7 @@ import { ScrollDepthTracker } from '@/components/scroll-depth-tracker';
 import { CookiebotScript } from '@/components/scripts/cookiebot';
 import { CookiebotConsentListener } from '@/components/scripts/cookiebot-consent';
 import { GtmScript, GtmNoscript } from '@/components/scripts/gtm';
-import { lora, plusJakarta, jetbrainsMono } from '@/lib/fonts';
+import { instrumentSerif, plusJakarta, jetbrainsMono } from '@/lib/fonts';
 import '@/styles/globals.css';
 
 export const viewport: Viewport = {
@@ -31,7 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
-      className={`${lora.variable} ${plusJakarta.variable} ${jetbrainsMono.variable}`}
+      className={`${instrumentSerif.variable} ${plusJakarta.variable} ${jetbrainsMono.variable}`}
     >
       <head>
         <CookiebotScript />
@@ -47,7 +46,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="flex-1">{children}</div>
           <Footer />
           <AmbientBubblesWrapper />
-          <FlipTrigger />
           <UnderTheHoodView />
         </OverlayProvider>
       </body>
