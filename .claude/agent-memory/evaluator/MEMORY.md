@@ -1,2 +1,0 @@
-- [Copy tightening during close-out commits](feedback_copy_tightening.md) — "Make claims stronger" fixes can cross from vague into false
-- [PHASE_STATUS.md test-count drift](feedback_phase_status_drift.md) — Header test counts frequently stale by the time of handoff

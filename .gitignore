@@ -92,3 +92,6 @@ venv/
 *.temp
 docs/tag_assistant_*.json
 docs/input_artifacts/
+
+# Claude subagent memory — per-machine, not project artifact
+.claude/agent-memory/
