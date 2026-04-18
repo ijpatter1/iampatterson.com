@@ -1,7 +1,7 @@
 # Phase Status Tracker
 
-> **Current Phase: 9B — E-Commerce Demo: Tiers 2 & 3** (5 of 8 deliverables complete; 6a dev-complete in sandbox, awaiting manual apply against live Metabase; 6b and 7 remaining)
-> Last updated: 2026-04-18, session-2026-04-18-021
+> **Current Phase: 9A-redesign — Editorial Homepage, Services, and Under-the-Hood Overlay** (new phase; 0 of 10 deliverables complete. Reskins the Phase 9A surfaces per `docs/input_artifacts/iampatterson-com/`. Phase 9B is paused and resumes after 9A-redesign completes — including the 6a manual apply.)
+> Last updated: 2026-04-18, session-2026-04-18-022
 
 ---
 
@@ -144,7 +144,26 @@
 
 ---
 
+## Phase 9A-redesign — Editorial Homepage, Services, and Under-the-Hood Overlay
+
+*Goal: Reskin the Phase 9A surfaces (homepage, services, under-the-hood overlay) per the editorial direction in `docs/input_artifacts/iampatterson-com/` — serif-forward magazine-grid on paper, terminal/CRT vocabulary in the overlay, persimmon accent that flips to phosphor amber during the overlay boot. Prototype copy verbatim where strong; current-site copy pulled in only where the prototype is thin. Demo front-ends out of scope.*
+
+- ⬜ Design tokens + typography — Instrument Serif added to font stack; persimmon (`#EA5F2A`) / phosphor amber (`#FFA400`) accent tokens; `--accent` CSS variable driven by overlay state; neutral palette aligned with clean-slate scale
+- ⬜ Editorial chrome — `SessionPulse` header button, `LiveStrip` ticker bar, `MobileSheet` menu, 4-column editorial footer
+- ⬜ Homepage hero masthead — Instrument Serif display, lede+body deck, primary/ghost CTAs
+- ⬜ Pipeline section — 5-stage animated pipeline with dashed connector, packet motion, live log feed wired to real `useEventStream` hook, "Watch it live" button
+- ⬜ Demos section — horizontal-scroll card track with swipe indicator, 3 cards linking to existing demo routes
+- ⬜ Services teaser + full Services page — sticky tier-nav sidebar with scroll-spy, per-tier core/optional/summary blocks, closer CTA
+- ⬜ Proof section — "Evidence" kicker, serif headline, 3-metric grid (2.5M / $45K / 24/7)
+- ⬜ Final CTA — "Watch it run first. Then hire me." section with contact eyebrow
+- ⬜ Under-the-hood overlay redesign — full-page terminal/CRT view, 4 tabs (Overview/Timeline/Consent/Dashboards), two-step boot with accent flip, CRT flicker/bloom/scanlines layers, Timeline wired to real event stream
+- ⬜ Wiring & route integration — `OverlayProvider` retargeted at full-page overlay, demo routes untouched, ambient bubbles preserved on consulting surfaces, removed Phase 9A overlay components cleaned up
+
+---
+
 ## Phase 9B — E-Commerce Demo: Tiers 2 & 3 (Data Infrastructure + BI)
+
+> ⏸ **PAUSED** — frozen pending completion of Phase 9A-redesign. All remaining 9B work is held, including the 6a manual apply (`docs/manual/task-2026-04-17-005.md`). Existing ✅/🔄/⬜ markers are preserved below for clean resume.
 
 *Goal: Each page in the checkout funnel demonstrates a different Tier 2 deliverable. Confirmation page pivots to Tier 3 with actionable insights. Looker Studio / Metabase integration.*
 

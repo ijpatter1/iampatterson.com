@@ -215,6 +215,46 @@ iampatterson.com is simultaneously a consulting site for Patterson Consulting an
 
 ---
 
+## Phase 9A-redesign — Editorial Homepage, Services, and Under-the-Hood Overlay
+
+**Goal:** Reskin the homepage, services page, and under-the-hood overlay per the editorial direction in `docs/input_artifacts/iampatterson-com/` — serif-forward magazine-grid on paper, terminal/CRT vocabulary in the overlay. Persimmon `#EA5F2A` on paper flipping to phosphor amber `#FFA400` when the overlay boots (~260ms hold). Prototype copy is kept verbatim where strong; current-site copy is pulled in only where the prototype is thin or placeholder. Demo front-ends are out of scope — each gets a custom design in a later phase. All existing instrumentation (data layer events, `useEventStream`, ambient event bubbles from Phase 9A, session ID mechanism, SSE pipeline) is preserved and rewired, not rebuilt.
+
+**Context:** The clean-slate palette finalized at the end of Phase 9A lets the measurement pipeline carry the visual weight, but the resulting site is restrained to the point of feeling generic. The editorial redesign reintroduces a single restrained accent with a deliberate on/off relationship to the under-the-hood state: persimmon on the marketing surface, phosphor amber when the overlay boots. The redesign also upgrades the overlay from a full-page view into a terminal/CRT aesthetic that earns the "under the hood" metaphor more aggressively than the current implementation.
+
+**Deliverables:**
+
+1. **Design tokens + typography** — Instrument Serif added to the font stack alongside existing Plus Jakarta Sans + JetBrains Mono; persimmon (`#EA5F2A`) / phosphor amber (`#FFA400`) accent tokens wired into Tailwind; `--accent` CSS variable driven by overlay open state via `OverlayProvider`; neutral palette aligned with the current clean-slate paper/ink scale.
+
+2. **Editorial chrome** — Header with `SessionPulse` button (opens overlay); `LiveStrip` horizontal ticker below the header exposing SESSION · STACK · CONSENT · PIPELINE · DASHBOARDS · ATTRIB fields; `MobileSheet` menu overlay; editorial 4-column footer with brand, pages, demos, and under-the-hood link columns.
+
+3. **Homepage hero masthead** — "I build measurement infrastructure." set in Instrument Serif display; deck with lede + body copy; primary (open overlay) / ghost (explore demos) CTAs.
+
+4. **Pipeline section** — 5-stage animated pipeline (Browser → Client GTM → sGTM → BigQuery → Dashboards) with dashed connector rule, packet motion, and a live log feed rendered from the real `useEventStream` hook (not mocked); "Watch it live" button opens the overlay.
+
+5. **Demos section** — Horizontal-scroll card track on mobile/tablet (snap points) with swipe-indicator bars; 3 demo cards linking to the existing `/demo/ecommerce`, `/demo/subscription`, `/demo/leadgen` routes. No changes to the demo pages themselves.
+
+6. **Services teaser + full Services page** — Homepage teaser lists 4 tiers with short per-tier descriptions linking to `/services`; Services page has sticky tier-nav sidebar with scroll-spy, per-tier core / optional / summary blocks using prototype copy, and a closer section ("Not sure where you'd start? Watch it run first."). Tier copy audited against current-site services content to pull in any detail the prototype omitted.
+
+7. **Proof section** — "Evidence · What the infrastructure has done" kicker; large serif headline; 3-metric grid (2.5M audience · $45K revenue · 24/7 live events) with tag/metric/context per card.
+
+8. **Final CTA** — "Watch it run first. Then hire me." section with `contact — ian@iampatterson.com` eyebrow, primary (open overlay) / ghost (contact) CTAs.
+
+9. **Under-the-hood overlay redesign** — Full-page terminal/CRT overlay with 4 tabs (Overview, Timeline, Consent, Dashboards); two-step boot (~260ms hold with accent flip orange → amber, then phase-on reveals panel contents); CRT flicker / bloom / scanlines layers as non-interactive siblings; backdrop click and "Back to site" button both close; Timeline tab wired to the real event stream via `useEventStream`; Overview/Consent/Dashboards panels structured around the existing Tier 1-3 narrative.
+
+10. **Wiring & route integration** — All new surfaces live at the existing `/` and `/services` routes; `OverlayProvider` context retargeted at the new full-page overlay; demo routes untouched; route guard keeps the overlay out of `/demo/*` paths; ambient event bubbles from Phase 9A are preserved on consulting surfaces; removed Phase 9A overlay components cleaned up.
+
+**Constraints:**
+
+- All existing data layer events must continue firing correctly through the architecture change. Event schemas unchanged.
+- The SSE pipeline from Phase 2 and the `useEventStream` hook stay unchanged — only the presentation layer changes.
+- `prefers-reduced-motion` disables the accent-flip transition, packet motion, CRT flicker, and scroll-reveals.
+- No changes to demo pages or the three demo routes (custom designs are a separate future phase).
+- Phase 9B is frozen while 9A-redesign is in flight, including the 6a manual-apply task. 9B resumes cleanly once 9A-redesign completes.
+
+**Why this is 9A-redesign (not 9A-v2 or Phase 12):** The redesign reshapes what the Phase 9A surfaces look like, not what they do. Numbering it as a suffix to 9A keeps the phase history honest — original 9A shipped what it promised; this is a redesign pass over its surfaces.
+
+---
+
 ## Phase 9B — E-Commerce Demo: Tiers 2 & 3 (Data Infrastructure + Business Intelligence)
 
 **Goal:** Transform the e-commerce demo from "events fire when you click stuff" into a progressive showcase of Tier 2 (Data Infrastructure) and Tier 3 (Business Intelligence). Each page in the checkout funnel demonstrates a different Tier 2 deliverable. The confirmation page pivots to Tier 3 with actionable dashboard insights. External BI tool integration (Looker Studio / Metabase) is demonstrated here.

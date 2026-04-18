@@ -18,11 +18,11 @@ This is the consulting website for Patterson Consulting **and** a live, interact
 
 ## Current Phase
 
-**Phase 9B — E-Commerce Demo: Tiers 2 & 3** (5 of 8 application-layer deliverables complete; 9B-infra sub-phase done — Metabase live at `https://bi.iampatterson.com/` behind IAP with BigQuery `iampatterson_marts` connected)
+**Phase 9A-redesign — Editorial Homepage, Services, and Under-the-Hood Overlay** (new phase; 0 of 10 deliverables complete. Reskins the Phase 9A surfaces per the editorial prototype in `docs/input_artifacts/iampatterson-com/` — serif-forward magazine-grid on paper, terminal/CRT vocabulary in the overlay, persimmon accent flipping to phosphor amber during the overlay boot.)
 
-Phase 9B application-layer deliverables 1–5 merged on main (commit 389d086). Deliverable 6 has been split into 6a (Metabase dashboards as code — YAML specs + idempotent `apply.sh` driving the Metabase REST API) and 6b (confirmation-page signed embed). Deliverables 6a, 6b, and 7 (services cross-links) are now unblocked. 6b blocked on an IAP-bypass architectural decision — see `docs/ARCHITECTURE.md`.
+Phase 9B is paused while 9A-redesign is in flight. All remaining 9B work is frozen, including the 6a manual apply (`docs/manual/task-2026-04-17-005.md`). 9B resumes cleanly once 9A-redesign completes — existing 9B status markers in `docs/PHASE_STATUS.md` are preserved.
 
-See `docs/REQUIREMENTS.md` for the full development plan (Phases 1-8, 9A-9D, 10-11).
+See `docs/REQUIREMENTS.md` for the full development plan (Phases 1-8, 9A / 9A-redesign / 9B-9D, 10-11).
 See `docs/ARCHITECTURE.md` for technical architecture details.
 See `docs/PHASE_STATUS.md` for current completion state.
 
