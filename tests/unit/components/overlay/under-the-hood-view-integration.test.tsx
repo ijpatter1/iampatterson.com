@@ -67,6 +67,14 @@ function renderHost() {
 beforeEach(() => {
   mockReducedMotion(true); // skip boot for most tests
   mockPathname = '/';
+  // Per-session boot flag must reset between tests so each case controls
+  // whether it's simulating "first open of the session" or a re-open.
+  window.sessionStorage.clear();
+});
+
+afterEach(() => {
+  // Guard against fake-timer leakage from one failing test hanging the next.
+  jest.useRealTimers();
 });
 
 describe('UnderTheHoodView — integration with OverlayProvider', () => {
@@ -115,13 +123,15 @@ describe('UnderTheHoodView — integration with OverlayProvider', () => {
     );
   });
 
-  it('close-then-reopen resets phase through the effect cleanup', async () => {
+  it('first open boots, close-then-reopen skips boot per once-per-session spec', async () => {
     jest.useFakeTimers();
     mockReducedMotion(false);
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     renderHost();
 
+    // First open of the browser session fires the boot sequence.
     await user.click(screen.getByText('open'));
+    expect(screen.getByTestId('under-the-hood-view').dataset.phase).toBe('boot');
     act(() => {
       jest.advanceTimersByTime(260);
     });
@@ -130,13 +140,10 @@ describe('UnderTheHoodView — integration with OverlayProvider', () => {
     await user.click(screen.getByText('close'));
     expect(screen.getByTestId('under-the-hood-view').dataset.phase).toBe('idle');
 
+    // Second open within the same session skips boot and lands on 'on'
+    // directly — the boot gesture is a one-time reveal, not a repeated effect.
     await user.click(screen.getByText('open'));
-    expect(screen.getByTestId('under-the-hood-view').dataset.phase).toBe('boot');
-    act(() => {
-      jest.advanceTimersByTime(260);
-    });
     expect(screen.getByTestId('under-the-hood-view').dataset.phase).toBe('on');
-    jest.useRealTimers();
   });
 
   it('cross-pathname reopen drops stale overview and falls back to timeline', async () => {

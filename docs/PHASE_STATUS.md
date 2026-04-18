@@ -1,7 +1,7 @@
 # Phase Status Tracker
 
-> **Current Phase: 9A-redesign — Editorial Homepage, Services, and Under-the-Hood Overlay** (10 of 10 deliverables complete. 593 tests passing, build clean. Three evaluation passes + handoff pass: final PASS/PASS from both reviewers. Phase 9B is paused — resumes after this handoff, including the 6a manual apply.)
-> Last updated: 2026-04-18, session-2026-04-18-022
+> **Current Phase: 9A-redesign — Editorial Homepage, Services, and Under-the-Hood Overlay** (10 of 10 deliverables complete. UAT accepted by user in session-023 after CRT boot sequence restoration. 593 tests passing, build clean. Phase 9B is paused — resumes after 9A-redesign merges to main, including the 6a manual apply.)
+> Last updated: 2026-04-18, session-2026-04-18-023
 
 ---
 
@@ -156,7 +156,7 @@
 - ✅ 2026-04-18, commit ddbf5a1 — Services teaser + full Services page — TIERS content extracted to `src/lib/content/tiers.ts`; homepage 4-tier teaser list; services page rewritten with sticky tier-nav sidebar (scroll-spy, scroll listener, accent active), per-tier numbered core/optional grids, tier-summary blocks with accent left-border, "Watch it run first" closer
 - ✅ 2026-04-18, commit e6e2f82 — Proof section — "Evidence" kicker, editorial headline, 3-metric grid (2.5M audience / $45K revenue / 24/7 live events) with oversized serif metrics + accent-colored unit suffixes
 - ✅ 2026-04-18, commit d6f4227 — Final CTA — persimmon contact eyebrow (mailto), "Watch it / run first. / Then hire me." three-line headline, sub copy, primary/ghost CTAs
-- ✅ 2026-04-18, commit 54aeef4 — Under-the-hood overlay redesign — full-page ink/terminal chrome with paper content pane, boot phase state machine (idle → boot → on, 260ms hold, skipped under prefers-reduced-motion), CRT flicker/bloom/scanlines layers gated by phase-on, tab-flash settle animation on open/tab-change, Tabs reduced to 4 (Overview/Timeline/Consent/Dashboards), Narrative moved to contextual-only (below event detail), backdrop click closes, uses useLiveEvents
+- ✅ 2026-04-18, commit 54aeef4 — Under-the-hood overlay redesign — full-page ink/terminal chrome with paper content pane, boot phase state machine (idle → boot → on, 260ms hold, skipped under prefers-reduced-motion and on re-opens within the same browser session via `sessionStorage`), CRT flicker/bloom/scanlines layers gated by phase-on, tab-flash settle animation on open/tab-change, Tabs reduced to 4 (Overview/Timeline/Consent/Dashboards), Narrative moved to contextual-only (below event detail), backdrop click closes, uses useLiveEvents
 - ✅ 2026-04-18 — Wiring & route integration — `OverlayProvider` drives `--accent` and opens full-page view; demo routes untouched; ambient bubbles preserved via existing `AmbientBubblesWrapper` (`/demo/*` guard unchanged); `/demo` redirect preserved; flip-trigger / header-demos components fully removed; `Narrative` standalone tab removed from overlay
 
 *Homepage composition: Hero → Pipeline → Demos → ServicesTeaser → Proof → FinalCta. Test suite: 527 → 593 (+66 net) after evaluation passes 1-3 + handoff close-out. Production build clean.*

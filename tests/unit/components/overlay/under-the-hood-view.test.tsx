@@ -48,6 +48,9 @@ function mockReducedMotion(matches: boolean) {
 beforeEach(() => {
   jest.clearAllMocks();
   mockReducedMotion(false);
+  // Clear the boot-once-per-session flag so each test starts from a fresh
+  // "first open of the session" state.
+  window.sessionStorage.clear();
 });
 
 afterEach(() => {
@@ -171,5 +174,22 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
     // filling in. Verify the wrapper class is present on the body pane.
     const { container } = render(<UnderTheHoodView />);
     expect(container.querySelector('.tab-flash')).not.toBeNull();
+  });
+
+  it('skips the boot phase when sessionStorage already records a prior boot', () => {
+    // First open of a session plays the boot sequence; subsequent opens
+    // within the same browser session go straight to phase-on. Simulate the
+    // "already booted this session" state by pre-seeding the flag.
+    window.sessionStorage.setItem('iampatterson.overlay.booted', '1');
+    render(<UnderTheHoodView />);
+    const view = screen.getByTestId('under-the-hood-view');
+    expect(view.dataset.phase).toBe('on');
+  });
+
+  it('sets the sessionStorage flag on first boot so re-opens skip the hold', () => {
+    // Guards against regression where boot fires but the flag isn't persisted,
+    // which would cause every open to re-boot (the behavior we moved away from).
+    render(<UnderTheHoodView />);
+    expect(window.sessionStorage.getItem('iampatterson.overlay.booted')).toBe('1');
   });
 });

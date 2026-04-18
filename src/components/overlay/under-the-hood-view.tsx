@@ -20,6 +20,33 @@ type Phase = 'idle' | 'boot' | 'on';
 
 const BOOT_DURATION_MS = 260;
 
+// sessionStorage key recording that the boot sequence has already played this
+// browser session. First open of the session fires boot and sets the flag;
+// every subsequent open within the same tab lifetime goes straight to phase-on.
+// Scoped to sessionStorage (not localStorage) so a new browsing session — new
+// tab, new window — gets the boot gesture again.
+const BOOT_SESSION_KEY = 'iampatterson.overlay.booted';
+
+function hasBootedThisSession(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.sessionStorage.getItem(BOOT_SESSION_KEY) === '1';
+  } catch {
+    // sessionStorage can throw under strict privacy settings — fail open so
+    // the overlay still works, accepting that boot will replay in that case.
+    return false;
+  }
+}
+
+function markBootedThisSession(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(BOOT_SESSION_KEY, '1');
+  } catch {
+    // See hasBootedThisSession — we silently fall back to "boot every open".
+  }
+}
+
 interface TabDef {
   mode: ViewMode;
   label: string;
@@ -113,10 +140,11 @@ export function UnderTheHoodView() {
       typeof window !== 'undefined' &&
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduced) {
+    if (reduced || hasBootedThisSession()) {
       setPhase('on');
       return;
     }
+    markBootedThisSession();
     setPhase('boot');
     const id = window.setTimeout(() => setPhase('on'), BOOT_DURATION_MS);
     return () => window.clearTimeout(id);
