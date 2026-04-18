@@ -200,7 +200,7 @@ verify "Services hero copy 'End-to-end' present" \
   "echo \"\${SERVICES_HTML}\" | grep -q 'End-to-end'"
 
 verify "All 4 tier titles present in services HTML" \
-  "echo \"\${SERVICES_HTML}\" | grep -q 'Measurement Foundation' && echo \"\${SERVICES_HTML}\" | grep -q 'Data Infrastructure' && echo \"\${SERVICES_HTML}\" | grep -q 'Business Intelligence' && echo \"\${SERVICES_HTML}\" | grep -q 'Attribution & Advanced'"
+  "echo \"\${SERVICES_HTML}\" | grep -q 'Measurement Foundation' && echo \"\${SERVICES_HTML}\" | grep -q 'Data Infrastructure' && echo \"\${SERVICES_HTML}\" | grep -q 'Business Intelligence' && echo \"\${SERVICES_HTML}\" | grep -qE 'Attribution (&|&amp;) Advanced'"
 
 verify "'Not sure where you' closer phrase present" \
   "echo \"\${SERVICES_HTML}\" | grep -q 'Not sure where you'"
@@ -307,21 +307,26 @@ confirm "/demo/leadgen renders" \
 echo ""
 echo "  → Switch browser back to desktop viewport for remaining scenarios."
 
-# ── Scenario 8 — Overlay scoped off demo routes ──────
-section "Scenario 8 — Overlay scoped off demo routes"
-echo "  Exercises: D10 (route guard), D9 (scoping)"
+# ── Scenario 8 — Overlay available on demo routes, ambient bubbles gated ──
+section "Scenario 8 — Overlay available on ecommerce demo; ambient bubbles gated"
+echo "  Exercises: D10 (route integration), D9 (pathname-specific overview panel)"
+echo ""
+echo "  Phase 9B explicitly uses the overlay on /demo/ecommerce/* for the Tier 2"
+echo "  under-the-hood content (campaign taxonomy, staging, data quality, etc.),"
+echo "  so the overlay SHOULD be reachable on ecommerce routes — only the ambient"
+echo "  event bubbles are gated off /demo/* per AmbientBubblesWrapper."
 
 echo ""
-echo "  → Navigate to /demo/ecommerce."
-confirm "The editorial terminal overlay is not accessible on demo routes — either SessionPulse is hidden on /demo/* or clicking it does not open the CRT/amber overlay" \
-  "Overlay gated on demo routes"
-confirm "Ambient event bubbles (Phase 9A feature) are ALSO not shown on demo routes" \
-  "Ambient bubbles gated on demo routes"
+echo "  → Navigate to /demo/ecommerce. Click SessionPulse in the header."
+confirm "Overlay opens on /demo/ecommerce. Overview tab renders EcommerceUnderside (Phase 9B content) — styling may still use Phase 8 tokens (scope-deferred)" \
+  "Overlay reachable on ecommerce demo"
+confirm "Ambient event bubbles are NOT shown on /demo/ecommerce (gated by AmbientBubblesWrapper)" \
+  "Ambient bubbles gated off /demo/*"
 
 echo ""
-echo "  → Navigate back to /."
-confirm "Editorial chrome + overlay availability both return on /" \
-  "Chrome + overlay back on consulting route"
+echo "  → Close the overlay. Navigate back to /."
+confirm "Ambient bubbles return on /; overlay still reachable" \
+  "Bubbles back on consulting route"
 
 # ── Edge-1 — prefers-reduced-motion ──────────────────
 section "Edge-1 — prefers-reduced-motion respected"

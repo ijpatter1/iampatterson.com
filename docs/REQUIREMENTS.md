@@ -241,7 +241,7 @@ iampatterson.com is simultaneously a consulting site for Patterson Consulting an
 
 9. **Under-the-hood overlay redesign** — Full-page terminal/CRT overlay with 4 tabs (Overview, Timeline, Consent, Dashboards); two-step boot (~260ms hold with accent flip orange → amber, then phase-on reveals panel contents); CRT flicker / bloom / scanlines layers as non-interactive siblings; backdrop click and "Back to site" button both close; Timeline tab wired to the real event stream via `useEventStream`; Overview/Consent/Dashboards panels structured around the existing Tier 1-3 narrative.
 
-10. **Wiring & route integration** — All new surfaces live at the existing `/` and `/services` routes; `OverlayProvider` context retargeted at the new full-page overlay; demo routes untouched; route guard keeps the overlay out of `/demo/*` paths; ambient event bubbles from Phase 9A are preserved on consulting surfaces; removed Phase 9A overlay components cleaned up.
+10. **Wiring & route integration** — All new surfaces live at the existing `/` and `/services` routes; `OverlayProvider` context retargeted at the new full-page overlay; demo routes untouched; overlay remains reachable on `/demo/ecommerce/*` so the Phase 9B Tier 2 undersides keep working (pathname-specific Overview panel routes to `EcommerceUnderside`); ambient event bubbles from Phase 9A stay gated off `/demo/*` via `AmbientBubblesWrapper`; removed Phase 9A overlay components cleaned up.
 
 **Constraints:**
 
