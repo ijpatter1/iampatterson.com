@@ -1,0 +1,55 @@
+name: 'E-Commerce Executive'
+description: |
+  Live dashboard of the ecommerce demo's Tier 2/3 marts — funnel, AOV,
+  revenue, ROAS, and customer LTV. Versioned as YAML under
+  infrastructure/metabase/dashboards/specs/ and applied to this instance
+  via apply.sh. The specs are the source of truth; direct edits in the
+  Metabase UI without a matching spec are drift.
+
+# Layout: 24-column grid. Rows are ~22px tall.
+#
+#   ┌──────────────────────────────────────────────────┐ row  0  (size_y=6)
+#   │  Daily revenue trend (30d)                       │
+#   ├──────────────────────────┬───────────────────────┤ row  6  (size_y=6)
+#   │  AOV trend (90d)         │  Funnel by channel    │
+#   ├──────────────────────────┬───────────────────────┤ row 12  (size_y=6)
+#   │  ROAS by campaign        │  Revenue share        │
+#   ├──────────────────┴───────────────────────────────┤ row 18  (size_y=6)
+#   │  Customer LTV distribution                       │
+#   └──────────────────────────────────────────────────┘
+cards:
+  - card: 'Daily revenue trend (30 days)'
+    row: 0
+    col: 0
+    size_x: 24
+    size_y: 6
+
+  - card: 'AOV trend (90 days)'
+    row: 6
+    col: 0
+    size_x: 12
+    size_y: 6
+
+  - card: 'Funnel conversion by channel'
+    row: 6
+    col: 12
+    size_x: 12
+    size_y: 6
+
+  - card: 'ROAS by campaign'
+    row: 12
+    col: 0
+    size_x: 12
+    size_y: 6
+
+  - card: 'Revenue share by channel'
+    row: 12
+    col: 12
+    size_x: 12
+    size_y: 6
+
+  - card: 'Customer LTV distribution'
+    row: 18
+    col: 0
+    size_x: 24
+    size_y: 6

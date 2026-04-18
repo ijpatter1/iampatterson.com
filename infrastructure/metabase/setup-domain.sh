@@ -5,7 +5,17 @@
 # Cloud Run works only through a LB-fronted backend service, not on the
 # direct .run.app URL.
 #
+# Also provisions the URL-map path-matcher split required by Phase 9B
+# deliverable 6a (dashboards-as-code): /api/* and /embed/* route to a
+# non-IAP backend service (metabase-backend-direct) wrapping the same
+# serverless NEG, while /* stays on the IAP-gated metabase-backend.
+# This lets apply.sh drive the Metabase REST API with an admin API key
+# and lets deliverable 6b serve signed embeds to anonymous visitors,
+# both without weakening the IAP gate on the Metabase UI.
+#
 # See docs/input_artifacts/metabase-deployment-plan.md (Task 5) for spec.
+# See docs/ARCHITECTURE.md (Phase 9B — Dashboards as Code) for the path-
+# matcher rationale.
 #
 # Idempotent. Safe to re-run; existence checks skip create steps that
 # already ran. If interrupted during cert provisioning, re-run and the
@@ -38,7 +48,9 @@ SERVICE_NAME="${SERVICE_NAME:-metabase}"
 STATIC_IP_NAME="${STATIC_IP_NAME:-metabase-lb-ip}"
 NEG_NAME="${NEG_NAME:-metabase-neg}"
 BACKEND_NAME="${BACKEND_NAME:-metabase-backend}"
+BACKEND_DIRECT_NAME="${BACKEND_DIRECT_NAME:-metabase-backend-direct}"
 URL_MAP_NAME="${URL_MAP_NAME:-metabase-url-map}"
+PATH_MATCHER_NAME="${PATH_MATCHER_NAME:-direct-paths}"
 CERT_NAME="${CERT_NAME:-metabase-cert}"
 HTTPS_PROXY_NAME="${HTTPS_PROXY_NAME:-metabase-https-proxy}"
 FORWARDING_RULE_NAME="${FORWARDING_RULE_NAME:-metabase-forwarding-rule}"
@@ -83,7 +95,7 @@ echo "Service present."
 # -----------------------------------------------------------------------------
 # 1. Reserved global static IP
 # -----------------------------------------------------------------------------
-echo "==> 1/7 Static IP ${STATIC_IP_NAME}..."
+echo "==> 1/8 Static IP ${STATIC_IP_NAME}..."
 if gcloud compute addresses describe "${STATIC_IP_NAME}" \
      --global --project="${PROJECT}" >/dev/null 2>&1; then
   echo "Static IP ${STATIC_IP_NAME} exists, skipping."
@@ -102,7 +114,7 @@ echo "Static IP address: ${STATIC_IP:-<unknown>}"
 # -----------------------------------------------------------------------------
 # 2. Google-managed SSL cert for the domain
 # -----------------------------------------------------------------------------
-echo "==> 2/7 SSL cert ${CERT_NAME} for ${DOMAIN}..."
+echo "==> 2/8 SSL cert ${CERT_NAME} for ${DOMAIN}..."
 if gcloud compute ssl-certificates describe "${CERT_NAME}" \
      --global --project="${PROJECT}" >/dev/null 2>&1; then
   echo "Cert ${CERT_NAME} exists, skipping."
@@ -116,7 +128,7 @@ fi
 # -----------------------------------------------------------------------------
 # 3. Serverless NEG pointing at the Cloud Run service
 # -----------------------------------------------------------------------------
-echo "==> 3/7 Serverless NEG ${NEG_NAME}..."
+echo "==> 3/8 Serverless NEG ${NEG_NAME}..."
 if gcloud compute network-endpoint-groups describe "${NEG_NAME}" \
      --region="${REGION}" --project="${PROJECT}" >/dev/null 2>&1; then
   echo "NEG ${NEG_NAME} exists, skipping."
@@ -131,7 +143,7 @@ fi
 # -----------------------------------------------------------------------------
 # 4. Backend service wrapping the NEG (IAP attaches here in Task 6)
 # -----------------------------------------------------------------------------
-echo "==> 4/7 Backend service ${BACKEND_NAME}..."
+echo "==> 4/8 Backend service ${BACKEND_NAME}..."
 BACKEND_EXISTS=false
 if gcloud compute backend-services describe "${BACKEND_NAME}" \
      --global --project="${PROJECT}" >/dev/null 2>&1; then
@@ -215,7 +227,7 @@ fi
 # -----------------------------------------------------------------------------
 # 5. URL map routing / → backend service
 # -----------------------------------------------------------------------------
-echo "==> 5/7 URL map ${URL_MAP_NAME}..."
+echo "==> 5/8 URL map ${URL_MAP_NAME}..."
 if gcloud compute url-maps describe "${URL_MAP_NAME}" \
      --global --project="${PROJECT}" >/dev/null 2>&1; then
   echo "URL map ${URL_MAP_NAME} exists, skipping."
@@ -229,7 +241,7 @@ fi
 # -----------------------------------------------------------------------------
 # 6. Target HTTPS proxy (binds URL map to SSL cert)
 # -----------------------------------------------------------------------------
-echo "==> 6/7 Target HTTPS proxy ${HTTPS_PROXY_NAME}..."
+echo "==> 6/8 Target HTTPS proxy ${HTTPS_PROXY_NAME}..."
 if gcloud compute target-https-proxies describe "${HTTPS_PROXY_NAME}" \
      --global --project="${PROJECT}" >/dev/null 2>&1; then
   echo "HTTPS proxy ${HTTPS_PROXY_NAME} exists, skipping."
@@ -244,7 +256,7 @@ fi
 # -----------------------------------------------------------------------------
 # 7. Global forwarding rule (static IP:443 → HTTPS proxy)
 # -----------------------------------------------------------------------------
-echo "==> 7/7 Forwarding rule ${FORWARDING_RULE_NAME}..."
+echo "==> 7/8 Forwarding rule ${FORWARDING_RULE_NAME}..."
 if gcloud compute forwarding-rules describe "${FORWARDING_RULE_NAME}" \
      --global --project="${PROJECT}" >/dev/null 2>&1; then
   echo "Forwarding rule ${FORWARDING_RULE_NAME} exists, skipping."
@@ -255,6 +267,77 @@ else
     --global \
     --ports=443 \
     --load-balancing-scheme=EXTERNAL_MANAGED \
+    --project="${PROJECT}"
+fi
+
+# -----------------------------------------------------------------------------
+# 8. Non-IAP backend + URL-map path split for /api/* and /embed/*
+#
+# Required by Phase 9B deliverable 6a (dashboards-as-code apply.sh needs
+# /api/* to bypass IAP — admin API key is the auth) and deliverable 6b
+# (signed embeds need /embed/* to bypass IAP). The non-IAP backend wraps
+# the same serverless NEG as the IAP backend, so both terminate at the
+# same Cloud Run revision; only the IAP gate differs. Security model is
+# unchanged for the UI (/*): IAP + Metabase auth + BigQuery SA scoping.
+# -----------------------------------------------------------------------------
+echo "==> 8/8 Non-IAP backend + URL-map split..."
+
+BACKEND_DIRECT_EXISTS=false
+if gcloud compute backend-services describe "${BACKEND_DIRECT_NAME}" \
+     --global --project="${PROJECT}" >/dev/null 2>&1; then
+  BACKEND_DIRECT_EXISTS=true
+  echo "Non-IAP backend ${BACKEND_DIRECT_NAME} exists, skipping create."
+fi
+
+if ! $BACKEND_DIRECT_EXISTS; then
+  # Same EXTERNAL_MANAGED scheme and no portName (serverless-NEG
+  # compatible), identical to metabase-backend. Differs only in that IAP
+  # is never attached — apply.sh and /embed/* reach Metabase directly
+  # and rely on Metabase's own auth layer (API key, embed JWT).
+  run gcloud compute backend-services create "${BACKEND_DIRECT_NAME}" \
+    --global \
+    --load-balancing-scheme=EXTERNAL_MANAGED \
+    --project="${PROJECT}"
+fi
+
+# Attach the same NEG. Serverless NEGs can back multiple backend services
+# (GCP reference-counts them). Idempotency via basename exact match.
+if gcloud compute backend-services describe "${BACKEND_DIRECT_NAME}" \
+     --global --project="${PROJECT}" \
+     --format="value(backends[].group.basename())" 2>/dev/null \
+     | tr '[:space:]' '\n' \
+     | grep -Fxq "${NEG_NAME}"; then
+  echo "NEG ${NEG_NAME} already attached to ${BACKEND_DIRECT_NAME}, skipping."
+else
+  run gcloud compute backend-services add-backend "${BACKEND_DIRECT_NAME}" \
+    --global \
+    --network-endpoint-group="${NEG_NAME}" \
+    --network-endpoint-group-region="${REGION}" \
+    --project="${PROJECT}"
+fi
+
+# Path matcher on the URL map. Idempotency: describe then add if absent.
+# gcloud's value(pathMatchers.name) returns a semicolon-separated list;
+# wrap both sides with ';' to match whole tokens only (avoids a future
+# matcher named 'direct-paths-v2' false-positively skipping this one).
+EXISTING_MATCHERS=$(gcloud compute url-maps describe "${URL_MAP_NAME}" \
+  --global --project="${PROJECT}" \
+  --format="value(pathMatchers.name)" 2>/dev/null || echo "")
+if echo ";${EXISTING_MATCHERS};" | grep -q ";${PATH_MATCHER_NAME};"; then
+  echo "Path matcher ${PATH_MATCHER_NAME} present on ${URL_MAP_NAME}, skipping."
+else
+  # --new-hosts='*' attaches the matcher to a wildcard host rule so
+  # every request (regardless of Host header) passes through this
+  # matcher. Intentional: attackers setting a fake Host shouldn't be
+  # able to route around the split. Default-service keeps /* on the
+  # IAP-gated backend; only /api/* and /embed/* drop to the direct
+  # backend.
+  run gcloud compute url-maps add-path-matcher "${URL_MAP_NAME}" \
+    --global \
+    --path-matcher-name="${PATH_MATCHER_NAME}" \
+    --default-service="${BACKEND_NAME}" \
+    --backend-service-path-rules="/api/*=${BACKEND_DIRECT_NAME},/embed/*=${BACKEND_DIRECT_NAME}" \
+    --new-hosts="*" \
     --project="${PROJECT}"
 fi
 
@@ -353,9 +436,17 @@ echo ""
 echo "==> Done."
 echo ""
 echo "Verify:"
+echo "  curl -sI https://${DOMAIN}/ | head -3"
+echo "  # expect HTTP/2 302 to accounts.google.com — UI path is IAP-gated."
+echo ""
 echo "  curl -sI https://${DOMAIN}/api/health | head -3"
-echo "  # expect HTTP/2 200 once IAP is not yet attached (Task 6 will flip this"
-echo "  # to a 302 redirect to accounts.google.com)."
+echo "  # expect HTTP/2 200 direct from Metabase — /api/* bypasses IAP via"
+echo "  # the path matcher from step 8. /api/health is Metabase's public"
+echo "  # health endpoint; no x-api-key needed."
+echo ""
+echo "  curl -sI https://${DOMAIN}/embed/question/not-a-real-jwt | head -3"
+echo "  # expect HTTP/2 4xx from Metabase (bad JWT) — NOT a 302, confirming"
+echo "  # /embed/* bypasses IAP."
 echo ""
 echo "  URL=\$(gcloud run services describe ${SERVICE_NAME} \\"
 echo "    --region=${REGION} --project=${PROJECT} --format='value(status.url)')"

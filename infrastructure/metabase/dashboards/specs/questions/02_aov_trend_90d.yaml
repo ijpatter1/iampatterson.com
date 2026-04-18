@@ -1,0 +1,26 @@
+name: 'AOV trend (90 days)'
+description: |
+  Daily average order value for ecommerce purchases, last 90 days.
+  AOV = sum(order_total) / distinct order_id.
+display: line
+enable_embedding: true
+visualization_settings:
+  graph.dimensions:
+    - day
+  graph.metrics:
+    - aov
+  graph.x_axis.title_text: 'Date'
+  graph.y_axis.title_text: 'Average order value (USD)'
+  graph.x_axis.scale: 'timeseries'
+  graph.show_goal: false
+query: |
+  SELECT
+    DATE(event_timestamp) AS day,
+    SAFE_DIVIDE(SUM(order_total), COUNT(DISTINCT order_id)) AS aov
+  FROM `iampatterson.iampatterson_marts.mart_session_events`
+  WHERE business_model = 'ecommerce'
+    AND event_name = 'purchase'
+    AND order_total > 0
+    AND DATE(event_timestamp) >= DATE_SUB(CURRENT_DATE(), INTERVAL 90 DAY)
+  GROUP BY day
+  ORDER BY day

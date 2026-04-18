@@ -1,0 +1,34 @@
+name: 'ROAS by campaign'
+description: |
+  Ad spend vs. purchase revenue per campaign, last 30 days. Top 10
+  campaigns by spend. Shown as grouped bars (spend, revenue); the
+  implicit ROAS ratio is revenue-bar-height / spend-bar-height.
+  Campaign names use the AI-classified taxonomy (Phase 5) where
+  available — raw UTMs are cleaned up before this mart is built.
+display: bar
+visualization_settings:
+  graph.dimensions:
+    - campaign_name
+  graph.metrics:
+    - spend
+    - revenue
+  stackable.stack_type: null
+  graph.x_axis.title_text: 'Campaign'
+  graph.y_axis.title_text: 'USD'
+  graph.x_axis.scale: 'ordinal'
+  graph.x_axis.axis_enabled: 'rotate-45'
+  graph.show_values: false
+query: |
+  SELECT
+    campaign_name,
+    SUM(spend_usd) AS spend,
+    SUM(purchase_revenue) AS revenue,
+    SAFE_DIVIDE(SUM(purchase_revenue), SUM(spend_usd)) AS roas
+  FROM `iampatterson.iampatterson_marts.mart_campaign_performance`
+  WHERE business_model = 'ecommerce'
+    AND campaign_name IS NOT NULL
+    AND report_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
+  GROUP BY campaign_name
+  HAVING spend > 100
+  ORDER BY spend DESC
+  LIMIT 10

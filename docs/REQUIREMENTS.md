@@ -233,14 +233,26 @@ iampatterson.com is simultaneously a consulting site for Patterson Consulting an
 
 5. **Confirmation page: Tier 3 pivot** — The visitor has seen how data is captured and structured. Now show what it tells you. Embed a dashboard preview with: funnel metrics (conversion rate by channel, drop-off at each stage), AOV trends, and an actionable insight: "Your checkout completion rate is 83.4% — visitors who see related products on the detail page convert at 2.3x the rate. Reducing the cart-to-checkout drop-off by 5% would add $14k in monthly revenue." This is BI doing what BI is supposed to do — telling you where the money is.
 
-6. **Looker Studio / Metabase integration** — Build the e-commerce executive dashboard in Looker Studio and/or Metabase, connected to the BigQuery mart tables from Phase 5. Embed or deep-link from the confirmation page under-the-hood view. This demonstrates both BI tool options as referenced in the Tier 3 service description.
+6a. **Metabase dashboards as code** — Build a single "E-Commerce Executive" dashboard in the Metabase instance (Phase 9B-infra) with six questions backed by the BigQuery mart tables from Phase 5:
+
+     1. **Funnel conversion by channel** — grouped bar (four metrics per channel — sessions, product_view, add_to_cart, purchase), so stage-to-stage drop-off is visible as adjacent bar heights rather than hidden inside a stack. Grouped by `utm_source`. Source: `mart_session_events`.
+     2. **AOV trend (90 days)** — line chart of daily average order value. Source: `mart_session_events`.
+     3. **Campaign spend vs. revenue (ROAS)** — grouped bar chart with two metrics (spend, revenue) per campaign; the implicit ROAS ratio is revenue-bar-height / spend-bar-height. AI-classified taxonomy labels from Phase 5 on the x-axis. Source: `mart_campaign_performance`.
+     4. **Revenue share by channel** — donut chart of attributed revenue by `utm_source`, most recent month of available data. (`mart_channel_attribution` is month-grained; a 30-day rolling window would require rebuilding the mart or switching sources.) Source: `mart_channel_attribution`.
+     5. **Customer LTV distribution** — histogram of per-customer total revenue with channel overlay. Source: `mart_customer_ltv`.
+     6. **Daily revenue trend (30d)** — line chart of daily total purchase revenue. Source: `mart_session_events`.
+
+     Dashboards and questions are authored as versioned YAML specs in `infrastructure/metabase/dashboards/` and applied to the live instance via an idempotent `apply.sh` script that drives the Metabase REST API. The specs are the source of truth — any asset authored directly in the Metabase UI without a corresponding spec is drift. Looker Studio is out of scope; Metabase is the canonical BI tool for this site.
+
+6b. **Confirmation-page signed embed** — In the `/demo/ecommerce/confirmation` under-the-hood view, embed a subset of the deliverable-6a dashboard (funnel, AOV, daily revenue) via Metabase's signed-JWT embed feature, with a Next.js server-side signer keyed by `MB_EMBEDDING_SECRET_KEY`. Visitors with IAP access see an additional "Open in Metabase" deep-link to the full dashboard. Blocked on the IAP-bypass architectural decision — see `docs/ARCHITECTURE.md`.
 
 7. **Services page cross-links** — Add contextual links from the Tier 2 service description to the ecommerce funnel: "See how Dataform transforms raw add_to_cart events into the mart tables that power checkout analytics — walk through the Tuna Shop funnel." Add Tier 3 link to the confirmation page: "See what 18 months of e-commerce data looks like when it's properly instrumented and dashboarded."
 
 **Constraints:**
 
 - The underside content must use real data from the visitor's session where possible (their actual UTM params, their actual events) and simulated/mock data where the visitor hasn't generated enough history.
-- The Looker Studio / Metabase dashboards connect to real BigQuery mart tables, not mock data.
+- Metabase dashboards connect to real BigQuery mart tables in `iampatterson_marts`, not mock data.
+- The `infrastructure/metabase/dashboards/` YAML specs are the source of truth. `apply.sh` is idempotent; re-running it reconciles Metabase to match the specs.
 - The existing e-commerce demo flow (product listing → cart → checkout → confirmation) stays functionally unchanged. The under-the-hood layer adds depth, it doesn't change the demo UX.
 
 **Why this is Phase 9B:** The e-commerce demo has the most funnel depth. It's the natural first demo to build because it exercises every under-the-hood feature (taxonomy, staging, quality, warehouse write, dashboards) in sequence.

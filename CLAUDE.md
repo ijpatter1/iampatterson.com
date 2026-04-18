@@ -18,9 +18,9 @@ This is the consulting website for Patterson Consulting **and** a live, interact
 
 ## Current Phase
 
-**Phase 9B — E-Commerce Demo: Tiers 2 & 3** (5 of 7 application-layer deliverables complete; 9B-infra sub-phase done — Metabase live at `https://bi.iampatterson.com/` behind IAP with BigQuery `iampatterson_marts` connected)
+**Phase 9B — E-Commerce Demo: Tiers 2 & 3** (5 of 8 application-layer deliverables complete; 9B-infra sub-phase done — Metabase live at `https://bi.iampatterson.com/` behind IAP with BigQuery `iampatterson_marts` connected)
 
-Phase 9B application-layer deliverables 1–5 merged on main (commit 389d086); deliverables 6 (Metabase embed in ecommerce confirmation page) and 7 (services cross-links) are now unblocked and the next focus.
+Phase 9B application-layer deliverables 1–5 merged on main (commit 389d086). Deliverable 6 has been split into 6a (Metabase dashboards as code — YAML specs + idempotent `apply.sh` driving the Metabase REST API) and 6b (confirmation-page signed embed). Deliverables 6a, 6b, and 7 (services cross-links) are now unblocked. 6b blocked on an IAP-bypass architectural decision — see `docs/ARCHITECTURE.md`.
 
 See `docs/REQUIREMENTS.md` for the full development plan (Phases 1-8, 9A-9D, 10-11).
 See `docs/ARCHITECTURE.md` for technical architecture details.

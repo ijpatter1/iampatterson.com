@@ -308,7 +308,74 @@ The only long-lived credential material is the `metabase-bigquery` JSON key. Rot
 
 **Expected baseline cost:** $60–75/month (Cloud Run warm + Cloud SQL + LB + static IP), plus BigQuery query costs proportional to dashboard usage. Budget alert at $100/month.
 
-**Application-layer consumer:** Phase 9B deliverable 6 embeds or deep-links the Metabase dashboard from the `/demo/ecommerce/confirmation` under-the-hood view. The deployment does not, on its own, change the Next.js application surface.
+**Application-layer consumer:** Phase 9B deliverables 6a (dashboards as code) and 6b (confirmation-page signed embed) build on this deployment. The deployment does not, on its own, change the Next.js application surface.
+
+### Phase 9B — Dashboards as Code (deliverable 6a)
+
+Metabase dashboards and questions for the e-commerce demo are authored as versioned YAML specs in `infrastructure/metabase/dashboards/` and applied via the Metabase REST API. Same philosophy as Dataform for transformations: BI assets live in git, reviewable as diffs, reproducible via a single `apply.sh` invocation.
+
+**Directory layout:**
+
+```
+infrastructure/metabase/dashboards/
+├── apply.sh                             # idempotent upsert driver
+├── README.md                            # auth + runbook
+├── lib/
+│   └── metabase_client.sh               # curl wrappers around /api/card, /api/dashboard
+├── specs/
+│   ├── questions/
+│   │   ├── 01_funnel_conversion_by_channel.yaml
+│   │   ├── 02_aov_trend_90d.yaml
+│   │   ├── 03_roas_by_campaign.yaml
+│   │   ├── 04_revenue_share_by_channel.yaml
+│   │   ├── 05_customer_ltv_distribution.yaml
+│   │   └── 06_daily_revenue_trend.yaml
+│   └── dashboards/
+│       └── ecommerce_executive.yaml
+└── .ids.json                            # gitignored; records resolved IDs
+```
+
+**Auth model:** `apply.sh` authenticates to `https://bi.iampatterson.com/api/*` with a Metabase admin API key stored in Secret Manager as `metabase-api-key`. The key is generated once via Metabase's Admin → Authentication → API Keys UI and scoped to the Admin group. Script fetches the key at run time via `gcloud secrets versions access`; never written to disk.
+
+**IAP and the API path:** `/api/*` requests carrying the `x-api-key` header must bypass IAP. This is provisioned as a URL-map path-matcher addendum to Phase 9B-infra Task 5: IAP gates the UI path (`/*` → SSO) but not the API path (`/api/*` → Metabase direct). Without this split, `apply.sh` cannot reach the API from an unauthenticated shell. The split also serves deliverable 6b's `/embed/*` path (see "Open decisions" below).
+
+**Security tradeoffs of the path split:** Pre-split, IAP's Google-SSO-backed challenge was the first gate on every request, including brute-force and enumeration attempts on `/api/session`, `/api/user`, and `/api/setup/*`. Post-split, those endpoints are directly reachable from the public internet — Metabase's own auth layer (session cookies, admin API key) is the only remaining protection on `/api/*`, and Metabase's signed-JWT validation is the only protection on `/embed/*`. Neither path has Cloud Armor, rate limiting, or a WAF in front of it. For a solo-user portfolio site this is acceptable risk: the attack surface is Metabase's well-maintained OSS auth code, plus a single admin credential rotated annually, plus the `metabase-encryption-key` that encrypts credentials in the app DB. For a multi-user production deployment, a Cloud Armor security policy with per-IP rate limits on `/api/session` and a WAF rule on `/api/setup/*` would be appropriate. Deferred to Phase 11 (Operational Readiness) if the threat model changes.
+
+**Apply flow (idempotent):**
+
+1. Fetch API key from Secret Manager.
+2. Resolve the BigQuery database ID via `GET /api/database`, match by name `iampatterson marts`.
+3. Ensure an "E-Commerce Dashboards" collection exists (`GET /api/collection`; `POST` if missing).
+4. For each `specs/questions/*.yaml`: look up by name in the collection; `POST /api/card` if new, `PUT /api/card/{id}` if present.
+5. For `specs/dashboards/ecommerce_executive.yaml`: upsert via `/api/dashboard`, then `PUT /api/dashboard/{id}` with the `dashcards` array mapping card IDs to grid positions.
+6. Enable signed embedding on the dashboard and on the three cards (funnel, AOV, daily revenue) consumed by deliverable 6b.
+7. Write resolved IDs to `.ids.json` (gitignored) and to Secret Manager as `metabase-embed-config` for 6b's Next.js signer.
+
+**Question → mart-table map:**
+
+| # | Question | Source mart | Viz |
+|---|---|---|---|
+| 1 | Funnel conversion by channel | `mart_session_events` | Grouped bar (4 stages per channel) |
+| 2 | AOV trend (90d) | `mart_session_events` | Line |
+| 3 | ROAS by campaign | `mart_campaign_performance` | Bar |
+| 4 | Revenue share by channel (latest month) | `mart_channel_attribution` | Donut |
+| 5 | Customer LTV distribution | `mart_customer_ltv` | Histogram |
+| 6 | Daily revenue trend (30d) | `mart_session_events` | Line |
+
+All six use native SQL (not MBQL), hand-written in the YAML specs so they're readable in diffs and portable if Metabase is ever replaced.
+
+**New secrets in this phase:**
+
+- `metabase-api-key` — admin API key used by `apply.sh`. Generated in Metabase UI, stored in Secret Manager.
+- `MB_EMBEDDING_SECRET_KEY` — shared secret for signing embed JWTs. Set in Metabase Admin UI; consumed by 6b's Next.js signer.
+- `metabase-embed-config` — JSON `{dashboardId, cardIds: {funnel, aov, dailyRevenue}}` produced by `apply.sh`, consumed by 6b.
+
+**Open decisions (blocking 6b, not 6a):**
+
+1. **Embed-path IAP bypass.** Metabase's `/embed/*` endpoints are designed for anonymous public access, but the Phase 9B-infra LB gates everything behind IAP. Three candidates for 6b:
+   1. Split the URL map so `/embed/*` routes to a non-IAP backend. Cleanest architecturally; a natural extension of the same path-matcher addendum that 6a requires for `/api/*`. Preferred.
+   2. Proxy embeds through the Next.js server with an admin API key. No infra change; adds latency and a new trust boundary.
+   3. Static-image embeds rendered at Next.js build time. Simplest; loses interactivity (no drill-down, no filter).
 
 ### Phase 8 — Attribution
 Shapley value MTA in Dataform. Comparison views against last-click and platform-reported.

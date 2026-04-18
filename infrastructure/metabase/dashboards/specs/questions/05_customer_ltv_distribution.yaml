@@ -1,0 +1,34 @@
+name: 'Customer LTV distribution'
+description: |
+  Distribution of ecommerce customers bucketed by total lifetime revenue.
+  Uses mart_customer_ltv which tracks first-touch attribution by client_id.
+  Numeric prefix on bucket labels enforces ordinal sort on the x-axis
+  (Metabase bar charts with string dimensions sort lexically).
+display: bar
+visualization_settings:
+  graph.dimensions:
+    - ltv_bucket
+  graph.metrics:
+    - customers
+  graph.x_axis.title_text: 'Lifetime revenue bucket'
+  graph.y_axis.title_text: 'Customers'
+  graph.x_axis.scale: 'ordinal'
+  graph.show_values: true
+query: |
+  WITH bucketed AS (
+    SELECT
+      CASE
+        WHEN total_revenue < 50   THEN '1. Under $50'
+        WHEN total_revenue < 100  THEN '2. $50 – $100'
+        WHEN total_revenue < 250  THEN '3. $100 – $250'
+        WHEN total_revenue < 500  THEN '4. $250 – $500'
+        WHEN total_revenue < 1000 THEN '5. $500 – $1,000'
+        ELSE                           '6. $1,000+'
+      END AS ltv_bucket,
+      client_id
+    FROM `iampatterson.iampatterson_marts.mart_customer_ltv`
+  )
+  SELECT ltv_bucket, COUNT(DISTINCT client_id) AS customers
+  FROM bucketed
+  GROUP BY ltv_bucket
+  ORDER BY ltv_bucket

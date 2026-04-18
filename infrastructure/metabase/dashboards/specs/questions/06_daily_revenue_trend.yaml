@@ -1,0 +1,27 @@
+name: 'Daily revenue trend (30 days)'
+description: |
+  Daily total purchase revenue for the ecommerce demo, last 30 days.
+  Powers the actionable-insight card on the confirmation page's under-the-hood
+  view (deliverable 6b).
+display: line
+enable_embedding: true
+visualization_settings:
+  graph.dimensions:
+    - day
+  graph.metrics:
+    - revenue
+  graph.x_axis.title_text: 'Date'
+  graph.y_axis.title_text: 'Revenue (USD)'
+  graph.x_axis.scale: 'timeseries'
+  graph.show_goal: false
+query: |
+  SELECT
+    DATE(event_timestamp) AS day,
+    SUM(order_total) AS revenue
+  FROM `iampatterson.iampatterson_marts.mart_session_events`
+  WHERE business_model = 'ecommerce'
+    AND event_name = 'purchase'
+    AND order_total > 0
+    AND DATE(event_timestamp) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
+  GROUP BY day
+  ORDER BY day
