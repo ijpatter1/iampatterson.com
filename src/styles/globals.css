@@ -138,8 +138,8 @@
     pointer-events: none;
     background-image: repeating-linear-gradient(
       0deg,
-      rgba(255, 164, 0, 0.05) 0px,
-      rgba(255, 164, 0, 0.05) 1px,
+      rgba(255, 164, 0, 0.03) 0px,
+      rgba(255, 164, 0, 0.03) 1px,
       transparent 1px,
       transparent 3px
     );

@@ -270,6 +270,3 @@ export function UnderTheHoodView() {
     </div>
   );
 }
-
-// Expose BOOT_DURATION_MS for tests.
-export const __BOOT_DURATION_MS = BOOT_DURATION_MS;
