@@ -1,3 +1,4 @@
+import { DemosSection } from '@/components/home/demos-section';
 import { HeroEditorial } from '@/components/home/hero';
 import { PipelineSection } from '@/components/home/pipeline-section';
 
@@ -6,6 +7,7 @@ export default function HomePage() {
     <main>
       <HeroEditorial />
       <PipelineSection />
+      <DemosSection />
     </main>
   );
 }
