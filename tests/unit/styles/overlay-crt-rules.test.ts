@@ -46,6 +46,16 @@ describe('globals.css — overlay CRT rules', () => {
     expect(css).toMatch(/\[data-phase=['"]on['"]\]\s+\.crt-scanlines\s*\{[^}]*opacity:\s*1/);
   });
 
+  it('keeps the scanline stripe alpha at 0.03 to match the prototype', () => {
+    // Regression guard: a prior session drifted this value to 0.05, which
+    // reads brighter/louder than the prototype intends. Asserting the exact
+    // value here catches silent drift on future refactors.
+    const scanlineBlock = css.match(/\.crt-scanlines\s*\{[^}]*\}/s);
+    expect(scanlineBlock).not.toBeNull();
+    expect(scanlineBlock?.[0]).toMatch(/rgba\(\s*255,\s*164,\s*0,\s*0\.03\s*\)/);
+    expect(scanlineBlock?.[0]).not.toMatch(/rgba\(\s*255,\s*164,\s*0,\s*0\.05\s*\)/);
+  });
+
   it('hides .overlay-chrome (header + tabs) during phase-boot', () => {
     // Keeps header/tabs from painting under the curtain if it misses a frame.
     expect(css).toMatch(/\[data-phase=['"]boot['"]\]\s+\.overlay-chrome\s*\{[^}]*opacity:\s*0/);

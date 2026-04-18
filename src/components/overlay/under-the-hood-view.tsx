@@ -24,8 +24,9 @@ const BOOT_DURATION_MS = 260;
 // browser session. First open of the session fires boot and sets the flag;
 // every subsequent open within the same tab lifetime goes straight to phase-on.
 // Scoped to sessionStorage (not localStorage) so a new browsing session — new
-// tab, new window — gets the boot gesture again.
-const BOOT_SESSION_KEY = 'iampatterson.overlay.booted';
+// tab, new window — gets the boot gesture again. Exported so tests assert
+// against the same constant rather than a duplicated string literal.
+export const BOOT_SESSION_KEY = 'iampatterson.overlay.booted';
 
 function hasBootedThisSession(): boolean {
   if (typeof window === 'undefined') return false;

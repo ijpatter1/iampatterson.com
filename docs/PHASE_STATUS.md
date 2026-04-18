@@ -1,6 +1,6 @@
 # Phase Status Tracker
 
-> **Current Phase: 9A-redesign — Editorial Homepage, Services, and Under-the-Hood Overlay** (10 of 10 deliverables complete. UAT accepted by user in session-023; session-024 followed up with CRT boot fidelity fixes and a once-per-session boot refinement. 599 tests passing, build clean. Phase 9B is paused — resumes after 9A-redesign merges to main, including the 6a manual apply.)
+> **Current Phase: 9A-redesign — Editorial Homepage, Services, and Under-the-Hood Overlay** (10 of 10 deliverables complete. UAT accepted by user in session-023; session-024 followed up with CRT boot fidelity fixes, a once-per-session boot refinement, and a debt-cleanup pass. 609 tests passing, build clean. Phase 9B is paused — resumes after 9A-redesign merges to main, including the 6a manual apply.)
 > Last updated: 2026-04-18, session-2026-04-18-024
 
 ---
@@ -159,7 +159,7 @@
 - ✅ 2026-04-18, commit 54aeef4 — Under-the-hood overlay redesign — full-page ink/terminal chrome with paper content pane, boot phase state machine (idle → boot → on, 260ms hold, skipped under prefers-reduced-motion and on re-opens within the same browser session via `sessionStorage`), CRT flicker/bloom/scanlines layers gated by phase-on, tab-flash settle animation on open/tab-change, Tabs reduced to 4 (Overview/Timeline/Consent/Dashboards), Narrative moved to contextual-only (below event detail), backdrop click closes, uses useLiveEvents
 - ✅ 2026-04-18 — Wiring & route integration — `OverlayProvider` drives `--accent` and opens full-page view; demo routes untouched; ambient bubbles preserved via existing `AmbientBubblesWrapper` (`/demo/*` guard unchanged); `/demo` redirect preserved; flip-trigger / header-demos components fully removed; `Narrative` standalone tab removed from overlay
 
-*Homepage composition: Hero → Pipeline → Demos → ServicesTeaser → Proof → FinalCta. Test suite: 527 → 599 (+72 net) after evaluation passes 1-3 + handoff close-out + session-024 CRT boot fidelity/once-per-session refinement. Production build clean.*
+*Homepage composition: Hero → Pipeline → Demos → ServicesTeaser → Proof → FinalCta. Test suite: 527 → 609 (+82 net) after evaluation passes 1-3 + handoff close-out + session-024 CRT boot fidelity/once-per-session refinement + debt-cleanup pass. Production build clean.*
 
 ---
 

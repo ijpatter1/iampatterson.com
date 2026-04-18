@@ -4,7 +4,7 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import { UnderTheHoodView } from '@/components/overlay/under-the-hood-view';
+import { BOOT_SESSION_KEY, UnderTheHoodView } from '@/components/overlay/under-the-hood-view';
 
 const mockClose = jest.fn();
 
@@ -180,7 +180,7 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
     // First open of a session plays the boot sequence; subsequent opens
     // within the same browser session go straight to phase-on. Simulate the
     // "already booted this session" state by pre-seeding the flag.
-    window.sessionStorage.setItem('iampatterson.overlay.booted', '1');
+    window.sessionStorage.setItem(BOOT_SESSION_KEY, '1');
     render(<UnderTheHoodView />);
     const view = screen.getByTestId('under-the-hood-view');
     expect(view.dataset.phase).toBe('on');
@@ -190,7 +190,7 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
     // Guards against regression where boot fires but the flag isn't persisted,
     // which would cause every open to re-boot (the behavior we moved away from).
     render(<UnderTheHoodView />);
-    expect(window.sessionStorage.getItem('iampatterson.overlay.booted')).toBe('1');
+    expect(window.sessionStorage.getItem(BOOT_SESSION_KEY)).toBe('1');
   });
 
   it('sets the boot-once flag even on the reduced-motion path', () => {
@@ -200,7 +200,7 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
     // branches preserves the once-per-session guarantee.
     mockReducedMotion(true);
     render(<UnderTheHoodView />);
-    expect(window.sessionStorage.getItem('iampatterson.overlay.booted')).toBe('1');
+    expect(window.sessionStorage.getItem(BOOT_SESSION_KEY)).toBe('1');
   });
 
   it('marks the header and tabs wrapper with an overlay-chrome class for boot-phase hiding', () => {
