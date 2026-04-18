@@ -321,14 +321,19 @@ for ((i=0; i<dash_card_count; i++)); do
   }
 
   # Reuse existing dashcard id if we've placed this card before; otherwise
-  # use -1 to signal a new dashcard to Metabase.
+  # assign a unique negative sentinel (-1, -2, -3, ...) per dashcard.
+  # Metabase v0.59+ validates "ids are unique" on PUT /api/dashboard and
+  # rejects the payload when multiple new dashcards share id: -1 (the
+  # legacy "new card" placeholder). Negative ids are still interpreted as
+  # "new" — Metabase assigns real ids server-side on create.
   # Limitation: if the same card appears in two positions on the dashboard
   # (a valid Metabase pattern), both dashcards in the PUT body get the same
   # reused id, and Metabase will 400. Current specs place each card once;
   # if that changes, switch to an index-based dedup or place-count-aware
   # resolver.
-  existing_dashcard_id="$(jq -r --argjson cid "${card_id}" \
-    '[.[] | select(.card_id == $cid) | .id] | .[0] // -1' \
+  new_dashcard_id=$(( -(i+1) ))
+  existing_dashcard_id="$(jq -r --argjson cid "${card_id}" --argjson newid "${new_dashcard_id}" \
+    '[.[] | select(.card_id == $cid) | .id] | .[0] // $newid' \
     <<<"${EXISTING_DASHCARDS}")"
 
   dashcards="$(jq -c \
@@ -348,8 +353,8 @@ dash_update="$(jq -n \
   --arg desc "${dash_desc}" \
   '{name: $name, description: ($desc | if . == "" then null else . end), dashcards: $dc, enable_embedding: true}')"
 
-reused_count="$(jq '[.[] | select(.id != -1)] | length' <<<"${dashcards}")"
-new_count="$(jq '[.[] | select(.id == -1)] | length' <<<"${dashcards}")"
+reused_count="$(jq '[.[] | select(.id > 0)] | length' <<<"${dashcards}")"
+new_count="$(jq '[.[] | select(.id < 0)] | length' <<<"${dashcards}")"
 echo "  Writing ${dash_card_count} dashcards (${reused_count} reused, ${new_count} new) + enabling embedding"
 
 if ${DRY_RUN}; then

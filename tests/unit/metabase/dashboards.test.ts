@@ -236,6 +236,25 @@ describe('apply.sh behavioral invariants', () => {
     expect(applySh).toMatch(/existing_dashcard_id/);
   });
 
+  test('new dashcards get unique negative ids (Metabase v0.59+ rejects duplicate -1)', () => {
+    // Metabase v0.59+ enforces "ids are unique" in PUT /api/dashboard's
+    // dashcards validation, even for new-card placeholders. The old pattern
+    // `// -1` as a jq fallback made every new dashcard share id: -1 and
+    // triggered: {"errors":{"dashcards":"nullable value must be seq of
+    // maps in which ids are unique"}}. Fix: assign -(i+1) per iteration.
+    expect(applySh).not.toMatch(/\/\/ -1'[\s\\]*$/m);
+    expect(applySh).toMatch(/new_dashcard_id=\$\(\( -\(i\+1\) \)\)/);
+    expect(applySh).toMatch(/\/\/ \$newid/);
+  });
+
+  test('reused/new dashcard counts filter by id sign, not == -1', () => {
+    // Paired fix with the unique-id change above: counting new dashcards
+    // by `== -1` would miss -2, -3, etc. All new ids are negative; all
+    // reused ids from Metabase are positive.
+    expect(applySh).toMatch(/select\(\.id > 0\)/);
+    expect(applySh).toMatch(/select\(\.id < 0\)/);
+  });
+
   test('preflights that yq is mikefarah v4+', () => {
     expect(applySh).toMatch(/mikefarah/);
     expect(applySh).toMatch(/yq --version/);
