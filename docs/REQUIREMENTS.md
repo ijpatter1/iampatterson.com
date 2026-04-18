@@ -237,7 +237,7 @@ iampatterson.com is simultaneously a consulting site for Patterson Consulting an
 
      1. **Funnel conversion by channel** — grouped bar (four metrics per channel — sessions, product_view, add_to_cart, purchase), so stage-to-stage drop-off is visible as adjacent bar heights rather than hidden inside a stack. Grouped by `utm_source`. Source: `mart_session_events`.
      2. **AOV trend (90 days)** — line chart of daily average order value. Source: `mart_session_events`.
-     3. **ROAS by campaign** — bar chart of spend vs. revenue per campaign with AI-classified taxonomy labels. Source: `mart_campaign_performance`.
+     3. **Campaign spend vs. revenue (ROAS)** — grouped bar chart with two metrics (spend, revenue) per campaign; the implicit ROAS ratio is revenue-bar-height / spend-bar-height. AI-classified taxonomy labels from Phase 5 on the x-axis. Source: `mart_campaign_performance`.
      4. **Revenue share by channel** — donut chart of attributed revenue by `utm_source`, most recent month of available data. (`mart_channel_attribution` is month-grained; a 30-day rolling window would require rebuilding the mart or switching sources.) Source: `mart_channel_attribution`.
      5. **Customer LTV distribution** — histogram of per-customer total revenue with channel overlay. Source: `mart_customer_ltv`.
      6. **Daily revenue trend (30d)** — line chart of daily total purchase revenue. Source: `mart_session_events`.
