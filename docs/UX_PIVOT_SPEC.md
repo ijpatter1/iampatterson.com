@@ -2,7 +2,7 @@
 
 **Status:** Ready for Claude Code handoff
 **Scope:** Redesign of homepage navigation model, Under the Hood overlay, and ecommerce demo reveal mechanics. **The subscription and lead gen demos are removed from the site entirely as part of this pivot** and will be reintroduced once revamped to match the ecommerce demo's native-reveal pattern. See §4 for the rationale and reintroduction criteria.
-**Companion artifact:** Pipeline section prototype + implementation plan — `[PLACEHOLDER: insert path to pipeline prototype doc]`
+**Companion artifact:** Pipeline section prototype + implementation plan — workspace/docs/input_artifacts/design_handoff_pipeline
 
 ---
 
@@ -172,7 +172,7 @@ The Session State tab is the overlay's default landing surface and doubles as th
 
 ### 3.4 Homepage pipeline section — progressive reveal
 
-**Reference:** `[PLACEHOLDER: insert path to pipeline prototype doc]`
+**Reference:** workspace/docs/input_artifacts/design_handoff_pipeline
 
 This document scopes the pipeline section's role in the system without re-specifying the effects. Claude Code should implement against the prototype.
 
