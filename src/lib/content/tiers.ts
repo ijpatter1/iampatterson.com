@@ -11,6 +11,7 @@ export interface Tier {
   core: TierComponent[];
   optional: TierComponent[];
   summary: string;
+  seeItLive?: { href: string };
 }
 
 export const TIERS: Tier[] = [
@@ -102,6 +103,7 @@ export const TIERS: Tier[] = [
     ],
     summary:
       'A single source of truth for your marketing data. Clean, documented, AI-enriched, accessible to any downstream tool or AI system.',
+    seeItLive: { href: '/demo/ecommerce' },
   },
   {
     num: '03',
@@ -128,6 +130,7 @@ export const TIERS: Tier[] = [
     ],
     summary:
       'Your marketing team self-serves answers instead of asking the data person. Your executives get a written summary every Monday that tells them what changed and why.',
+    seeItLive: { href: '/demo/ecommerce/confirmation?order_id=ORD-T3-DEMO&total=44.98&items=2' },
   },
   {
     num: '04',

@@ -145,6 +145,7 @@ fi
 # -----------------------------------------------------------------------------
 echo "==> 4/8 Backend service ${BACKEND_NAME}..."
 BACKEND_EXISTS=false
+URL_MAP_SWAPPED_FOR_HEAL=false
 if gcloud compute backend-services describe "${BACKEND_NAME}" \
      --global --project="${PROJECT}" >/dev/null 2>&1; then
   BACKEND_EXISTS=true
@@ -161,6 +162,12 @@ fi
 # Task 6 would have to be re-run. A successful deploy won't hit this
 # path (backend is created without portName from the start), so the
 # guard only fires when someone re-runs after drift has accumulated.
+#
+# URL-map entanglement: once step 5 has run (any prior successful setup),
+# the URL map's defaultService references ${BACKEND_NAME}. Delete then
+# fails with 'already being used by ...urlMaps/...'. Detect that case
+# and swap the URL map default onto ${BACKEND_DIRECT_NAME} (creating it
+# early if step 8 hasn't run yet), delete, recreate, swap back.
 if $BACKEND_EXISTS; then
   CURRENT_PORT_NAME=$(gcloud compute backend-services describe "${BACKEND_NAME}" \
     --global --project="${PROJECT}" --format='value(portName)' 2>/dev/null || echo "")
@@ -186,6 +193,38 @@ backend with --protocol=HTTPS.
 EOF
       exit 1
     fi
+
+    # Detect URL-map defaultService reference and detach before the delete.
+    # defaultService.basename() returns just the backend name (empty when
+    # the url-map resource doesn't exist yet — first-ever run).
+    URL_MAP_DEFAULT=$(gcloud compute url-maps describe "${URL_MAP_NAME}" \
+      --global --project="${PROJECT}" \
+      --format='value(defaultService.basename())' 2>/dev/null || echo "")
+    if [[ "${URL_MAP_DEFAULT}" == "${BACKEND_NAME}" ]]; then
+      echo "URL map ${URL_MAP_NAME} defaultService references ${BACKEND_NAME}; swapping to ${BACKEND_DIRECT_NAME} before delete."
+      # Ensure ${BACKEND_DIRECT_NAME} exists to swap onto. Creates it with
+      # the same EXTERNAL_MANAGED no-portName config step 8 uses; step 8
+      # then sees it exists and skips create. Attach the NEG too — a
+      # backend with no backends attached would 502 the UI during the
+      # swap window.
+      if ! gcloud compute backend-services describe "${BACKEND_DIRECT_NAME}" \
+           --global --project="${PROJECT}" >/dev/null 2>&1; then
+        run gcloud compute backend-services create "${BACKEND_DIRECT_NAME}" \
+          --global \
+          --load-balancing-scheme=EXTERNAL_MANAGED \
+          --project="${PROJECT}"
+        run gcloud compute backend-services add-backend "${BACKEND_DIRECT_NAME}" \
+          --global \
+          --network-endpoint-group="${NEG_NAME}" \
+          --network-endpoint-group-region="${REGION}" \
+          --project="${PROJECT}"
+      fi
+      run gcloud compute url-maps set-default-service "${URL_MAP_NAME}" \
+        --default-service="${BACKEND_DIRECT_NAME}" \
+        --global --project="${PROJECT}"
+      URL_MAP_SWAPPED_FOR_HEAL=true
+    fi
+
     echo "Backend ${BACKEND_NAME} has portName='${CURRENT_PORT_NAME}' — incompatible with serverless NEG. Recreating (IAP not enabled, safe)."
     run gcloud compute backend-services delete "${BACKEND_NAME}" \
       --global --project="${PROJECT}" --quiet
@@ -222,6 +261,18 @@ else
     --network-endpoint-group="${NEG_NAME}" \
     --network-endpoint-group-region="${REGION}" \
     --project="${PROJECT}"
+fi
+
+# Swap the URL map defaultService back to the freshly-healed backend.
+# Once step 8's path matcher with --new-hosts='*' lands, the top-level
+# default is effectively unreachable (all hosts hit the matcher), so
+# this is mostly cosmetic — but keeping it pointed at BACKEND_NAME means
+# behavior stays correct if someone later removes the path matcher.
+if ${URL_MAP_SWAPPED_FOR_HEAL}; then
+  echo "Restoring URL map ${URL_MAP_NAME} defaultService to ${BACKEND_NAME}..."
+  run gcloud compute url-maps set-default-service "${URL_MAP_NAME}" \
+    --default-service="${BACKEND_NAME}" \
+    --global --project="${PROJECT}"
 fi
 
 # -----------------------------------------------------------------------------
@@ -445,8 +496,12 @@ echo "  # the path matcher from step 8. /api/health is Metabase's public"
 echo "  # health endpoint; no x-api-key needed."
 echo ""
 echo "  curl -sI https://${DOMAIN}/embed/question/not-a-real-jwt | head -3"
-echo "  # expect HTTP/2 4xx from Metabase (bad JWT) — NOT a 302, confirming"
-echo "  # /embed/* bypasses IAP."
+echo "  # expect HTTP/2 200 with Metabase-generated headers (set-cookie:"
+echo "  # metabase.DEVICE=..., strict-transport-security, Metabase CSP)."
+echo "  # Critical signal is NOT a 302 to accounts.google.com, confirming"
+echo "  # /embed/* bypasses IAP. Metabase v0.59+ serves an HTML shell on"
+echo "  # bad JWT and lets client-side JS render the error UI; earlier"
+echo "  # guidance that said 'expect 4xx' was wrong for this version."
 echo ""
 echo "  URL=\$(gcloud run services describe ${SERVICE_NAME} \\"
 echo "    --region=${REGION} --project=${PROJECT} --format='value(status.url)')"

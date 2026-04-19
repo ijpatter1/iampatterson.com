@@ -1,7 +1,17 @@
 # Phase Status Tracker
 
-> **Current Phase: 9A-redesign — Editorial Homepage, Services, and Under-the-Hood Overlay** (10 of 10 deliverables complete. UAT accepted by user in session-023; session-024 followed up with CRT boot fidelity fixes, a once-per-session boot refinement, and a debt-cleanup pass. 609 tests passing, build clean. Phase 9B is paused — resumes after 9A-redesign merges to main, including the 6a manual apply.)
-> Last updated: 2026-04-18, session-2026-04-18-025
+> **Current Phase: 9B — E-Commerce Demo: Tiers 2 & 3** (all deliverables dev-complete. 6a verified live on Metabase at `https://bi.iampatterson.com/dashboard/2`; 6b shipped across the signer utility → inline iframes + Server-Component page refactor → overlay Dashboards-tab fallback, then five evaluator/product-reviewer iterations (Pass 1-5) closing loading-state, typography, a11y, sanitization, prose-overclaim and IAP-gate findings; services cross-links shipped at commit 08c5458. 673 tests passing, build clean. Pass 5 final scores: Tech 4.60/5, Product 4.55/5 — both PASS, merge-ready.)
+>
+> **Follow-ups for the next session:**
+> 1. **[High priority, operational]** Metabase Cloud Run CPU always-allocated. Surfaced during session-026 live iframe verification: first iframe load after idle takes ~60s. `minScale=1` is set but `cpu-throttling=true` (default) drops CPU to near-zero during idle, forcing JVM warmup on the next hit. Fix: `gcloud run services update metabase --region=us-central1 --project=iampatterson --no-cpu-throttling`. Cost delta ~$20/mo; buys single-digit-second Tier 3 loads instead of a minute. Secondary (only if still slow): bump memory 2Gi → 4Gi.
+> 2. `LiveEmbedFrame` load-failure timeout — if Metabase is unreachable, "Querying BigQuery…" persists indefinitely. Add a ~15s `useEffect` timer that flips the placeholder to a retry/open-direct CTA. Much less urgent once #1 lands.
+> 3. Palette-token harmony — demo surface uses raw `neutral-*`; editorial surface uses `ink/paper/rule`. Needs a unified pass, not piecemeal.
+> 4. Load-order tab reshape — with three `LiveEmbedFrame` instances, tab order reshapes as each iframe's `onLoad` fires in arbitrary order. Very low severity, reviewer called "fine in practice."
+> 5. Zombie no-query-params state at `/demo/ecommerce/confirmation` — renders "Order confirmed · ORD-UNKNOWN" + `$0` receipt. No current entry point triggers it; fix when the first deep link omits params.
+>
+> **Before 6b renders in production:** set `MB_EMBEDDING_SECRET_KEY` + `METABASE_EMBED_CONFIG` in Vercel (mirrors of Secret Manager `metabase-embedding-secret-key` + `metabase-embed-config`). Without them, the confirmation page renders a visible fallback block deep-linking to the IAP-gated dashboard.
+>
+> Last updated: 2026-04-19, session-2026-04-19-026
 
 ---
 
@@ -174,9 +184,9 @@
 - ✅ 2026-04-04, commit 389d086 — Cart underside: Data Quality Framework — live assertion checklist (schema validation, null checks, volume anomaly)
 - ✅ 2026-04-04, commit 389d086 — Checkout underside: Warehouse Write — real-time BigQuery write visualization
 - ✅ 2026-04-04, commit 389d086 — Confirmation page: Tier 3 pivot — funnel metrics, AOV trends, actionable insight with revenue impact
-- 🔄 (6a) Metabase "E-Commerce Executive" dashboard — 6 questions as YAML specs in `infrastructure/metabase/dashboards/`, applied to the live instance via `apply.sh` — *dev-complete session-2026-04-18-021 (commits 493aad0…3d3dde0); awaiting execution of `docs/manual/task-2026-04-17-005.md` to apply against live Metabase and flip to ✅*
-- ⬜ (6b) Confirmation-page signed embed — 3 questions embedded in `/demo/ecommerce/confirmation` under-the-hood via Next.js signed-JWT iframe
-- ⬜ Services page cross-links: Tier 2 → ecommerce funnel, Tier 3 → confirmation page
+- ✅ 2026-04-18, commit 7d8a683 — (6a) Metabase "E-Commerce Executive" dashboard — 6 questions as YAML specs in `infrastructure/metabase/dashboards/`, applied to the live instance via `apply.sh`. Dev commits 493aad0…3d3dde0 (session-2026-04-18-021), Metabase v0.59+ compatibility fix 7d8a683, live apply verified 2026-04-18 per `docs/manual/task-2026-04-17-005.md`. Dashboard at `https://bi.iampatterson.com/dashboard/2` (cards 40-45); `metabase-embed-config` published to Secret Manager (`{dashboardId: 2, cardIds: {funnel: 40, aov: 41, dailyRevenue: 45}}`) and `metabase-embedding-secret-key` stored alongside — both ready for deliverable 6b's signer.
+- ✅ 2026-04-18, commits a238a77 + 0fe8927 + fed0034 — (6b) Confirmation-page signed embed — 3 live Metabase iframes inline on `/demo/ecommerce/confirmation` below the order details (daily revenue → funnel → AOV ordering), each with short narrative prose tying the chart back to the visitor's just-placed order. Signed by a Next.js Server Component using `MB_EMBEDDING_SECRET_KEY` + card IDs from `METABASE_EMBED_CONFIG` (10-minute HS256 JWTs via `jsonwebtoken`). Non-embeddable three (ROAS q=42, Revenue share q=43, LTV q=44) live in the overlay's Dashboards tab on the confirmation route as summary cards deep-linking to individual Metabase questions, with a "See the full dashboard" link into `/dashboard/2`. Replaces deliverable 5's static Tier 3 mocks. Pending Vercel deploy: `MB_EMBEDDING_SECRET_KEY` + `METABASE_EMBED_CONFIG` env vars must be set in Vercel project settings (mirror of Secret Manager `metabase-embedding-secret-key` + `metabase-embed-config`).
+- ✅ 2026-04-18, commit 08c5458 — Services page cross-links — "See it live →" link in the Tier 2 and Tier 3 summary boxes on `/services`: Tier 2 → `/demo/ecommerce`, Tier 3 → `/demo/ecommerce/confirmation` (pre-filled demo order so the inline BI embeds are meaningful on arrival).
 
 ---
 

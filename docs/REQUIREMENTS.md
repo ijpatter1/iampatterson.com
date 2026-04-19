@@ -284,9 +284,22 @@ iampatterson.com is simultaneously a consulting site for Patterson Consulting an
 
      Dashboards and questions are authored as versioned YAML specs in `infrastructure/metabase/dashboards/` and applied to the live instance via an idempotent `apply.sh` script that drives the Metabase REST API. The specs are the source of truth — any asset authored directly in the Metabase UI without a corresponding spec is drift. Looker Studio is out of scope; Metabase is the canonical BI tool for this site.
 
-6b. **Confirmation-page signed embed** — In the `/demo/ecommerce/confirmation` under-the-hood view, embed a subset of the deliverable-6a dashboard (funnel, AOV, daily revenue) via Metabase's signed-JWT embed feature, with a Next.js server-side signer keyed by `MB_EMBEDDING_SECRET_KEY`. Visitors with IAP access see an additional "Open in Metabase" deep-link to the full dashboard. Blocked on the IAP-bypass architectural decision — see `docs/ARCHITECTURE.md`.
+6b. **Confirmation-page signed embed** — On `/demo/ecommerce/confirmation`, render three live Metabase iframes inline below the order details (replacing the static Tier 3 mocks that deliverable 5 landed), ordered by how directly each chart ties back to the visitor's just-placed order:
 
-7. **Services page cross-links** — Add contextual links from the Tier 2 service description to the ecommerce funnel: "See how Dataform transforms raw add_to_cart events into the mart tables that power checkout analytics — walk through the Tuna Shop funnel." Add Tier 3 link to the confirmation page: "See what 18 months of e-commerce data looks like when it's properly instrumented and dashboarded."
+     1. **Daily revenue trend (30 days)** — *"Today's revenue. Orders like yours roll into this bar as they complete."* Most immediate: the visitor's purchase just bumped today's bar. Copy hedged from the original "Your order is in there" so the caption holds for visitors arriving via the Services cross-link (no purchase event fired) as well as organic demo-funnel arrivals.
+     2. **Funnel conversion by channel** — *"You just converted. Out of every 100 visitors from your channel, about 3 get here."* Contextualizes the purchase in the denominator.
+     3. **AOV trend (90 days)** — *"Your order was $X. Here's where it lands on the 90-day AOV trend."* Zooms out to trend. `$X` is interpolated from `searchParams.total`; the benchmark ($Y) is left implicit — the chart itself shows it. Falls back to a generic "Your order against the 90-day AOV trend." when `$X` is missing, zero, or non-finite.
+
+     Short narrative prose between iframes frames each chart with the visitor's purchase as the connecting thread — the confirmation page is the Tier 3 *payoff* surface in the ecommerce narrative, distinct from the Tier 2 *plumbing* content that lives in each funnel step's overlay. Iframes are signed via Metabase's static-embed feature: a Next.js Server Component mints short-lived (10-minute) HS256 JWTs keyed by `MB_EMBEDDING_SECRET_KEY`, with card IDs sourced from the `METABASE_EMBED_CONFIG` env var (a Vercel mirror of the Secret Manager `metabase-embed-config` entry produced by `apply.sh --publish-embed-config`). The `/embed/*` URL-map path split from 6a already bypasses IAP, so anonymous visitors load the iframes directly.
+
+     The three non-embeddable questions (ROAS by campaign, Revenue share by channel, Customer LTV distribution) live in the overlay's Dashboards tab on the confirmation route as summary cards with a deep-link into the IAP-gated `/dashboard/2` — preserving the overlay's "additional depth" role without duplicating the inline embeds.
+
+7. **Services page cross-links** — In each tier summary box on `/services`, add a "See it live →" link that grounds the tier description in the matching demo surface:
+
+     - Tier 2 summary → `/demo/ecommerce` (walks through the Tier 2 plumbing at each funnel step)
+     - Tier 3 summary → `/demo/ecommerce/confirmation` pre-filled with a demo order so the inline BI embeds are meaningful on arrival
+
+     Styling matches the editorial ghost links used elsewhere on the page. Copy is "See it live →" verbatim; the tier summary body already does the storytelling.
 
 **Constraints:**
 

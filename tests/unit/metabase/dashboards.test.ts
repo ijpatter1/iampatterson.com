@@ -236,6 +236,25 @@ describe('apply.sh behavioral invariants', () => {
     expect(applySh).toMatch(/existing_dashcard_id/);
   });
 
+  test('new dashcards get unique negative ids (Metabase v0.59+ rejects duplicate -1)', () => {
+    // Metabase v0.59+ enforces "ids are unique" in PUT /api/dashboard's
+    // dashcards validation, even for new-card placeholders. The old pattern
+    // `// -1` as a jq fallback made every new dashcard share id: -1 and
+    // triggered: {"errors":{"dashcards":"nullable value must be seq of
+    // maps in which ids are unique"}}. Fix: assign -(i+1) per iteration.
+    expect(applySh).not.toMatch(/\/\/ -1'[\s\\]*$/m);
+    expect(applySh).toMatch(/new_dashcard_id=\$\(\( -\(i\+1\) \)\)/);
+    expect(applySh).toMatch(/\/\/ \$newid/);
+  });
+
+  test('reused/new dashcard counts filter by id sign, not == -1', () => {
+    // Paired fix with the unique-id change above: counting new dashcards
+    // by `== -1` would miss -2, -3, etc. All new ids are negative; all
+    // reused ids from Metabase are positive.
+    expect(applySh).toMatch(/select\(\.id > 0\)/);
+    expect(applySh).toMatch(/select\(\.id < 0\)/);
+  });
+
   test('preflights that yq is mikefarah v4+', () => {
     expect(applySh).toMatch(/mikefarah/);
     expect(applySh).toMatch(/yq --version/);
@@ -304,5 +323,52 @@ describe('setup-domain.sh URL-map split (deliverable 6a prerequisite)', () => {
         stdio: 'pipe',
       }),
     ).not.toThrow();
+  });
+
+  test('heal-in-place detaches URL-map defaultService reference before deleting backend', () => {
+    // The 2026-04-18 live apply surfaced this gap: when metabase-backend
+    // has an incompatible portName AND the URL map's defaultService still
+    // references it, the delete fails with
+    //   'already being used by ...urlMaps/metabase-url-map'
+    // The heal should detect the reference, ensure BACKEND_DIRECT_NAME
+    // exists, swap the URL map default onto it, delete, recreate, then
+    // swap back. Guarded here as regex because the script isn't testable
+    // end-to-end without a gcloud stub.
+    expect(setupDomain).toMatch(/URL_MAP_SWAPPED_FOR_HEAL/);
+    expect(setupDomain).toMatch(/set-default-service/);
+    expect(setupDomain).toMatch(/defaultService\.basename\(\)/);
+  });
+
+  test('heal swap-back happens after backend recreation, not before delete', () => {
+    // The swap-back must run AFTER the backend is re-created AND the NEG
+    // is re-attached — otherwise the URL map briefly points at a backend
+    // that exists but has no backends attached, 502'ing the UI. Guard by
+    // asserting the swap-back references BACKEND_NAME and comes after
+    // the add-backend block textually (rough proxy for execution order).
+    const addBackendIdx = setupDomain.indexOf('add-backend "${BACKEND_NAME}"');
+    const swapBackIdx = setupDomain.indexOf('URL_MAP_SWAPPED_FOR_HEAL');
+    // indexOf returns the first occurrence; URL_MAP_SWAPPED_FOR_HEAL
+    // appears both at init (false) and in the restore block. The init
+    // must precede the backend block; the restore must follow the NEG
+    // attach. Assert both appearances exist in that order relative to
+    // add-backend.
+    const allMatches = [...setupDomain.matchAll(/URL_MAP_SWAPPED_FOR_HEAL/g)].map((m) => m.index!);
+    expect(allMatches.length).toBeGreaterThanOrEqual(3); // init, set=true, restore check
+    expect(swapBackIdx).toBeGreaterThan(0);
+    expect(addBackendIdx).toBeGreaterThan(0);
+    expect(allMatches[allMatches.length - 1]).toBeGreaterThan(addBackendIdx);
+  });
+
+  test('trailing /embed/* verify message matches actual Metabase v0.59+ behavior', () => {
+    // Metabase v0.59+ returns 200 + HTML shell on a bad embed JWT; the
+    // JS parses the token client-side and renders an error UI. The
+    // earlier "expect 4xx" guidance was wrong and mislead the 6a live
+    // apply into thinking the path matcher hadn't landed.
+    //
+    // Critical signal is "NOT a 302 to accounts.google.com" (that's what
+    // confirms /embed/* bypasses IAP).
+    expect(setupDomain).not.toMatch(/expect HTTP\/2 4xx from Metabase \(bad JWT\)/);
+    expect(setupDomain).toMatch(/expect HTTP\/2 200/);
+    expect(setupDomain).toMatch(/NOT a 302/);
   });
 });

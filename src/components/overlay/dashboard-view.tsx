@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+import { METABASE_BASE_URL } from '@/lib/metabase/embed';
+
 const demoDashboards = [
   {
     n: '01',
@@ -27,7 +29,36 @@ const demoDashboards = [
   },
 ];
 
-const METABASE_URL = 'https://bi.iampatterson.com/';
+// Phase 9B deliverable 6b — the three embeddable cards (funnel, AOV,
+// daily revenue) render inline on the confirmation page. The three
+// non-embeddable cards live here behind IAP, reachable from the overlay
+// Dashboards tab only when the visitor is on the confirmation route.
+//
+// These IDs must match the live Metabase instance. `apply.sh` (see
+// infrastructure/metabase/dashboards/apply.sh) preserves card IDs on
+// re-apply via name-based idempotency, so the mapping is stable once
+// cards exist. If the dashboard is ever rebuilt from scratch, update
+// these IDs from `.ids.json` (produced by `apply.sh`) and cross-check
+// `metabase-embed-config` in Secret Manager for the three embeddable
+// IDs.
+const CONFIRMATION_EXTRAS = [
+  {
+    id: 42,
+    label: 'ROAS by campaign',
+    description: 'Grouped spend vs. revenue bars per campaign with AI-classified taxonomy labels.',
+  },
+  {
+    id: 43,
+    label: 'Revenue share by channel',
+    description: 'Donut of attributed revenue by channel for the most recent month.',
+  },
+  {
+    id: 44,
+    label: 'Customer LTV distribution',
+    description: 'Histogram of per-customer total revenue with channel overlay.',
+  },
+];
+const CONFIRMATION_ROUTE = '/demo/ecommerce/confirmation';
 
 export function DashboardView() {
   const pathname = usePathname() ?? '/';
@@ -92,7 +123,7 @@ export function DashboardView() {
             Live Metabase · bi.iampatterson.com
           </h4>
           <a
-            href={METABASE_URL}
+            href={`${METABASE_BASE_URL}/`}
             target="_blank"
             rel="noopener noreferrer"
             className="font-mono text-[10px] uppercase tracking-widest text-u-ink-3 transition-colors hover:text-accent-current"
@@ -107,6 +138,55 @@ export function DashboardView() {
           allowlist; reach out if you want a guided walkthrough.
         </p>
       </div>
+
+      {pathname === CONFIRMATION_ROUTE && (
+        <div className="mt-8 border-t border-u-rule-soft pt-8">
+          <h4 className="font-mono text-[10px] uppercase tracking-widest text-accent-current">
+            Three more reports behind IAP
+          </h4>
+          <p className="mt-2 max-w-[62ch] text-sm leading-relaxed text-u-ink-2">
+            The three inline embeds on the page above are the anonymous-visitor view. The full
+            E-Commerce Executive dashboard has three additional questions gated behind IAP —
+            individual links below go straight to the question, but you&apos;ll hit the Google SSO
+            wall unless you&apos;re allowlisted. Reach out for a walkthrough.
+          </p>
+          <div className="mt-4 space-y-2">
+            {CONFIRMATION_EXTRAS.map((q) => (
+              <a
+                key={q.id}
+                href={`${METABASE_BASE_URL}/question/${q.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-baseline gap-4 border-l-2 border-u-rule-soft bg-u-paper-alt/60 px-4 py-3 transition-colors hover:border-accent-current hover:bg-u-paper-alt"
+              >
+                <span className="font-mono text-[10px] tracking-widest text-u-ink-3">
+                  Q · {String(q.id).padStart(2, '0')}
+                </span>
+                <span className="flex-1">
+                  <span className="block font-display text-base text-u-ink">{q.label}</span>
+                  <span className="mt-0.5 block text-xs leading-relaxed text-u-ink-2">
+                    {q.description}
+                  </span>
+                </span>
+                <span
+                  aria-hidden="true"
+                  className="font-mono text-[10px] uppercase tracking-widest text-u-ink-4"
+                >
+                  IAP ↗
+                </span>
+              </a>
+            ))}
+          </div>
+          <a
+            href={`${METABASE_BASE_URL}/dashboard/2`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-4 inline-block font-mono text-[10px] uppercase tracking-widest text-accent-current hover:underline"
+          >
+            See the full dashboard →
+          </a>
+        </div>
+      )}
     </div>
   );
 }
