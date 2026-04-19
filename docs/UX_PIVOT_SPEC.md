@@ -1,7 +1,7 @@
 # iampatterson.com — UX Pivot Design Spec
 
 **Status:** Ready for Claude Code handoff
-**Scope:** Redesign of homepage navigation model, Under the Hood overlay, and ecommerce demo reveal mechanics. Subscription and lead gen demos out of scope for this pivot.
+**Scope:** Redesign of homepage navigation model, Under the Hood overlay, and ecommerce demo reveal mechanics. **The subscription and lead gen demos are removed from the site entirely as part of this pivot** and will be reintroduced once revamped to match the ecommerce demo's native-reveal pattern. See §4 for the rationale and reintroduction criteria.
 **Companion artifact:** Pipeline section prototype + implementation plan — `[PLACEHOLDER: insert path to pipeline prototype doc]`
 
 ---
@@ -11,6 +11,8 @@
 The site today has three surfaces — editorial front-end, retrofuturistic Under the Hood overlay, three demo mini-sites — linked by CTAs. The surfaces feel disjointed. The overlay is a destination the visitor toggles in and out of, the demos force the visitor through pretend funnels with under-the-hood interruptions, and the conventional top nav doesn't reflect the product.
 
 This pivot reframes the site as **one world in two states**, with the instrument panel as the primary navigation. Editorial and retrofuture become surfaces of the same measurement stack, not separate properties. Navigation becomes exploration with explicit escape hatches. The demos stop being shopkeeper theater and become diagnostic environments where the instrumentation reveals itself natively as the visitor interacts.
+
+**The site goes from three demos to one.** The subscription and lead gen demos are removed from the site as part of this pivot. Keeping them alongside a redesigned ecommerce demo would create exactly the disjointed experience this pivot is meant to eliminate — two pretend funnels with old overlay-based reveals sitting next to one native-reveal demo. One coherent demo is stronger proof than three inconsistent ones. Subscription and lead gen will be reintroduced later, each built to the pattern language this pivot establishes for ecommerce.
 
 ### Design principles
 
@@ -54,7 +56,7 @@ This visitor is a marketing director or head of analytics. They care about BI, a
 2. The demo page is styled editorially (a believable product listing for the Tuna Shop) but the instrumentation is visible *as they interact* — not behind an overlay. When they click a product, a small amber toast near the cart icon fires: `product_view · tuna-plush · $24.99 → GA4 BigQuery Pub/Sub`. It fades after ~2 seconds. No interruption to the browsing flow, but the stack is visible.
 3. On the product detail page, a persistent sidebar (collapsible) shows the staging layer transformation for their event — the field extraction, type casting, session stitching — updating live as they interact. They are seeing Tier 2 *as it happens*, not by opening an overlay.
 4. As they add to cart and reach checkout, the sidebar content shifts to show data quality assertions running against their event. `[OK] schema_validation · [OK] null_check · [OK] volume_anomaly`. They feel like they're operating a console, not filling in a form.
-5. The confirmation page is the Tier 3 payoff. The existing inline Metabase embeds stay — daily revenue, funnel, AOV — but the visual treatment leans harder into the diagnostic-readout aesthetic. The three IAP-gated extras (ROAS, revenue share, LTV) remain reachable, possibly as additional embedded panels rather than behind a Dashboards tab (which no longer exists in the overlay).
+5. The confirmation page is the Tier 3 payoff. The existing inline Metabase embeds stay — daily revenue, funnel, AOV — but the visual treatment leans harder into the diagnostic-readout aesthetic. The three additional questions that used to live behind the IAP-gated Dashboards tab (ROAS, revenue share, LTV) are now embedded inline as well, so no visitor hits a permission wall. **Open question for Claude Code:** whether to embed six separate question cards inline, or embed the full Metabase dashboard (which contains all six in a single canvas) as one block. The dashboard-embed option is likely the stronger payoff — the visitor sees a production BI surface in one frame rather than six scattered charts — but the tradeoff depends on how the dashboard renders at the page's available width and whether individual-question narrative framing is worth the loss of the dashboard-as-single-artifact treatment. Claude Code has the context on both shapes; pick the stronger presentation.
 6. They can tap the SessionPulse at any time during this flow to open the overlay. Session State now shows: ecommerce demo 100% complete, X of Y event types fired across the full site. Portal to Services / Contact is one click away.
 
 **What this flow validates:** The demo is worth going through for its own sake. The instrumentation reveals itself in-flow, not by interrupting the flow. The binary overlay-in/overlay-out rhythm is gone.
@@ -82,8 +84,25 @@ This section describes what stays, what changes, what's new, and what's removed.
 **Target state:**
 - Header contains: SessionPulse (primary interaction — opens overlay), logo/brand treatment (optional, no more than a wordmark). No links to Home/Services/About/Contact.
 - LiveStrip sits below the header as today, unchanged in function. Its SESSION / STACK / CONSENT / PIPELINE / DASHBOARDS / ATTRIB fields reinforce the instrument-panel framing.
-- Mobile: the SessionPulse sits in the position a hamburger menu would occupy (top right). Tapping it opens the overlay to the Session State tab — same behavior as desktop.
+
+**Desktop (≥768px):**
+
+Desktop is the trickier surface here. On mobile, a collapsed-menu pattern is standard — tapping a symbol in the top-right to open navigation is the expected gesture. On desktop the default mental model is "nav links are visible in the header at all times." Removing the conventional nav without replacing its discoverability is how we lose visitors who want Services or Contact and don't realize the SessionPulse is the way there. The design needs to do explicit work to make the SessionPulse read as *the* way to navigate.
+
+Required desktop treatments:
+- **Visual prominence.** On desktop, SessionPulse sits roughly where a primary nav's first link would sit — left of center or adjacent to the brand wordmark, not tucked in a corner. Minimum touch/click target of 44×44px. Its pulse animation is slightly stronger on desktop than mobile (the mobile eye forgives more motion; desktop visitors stare longer).
+- **Hover affordance.** On hover, the SessionPulse surface shows a clear interactive state — border intensifies, the existing `↗` indicator scales or glows, and a tooltip-style label appears below or beside it reading `NAV · UNDER THE HOOD` or similar. Label uses the mono/amber vocabulary so it's on-brand, but the word "NAV" is doing heavy lifting — don't be clever about it.
+- **First-session hint.** For visitors on their first session (no `iampatterson.overlay.booted` sessionStorage flag, no prior event history), a one-time subtle animation draws the eye: a soft amber pulse ring expanding outward from the SessionPulse after ~3 seconds of inactivity on the homepage. Fires at most once per session, dismisses permanently on any click or scroll. Respects `prefers-reduced-motion` — under reduced motion, the hint is static text that appears beside the SessionPulse ("← menu · under the hood") and fades after 6 seconds.
+- **No persistent hamburger / menu icon elsewhere.** The SessionPulse is the only nav affordance in the header. Don't add a backup icon — the whole point of the design is that the instrument *is* the nav. Redundant affordances undermine the framing.
+- **Footer compensates for desktop discoverability.** The footer on every page contains conventional nav links (Home / Services / About / Contact). Visitors who don't grok the SessionPulse and scroll past the fold find standard nav at the bottom. This is not a fallback concession — it's the cheap escape hatch discussed in §1, and it does double duty as desktop-nav compensation.
+
+**Mobile (<768px):**
+- SessionPulse sits in the position a hamburger menu would occupy (top right). Tapping it opens the overlay to the Session State tab — same behavior as desktop.
+- First-session hint behaves the same as desktop (soft amber pulse ring after ~3s idle, once per session).
 - On scroll: header behavior remains as today (sticky, subtle shadow on scroll).
+
+**Both breakpoints:**
+- Session ID + event count remain visible in the SessionPulse itself (`ses 89dfc3 · 14 evt`). This is the most legible signal that it is interactive and session-scoped — the numbers tick up as the visitor scrolls and clicks, which makes the affordance self-demonstrating.
 
 **Removed:**
 - Conventional nav links from the header (Home, Services, About, Contact, Demos dropdown).
@@ -104,7 +123,7 @@ This section describes what stays, what changes, what's new, and what's removed.
 
 **Removed:**
 - **Overview tab.** Essential content redistributed: the consent signal table moves to the Session State tab or stays as introductory content on Session State; the pipeline architecture diagram is replaced by the homepage pipeline section's progressive reveal; the live event stream description is redundant with the Timeline tab.
-- **Dashboards tab.** This content was Tier 3 demo-payoff material, not Tier 1 showcase. It doesn't belong in a session-scoped overlay. The confirmation page retains its inline Metabase embeds. The three IAP-gated questions that used to live in the Dashboards tab move to the confirmation page as additional embedded panels (see §3.5).
+- **Dashboards tab.** This content was Tier 3 demo-payoff material, not Tier 1 showcase. It doesn't belong in a session-scoped overlay. All six Metabase questions are embedded inline on the confirmation page (see §3.5) — none remain behind IAP, none remain in the overlay.
 - **EcommerceUnderside routing in the Overview tab.** The overlay no longer shows per-page Tier 2 content when on `/demo/ecommerce/*` routes. All Tier 2 content moves to demo-native reveals (see §3.4).
 - **HomepageUnderside component.** Its content is redistributed as described above.
 
@@ -219,7 +238,7 @@ product_price:  24.99            [CAST string → FLOAT64]
 **Visual treatment:** Full-width or column-wide block with dark background, amber headers, warm cream body text. Indistinguishable in layout from a product image or description card; the *content* is what marks it as diagnostic.
 
 **Use for:** Pages where the instrumentation reveal is the primary payoff content, not a side commentary.
-- Confirmation page → Tier 3 payoff. Existing inline Metabase embeds stay. The three IAP-gated extras (ROAS, revenue share, LTV) move inline here as additional embedded panels with narrative framing. The page reads as a diagnostic report that contains a receipt, rather than a receipt with dashboards bolted on.
+- Confirmation page → Tier 3 payoff. All six Metabase questions are embedded inline — no IAP-gated tier, nothing reachable only behind SSO. The three that are already inline (daily revenue, funnel, AOV) plus the three that previously lived behind the Dashboards tab (ROAS, revenue share, LTV). **Embed shape is an open decision for Claude Code:** six individual question embeds with per-chart narrative framing, or one embed of the full Metabase dashboard (which composes all six). The full-dashboard embed is likely the stronger payoff — one production BI surface in a single frame — but needs to render well at the page's available width. Claude Code picks.
 
 #### Pattern 4 — Full-page diagnostic moment
 
@@ -239,7 +258,7 @@ product_price:  24.99            [CAST string → FLOAT64]
 | Product detail (`/demo/ecommerce/[id]`) | Toast + Sidebar | Toast on `product_view`. Sidebar shows staging layer for the event. |
 | Cart (`/demo/ecommerce/cart`) | Sidebar | Sidebar shows data quality assertions checklist. Updates when line items change. |
 | Checkout (`/demo/ecommerce/checkout`) | Sidebar + Full-page | Sidebar shows warehouse write preview. On submit, full-page diagnostic moment fires before confirmation redirect. |
-| Confirmation (`/demo/ecommerce/confirmation`) | Inline diagnostic | Existing inline Metabase embeds stay. The three IAP-gated questions move inline as additional embedded panels. Page visual style leans harder into diagnostic readout. |
+| Confirmation (`/demo/ecommerce/confirmation`) | Inline diagnostic | All six Metabase questions embedded inline — either as six individual embeds or as one full-dashboard embed (Claude Code decides). No IAP-gated tier. Page visual style leans harder into diagnostic readout. |
 
 #### What gets removed from the ecommerce demo
 
@@ -298,7 +317,11 @@ interface SessionState {
 
 Progress is monotonic — stages can be reached but not un-reached within a session.
 
-**Contact form serialization:**
+**Contact form serialization (optional — Claude Code may defer or cut entirely):**
+
+This capability is marked optional. The Session State tab in the overlay is the primary visible manifestation of session tracking; riding the state along on contact form submissions is an appealing meta-proof move (the site's measurement stack is legible in its own conversion event), but it adds surface area — a new form field, consent-interaction logic, a payload shape that needs validating on whatever receives the form — and the core pivot does not depend on it. Claude Code can ship this pivot without it, defer it to a later pass, or cut it permanently based on implementation cost and the honest payoff.
+
+If implemented:
 
 On the contact page (`/contact`), add a visible checkbox labeled "Share my session state with this message" (default: checked if marketing consent is granted, unchecked if denied). When checked and the form is submitted, the following payload is serialized into a hidden form field named `session_state`:
 
@@ -325,15 +348,54 @@ If the checkbox is unchecked, no session state is included in the submission. No
 
 ---
 
+### 3.7 Homepage Demos section
+
+With subscription and lead gen removed from the site, the current three-card horizontal-scroll demo track at `#demos` no longer makes sense. One card alone looks lonely; three cards with two pointing to removed pages is worse.
+
+**Target state:**
+
+The Demos section becomes a single full-width section dedicated to the ecommerce demo. Not a card, not a grid entry — a section that sits in the homepage scroll with its own rhythm, between the Pipeline section and the Services teaser. Enough room to convey what the demo actually demonstrates (Tiers 2 and 3, instrumentation reveal in-flow, live BI on the confirmation page) and to make the invitation to enter it feel like a real transition, not a nav choice.
+
+**Content guidance:**
+- Section kicker: `Demo · Ecommerce · Tiers 2 + 3` (or similar editorial eyebrow)
+- Editorial headline — serif, oversized — framing the demo's narrative ("Watch a purchase become a KPI" / "From click to warehouse to dashboard" / similar, Claude Code picks)
+- Supporting copy explaining what the visitor is about to see — how the instrumentation reveals itself as they interact, why the confirmation page is the Tier 3 payoff
+- Primary CTA: "Enter the demo →" linking to `/demo/ecommerce`
+- Secondary treatment (optional): a small visual preview — a product tile, a terminal-styled event readout, or a thumbnail of the confirmation page's Metabase embeds. Enough to hint at the aesthetic shift the visitor will encounter, without making the section feel like a gallery.
+- Small note acknowledging that more demos are coming: `Subscription and lead gen demos · in development` or similar. Optional — Claude Code can drop it if it dilutes the focus. The point is honesty about scope, not apology.
+
+**Removed:**
+- The three-card horizontal-scroll track (`DemosSection` as it exists today).
+- The mobile swipe-hint bars.
+- Links or references to `/demo/subscription` and `/demo/leadgen` from the homepage.
+
+**Also removed site-wide (per the demo removal):**
+- `/demo/subscription` and `/demo/leadgen` routes in their entirety (pages, layouts, analytics dashboards, signup flows, account dashboards, thank-you pages).
+- Subscription and lead gen demo data libraries (`src/lib/demo/plans.ts`, the subscription/leadgen sections of `src/lib/demo/dashboard-data.ts`), subscription and leadgen dashboard components, and the partnership form.
+- Subscription and lead gen footer links. Demo links in the footer reduce to the ecommerce demo only.
+- `DemoFooterNav` cross-demo links no longer make sense — either remove the component or simplify it to a single "back to homepage" affordance. Claude Code picks.
+- The subscription and lead gen event types remain in `src/lib/events/schema.ts` for the moment — they're part of the Session State coverage denominator (see §3.6) and their presence communicates "more of the site exists." But the UI that fires them is gone until the demos return.
+
+---
+
 ## 4. Out of scope for this pivot
 
-Explicitly deferred and expected to come back in later phases:
+### Subscription and lead gen demos — removed from the site
 
-- **Subscription demo** native reveals. Current demo pages remain functional but inherit no new reveal patterns in this pivot. When this demo is reworked, it will reuse the ecommerce pattern language, adapted for the subscription business model (longitudinal reveal — cohort/retention context appearing as the visitor moves through signup and dashboard views).
-- **Lead gen demo** native reveals. Same deferral. When reworked, it will emphasize consent-gated routing and PII handling reveals — likely heavy on the live sidebar pattern with consent-state visualization.
+This is the largest scope decision in the pivot and is stated here as the principal out-of-scope item. The subscription and lead gen demos are removed from the site entirely as part of this refactor — routes, pages, layouts, analytics dashboards, and supporting data libraries.
+
+**Rationale.** The pivot's central premise is that the current ecommerce demo will be rebuilt to reveal instrumentation natively through toasts, sidebars, inline diagnostic blocks, and a single full-page diagnostic moment (see §3.5). Leaving subscription and lead gen in place during this rebuild would put two pretend funnels with old overlay-based reveals directly alongside one native-reveal demo. That is exactly the disjointed experience this pivot exists to eliminate. Three demos is not proof of breadth; three demos with inconsistent UX is proof of inattention. One demo that demonstrates the full narrative arc — Tier 2 instrumentation reveal flowing into Tier 3 BI payoff — is stronger evidence than three demos at varying levels of polish.
+
+**Reintroduction criteria.** Subscription and lead gen return to the site when each is rebuilt to the pattern language established in §3.5. Neither comes back as a "before" state of its current implementation; both start from the pattern language. The return happens in separate, later phases after the ecommerce refactor is shipped and validated.
+
+**What gets removed now.** See §3.7 for the full list — routes, components, data libraries, footer links, homepage demo track. The subscription and lead gen event types themselves remain in the event schema as part of the Session State coverage denominator; their presence communicates "more of the site exists" without implying it currently does.
+
+### Other deferred items
+
 - **Tier coverage** in Session State. Today the model uses event-type coverage and ecommerce funnel. Tier-level coverage (have you seen Tier 1 / 2 / 3 demonstrated?) is a richer framing but requires a mapping from events to tiers that this pivot doesn't resolve.
 - **Session State persistence across visits.** Today's model is session-scoped (sessionStorage). A returning-visitor "welcome back, continue where you left off" flow is an interesting future direction but out of scope.
 - **Sound cues** for retrofuture. Mentioned as a direction earlier. Not included in this pivot — if added later, must be opt-in and `prefers-reduced-motion`-aware.
+- **Contact form session state ride-along** (§3.6). Marked optional. Claude Code may defer or cut entirely.
 
 ---
 
