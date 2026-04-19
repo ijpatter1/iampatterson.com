@@ -2,11 +2,12 @@
 
 > **Current Phase: 9B — E-Commerce Demo: Tiers 2 & 3** (all deliverables dev-complete. 6a verified live on Metabase at `https://bi.iampatterson.com/dashboard/2`; 6b shipped across the signer utility → inline iframes + Server-Component page refactor → overlay Dashboards-tab fallback, then five evaluator/product-reviewer iterations (Pass 1-5) closing loading-state, typography, a11y, sanitization, prose-overclaim and IAP-gate findings; services cross-links shipped at commit 08c5458. 673 tests passing, build clean. Pass 5 final scores: Tech 4.60/5, Product 4.55/5 — both PASS, merge-ready.)
 >
-> **Follow-ups for the next session** (deferred during 6b iteration with documented rationale):
-> 1. `LiveEmbedFrame` load-failure timeout — if Metabase is unreachable, "Querying BigQuery…" persists indefinitely. Add a ~15s `useEffect` timer that flips the placeholder to a retry/open-direct CTA.
-> 2. Palette-token harmony — demo surface uses raw `neutral-*`; editorial surface uses `ink/paper/rule`. Needs a unified pass, not piecemeal.
-> 3. Load-order tab reshape — with three `LiveEmbedFrame` instances, tab order reshapes as each iframe's `onLoad` fires in arbitrary order. Very low severity, reviewer called "fine in practice."
-> 4. Zombie no-query-params state at `/demo/ecommerce/confirmation` — renders "Order confirmed · ORD-UNKNOWN" + `$0` receipt. No current entry point triggers it; fix when the first deep link omits params.
+> **Follow-ups for the next session:**
+> 1. **[High priority, operational]** Metabase Cloud Run CPU always-allocated. Surfaced during session-026 live iframe verification: first iframe load after idle takes ~60s. `minScale=1` is set but `cpu-throttling=true` (default) drops CPU to near-zero during idle, forcing JVM warmup on the next hit. Fix: `gcloud run services update metabase --region=us-central1 --project=iampatterson --no-cpu-throttling`. Cost delta ~$20/mo; buys single-digit-second Tier 3 loads instead of a minute. Secondary (only if still slow): bump memory 2Gi → 4Gi.
+> 2. `LiveEmbedFrame` load-failure timeout — if Metabase is unreachable, "Querying BigQuery…" persists indefinitely. Add a ~15s `useEffect` timer that flips the placeholder to a retry/open-direct CTA. Much less urgent once #1 lands.
+> 3. Palette-token harmony — demo surface uses raw `neutral-*`; editorial surface uses `ink/paper/rule`. Needs a unified pass, not piecemeal.
+> 4. Load-order tab reshape — with three `LiveEmbedFrame` instances, tab order reshapes as each iframe's `onLoad` fires in arbitrary order. Very low severity, reviewer called "fine in practice."
+> 5. Zombie no-query-params state at `/demo/ecommerce/confirmation` — renders "Order confirmed · ORD-UNKNOWN" + `$0` receipt. No current entry point triggers it; fix when the first deep link omits params.
 >
 > **Before 6b renders in production:** set `MB_EMBEDDING_SECRET_KEY` + `METABASE_EMBED_CONFIG` in Vercel (mirrors of Secret Manager `metabase-embedding-secret-key` + `metabase-embed-config`). Without them, the confirmation page renders a visible fallback block deep-linking to the IAP-gated dashboard.
 >
