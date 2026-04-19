@@ -5,6 +5,7 @@ import { Footer } from '@/components/footer';
 import { AmbientBubblesWrapper } from '@/components/ambient-bubbles-wrapper';
 import { OverlayProvider } from '@/components/overlay/overlay-context';
 import { UnderTheHoodView } from '@/components/overlay/under-the-hood-view';
+import { SessionStateProvider } from '@/components/session-state-provider';
 import { RouteTracker } from '@/components/route-tracker';
 import { ScrollDepthTracker } from '@/components/scroll-depth-tracker';
 import { CookiebotScript } from '@/components/scripts/cookiebot';
@@ -41,13 +42,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <CookiebotConsentListener />
         <RouteTracker />
         <ScrollDepthTracker />
-        <OverlayProvider>
-          <Header />
-          <div className="flex-1">{children}</div>
-          <Footer />
-          <AmbientBubblesWrapper />
-          <UnderTheHoodView />
-        </OverlayProvider>
+        <SessionStateProvider>
+          <OverlayProvider>
+            <Header />
+            <div className="flex-1">{children}</div>
+            <Footer />
+            <AmbientBubblesWrapper />
+            <UnderTheHoodView />
+          </OverlayProvider>
+        </SessionStateProvider>
       </body>
     </html>
   );
