@@ -151,6 +151,62 @@ export interface LeadQualifyEvent extends BaseEvent {
   budget_range: string;
 }
 
+// --- Phase 9E deliverable 9 — nav & Session State analytics ---
+
+/**
+ * Fired once when the first-session pulse-ring hint renders on the homepage.
+ * Gated to once-per-session via `sessionStorage` at `iampatterson.nav_hint.shown`.
+ */
+export interface NavHintShownEvent extends BaseEvent {
+  event: 'nav_hint_shown';
+}
+
+/**
+ * Fired when the first-session nav hint clears. The four `dismissal_mode` values
+ * are disjoint and exhaustive against the hint's listener surface: `click_outside`
+ * covers any click whose target is not the `SessionPulse` element or a descendant.
+ */
+export interface NavHintDismissedEvent extends BaseEvent {
+  event: 'nav_hint_dismissed';
+  dismissal_mode: 'scroll' | 'click_session_pulse' | 'click_outside' | 'timeout';
+}
+
+/**
+ * Fired when the visitor hovers the `SessionPulse` affordance without clicking.
+ * Desktop-only; debounced to at most once per 60 seconds per session; suppressed
+ * under a coarse-pointer media query.
+ */
+export interface SessionPulseHoverEvent extends BaseEvent {
+  event: 'session_pulse_hover';
+}
+
+/**
+ * Fired when the overlay opens onto the Session State tab.
+ * `default_landing` = fresh open; `manual_select` = tab re-selected from Timeline or Consent.
+ */
+export interface SessionStateTabViewEvent extends BaseEvent {
+  event: 'session_state_tab_view';
+  source: 'default_landing' | 'manual_select';
+}
+
+/**
+ * Fired when a portal link inside the Session State tab is clicked. Distinct from
+ * `click_cta` so the portal's conversion rate is isolable.
+ */
+export interface PortalClickEvent extends BaseEvent {
+  event: 'portal_click';
+  destination: 'services' | 'about' | 'contact';
+}
+
+/**
+ * Fired once per session when event-type coverage crosses a threshold. Monotonic
+ * within a session — each threshold fires at most once even if coverage oscillates.
+ */
+export interface CoverageMilestoneEvent extends BaseEvent {
+  event: 'coverage_milestone';
+  threshold: 25 | 50 | 75 | 100;
+}
+
 /** Union of all event types. */
 export type DataLayerEvent =
   | PageViewEvent
@@ -168,4 +224,10 @@ export type DataLayerEvent =
   | PlanSelectEvent
   | TrialSignupEvent
   | FormCompleteEvent
-  | LeadQualifyEvent;
+  | LeadQualifyEvent
+  | NavHintShownEvent
+  | NavHintDismissedEvent
+  | SessionPulseHoverEvent
+  | SessionStateTabViewEvent
+  | PortalClickEvent
+  | CoverageMilestoneEvent;
