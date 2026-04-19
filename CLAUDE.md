@@ -30,22 +30,6 @@ Work on the current phase only. Do not implement features from future phases. If
 
 Do not modify sections of this file other than "Current Phase" unless explicitly asked to.
 
-### Bootstrapping (First Session Only)
-
-If this is the very first session and no `package.json` exists yet, the project hasn't been scaffolded. The first task is to initialize the Next.js project. Until scaffolding is complete:
-
-- `npm test`, `npm run build`, and `npm run lint` will fail — this is expected
-- Skip the "Run the Tests" step in `/start-phase` and note that scaffolding is the first deliverable
-- During scaffolding, configure the following:
-  - Next.js 14+ with App Router, TypeScript strict mode, Tailwind CSS
-  - **Jest** with `ts-jest` and `@testing-library/react` for unit/component tests
-  - **ESLint** with `eslint-config-next` and strict TypeScript rules
-  - **Prettier** with a `.prettierrc` config (the auto-format hook depends on this)
-  - **Playwright** as a dev dependency (E2E tests come later, but install now)
-  - Path aliases in `tsconfig.json`: `@/components`, `@/lib`, `@/hooks`, `@/styles`
-  - Scripts in `package.json`: `test`, `test:watch`, `test:coverage`, `lint`, `build`, `dev`
-- Write at least one passing test (e.g., a smoke test that the homepage renders) before ending the first session — this establishes the test baseline for all future sessions
-
 ## Directory Structure
 
 ```
