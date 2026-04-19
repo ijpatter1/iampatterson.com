@@ -124,6 +124,6 @@ describe('PipelineSection', () => {
     const cta = screen.getByRole('button', { name: /watch it live/i });
     await user.click(cta);
     expect(screen.getByTestId('overlay-status')).toHaveTextContent('open');
-    expect(trackClickCta).toHaveBeenCalledWith('Watch it live', 'pipeline-section');
+    expect(trackClickCta).toHaveBeenCalledWith('Watch it live', 'pipeline_watch_it_live');
   });
 });

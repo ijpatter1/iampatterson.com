@@ -13,7 +13,7 @@ export function FinalCta() {
         <a
           href="mailto:ian@iampatterson.com"
           className="block font-mono text-[10px] uppercase tracking-widest text-accent-current"
-          onClick={() => trackClickCta('contact — email', 'final-cta')}
+          onClick={() => trackClickCta('contact — email', 'final_cta')}
         >
           contact — ian@iampatterson.com
         </a>
@@ -40,7 +40,7 @@ export function FinalCta() {
           <EditorialButton
             variant="accent"
             onClick={() => {
-              trackClickCta('Look under the hood', 'final-cta');
+              trackClickCta('Look under the hood', 'final_cta');
               open();
             }}
           >
@@ -49,7 +49,7 @@ export function FinalCta() {
           <EditorialLink
             href="/contact"
             variant="ghost"
-            onClick={() => trackClickCta('Start a conversation', 'final-cta')}
+            onClick={() => trackClickCta('Start a conversation', 'final_cta')}
           >
             Start a conversation
           </EditorialLink>

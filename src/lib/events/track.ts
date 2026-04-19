@@ -1,4 +1,5 @@
 import { pushEvent } from './push';
+import type { CtaLocation } from './schema';
 import { getSessionId } from './session';
 
 /** Current consent state — updated by trackConsentUpdate and initConsentState. */
@@ -52,7 +53,7 @@ export function trackClickNav(linkText: string, linkUrl: string): void {
   pushEvent({ ...baseFields(), event: 'click_nav', link_text: linkText, link_url: linkUrl });
 }
 
-export function trackClickCta(ctaText: string, ctaLocation: string): void {
+export function trackClickCta(ctaText: string, ctaLocation: CtaLocation): void {
   pushEvent({ ...baseFields(), event: 'click_cta', cta_text: ctaText, cta_location: ctaLocation });
 }
 

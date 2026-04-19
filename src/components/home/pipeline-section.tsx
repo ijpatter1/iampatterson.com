@@ -34,7 +34,7 @@ export function PipelineSection() {
   const logRows = events.slice(0, 5);
 
   const handleOpen = () => {
-    trackClickCta('Watch it live', 'pipeline-section');
+    trackClickCta('Watch it live', 'pipeline_watch_it_live');
     open();
   };
 

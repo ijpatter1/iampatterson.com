@@ -58,7 +58,7 @@ describe('FinalCta', () => {
     const cta = screen.getByRole('button', { name: /look under the hood/i });
     await user.click(cta);
     expect(screen.getByTestId('overlay-status')).toHaveTextContent('open');
-    expect(trackClickCta).toHaveBeenCalledWith('Look under the hood', 'final-cta');
+    expect(trackClickCta).toHaveBeenCalledWith('Look under the hood', 'final_cta');
   });
 
   it('ghost CTA links to /contact', () => {

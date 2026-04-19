@@ -3,13 +3,25 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 
+import type { CtaLocation } from '@/lib/events/schema';
 import { trackClickCta } from '@/lib/events/track';
 
-const DEMOS = [
+type DemoCtaLocation = Extract<CtaLocation, `demo_card_${string}`>;
+
+const DEMOS: Array<{
+  n: string;
+  href: string;
+  type: string;
+  ctaLocation: DemoCtaLocation;
+  title: string;
+  desc: string;
+  highlights: string[];
+}> = [
   {
     n: '01',
     href: '/demo/ecommerce',
     type: 'E-Commerce',
+    ctaLocation: 'demo_card_ecommerce',
     title: 'The Tuna Shop',
     desc: 'A fully instrumented storefront. Browse, add to cart, checkout. Every interaction generates events that flow through the full stack.',
     highlights: [
@@ -22,6 +34,7 @@ const DEMOS = [
     n: '02',
     href: '/demo/subscription',
     type: 'Subscription',
+    ctaLocation: 'demo_card_subscription',
     title: 'Tuna Subscription',
     desc: 'A subscription product from signup to retention. Every event — plan_select, trial_signup, upgrade, churn — flows through the same instrumentation.',
     highlights: [
@@ -34,6 +47,7 @@ const DEMOS = [
     n: '03',
     href: '/demo/leadgen',
     type: 'Lead Gen',
+    ctaLocation: 'demo_card_leadgen',
     title: 'Tuna Partnerships',
     desc: 'A lead-gen landing page with full-funnel tracking. Consent enforcement and PII handling are scaffolded in the stack.',
     highlights: [
@@ -100,12 +114,7 @@ export function DemosSection() {
             <Link
               key={d.href}
               href={d.href}
-              onClick={() =>
-                trackClickCta(
-                  `Explore ${d.title}`,
-                  `demo-card-${d.type.toLowerCase().replace(/\s/g, '-')}`,
-                )
-              }
+              onClick={() => trackClickCta(`Explore ${d.title}`, d.ctaLocation)}
               className="group relative flex snap-start flex-col gap-4 rounded-sm border border-ink bg-paper p-5 transition-all hover:-translate-y-1 hover:bg-paper-alt md:auto-rows-fr"
               style={{ gridAutoColumns: 'unset' }}
             >

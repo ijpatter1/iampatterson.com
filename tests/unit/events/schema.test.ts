@@ -1,9 +1,11 @@
+import { DATA_LAYER_EVENT_NAMES } from '@/lib/events/schema';
 import type {
   BaseEvent,
   PageViewEvent,
   ScrollDepthEvent,
   ClickNavEvent,
   ClickCtaEvent,
+  CtaLocation,
   FormFieldFocusEvent,
   FormStartEvent,
   FormSubmitEvent,
@@ -73,7 +75,7 @@ describe('Event schema types', () => {
     expect(event.link_url).toBe('/services');
   });
 
-  it('defines ClickCtaEvent with cta fields', () => {
+  it('defines ClickCtaEvent with cta fields and typed CtaLocation', () => {
     const event: ClickCtaEvent = {
       ...baseFields,
       event: 'click_cta',
@@ -82,6 +84,30 @@ describe('Event schema types', () => {
     };
     expect(event.cta_text).toBe('See how it works');
     expect(event.cta_location).toBe('hero');
+  });
+
+  it('CtaLocation covers the 7-value nav-adjacent closed enum', () => {
+    // Type-level: Record<NavAdjacent, true> requires exactly these seven keys.
+    type NavAdjacent = Extract<
+      CtaLocation,
+      | 'session_pulse'
+      | 'portal_services'
+      | 'portal_about'
+      | 'portal_contact'
+      | 'contact_cta_threshold'
+      | 'pipeline_watch_it_live'
+      | 'footer_under_the_hood'
+    >;
+    const navAdjacent: Record<NavAdjacent, true> = {
+      session_pulse: true,
+      portal_services: true,
+      portal_about: true,
+      portal_contact: true,
+      contact_cta_threshold: true,
+      pipeline_watch_it_live: true,
+      footer_under_the_hood: true,
+    };
+    expect(Object.keys(navAdjacent)).toHaveLength(7);
   });
 
   it('defines FormFieldFocusEvent with form and field name', () => {
@@ -209,10 +235,12 @@ describe('Event schema types', () => {
     expect(complete.threshold).toBe(100);
   });
 
-  it('DataLayerEvent union covers exactly 22 event names (16 pre-9E + 6 new 9E nav analytics)', () => {
+  it('DataLayerEvent union is exhaustive against DATA_LAYER_EVENT_NAMES (no drift)', () => {
     // Type-level exhaustive check: Record<DataLayerEvent['event'], true> requires every literal
     // value of the union's `event` discriminator as a key. Missing keys fail type-check;
-    // extra keys fail excess-property check. The runtime length assertion is belt-and-suspenders.
+    // extra keys fail excess-property check. Combined with the _AssertEventNamesInSync sentinel
+    // in schema.ts, this triangulates: runtime array, type union, and this test all agree
+    // on the same set of event names.
     const allEventNames: Record<DataLayerEvent['event'], true> = {
       page_view: true,
       scroll_depth: true,
@@ -237,6 +265,10 @@ describe('Event schema types', () => {
       portal_click: true,
       coverage_milestone: true,
     };
-    expect(Object.keys(allEventNames)).toHaveLength(22);
+    // Runtime assertion derives the expected count from the schema's own source of truth —
+    // extending DATA_LAYER_EVENT_NAMES is the single edit needed; this test re-derives.
+    expect(Object.keys(allEventNames)).toHaveLength(DATA_LAYER_EVENT_NAMES.length);
+    // Sanity: the set of names rendered here matches the schema's runtime array.
+    expect(Object.keys(allEventNames).sort()).toEqual([...DATA_LAYER_EVENT_NAMES].sort());
   });
 });

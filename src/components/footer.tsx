@@ -22,7 +22,7 @@ export function Footer() {
   const { open } = useOverlay();
 
   const openOverlay = (label: string, tab: UndersideTab) => {
-    trackClickCta(label, 'footer-under-the-hood');
+    trackClickCta(label, 'footer_under_the_hood');
     open(tab);
   };
 

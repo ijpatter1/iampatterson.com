@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { DATA_LAYER_EVENT_NAMES } from '@/lib/events/schema';
 import type { ConsentState, PipelineEvent, RoutingResult } from '@/lib/events/pipeline-schema';
 
 export interface UseDataLayerEventsOptions {
@@ -16,25 +17,13 @@ export interface UseDataLayerEventsReturn {
   clearEvents: () => void;
 }
 
-/** Known iap_source event names worth capturing. */
-const IAP_EVENTS = new Set([
-  'page_view',
-  'scroll_depth',
-  'click_nav',
-  'click_cta',
-  'form_start',
-  'form_submit',
-  'form_field_focus',
-  'consent_update',
-  'product_view',
-  'add_to_cart',
-  'begin_checkout',
-  'purchase',
-  'plan_select',
-  'trial_signup',
-  'form_complete',
-  'lead_qualify',
-]);
+/**
+ * Known iap_source event names worth capturing — derived from the
+ * `DataLayerEvent` union's single source of truth in `src/lib/events/schema.ts`.
+ * Adding a new event to the schema automatically flows here; no parallel
+ * list to maintain. Per Phase 9E deliverable 4's derive-from-schema-day-one rule.
+ */
+const IAP_EVENTS: ReadonlySet<string> = new Set(DATA_LAYER_EVENT_NAMES);
 
 let dlCounter = 0;
 

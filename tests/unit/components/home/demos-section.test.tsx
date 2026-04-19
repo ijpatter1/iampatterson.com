@@ -65,7 +65,7 @@ describe('DemosSection', () => {
     const user = userEvent.setup();
     render(<DemosSection />);
     await user.click(screen.getByRole('link', { name: /the tuna shop/i }));
-    expect(trackClickCta).toHaveBeenCalledWith('Explore The Tuna Shop', 'demo-card-e-commerce');
+    expect(trackClickCta).toHaveBeenCalledWith('Explore The Tuna Shop', 'demo_card_ecommerce');
   });
 
   it('renders swipe-hint bars with the first bar active by default', () => {

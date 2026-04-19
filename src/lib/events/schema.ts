@@ -41,11 +41,49 @@ export interface ClickNavEvent extends BaseEvent {
   link_url: string;
 }
 
+/**
+ * Closed enum of `cta_location` values for `click_cta` emissions.
+ *
+ * Nav-adjacent CTAs (Phase 9E deliverable 9 closed set) must use one of:
+ * `session_pulse`, `portal_services`, `portal_about`, `portal_contact`,
+ * `contact_cta_threshold`, `pipeline_watch_it_live`, `footer_under_the_hood`.
+ * The "etc." escape hatch is closed — adding a nav-adjacent CTA extends this
+ * union explicitly.
+ *
+ * Editorial / page-specific CTAs live alongside the nav-adjacent set in the
+ * same union so `ClickCtaEvent.cta_location` is fully type-checked at call
+ * sites; they are distinguished by naming convention only.
+ *
+ * Legacy values (pre-Phase-9E demos that 9E removes or rebuilds) stay in the
+ * union until their emitting components are deleted or rewritten: they
+ * guarantee continuity through the pivot's implementation passes.
+ */
+export type CtaLocation =
+  // Phase 9E nav-adjacent closed enum
+  | 'session_pulse'
+  | 'portal_services'
+  | 'portal_about'
+  | 'portal_contact'
+  | 'contact_cta_threshold'
+  | 'pipeline_watch_it_live'
+  | 'footer_under_the_hood'
+  // Editorial / page-specific CTAs (not nav-adjacent — named by page or region)
+  | 'hero'
+  | 'services_closer'
+  | `services_tier_${'01' | '02' | '03' | '04'}`
+  | 'final_cta'
+  // Legacy — removed by Phase 9E deliverable 7 (subscription + leadgen demos off-site)
+  | 'subscription_dashboard'
+  // Legacy — rebuilt by Phase 9E deliverable 6 (homepage Demos section collapse)
+  | 'demo_card_ecommerce'
+  | 'demo_card_subscription'
+  | 'demo_card_leadgen';
+
 /** Fired when a CTA button is clicked. */
 export interface ClickCtaEvent extends BaseEvent {
   event: 'click_cta';
   cta_text: string;
-  cta_location: string;
+  cta_location: CtaLocation;
 }
 
 /** Fired when a user focuses a form field. */
@@ -163,8 +201,17 @@ export interface NavHintShownEvent extends BaseEvent {
 
 /**
  * Fired when the first-session nav hint clears. The four `dismissal_mode` values
- * are disjoint and exhaustive against the hint's listener surface: `click_outside`
- * covers any click whose target is not the `SessionPulse` element or a descendant.
+ * are disjoint and exhaustive against the hint's listener surface:
+ *
+ * - `scroll` — any `scroll` event on `document`.
+ * - `click_session_pulse` — a `click` whose target is the `SessionPulse` element
+ *   itself or any descendant of it.
+ * - `click_outside` — any `click` whose target is not `SessionPulse` or a descendant
+ *   (covers the full "any other click on the page" case).
+ * - `timeout` — the ~10s auto-clear timer elapsed without user interaction.
+ *
+ * Full hint lifecycle and dismissal contract in `docs/REQUIREMENTS.md` Phase 9E
+ * deliverable 1.
  */
 export interface NavHintDismissedEvent extends BaseEvent {
   event: 'nav_hint_dismissed';
@@ -231,3 +278,57 @@ export type DataLayerEvent =
   | SessionStateTabViewEvent
   | PortalClickEvent
   | CoverageMilestoneEvent;
+
+/**
+ * Runtime array of every distinct `event` string literal in the `DataLayerEvent`
+ * union. The single source of truth for code that needs to iterate event names —
+ * consumers like `useDataLayerEvents` (which filters the window.dataLayer by
+ * iap_source event name), the Session State coverage denominator (Phase 9E
+ * deliverable 4), and any future introspection tooling derive from this array.
+ *
+ * This is the "derive-from-schema day-one" rule in practice: no hardcoded `16`
+ * or `22` magic numbers anywhere; consumers read `.length` or membership-test
+ * via this array.
+ */
+export const DATA_LAYER_EVENT_NAMES = [
+  'page_view',
+  'scroll_depth',
+  'click_nav',
+  'click_cta',
+  'form_field_focus',
+  'form_start',
+  'form_submit',
+  'consent_update',
+  'product_view',
+  'add_to_cart',
+  'begin_checkout',
+  'purchase',
+  'plan_select',
+  'trial_signup',
+  'form_complete',
+  'lead_qualify',
+  'nav_hint_shown',
+  'nav_hint_dismissed',
+  'session_pulse_hover',
+  'session_state_tab_view',
+  'portal_click',
+  'coverage_milestone',
+] as const;
+
+/** Union of every event name literal — derived from `DATA_LAYER_EVENT_NAMES`. */
+export type DataLayerEventName = (typeof DATA_LAYER_EVENT_NAMES)[number];
+
+/**
+ * Compile-time cross-check: `DATA_LAYER_EVENT_NAMES` must match the set of
+ * event literals in `DataLayerEvent` exactly. If adding a new event to the
+ * union but not to the array (or vice versa), one of these branches resolves
+ * to an `'ERROR: ...'` string literal and the assignment to `true` fails.
+ */
+type _AssertEventNamesInSync = [DataLayerEvent['event']] extends [DataLayerEventName]
+  ? [DataLayerEventName] extends [DataLayerEvent['event']]
+    ? true
+    : 'ERROR: DATA_LAYER_EVENT_NAMES contains a name not present in the DataLayerEvent union'
+  : 'ERROR: DataLayerEvent union contains an event name not present in DATA_LAYER_EVENT_NAMES';
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _eventNamesInSync: _AssertEventNamesInSync = true;

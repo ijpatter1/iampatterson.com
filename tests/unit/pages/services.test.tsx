@@ -141,7 +141,7 @@ describe('ServicesPage — editorial', () => {
     const cta = screen.getByRole('button', { name: /look under the hood/i });
     await user.click(cta);
     expect(screen.getByTestId('overlay-status')).toHaveTextContent('open');
-    expect(trackClickCta).toHaveBeenCalledWith('Look under the hood', 'services-closer');
+    expect(trackClickCta).toHaveBeenCalledWith('Look under the hood', 'services_closer');
   });
 
   it('closer ghost CTA links to contact', () => {

@@ -66,7 +66,7 @@ describe('Header — editorial chrome', () => {
     await user.click(pulse);
 
     expect(screen.getByTestId('overlay-status')).toHaveTextContent('open');
-    expect(mockTrackClickCta).toHaveBeenCalledWith('Under the hood', 'header-session-pulse');
+    expect(mockTrackClickCta).toHaveBeenCalledWith('Under the hood', 'session_pulse');
   });
 
   it('fires trackClickNav when a nav link is clicked', async () => {

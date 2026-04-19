@@ -207,7 +207,7 @@ export default function ServicesPage() {
                   {t.seeItLive && (
                     <Link
                       href={t.seeItLive.href}
-                      onClick={() => trackClickCta('See it live', `services-tier-${t.num}`)}
+                      onClick={() => trackClickCta('See it live', `services_tier_${t.num}`)}
                       className="mt-4 inline-block text-sm text-accent-current underline-offset-4 hover:underline"
                     >
                       See it live →
@@ -239,7 +239,7 @@ export default function ServicesPage() {
                 <EditorialButton
                   variant="accent"
                   onClick={() => {
-                    trackClickCta('Look under the hood', 'services-closer');
+                    trackClickCta('Look under the hood', 'services_closer');
                     open();
                   }}
                 >
@@ -248,7 +248,7 @@ export default function ServicesPage() {
                 <EditorialLink
                   href="/contact"
                   variant="ghost"
-                  onClick={() => trackClickCta('Start a conversation', 'services-closer')}
+                  onClick={() => trackClickCta('Start a conversation', 'services_closer')}
                 >
                   Start a conversation
                 </EditorialLink>

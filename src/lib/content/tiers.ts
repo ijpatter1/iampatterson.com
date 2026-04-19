@@ -3,8 +3,10 @@ export interface TierComponent {
   description: string;
 }
 
+export type TierNum = '01' | '02' | '03' | '04';
+
 export interface Tier {
-  num: string;
+  num: TierNum;
   title: string;
   subtitle: string;
   lede: string;
