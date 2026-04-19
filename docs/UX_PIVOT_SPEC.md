@@ -304,7 +304,7 @@ interface SessionState {
 
 **Update source:** The same mechanism that populates `useDataLayerEvents` / `useLiveEvents` populates Session State. A single listener subscribes to the data layer, parses iap_source events, and updates both the event buffer (existing) and the session state blob (new).
 
-**Coverage denominator:** `event_type_coverage.total` lists every distinct `event` name defined in `src/lib/events/schema.ts`, derived at module init from the `DATA_LAYER_EVENT_NAMES` runtime array (the single source of truth cross-checked at compile time against the `DataLayerEvent` union — no parallel hardcoded list). The count grows with the schema: 16 pre-Phase-9E, 22 once Phase 9E deliverable 9's nav analytics land, and onward as future phases extend the union. Subscription and lead gen event-name literals remain in the denominator even though those demos are out of scope — the visitor sees them as unfired, which subtly communicates that more of the site exists.
+**Coverage denominator:** `event_type_coverage.total` lists every distinct `event` name defined in `src/lib/events/schema.ts`, derived at module init from the `DATA_LAYER_EVENT_NAMES` runtime array (the single source of truth cross-checked at compile time against the `DataLayerEvent` union — no parallel hardcoded list). The count is currently 22 (the 16 pre-Phase-9E literals plus the 6 new 9E nav-analytics literals added by deliverable 9) and grows as future phases extend the union. Subscription and lead gen event-name literals remain in the denominator even though those demos are out of scope — the visitor sees them as unfired, which subtly communicates that more of the site exists.
 
 **Demo progress trigger map (ecommerce):**
 
@@ -340,7 +340,7 @@ On the contact page (`/contact`), add a visible checkbox labeled "Share my sessi
 }
 ```
 
-The `event_types_total` shown above is illustrative — the live payload reads the current schema denominator at the time of submission (22 once Phase 9E deliverable 9 ships, more if subsequent phases extend the schema).
+The `event_types_total` shown above is illustrative — the live payload reads the current schema denominator at the time of submission (22 as of Phase 9E deliverable 9, growing as future phases extend the schema).
 
 The visible UI below the checkbox shows a human-readable summary of exactly what will be sent: "You've triggered 14 of 22 event types, completed 75% of the ecommerce demo, and visited 9 pages. Your consent state and session ID will ride along." Transparency is the point — the measurement stack doesn't hide from itself.
 
