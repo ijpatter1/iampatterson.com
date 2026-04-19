@@ -172,6 +172,10 @@ describe('ServicesPage — editorial', () => {
     expect(href).toMatch(/order_id=/);
     expect(href).toMatch(/total=/);
     expect(href).toMatch(/items=/);
+    // The order_id must follow the ORD-* pattern so the confirmation page's
+    // mono kicker reads naturally ("Order confirmed · ORD-T3-DEMO") rather
+    // than leaking URL-structure language like "demo-tier3".
+    expect(href).toMatch(/order_id=ORD-/);
   });
 
   it('does not add "See it live" links to Tier 1 or Tier 4 summary boxes', () => {

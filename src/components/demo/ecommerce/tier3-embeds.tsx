@@ -51,12 +51,12 @@ function SectionHeader({ urls }: { urls: ConfirmationEmbedUrls | null }) {
         {urls ? (
           <>
             This isn&apos;t a screenshot. Each chart below is a live Metabase iframe, signed fresh
-            on page load, querying the same BigQuery mart tables your order just wrote into.
+            on page load, querying the same BigQuery mart tables orders like yours write into.
           </>
         ) : (
           <>
             The Tier 3 payoff is three live Metabase iframes, signed fresh on page load against the
-            same BigQuery mart tables your order wrote into. They&apos;re deployed — this
+            same BigQuery mart tables orders like yours write into. They&apos;re deployed — this
             environment just isn&apos;t wired to mint the JWTs. See them directly in Metabase below.
           </>
         )}
