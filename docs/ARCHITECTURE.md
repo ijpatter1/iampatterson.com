@@ -413,7 +413,76 @@ The boot sequence is two-step: on open, phase goes `idle → boot` (black screen
 
 **What's deliberately unchanged.** Ambient event bubbles (Phase 9A Layer 1) stay as-is on consulting surfaces. The session ID cookie mechanism, the `useEventStream` hook, the SSE Cloud Run service, the data-layer event schema, GTM configuration, sGTM, BigQuery tables, Dataform, and all demo front-ends are unchanged.
 
-**Phase 9B status.** Phase 9B is paused while 9A-redesign is in flight. The 9B-infra Metabase deployment (live at `https://bi.iampatterson.com/`) continues to run; only the 9B application-layer deliverables are frozen. The 6a manual apply is deferred until 9A-redesign completes.
+**Phase 9B status.** 9B is dev-complete. The 9B-infra Metabase deployment (live at `https://bi.iampatterson.com/`) continues to serve the confirmation-page signed embeds. Phase 9E supersedes parts of 9B's overlay-tab routing: the Dashboards-tab content (ROAS, Revenue share, LTV summary cards) moves inline on the confirmation page as part of Phase 9F, which ships jointly with 9E.
+
+### Phase 9E — Navigation & Overlay Pivot
+
+Reshapes the nav model and the overlay's role across the whole site, introduces a new `SessionState` data model, rebuilds the homepage pipeline section as a progressive bleed-through reveal, and removes the subscription and lead gen demos from the site. The ecommerce demo's Tier 2/3 reveal mechanics are rebuilt to native patterns in Phase 9F. Full design rationale in `docs/UX_PIVOT_SPEC.md`; pipeline-section reference implementation in `docs/input_artifacts/design_handoff_pipeline/`.
+
+**Release coupling.** 9E and 9F ship jointly — one production release cut when both are dev-complete and dual-evaluator-passing. Authored as separate phase blocks for tracking clarity, released together to avoid an interim-state in which the new nav / overlay / pipeline reveal lands on top of today's overlay-based ecommerce reveals. This coupling also resolves the 9E removal of the overlay's `Dashboards` tab: the three non-embeddable Metabase questions that live there today (ROAS, Revenue share, LTV) move inline on `/demo/ecommerce/confirmation` as part of 9F — never stranded between releases.
+
+**Route deletions + 301 redirects.** `/demo/subscription/*` and `/demo/leadgen/*` route trees are deleted entirely in 9E deliverable 7. External inbound links (LinkedIn posts, search indexes, old session handoffs) are caught by permanent redirects wired in `next.config.js` via the `redirects()` async function: `/demo/subscription/:path*` → `/?rebuild=subscription#demos`, `/demo/leadgen/:path*` → `/?rebuild=leadgen#demos`. The `:path*` wildcard catches deep links into child routes so no descendant path 404s. The Demos section on the homepage reads the `rebuild` query param on mount and surfaces a dismissible one-line honesty banner ("The subscription demo is being rebuilt — it'll return after the ecommerce rebuild ships."). No Vercel-side configuration is required; redirects live in the Next.js config and deploy with the application.
+
+**Navigation model.** The header loses its conventional nav (Home / Services / About / Contact / Demos dropdown) and the `MobileSheet` menu. What remains: `SessionPulse` (primary nav affordance; opens the overlay) + brand wordmark. `LiveStrip` is unchanged. Discoverability compensations: (1) `SessionPulse` occupies a prominent position — left-of-center on desktop, top-right on mobile — with a minimum 44×44px target and a hover affordance upgrade (border intensification, `↗` indicator glow, `NAV · UNDER THE HOOD` tooltip-style label); (2) a once-per-session first-session hint pulse ring expands from the `SessionPulse` after ~3s of homepage idle, dismissed on any interaction, gated via `sessionStorage`, with a static-text fallback under `prefers-reduced-motion`; (3) the footer on every page carries conventional nav links as the cheap escape hatch. No backup hamburger is added — the footer plus Session State tab are the designed escapes. The `SessionPulse` stays reachable on `/demo/ecommerce/*` so the overlay remains available on demo pages.
+
+**Overlay restructure.** Default tab on open flips from Overview to Session State. Tabs in order: Session State, Timeline, Consent. The `Overview` tab, the `Dashboards` tab, the `HomepageUnderside` component, and the `/demo/ecommerce/*` pathname-specific `EcommerceUnderside` routing are all removed — the overlay no longer carries demo-specific content in 9E. The CRT boot sequence, scanlines, backdrop-click-to-close, and "Back to site" button are unchanged. Retrofuture treatment pushes slightly further in the chrome (terminal-style brackets on active tab labels, amber-glow timestamps in Timeline). Body content stays warm cream.
+
+**`SessionState` data model.** New client-side state blob persisted to `sessionStorage` at key `iampatterson.session_state`, scoped to tab lifetime (returning visitors start fresh, aligned with the `_iap_sid` cookie's semantics).
+
+```typescript
+interface SessionState {
+  session_id: string;                          // matches _iap_sid
+  started_at: string;                          // ISO 8601
+  page_count: number;                          // unique page paths visited
+  events_fired: { [event_name: string]: number };
+  event_type_coverage: {
+    fired: string[];                           // distinct event names fired
+    total: string[];                           // 16-entry union from schema.ts
+  };
+  demo_progress: {
+    ecommerce: {
+      stages_reached: ('product_view' | 'add_to_cart' | 'begin_checkout' | 'purchase')[];
+      percentage: number;                      // stages_reached.length / 4 * 100
+    };
+  };
+  consent_snapshot: {
+    analytics: 'granted' | 'denied';
+    marketing: 'granted' | 'denied';
+    preferences: 'granted' | 'denied';
+  };
+  updated_at: string;                          // ISO 8601
+}
+```
+
+A single listener subscribes to the same data-layer source that populates the existing `useDataLayerEvents` / `useLiveEvents` buffer. On every event the listener updates the blob — the existing event buffer is unchanged. The coverage denominator (`event_type_coverage.total`) is the set of distinct `event` string literals drawn from the `DataLayerEvent` union in `src/lib/events/schema.ts` — 16 today (`page_view`, `scroll_depth`, `click_nav`, `click_cta`, `form_field_focus`, `form_start`, `form_submit`, `consent_update`, `product_view`, `add_to_cart`, `begin_checkout`, `purchase`, `plan_select`, `trial_signup`, `form_complete`, `lead_qualify`). `DataLayerEvent` is a union of interface types, not a string array — derive the denominator once at module init from the schema rather than maintaining a hardcoded list in parallel. Subscription and lead gen event types stay in the denominator even though their demos are removed in 9E, so they surface as unfired and communicate "more of the site exists." If 9E deliverable 9 (nav analytics) lands, its new event-name literals join the denominator alongside the existing 16. Demo-progress stages are monotonic within a session (stages reached cannot be un-reached). The Session State tab renders against this blob; an optional deliverable serializes a subset onto the contact form as a ride-along payload, gated by an explicit consent-aware checkbox.
+
+**Pipeline-section bleed-through architecture.** The homepage pipeline section becomes a scroll-coupled progressive-reveal surface. The `<section id="pipeline">` stacks a two-column header, the `PipelineEditorial` schematic (5 stages + session event log), and an escape-hatch CTA. Four absolutely-positioned `aria-hidden` sibling divs sit above the paper background and below the content: `.bleed-scanlines` (horizontal CRT raster, vertical drift), `.bleed-phosphor` (amber bloom from the bottom, breathing), `.bleed-vignette` (darkened corners, curved-tube effect), `.bleed-rgb` (chromatic aberration band that sweeps top→bottom only at `hot` tier). All four read `var(--bleed)` for opacity.
+
+Bleed ramp math is anchored to the section's own height, not a viewport fraction — tracking viewport distance instead would cause the amber to peak before the reader finishes. Using `rect = el.getBoundingClientRect()`, `vh = window.innerHeight`, and `h = el.offsetHeight`:
+
+```
+enter = vh * 0.25
+peak  = vh * 0.95 - h
+p     = 1 - clamp((rect.top - peak) / (enter - peak), 0, 1)
+bleed = p * p                                  // p² ease-in
+el.style.setProperty('--bleed', bleed.toFixed(3));
+```
+
+Tier state machine (React re-renders only when the class changes): `bleed > 0.85` → `peak hot`; `> 0.55` → `hot`; `> 0.18` → `warm`; else no class. `--bleed` writes happen inside a `requestAnimationFrame` loop paused when the section leaves the viewport via `IntersectionObserver`. Flicker bursts at tier ≥ 1 schedule on a random cadence: `delay = 240 + (1 - bleed) * 2200 + rand() * 400` ms, `duration = 90 + rand() * 120` ms. The `.flick` class adds phosphor brightness boost, scanline shift, a 0.5px diagram translate, and red/cyan chromatic text-shadow on heading / meta / log. The stage-rotation interval is 1800ms linear with wrap, disabled under `prefers-reduced-motion`. The session event log continues to feed from `useLiveEvents` — no new data source.
+
+**Accent-swap ownership.** The app shell (not the section) owns the `--accent` imperative swap on overlay open/close. The pipeline section's CTA and hot-stage emphasis read `--accent` through `color-mix(in oklab, #FFA400 calc(var(--bleed) * N%), var(--accent))` so the persimmon → phosphor amber transition is continuous with the scroll-driven bleed rather than a discrete toggle. Two places setting `--accent` would flicker; keep shell ownership.
+
+**Component topology.** New: `SessionPulse` nav upgrade (hover affordance + first-session hint), `SessionStateTab`, `SessionStateProvider` (listener + `sessionStorage` orchestration), `PipelineSection` + `PipelineEditorial` (replacing today's pipeline component). Removed: `MobileSheet`, `HomepageUnderside`, `EcommerceUnderside`, `CampaignTaxonomyUnderside`, `StagingLayerUnderside`, `DataQualityUnderside`, `WarehouseWriteUnderside`, `Tier3Underside` (some of their display content is salvaged into Phase 9F's pattern language, not ported), the overlay's `Overview` and `Dashboards` tabs, the three-card `DemosSection`, the `/demo/subscription` and `/demo/leadgen` route trees and their supporting data libraries and dashboard components.
+
+**Accent and motion constraints.** Editorial persimmon stays the paper accent; phosphor amber stays the underside accent. Amber on the homepage is restricted to bleed-through layers and the `SessionPulse` surface itself — no editorial surface adopts amber as its primary accent. `prefers-reduced-motion` disables all time-based animations across the pivot (scanline drift, phosphor breathe, RGB sweep, flicker bursts, stage rotation, peak jitter, CTA halo / jitter, Session-State typing animation, first-session pulse ring). Bleed layers may still render statically and tier thresholds still fire on scroll; only the time-driven motion is suppressed.
+
+**Nav & Session State analytics.** 9E deliverable 9 extends `src/lib/events/schema.ts` with six new event interfaces and adds them to the `DataLayerEvent` union: `NavHintShownEvent`, `NavHintDismissedEvent` (`dismissal_mode: 'scroll' | 'click_session_pulse' | 'click_outside' | 'timeout'`), `SessionPulseHoverEvent` (desktop-only, 60s debounce, coarse-pointer suppressed), `SessionStateTabViewEvent` (`source: 'default_landing' | 'manual_select'`), `PortalClickEvent` (`destination: 'services' | 'about' | 'contact'`), and `CoverageMilestoneEvent` (`threshold: 25 | 50 | 75 | 100`, monotonic within a session). All six are analytics-only with no PII and flow through the standard data-layer / GTM / sGTM / BigQuery pipeline — no new destinations and no new infrastructure. Adding them extends the `DataLayerEvent` union from 16 to 22 variants, which in turn grows the Session State coverage denominator from 16 to 22 distinct event-name literals, so the new events appear as chips in the Session State coverage bar (they're visible to the visitor as part of the gamification surface). *Visitor-facing tradeoff:* the average first-session coverage fraction starts lower against a denominator of 22 than against 16 — a ~9-percentage-point shift at the same numerator. This is the deliberate tradeoff: a richer, more substantive gamification surface beats a higher starting fraction against a thinner denominator, and future sessions should not "fix" the lower starting bar by shrinking the denominator. This deliverable is accelerated from Phase 10 because the gamification loop's success depends on visitors actually reaching Session State — validating that bet after ship requires the instrumentation to land with the nav pivot, not months later.
+
+**What's deliberately unchanged.** `useEventStream` / `useLiveEvents` hooks, the SSE Cloud Run service, the `_iap_sid` session cookie, GTM / sGTM / Pub/Sub, BigQuery, Dataform, Metabase, and the Phase 9B signed-embed signer are all unchanged in 9E. Event schema (`src/lib/events/schema.ts`) is extended only by deliverable 9's six nav-analytics events; all pre-existing event interfaces persist and the UI firing subscription / leadgen events is removed (the type definitions for subscription / leadgen events themselves stay, serving as part of the Session State coverage denominator until those demos return).
+
+### Phase 9F — Ecommerce Demo Native-Reveal Rebuild
+
+To be expanded in the 9F doc pass. Scope: four-pattern native-reveal language (event toast, live sidebar, inline diagnostic block, full-page diagnostic moment) replacing the overlay-based Tier 2/3 reveal model on the ecommerce demo; confirmation-page all-inline Metabase payoff (embed shape — six individual embeds vs. one full-dashboard embed — locked in the 9F deliverable spec); salvage of content from the `*Underside` components removed in 9E (UTM classification display, BigQuery row schema readout, data-quality assertions) into the new patterns; SessionPulse reachability verified across demo pages. Full pattern reference and per-page pattern assignments in `docs/UX_PIVOT_SPEC.md` §3.5.
 
 ### Phase 8 — Attribution
 Shapley value MTA in Dataform. Comparison views against last-click and platform-reported.

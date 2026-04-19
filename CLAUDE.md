@@ -18,11 +18,11 @@ This is the consulting website for Patterson Consulting **and** a live, interact
 
 ## Current Phase
 
-**Phase 9B — E-Commerce Demo: Tiers 2 & 3** (all deliverables dev-complete in session-026. 6a Metabase dashboards-as-code verified live at `https://bi.iampatterson.com/dashboard/2`. 6b signed-JWT embeds inline on `/demo/ecommerce/confirmation` (three embeddable cards: daily revenue, funnel, AOV), with an overlay Dashboards-tab fallback for the three non-embeddable (ROAS, Revenue share, LTV) behind IAP. Services page cross-links from Tier 2 / Tier 3 summary boxes. Vercel env vars `MB_EMBEDDING_SECRET_KEY` + `METABASE_EMBED_CONFIG` must be set before embeds render in production; when absent, a visible fallback block points at the IAP-gated dashboard.)
+**Phase 9E — Navigation & Overlay Pivot** (kickoff; doc-first pass in progress. The pivot reframes the site as "one world in two states" — `SessionPulse` becomes the primary nav affordance, the overlay restructures around a new default Session State tab, the homepage pipeline section rebuilds as a progressive bleed-through reveal, the Demos section collapses to a single ecommerce section, and the subscription + lead gen demos are removed from the site with 301 redirects. **9E ships jointly with Phase 9F** — 9F rebuilds the ecommerce demo's Tier 2/3 reveal mechanics to the native-reveal pattern language; the two phases are authored as separate blocks but release as one branch cut. Phases 9C and 9D are cancelled; the subscription and lead gen demos will be reintroduced in later, separately-numbered phases after 9F ships. Full design spec: `docs/UX_PIVOT_SPEC.md`. Pipeline redesign reference implementation: `docs/input_artifacts/design_handoff_pipeline/`.)
 
-Phase 9A-redesign merged to main (`d8ae8f2`). Phase 9B branch is `phase/9b-ecommerce-tiers-2-3`.
+**Prior phase state:** Phase 9B is dev-complete on branch `phase/9b-ecommerce-tiers-2-3` (673 tests passing, Pass 5 dual-eval PASS). 9B is the baseline the 9E branch will be cut from. Phase 9A-redesign merged to main (`d8ae8f2`).
 
-See `docs/REQUIREMENTS.md` for the full development plan (Phases 1-8, 9A / 9A-redesign / 9B-9D, 10-11).
+See `docs/REQUIREMENTS.md` for the full development plan (Phases 1-8, 9A / 9A-redesign / 9B / 9B-infra / 9E / 9F, 10-11; 9C and 9D cancelled).
 See `docs/ARCHITECTURE.md` for technical architecture details.
 See `docs/PHASE_STATUS.md` for current completion state.
 
@@ -36,7 +36,7 @@ Do not modify sections of this file other than "Current Phase" unless explicitly
 iampatterson.com/
 ├── CLAUDE.md                    # This file — project context for Claude Code
 ├── docs/
-│   ├── REQUIREMENTS.md          # Full development plan (9 phases)
+│   ├── REQUIREMENTS.md          # Full development plan (11 numbered phases + 9A-redesign / 9B-infra / 9E / 9F sub-phases)
 │   ├── ARCHITECTURE.md          # Technical architecture
 │   ├── PHASE_STATUS.md          # Living phase completion tracker
 │   └── sessions/               # Session handoff artifacts
