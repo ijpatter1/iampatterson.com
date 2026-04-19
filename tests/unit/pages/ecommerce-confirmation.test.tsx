@@ -6,6 +6,8 @@
  * typo in an env var name, a dropped `&&` guard, or a mis-named prop
  * fails loudly here rather than silently breaking the deployed page.
  */
+import type { ReactElement } from 'react';
+
 import { render, screen } from '@testing-library/react';
 
 import ConfirmationPage from '@/app/demo/ecommerce/confirmation/page';
@@ -21,12 +23,17 @@ afterEach(() => {
 
 function renderPage(searchParams: Record<string, string | string[] | undefined> = {}) {
   // ConfirmationPage is a Server Component; at runtime it's invoked with
-  // { searchParams } and returns JSX synchronously (no async work). We
-  // can render it as a plain function component.
+  // { searchParams } and returns JSX synchronously (no async work).
+  //
+  // ⚠️ If this page ever becomes `async` (e.g., to await data), this cast
+  // silently lies — render(node) will receive a Promise<ReactElement>
+  // instead of an element. In that case, switch to:
+  //   const node = await (ConfirmationPage as unknown as (p: ...) => Promise<ReactElement>)({...})
+  // and make the tests async.
   const node = (
     ConfirmationPage as unknown as (p: {
       searchParams: Record<string, string | string[] | undefined>;
-    }) => JSX.Element
+    }) => ReactElement
   )({ searchParams });
   return render(node);
 }
@@ -34,7 +41,7 @@ function renderPage(searchParams: Record<string, string | string[] | undefined> 
 describe('ConfirmationPage — env → embeds wiring', () => {
   it('renders the order confirmation block with the search-param values', () => {
     renderPage({ order_id: 'demo-tier3', total: '44.98', items: '2' });
-    expect(screen.getByText(/Order demo-tier3/)).toBeInTheDocument();
+    expect(screen.getByText(/Order confirmed · demo-tier3/)).toBeInTheDocument();
     expect(screen.getByText(/\$44\.98/)).toBeInTheDocument();
   });
 
@@ -88,7 +95,7 @@ describe('ConfirmationPage — env → embeds wiring', () => {
     // Next.js App Router gives string[] for repeated params like ?total=1&total=2
     renderPage({ order_id: ['demo-tier3', 'second'], total: ['44.98', '99'], items: ['2'] });
 
-    expect(screen.getByText(/Order demo-tier3/)).toBeInTheDocument();
+    expect(screen.getByText(/Order confirmed · demo-tier3/)).toBeInTheDocument();
     // $44.98 may appear in both the order total and the AOV caption —
     // finding at least one instance confirms the first-value normalization
     expect(screen.getAllByText(/\$44\.98/).length).toBeGreaterThanOrEqual(1);

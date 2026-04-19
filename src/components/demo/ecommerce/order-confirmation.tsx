@@ -8,12 +8,18 @@ interface OrderConfirmationProps {
 
 export function OrderConfirmation({ orderId, orderTotal, itemCount }: OrderConfirmationProps) {
   return (
-    <div className="mx-auto max-w-lg py-12 text-center">
-      <div className="mb-6 text-4xl">🎉</div>
-      <h1 className="mb-2 text-2xl font-bold text-neutral-900">Order Confirmed</h1>
-      <p className="mb-6 text-sm text-neutral-500">Order {orderId}</p>
+    <div className="mx-auto max-w-lg px-5 py-12 md:px-10">
+      <div className="font-mono text-[10px] uppercase tracking-widest text-neutral-500">
+        Order confirmed · {orderId}
+      </div>
+      <h1
+        className="mt-2 font-display font-normal text-neutral-900"
+        style={{ fontSize: 'clamp(32px, 4.5vw, 52px)', lineHeight: '1.05' }}
+      >
+        Thanks for the (simulated) order.
+      </h1>
 
-      <div className="mb-8 rounded-lg border border-neutral-200 p-6">
+      <div className="mt-8 border-y border-neutral-200 py-5">
         <div className="flex justify-between text-sm">
           <span className="text-neutral-600">Items</span>
           <span className="font-medium text-neutral-900">{itemCount}</span>
@@ -24,14 +30,15 @@ export function OrderConfirmation({ orderId, orderTotal, itemCount }: OrderConfi
         </div>
       </div>
 
-      <p className="mb-6 text-sm leading-relaxed text-neutral-600">
-        Thanks for your (simulated) order. This purchase event just fired through sGTM, landed in
-        BigQuery, and updated the dashboards. Look under the hood to see exactly what happened.
+      <p className="mt-6 text-sm leading-relaxed text-neutral-600">
+        Purchase events from this demo fire through sGTM, land in BigQuery, and feed the Dataform
+        mart layer the dashboards below query. Look under the hood to trace the event — or scroll
+        down to see the dashboards it feeds.
       </p>
 
       <Link
         href="/demo/ecommerce"
-        className="text-sm font-medium text-neutral-900 underline hover:text-neutral-700"
+        className="mt-6 inline-block text-sm text-neutral-900 underline underline-offset-4 hover:text-neutral-700"
       >
         Back to The Tuna Shop
       </Link>

@@ -1,6 +1,6 @@
 # Phase Status Tracker
 
-> **Current Phase: 9B — E-Commerce Demo: Tiers 2 & 3** (all deliverables dev-complete. 6a verified live on Metabase at `https://bi.iampatterson.com/dashboard/2`; 6b shipped in commits a238a77 + 0fe8927 + fed0034 (signer utility → inline iframes + Server-Component page refactor → overlay Dashboards-tab fallback); services cross-links shipped at commit 08c5458. 651 tests passing, build clean. 6b needs Vercel env vars set before the confirmation page renders the embeds in production.)
+> **Current Phase: 9B — E-Commerce Demo: Tiers 2 & 3** (all deliverables dev-complete. 6a verified live on Metabase at `https://bi.iampatterson.com/dashboard/2`; 6b shipped across the signer utility → inline iframes + Server-Component page refactor → overlay Dashboards-tab fallback → Pass 2/3 evaluator findings closed (real iframe onLoad loading state, editorial typography, fallback IAP warning, OrderConfirmation rewrite); services cross-links shipped at commit 08c5458. 669 tests passing, build clean. 6b needs Vercel env vars set before the confirmation page renders the embeds in production; fallback block handles the missing-env case gracefully with an IAP-gated deep-link.)
 > Last updated: 2026-04-18, session-2026-04-18-026
 
 ---

@@ -286,9 +286,9 @@ iampatterson.com is simultaneously a consulting site for Patterson Consulting an
 
 6b. **Confirmation-page signed embed** — On `/demo/ecommerce/confirmation`, render three live Metabase iframes inline below the order details (replacing the static Tier 3 mocks that deliverable 5 landed), ordered by how directly each chart ties back to the visitor's just-placed order:
 
-     1. **Daily revenue trend (30 days)** — *"Today's revenue. Your order is in there."* Most immediate: the visitor's $X just bumped today's bar.
+     1. **Daily revenue trend (30 days)** — *"Today's revenue. Orders like yours roll into this bar as they complete."* Most immediate: the visitor's purchase just bumped today's bar. Copy hedged from the original "Your order is in there" so the caption holds for visitors arriving via the Services cross-link (no purchase event fired) as well as organic demo-funnel arrivals.
      2. **Funnel conversion by channel** — *"You just converted. Out of every 100 visitors from your channel, about 3 get here."* Contextualizes the purchase in the denominator.
-     3. **AOV trend (90 days)** — *"Your order was $X. The 90-day AOV is $Y."* Zooms out to trend.
+     3. **AOV trend (90 days)** — *"Your order was $X. Here's where it lands on the 90-day AOV trend."* Zooms out to trend. `$X` is interpolated from `searchParams.total`; the benchmark ($Y) is left implicit — the chart itself shows it. Falls back to a generic "Your order against the 90-day AOV trend." when `$X` is missing, zero, or non-finite.
 
      Short narrative prose between iframes frames each chart with the visitor's purchase as the connecting thread — the confirmation page is the Tier 3 *payoff* surface in the ecommerce narrative, distinct from the Tier 2 *plumbing* content that lives in each funnel step's overlay. Iframes are signed via Metabase's static-embed feature: a Next.js Server Component mints short-lived (10-minute) HS256 JWTs keyed by `MB_EMBEDDING_SECRET_KEY`, with card IDs sourced from the `METABASE_EMBED_CONFIG` env var (a Vercel mirror of the Secret Manager `metabase-embed-config` entry produced by `apply.sh --publish-embed-config`). The `/embed/*` URL-map path split from 6a already bypasses IAP, so anonymous visitors load the iframes directly.
 

@@ -46,10 +46,25 @@ describe('Tier3Embeds with live URLs', () => {
     });
   });
 
-  it('renders a loading placeholder behind each iframe (visible until Metabase paints)', () => {
-    render(<Tier3Embeds urls={URLS} orderTotal={44.98} />);
-    const placeholders = screen.getAllByText(/loading dashboard…/i);
+  it('renders a visible loading placeholder per iframe (opaque until onLoad fires)', () => {
+    // The placeholder is the text "Querying BigQuery…" and is *visible* while
+    // loaded=false (the initial state). The iframe sits above the placeholder
+    // at opacity-0 until its onLoad handler fires, at which point it fades in
+    // and the placeholder fades out. This is the fix to Pass 2's "inert
+    // placeholder" finding — the placeholder must actually cover the iframe
+    // until Metabase paints.
+    const { container } = render(<Tier3Embeds urls={URLS} orderTotal={44.98} />);
+    const placeholders = screen.getAllByText(/querying bigquery…/i);
     expect(placeholders).toHaveLength(3);
+
+    // On initial render (before onLoad fires), iframes are opacity-0 and
+    // placeholders are opacity-100 — the visible layer.
+    container.querySelectorAll('iframe').forEach((frame) => {
+      expect(frame.className).toMatch(/opacity-0/);
+    });
+    placeholders.forEach((p) => {
+      expect(p.className).toMatch(/opacity-100/);
+    });
   });
 
   it('hedges the daily-revenue caption so it holds up for Services cross-link arrivals without a purchase event', () => {
@@ -72,6 +87,16 @@ describe('Tier3Embeds with live URLs', () => {
     expect(screen.getByText(/your order against the 90-day AOV trend/i)).toBeInTheDocument();
   });
 
+  it('falls back to the generic AOV caption when orderTotal is Infinity or NaN (malicious URL)', () => {
+    const { rerender } = render(<Tier3Embeds urls={URLS} orderTotal={Infinity} />);
+    expect(screen.queryByText(/your order was \$Infinity/i)).toBeNull();
+    expect(screen.getByText(/your order against the 90-day AOV trend/i)).toBeInTheDocument();
+
+    rerender(<Tier3Embeds urls={URLS} orderTotal={Number.NaN} />);
+    expect(screen.queryByText(/\$NaN/i)).toBeNull();
+    expect(screen.getByText(/your order against the 90-day AOV trend/i)).toBeInTheDocument();
+  });
+
   it('renders the Tier 3 H2 in the editorial display face (font-display)', () => {
     render(<Tier3Embeds urls={URLS} orderTotal={44.98} />);
     const heading = screen.getByRole('heading', { level: 2 });
@@ -90,7 +115,16 @@ describe('Tier3Embeds fallback when urls is null (env vars not wired)', () => {
   it('still renders the Tier 3 section heading so the narrative surface exists', () => {
     render(<Tier3Embeds urls={null} orderTotal={44.98} />);
     expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(/your order/i);
-    expect(screen.getByText(/live Metabase/i)).toBeInTheDocument();
+    expect(screen.getByText(/live Metabase iframes/i)).toBeInTheDocument();
+  });
+
+  it('does not claim "each chart below" when no charts render (fallback intro prose branches)', () => {
+    // Pass 2 finding: the intro said "Each chart below is a live Metabase
+    // iframe" even when urls was null. The fallback branch should describe
+    // the dashboards without promising inline charts that do not appear.
+    render(<Tier3Embeds urls={null} orderTotal={44.98} />);
+    expect(screen.queryByText(/each chart below is a live/i)).toBeNull();
+    expect(screen.getByText(/this environment just isn't wired/i)).toBeInTheDocument();
   });
 
   it('renders a visible fallback block pointing at the IAP-gated dashboard', () => {
@@ -100,6 +134,15 @@ describe('Tier3Embeds fallback when urls is null (env vars not wired)', () => {
     expect(link).toHaveAttribute('href', 'https://bi.iampatterson.com/dashboard/2');
     expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
+  });
+
+  it('warns about the IAP/SSO gate before the fallback link click', () => {
+    // Pass 2 finding: the fallback link sent anonymous visitors into the
+    // Google SSO wall with no warning. The overlay's confirmation-extras
+    // block set expectations; this one needs to do the same.
+    render(<Tier3Embeds urls={null} orderTotal={44.98} />);
+    expect(screen.getByText(/Google SSO wall/i)).toBeInTheDocument();
+    expect(screen.getByText(/reach out for a walkthrough/i)).toBeInTheDocument();
   });
 
   it('does not render any iframes when urls is null', () => {
