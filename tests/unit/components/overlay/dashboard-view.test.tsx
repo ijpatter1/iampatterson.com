@@ -106,6 +106,16 @@ describe('DashboardView', () => {
       const fullDash = screen.getByRole('link', { name: /see the full dashboard/i });
       expect(fullDash).toHaveAttribute('href', 'https://bi.iampatterson.com/dashboard/2');
     });
+
+    it('warns the visitor about the IAP gate before they click through', () => {
+      render(<DashboardView />);
+      // Anonymous visitors hitting /question/N get the Google SSO wall. The
+      // section copy should set that expectation before the click.
+      expect(screen.getByText(/Google SSO wall/i)).toBeInTheDocument();
+      expect(screen.getByText(/reach out for a walkthrough/i)).toBeInTheDocument();
+      // Per-card affordance labels the gate (was a bare ↗ before)
+      expect(screen.getAllByText(/^IAP ↗$/).length).toBe(3);
+    });
   });
 
   describe('not on /demo/ecommerce/confirmation', () => {

@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+import { METABASE_BASE_URL } from '@/lib/metabase/embed';
+
 const demoDashboards = [
   {
     n: '01',
@@ -27,12 +29,18 @@ const demoDashboards = [
   },
 ];
 
-const METABASE_URL = 'https://bi.iampatterson.com/';
-
 // Phase 9B deliverable 6b — the three embeddable cards (funnel, AOV,
 // daily revenue) render inline on the confirmation page. The three
 // non-embeddable cards live here behind IAP, reachable from the overlay
 // Dashboards tab only when the visitor is on the confirmation route.
+//
+// These IDs must match the live Metabase instance. `apply.sh` (see
+// infrastructure/metabase/dashboards/apply.sh) preserves card IDs on
+// re-apply via name-based idempotency, so the mapping is stable once
+// cards exist. If the dashboard is ever rebuilt from scratch, update
+// these IDs from `.ids.json` (produced by `apply.sh`) and cross-check
+// `metabase-embed-config` in Secret Manager for the three embeddable
+// IDs.
 const CONFIRMATION_EXTRAS = [
   {
     id: 42,
@@ -115,7 +123,7 @@ export function DashboardView() {
             Live Metabase · bi.iampatterson.com
           </h4>
           <a
-            href={METABASE_URL}
+            href={`${METABASE_BASE_URL}/`}
             target="_blank"
             rel="noopener noreferrer"
             className="font-mono text-[10px] uppercase tracking-widest text-u-ink-3 transition-colors hover:text-accent-current"
@@ -138,14 +146,15 @@ export function DashboardView() {
           </h4>
           <p className="mt-2 max-w-[62ch] text-sm leading-relaxed text-u-ink-2">
             The three inline embeds on the page above are the anonymous-visitor view. The full
-            E-Commerce Executive dashboard has three additional questions that require an IAP
-            allowlist.
+            E-Commerce Executive dashboard has three additional questions gated behind IAP —
+            individual links below go straight to the question, but you&apos;ll hit the Google SSO
+            wall unless you&apos;re allowlisted. Reach out for a walkthrough.
           </p>
           <div className="mt-4 space-y-2">
             {CONFIRMATION_EXTRAS.map((q) => (
               <a
                 key={q.id}
-                href={`https://bi.iampatterson.com/question/${q.id}`}
+                href={`${METABASE_BASE_URL}/question/${q.id}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-baseline gap-4 border-l-2 border-u-rule-soft bg-u-paper-alt/60 px-4 py-3 transition-colors hover:border-accent-current hover:bg-u-paper-alt"
@@ -163,13 +172,13 @@ export function DashboardView() {
                   aria-hidden="true"
                   className="font-mono text-[10px] uppercase tracking-widest text-u-ink-4"
                 >
-                  ↗
+                  IAP ↗
                 </span>
               </a>
             ))}
           </div>
           <a
-            href="https://bi.iampatterson.com/dashboard/2"
+            href={`${METABASE_BASE_URL}/dashboard/2`}
             target="_blank"
             rel="noopener noreferrer"
             className="mt-4 inline-block font-mono text-[10px] uppercase tracking-widest text-accent-current hover:underline"

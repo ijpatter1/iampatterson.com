@@ -83,8 +83,8 @@ describe('signEmbedUrl', () => {
     expect(decoded?.header.alg).toBe('HS256');
   });
 
-  it('throws when secret is empty (jsonwebtoken rejects blank keys)', () => {
-    expect(() => signEmbedUrl({ cardId: 40, secret: '' })).toThrow();
+  it('throws on empty secret via the explicit guard before jwt.sign is called', () => {
+    expect(() => signEmbedUrl({ cardId: 40, secret: '' })).toThrow(/secret is required/);
   });
 });
 

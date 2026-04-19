@@ -7,20 +7,20 @@ This is the consulting website for Patterson Consulting **and** a live, interact
 ## Tech Stack
 
 - **Framework:** Next.js 14+ (App Router), TypeScript (strict mode), Tailwind CSS
-- **Instrumentation:** Cookiebot CMP → client-side GTM → sGTM on Stape → GA4, BigQuery, simulated Meta CAPI / Google Ads Enhanced Conversions
+- **Instrumentation:** Cookiebot CMP → client-side GTM → self-hosted sGTM on Cloud Run → GA4, BigQuery, simulated Meta CAPI / Google Ads Enhanced Conversions
 - **Real-Time Pipeline:** sGTM → Pub/Sub → Cloud Run WebSocket/SSE service → browser (scoped by session ID)
 - **Data:** BigQuery (raw → staging → marts via Dataform), background data generator on Cloud Run
-- **BI:** Looker Studio and/or Metabase on Dataform mart tables
+- **BI:** Self-hosted Metabase on Cloud Run (IAP-gated at `bi.iampatterson.com`), dashboards-as-code via YAML + `apply.sh`. Signed-JWT (`jsonwebtoken`) static embeds on the ecommerce confirmation page.
 - **AI:** BigQuery managed AI functions (AI.CLASSIFY, AI.IF), RAG pipeline for narrative reporting
-- **Hosting:** Vercel (Next.js frontend), GCP Cloud Run (backend services — WebSocket, data generator)
+- **Hosting:** Vercel (Next.js frontend), GCP Cloud Run (backend services — WebSocket, data generator, sGTM, Metabase)
 - **Package Manager:** npm
 - **Testing:** Jest + React Testing Library (components), Playwright (E2E), custom integration tests for event pipeline
 
 ## Current Phase
 
-**Phase 9A-redesign — Editorial Homepage, Services, and Under-the-Hood Overlay** (10 of 10 deliverables complete; three evaluation passes PASS/PASS, UAT accepted in session-023, CRT boot fidelity + once-per-session refinement in session-024, debt-cleanup to 5.00/5 evaluator PASS in session-025. Editorial prototype in `docs/input_artifacts/iampatterson-com/` — serif-forward magazine-grid on paper, terminal/CRT vocabulary in the overlay, persimmon accent flipping to phosphor amber during the overlay boot. Boot plays only on the first overlay open per browser session.)
+**Phase 9B — E-Commerce Demo: Tiers 2 & 3** (all deliverables dev-complete in session-026. 6a Metabase dashboards-as-code verified live at `https://bi.iampatterson.com/dashboard/2`. 6b signed-JWT embeds inline on `/demo/ecommerce/confirmation` (three embeddable cards: daily revenue, funnel, AOV), with an overlay Dashboards-tab fallback for the three non-embeddable (ROAS, Revenue share, LTV) behind IAP. Services page cross-links from Tier 2 / Tier 3 summary boxes. Vercel env vars `MB_EMBEDDING_SECRET_KEY` + `METABASE_EMBED_CONFIG` must be set before embeds render in production; when absent, a visible fallback block points at the IAP-gated dashboard.)
 
-Phase 9B remains paused until 9A-redesign is merged to main. All remaining 9B work is frozen, including the 6a manual apply (`docs/manual/task-2026-04-17-005.md`). 9B resumes cleanly on merge — existing 9B status markers in `docs/PHASE_STATUS.md` are preserved.
+Phase 9A-redesign merged to main (`d8ae8f2`). Phase 9B branch is `phase/9b-ecommerce-tiers-2-3`.
 
 See `docs/REQUIREMENTS.md` for the full development plan (Phases 1-8, 9A / 9A-redesign / 9B-9D, 10-11).
 See `docs/ARCHITECTURE.md` for technical architecture details.
