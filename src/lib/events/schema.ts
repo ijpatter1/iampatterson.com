@@ -51,12 +51,17 @@ export interface ClickNavEvent extends BaseEvent {
  * union explicitly.
  *
  * Editorial / page-specific CTAs live alongside the nav-adjacent set in the
- * same union so `ClickCtaEvent.cta_location` is fully type-checked at call
- * sites; they are distinguished by naming convention only.
+ * same union so `ClickCtaEvent.cta_location` receives a single type check at
+ * every call site; distinguishing them as branded sub-types would require
+ * every caller to pick a sub-type at the call site without adding safety.
+ * Naming convention communicates intent: nav-adjacent values name their
+ * affordance (`session_pulse`, `portal_*`); editorial values name their
+ * page or region (`hero`, `final_cta`, `services_tier_NN`).
  *
  * Legacy values (pre-Phase-9E demos that 9E removes or rebuilds) stay in the
  * union until their emitting components are deleted or rewritten: they
- * guarantee continuity through the pivot's implementation passes.
+ * guarantee continuity through the pivot's implementation passes. They are
+ * expected to leave the union when deliverables 6 and 7 ship.
  */
 export type CtaLocation =
   // Phase 9E nav-adjacent closed enum

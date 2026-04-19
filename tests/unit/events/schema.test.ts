@@ -241,6 +241,10 @@ describe('Event schema types', () => {
     // extra keys fail excess-property check. Combined with the _AssertEventNamesInSync sentinel
     // in schema.ts, this triangulates: runtime array, type union, and this test all agree
     // on the same set of event names.
+    //
+    // DO NOT REPLACE this explicit-literal Record with a DATA_LAYER_EVENT_NAMES-derived
+    // iteration — the type-level exhaustiveness check is the whole point of the hand-list.
+    // Replace the literal and the drift-catching property of the test disappears silently.
     const allEventNames: Record<DataLayerEvent['event'], true> = {
       page_view: true,
       scroll_depth: true,

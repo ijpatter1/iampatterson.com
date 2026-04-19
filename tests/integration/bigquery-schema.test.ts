@@ -93,6 +93,21 @@ describe('BigQuery schema alignment with sGTM event data', () => {
     expect(bqColumnNames).toContain('consent_preferences');
   });
 
+  it('includes Phase 9E nav & Session State discriminator fields (deliverable 9)', () => {
+    // dismissal_mode (NavHintDismissedEvent), source (SessionStateTabViewEvent),
+    // destination (PortalClickEvent), threshold (CoverageMilestoneEvent).
+    // Without these columns, the sGTM "Write to BigQuery" tag silently drops the
+    // discriminator values (ignoreUnknownValues: true), and BI queries can't segment
+    // by dismissal mode / tab source / portal destination / coverage threshold.
+    expect(bqColumnNames).toContain('dismissal_mode');
+    expect(bqColumnNames).toContain('source');
+    expect(bqColumnNames).toContain('destination');
+
+    const thresholdCol = schemaJson.find((c) => c.name === 'threshold');
+    expect(thresholdCol).toBeDefined();
+    expect(thresholdCol?.type).toBe('INT64');
+  });
+
   it('only event_name and received_timestamp are REQUIRED', () => {
     const requiredCols = schemaJson.filter((c) => c.mode === 'REQUIRED');
     const requiredNames = requiredCols.map((c) => c.name).sort();
