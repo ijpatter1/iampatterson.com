@@ -32,8 +32,8 @@ export function OrderConfirmation({ orderId, orderTotal, itemCount }: OrderConfi
 
       <p className="mt-6 text-sm leading-relaxed text-neutral-600">
         Purchase events from this demo fire through sGTM, land in BigQuery, and feed the Dataform
-        mart layer the dashboards below query. Look under the hood to trace the event — or scroll
-        down to see the dashboards it feeds.
+        mart layer the dashboards below query. Look under the hood to trace these events — or scroll
+        down to see the dashboards they feed.
       </p>
 
       <Link

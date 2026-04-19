@@ -4,7 +4,7 @@
  * Phase 9B deliverable 6b — Tier 3 inline Metabase embeds on the
  * ecommerce confirmation page.
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 
 import { Tier3Embeds } from '@/components/demo/ecommerce/tier3-embeds';
 
@@ -44,6 +44,38 @@ describe('Tier3Embeds with live URLs', () => {
       // JSX's referrerPolicy maps to the DOM referrerpolicy attribute
       expect(frame.getAttribute('referrerpolicy')).toBe('no-referrer');
     });
+  });
+
+  it('hides placeholder and reveals iframe after onLoad fires (loaded=true branch)', () => {
+    // Pass 3 finding: only the initial state was tested — a regression that
+    // never called setLoaded would pass. This locks in the onLoad→opacity
+    // toggle that is the whole point of LiveEmbedFrame.
+    const { container } = render(<Tier3Embeds urls={URLS} orderTotal={44.98} />);
+    const iframe = container.querySelectorAll('iframe')[0];
+    const placeholders = screen.getAllByTestId('live-embed-placeholder');
+
+    // Pre-load
+    expect(iframe.className).toMatch(/opacity-0/);
+    expect(placeholders[0].className).toMatch(/opacity-100/);
+
+    // Fire the DOM load event — simulates Metabase iframe content resolving
+    fireEvent.load(iframe);
+
+    expect(iframe.className).toMatch(/opacity-100/);
+    expect(placeholders[0].className).toMatch(/opacity-0/);
+  });
+
+  it('keeps the unloaded iframe out of the keyboard tab order (a11y)', () => {
+    // The iframe is opacity-0 on mount. Keyboard users should not focus an
+    // invisible frame; flip it into the tab order only once content paints.
+    const { container } = render(<Tier3Embeds urls={URLS} orderTotal={44.98} />);
+    const iframe = container.querySelectorAll('iframe')[0];
+    expect(iframe.getAttribute('tabindex')).toBe('-1');
+    expect(iframe.getAttribute('aria-hidden')).toBe('true');
+
+    fireEvent.load(iframe);
+    expect(iframe.getAttribute('tabindex')).toBe('0');
+    expect(iframe.getAttribute('aria-hidden')).toBe('false');
   });
 
   it('renders a visible loading placeholder per iframe (opaque until onLoad fires)', () => {

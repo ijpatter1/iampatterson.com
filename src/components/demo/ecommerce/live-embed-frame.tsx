@@ -22,7 +22,7 @@ export function LiveEmbedFrame({ src, title }: LiveEmbedFrameProps) {
     <div className="relative overflow-hidden rounded border border-neutral-200 bg-neutral-50">
       <div
         aria-hidden={loaded}
-        className={`absolute inset-0 flex items-center justify-center font-mono text-[11px] uppercase tracking-widest text-neutral-400 transition-opacity duration-500 ${
+        className={`pointer-events-none absolute inset-0 flex items-center justify-center font-mono text-[11px] uppercase tracking-widest text-neutral-400 transition-opacity duration-500 ${
           loaded ? 'opacity-0' : 'opacity-100'
         }`}
         data-testid="live-embed-placeholder"
@@ -34,9 +34,11 @@ export function LiveEmbedFrame({ src, title }: LiveEmbedFrameProps) {
         title={title}
         loading="lazy"
         referrerPolicy="no-referrer"
+        aria-hidden={!loaded}
+        tabIndex={loaded ? 0 : -1}
         onLoad={() => setLoaded(true)}
         className={`relative h-[420px] w-full transition-opacity duration-500 ${
-          loaded ? 'opacity-100' : 'opacity-0'
+          loaded ? 'opacity-100' : 'pointer-events-none opacity-0'
         }`}
         style={{ border: 0 }}
       />

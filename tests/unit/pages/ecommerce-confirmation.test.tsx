@@ -101,6 +101,22 @@ describe('ConfirmationPage — env → embeds wiring', () => {
     expect(screen.getAllByText(/\$44\.98/).length).toBeGreaterThanOrEqual(1);
   });
 
+  it('sanitizes non-finite total/items so OrderConfirmation never renders "$NaN"', () => {
+    // parseFloat('abc') → NaN; ?total=Infinity or negative values also slip
+    // past a naive `> 0` guard. The page boundary now clamps these to 0.
+    renderPage({ order_id: 'ORD-T3-DEMO', total: 'abc', items: 'xyz' });
+    expect(screen.getByText(/\$0\.00/)).toBeInTheDocument();
+    expect(screen.queryByText(/\$NaN/)).toBeNull();
+    expect(screen.queryByText(/\$Infinity/)).toBeNull();
+  });
+
+  it('rejects negative numeric params at the page boundary (treats as 0)', () => {
+    renderPage({ order_id: 'ORD-T3-DEMO', total: '-100', items: '-5' });
+    expect(screen.getByText(/\$0\.00/)).toBeInTheDocument();
+    // Items row should show 0, not -5
+    expect(screen.queryByText(/-5/)).toBeNull();
+  });
+
   it('does not leak MB_EMBEDDING_SECRET_KEY into the rendered HTML', () => {
     process.env.MB_EMBEDDING_SECRET_KEY = VALID_SECRET;
     process.env.METABASE_EMBED_CONFIG = VALID_CONFIG;

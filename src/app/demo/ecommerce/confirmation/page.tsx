@@ -14,10 +14,20 @@ function firstValue(param: string | string[] | undefined): string | undefined {
   return param;
 }
 
+function sanitizeNumber(raw: string | undefined, fallback: number, parse: (s: string) => number) {
+  if (!raw) return fallback;
+  const parsed = parse(raw);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
 export default function ConfirmationPage({ searchParams }: ConfirmationPageProps) {
   const orderId = firstValue(searchParams.order_id) ?? 'ORD-UNKNOWN';
-  const orderTotal = parseFloat(firstValue(searchParams.total) ?? '0');
-  const itemCount = parseInt(firstValue(searchParams.items) ?? '0', 10);
+  // Sanitize numeric params at the page boundary. parseFloat('abc') is NaN,
+  // and malicious URLs can supply Infinity — both render as "$NaN" / "$Infinity"
+  // in the receipt without this guard. Downstream components can trust they
+  // get finite non-negative numbers.
+  const orderTotal = sanitizeNumber(firstValue(searchParams.total), 0, parseFloat);
+  const itemCount = sanitizeNumber(firstValue(searchParams.items), 0, (s) => parseInt(s, 10));
 
   // Secret + card IDs come from env at render time. If either is missing
   // (local dev, preview without the Vercel env wired up), mintConfirmationEmbedUrls

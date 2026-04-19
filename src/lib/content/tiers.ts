@@ -130,7 +130,7 @@ export const TIERS: Tier[] = [
     ],
     summary:
       'Your marketing team self-serves answers instead of asking the data person. Your executives get a written summary every Monday that tells them what changed and why.',
-    seeItLive: { href: '/demo/ecommerce/confirmation?order_id=demo-tier3&total=44.98&items=2' },
+    seeItLive: { href: '/demo/ecommerce/confirmation?order_id=ORD-T3-DEMO&total=44.98&items=2' },
   },
   {
     num: '04',
