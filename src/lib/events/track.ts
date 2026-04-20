@@ -201,6 +201,14 @@ export function trackOverviewTabView(source: 'default_landing' | 'manual_select'
   pushEvent({ ...baseFields(), event: 'overview_tab_view', source });
 }
 
+export function trackTimelineTabView(source: 'default_landing' | 'manual_select'): void {
+  pushEvent({ ...baseFields(), event: 'timeline_tab_view', source });
+}
+
+export function trackConsentTabView(source: 'default_landing' | 'manual_select'): void {
+  pushEvent({ ...baseFields(), event: 'consent_tab_view', source });
+}
+
 export function trackNavHintShown(): void {
   pushEvent({ ...baseFields(), event: 'nav_hint_shown' });
 }

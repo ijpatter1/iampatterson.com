@@ -1,4 +1,4 @@
-import { DATA_LAYER_EVENT_NAMES } from '@/lib/events/schema';
+import { DATA_LAYER_EVENT_NAMES, RENDERABLE_EVENT_NAMES } from '@/lib/events/schema';
 import type {
   BaseEvent,
   PageViewEvent,
@@ -266,6 +266,8 @@ describe('Event schema types', () => {
       nav_hint_dismissed: true,
       session_pulse_hover: true,
       overview_tab_view: true,
+      timeline_tab_view: true,
+      consent_tab_view: true,
       portal_click: true,
       coverage_milestone: true,
     };
@@ -274,5 +276,22 @@ describe('Event schema types', () => {
     expect(Object.keys(allEventNames)).toHaveLength(DATA_LAYER_EVENT_NAMES.length);
     // Sanity: the set of names rendered here matches the schema's runtime array.
     expect(Object.keys(allEventNames).sort()).toEqual([...DATA_LAYER_EVENT_NAMES].sort());
+  });
+
+  it('RENDERABLE_EVENT_NAMES excludes sub/leadgen events (F2 — hide un-triggerable chips)', () => {
+    const hidden = ['plan_select', 'trial_signup', 'form_complete', 'lead_qualify'];
+    for (const name of hidden) {
+      expect(RENDERABLE_EVENT_NAMES).not.toContain(name);
+    }
+    // Everything else in the full schema stays renderable.
+    const expected = DATA_LAYER_EVENT_NAMES.filter(
+      (n) => !hidden.includes(n as (typeof hidden)[number]),
+    );
+    expect([...RENDERABLE_EVENT_NAMES]).toEqual(expected);
+  });
+
+  it('RENDERABLE_EVENT_NAMES includes the timeline_tab_view and consent_tab_view additions (F2)', () => {
+    expect(RENDERABLE_EVENT_NAMES).toContain('timeline_tab_view');
+    expect(RENDERABLE_EVENT_NAMES).toContain('consent_tab_view');
   });
 });

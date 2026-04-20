@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { useOverlay } from '@/components/overlay/overlay-context';
 import { useSessionState } from '@/components/session-state-provider';
+import { RENDERABLE_EVENT_NAMES } from '@/lib/events/schema';
 import { trackClickCta, trackPortalClick } from '@/lib/events/track';
 import {
   ECOMMERCE_FUNNEL_SEQUENCE,
@@ -30,28 +31,22 @@ const PORTAL_LINKS: {
     destination: 'services',
     href: '/services',
     label: '> SERVICES',
-    descriptor: '→ Four tiers of measurement infrastructure',
+    descriptor: 'Four tiers of measurement infrastructure.',
   },
   {
     destination: 'about',
     href: '/about',
     label: '> ABOUT',
-    descriptor: '→ Ian, Tuna, and the backstory',
+    descriptor: 'Ian, Tuna, and the backstory.',
   },
   {
     destination: 'contact',
     href: '/contact',
     label: '> CONTACT',
-    descriptor: '→ Start a conversation',
+    descriptor: 'Start a conversation.',
   },
 ];
 
-// Funnel labels match the REQUIREMENTS.md deliverable 3 example:
-// `PRODUCT_VIEW → ADD_TO_CART → CHECKOUT → PURCHASE`. `CHECKOUT` is the
-// spec's shorthand for `begin_checkout`; the underlying event token
-// (`> begin_checkout`) remains visible in the chip grid above, so the
-// split between "visitor-facing funnel label" and "event-name literal"
-// follows the spec's own convention.
 const STAGE_LABELS: Record<EcommerceStage, string> = {
   product_view: 'PRODUCT_VIEW',
   add_to_cart: 'ADD_TO_CART',
@@ -85,28 +80,17 @@ const STAGE_STATUS_TAG: Record<StageStatus, string> = {
 };
 
 /**
- * One-shot typewriter for the coverage-number readout.
- *
- * **Semantics:** one-shot per **component mount**, not per hydration.
- * `SessionStateTab` early-returns to the "Warming up…" placeholder while
- * `useSessionState()` is `null`, so the coverage-readout DOM node is
- * remounted when state transitions away from `null` — fresh ref each time.
- * Within a single mounted-with-hydrated-state lifetime, the animation plays
- * only on the first non-empty `text` value; subsequent `text` changes (e.g.
- * the visitor fires new events and the readout updates) paint instantly
- * via the `hasAnimated.current` early branch. Under `prefers-reduced-motion`
- * the animation is skipped entirely on the first call too.
+ * One-shot typewriter for the coverage-number readout. One-shot per
+ * **component mount**, not per hydration. Under `prefers-reduced-motion`
+ * the animation is skipped on the first call too.
  */
 function useTypedCoverage(text: string): string {
   const [displayed, setDisplayed] = useState<string>('');
   const hasAnimated = useRef(false);
 
   useEffect(() => {
-    // Guard: don't consume the one-shot on an empty placeholder. SessionState
-    // hydrates asynchronously in the provider, so the first render here has
-    // `text === ''`; the real readout arrives on a subsequent render. Without
-    // this guard the empty-text run flips `hasAnimated.current` and the real
-    // readout would appear instantly (Pass 2 evaluator C1).
+    // Don't consume the one-shot on an empty placeholder — SessionState
+    // hydrates asynchronously, so the first render has `text === ''`.
     if (!text) return;
     if (hasAnimated.current) {
       setDisplayed(text);
@@ -137,7 +121,6 @@ function useTypedCoverage(text: string): string {
 function formatStartedAt(iso: string): string {
   try {
     const date = new Date(iso);
-    // HH:MM:SS UTC — retrofuturist time stamp style, no locale drift.
     return date.toISOString().slice(11, 19);
   } catch {
     return iso;
@@ -155,17 +138,9 @@ function thresholdCrossed(state: SessionState): boolean {
   return state.demo_progress.ecommerce.stages_reached.includes('begin_checkout');
 }
 
-function Divider() {
-  return (
-    <div aria-hidden className="my-6 font-mono text-[11px] leading-none text-u-rule-soft">
-      {'─'.repeat(48)}
-    </div>
-  );
-}
-
 function SectionKicker({ children }: { children: string }) {
   return (
-    <h3 className="mb-3 font-mono text-[10px] uppercase tracking-widest text-accent-current">
+    <h3 className="mb-3 font-mono text-xs uppercase tracking-widest text-accent-current">
       {children}
     </h3>
   );
@@ -176,22 +151,27 @@ export function OverviewTab() {
   const pathname = usePathname() ?? '/';
   const { close } = useOverlay();
 
-  // Compute readout before the early return so useTypedCoverage always runs.
-  const firedCount = state?.event_type_coverage.fired.length ?? 0;
-  const totalCount = state?.event_type_coverage.total.length ?? 0;
+  // Total + fired are derived from RENDERABLE_EVENT_NAMES, not the full
+  // schema. Subscription + leadgen events stay in the data model for
+  // future reintroduction but don't surface as chips today.
+  const renderableSet = new Set<string>(RENDERABLE_EVENT_NAMES);
+  const firedRenderable =
+    state?.event_type_coverage.fired.filter((n) => renderableSet.has(n)) ?? [];
+  const firedCount = firedRenderable.length;
+  const totalCount = RENDERABLE_EVENT_NAMES.length;
   const coverageReadout = state ? `> ${firedCount}/${totalCount} event types` : '';
   const typedCoverage = useTypedCoverage(coverageReadout);
 
   if (!state) {
     return (
-      <div className="font-mono text-[12px] uppercase tracking-widest text-u-ink-3">
+      <div className="font-mono text-xs uppercase tracking-widest text-u-ink-3">
         Warming up session state…
       </div>
     );
   }
 
   const bar = renderBar(firedCount, totalCount);
-  const firedSet = new Set(state.event_type_coverage.fired);
+  const firedSet = new Set(firedRenderable);
 
   const handlePortalClick = (destination: PortalDestination) => {
     trackPortalClick(destination);
@@ -199,56 +179,110 @@ export function OverviewTab() {
   };
 
   const handleContextualCtaClick = () => {
-    // Dual-fire per REQUIREMENTS.md deliverable 3 line 368: the contextual
-    // contact CTA "Fires `portal_click` with `destination: 'contact'` and a
-    // distinguishing `click_cta` emission with `cta_location:
-    // 'contact_cta_threshold'`". The `portal_click` keeps the contextual
-    // CTA isolable in the same conversion-rate cohort as the neutral
-    // `> CONTACT` portal link above (per d9 deliverable 9: "distinct from
-    // `click_cta` so the portal's conversion rate is isolable"); the
-    // distinguishing `click_cta` tags this specific threshold-gated variant.
+    // REQUIREMENTS.md deliverable 3 line 368: the contextual contact CTA
+    // fires `portal_click(contact)` + a distinguishing `click_cta` with
+    // `cta_location: 'contact_cta_threshold'`.
     trackPortalClick('contact');
     trackClickCta('Seen enough? →', 'contact_cta_threshold');
     close();
   };
 
+  const thresholdHit = thresholdCrossed(state);
+
   return (
-    <div data-testid="overview-tab" className="space-y-6 text-sm text-u-ink">
-      <div>
-        <div className="mb-3 font-mono text-[10px] uppercase tracking-widest text-accent-current">
-          &gt; YOUR SESSION · LIVE
-        </div>
-        <dl className="space-y-1 font-mono text-xs">
-          <div className="flex gap-3">
-            <dt className="w-24 text-u-ink-3 uppercase tracking-widest text-[10px]">Session</dt>
-            <dd className="text-accent-current">{shortSessionId(state.session_id)}</dd>
+    <div data-testid="overview-tab" className="space-y-10 text-ink">
+      {/* --- Portals + threshold CTA (TOP per UAT F1 feedback) --- */}
+      <section data-testid="overview-portals">
+        <SectionKicker>Explore the site</SectionKicker>
+        <ul className="grid gap-3 sm:grid-cols-3">
+          {PORTAL_LINKS.map((link) => (
+            <li key={link.destination}>
+              <Link
+                href={link.href}
+                data-testid={`portal-${link.destination}`}
+                onClick={() => handlePortalClick(link.destination)}
+                className="flex h-full flex-col gap-1 border border-u-rule-soft bg-u-paper-alt p-4 transition-colors hover:border-accent-current"
+              >
+                <span className="font-mono text-sm text-accent-current">{link.label}</span>
+                <span className="text-sm text-u-ink-2">{link.descriptor}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+
+        {thresholdHit && (
+          <div
+            data-testid="contextual-contact-cta-block"
+            className="mt-4 border border-accent-current bg-u-paper-alt p-4"
+          >
+            <div className="mb-2 font-mono text-xs uppercase tracking-widest text-accent-current">
+              &gt; COVERAGE THRESHOLD REACHED
+            </div>
+            <Link
+              href="/contact"
+              data-testid="contextual-contact-cta"
+              onClick={handleContextualCtaClick}
+              className="font-display text-lg text-u-ink hover:text-accent-current"
+            >
+              Seen enough? →
+            </Link>
           </div>
-          <div className="flex gap-3">
-            <dt className="w-24 text-u-ink-3 uppercase tracking-widest text-[10px]">Started</dt>
-            <dd className="text-u-ink-2">{formatStartedAt(state.started_at)} UTC</dd>
-          </div>
-          <div className="flex gap-3">
-            <dt className="w-24 text-u-ink-3 uppercase tracking-widest text-[10px]">Page</dt>
-            <dd className="text-u-ink-2">{pathname}</dd>
-          </div>
-        </dl>
+        )}
+      </section>
+
+      {/* --- Session header + consent (2-col on desktop per UAT F1 feedback) --- */}
+      <div className="grid gap-10 md:grid-cols-2">
+        <section>
+          <SectionKicker>Your session · live</SectionKicker>
+          <dl className="space-y-2 font-mono text-sm">
+            <div className="flex gap-3">
+              <dt className="w-24 text-xs uppercase tracking-widest text-u-ink-3">Session</dt>
+              <dd className="text-accent-current">{shortSessionId(state.session_id)}</dd>
+            </div>
+            <div className="flex gap-3">
+              <dt className="w-24 text-xs uppercase tracking-widest text-u-ink-3">Started</dt>
+              <dd className="text-u-ink-2">{formatStartedAt(state.started_at)} UTC</dd>
+            </div>
+            <div className="flex gap-3">
+              <dt className="w-24 text-xs uppercase tracking-widest text-u-ink-3">Page</dt>
+              <dd className="text-u-ink-2">{pathname}</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section>
+          <SectionKicker>Consent</SectionKicker>
+          <dl className="space-y-2 font-mono text-sm">
+            {(['analytics', 'marketing', 'preferences'] as const).map((signal) => {
+              const value = state.consent_snapshot[signal];
+              const granted = value === 'granted';
+              return (
+                <div key={signal} data-testid={`consent-row-${signal}`} className="flex gap-3">
+                  <dt className="w-28 text-xs uppercase tracking-widest text-u-ink-3">{signal}</dt>
+                  <dd className={granted ? 'text-accent-current' : 'text-u-ink-3'}>
+                    {granted ? '[GRANTED]' : '[DENIED]'}
+                  </dd>
+                </div>
+              );
+            })}
+          </dl>
+        </section>
       </div>
 
-      <Divider />
-
+      {/* --- Event coverage (full width) --- */}
       <section>
         <SectionKicker>Event coverage</SectionKicker>
-        <div className="mb-3 flex items-baseline gap-3 font-mono text-xs">
+        <div className="mb-3 flex flex-wrap items-baseline gap-3 font-mono text-sm">
           <pre
             data-testid="coverage-bar"
-            className="m-0 text-accent-current leading-none"
+            className="m-0 leading-none text-accent-current"
           >{`[${bar}]`}</pre>
           <span data-testid="coverage-readout" className="text-u-ink-2">
             {typedCoverage}
           </span>
         </div>
-        <div className="grid grid-cols-2 gap-1 font-mono text-[10px] sm:grid-cols-3">
-          {state.event_type_coverage.total.map((name) => {
+        <div className="grid grid-cols-2 gap-1 font-mono text-xs sm:grid-cols-3 md:grid-cols-4">
+          {RENDERABLE_EVENT_NAMES.map((name) => {
             const fired = firedSet.has(name);
             return (
               <div
@@ -257,11 +291,12 @@ export function OverviewTab() {
                 data-chip="event-chip"
                 data-chip-name={name}
                 data-fired={fired ? 'true' : 'false'}
-                className={`border px-2 py-1 uppercase tracking-widest ${
+                className={`truncate border px-2 py-1 uppercase tracking-wide ${
                   fired
                     ? 'border-accent-current text-accent-current'
                     : 'border-u-rule-soft text-u-ink-3'
                 }`}
+                title={name}
               >
                 {`> ${name}`}
               </div>
@@ -270,11 +305,10 @@ export function OverviewTab() {
         </div>
       </section>
 
-      <Divider />
-
+      {/* --- Ecommerce funnel (full width) --- */}
       <section>
         <SectionKicker>Ecommerce demo · Tier 2 + 3</SectionKicker>
-        <ul className="space-y-1 font-mono text-xs">
+        <ul className="space-y-2 font-mono text-sm">
           {ECOMMERCE_FUNNEL_SEQUENCE.map((stage) => {
             const status = getStageStatus(stage, state.demo_progress.ecommerce.stages_reached);
             const tagClass =
@@ -293,85 +327,16 @@ export function OverviewTab() {
                 data-status={status}
                 className="flex gap-3"
               >
-                {/* Fixed-width status column so `[SKIPPED]` and `[OK]` produce
-                    aligned funnel-label columns — the retrofuture-terminal
-                    vocabulary reads as a table, not a jagged list. */}
                 <span className={`inline-block w-20 ${tagClass}`}>{STAGE_STATUS_TAG[status]}</span>
                 <span className={labelClass}>{STAGE_LABELS[stage]}</span>
               </li>
             );
           })}
         </ul>
-        <div className="mt-3 font-mono text-[10px] uppercase tracking-widest text-u-ink-3">
+        <div className="mt-3 font-mono text-xs uppercase tracking-widest text-u-ink-3">
           {state.demo_progress.ecommerce.percentage}% complete
         </div>
       </section>
-
-      <Divider />
-
-      <section>
-        <SectionKicker>Consent</SectionKicker>
-        <dl className="space-y-1 font-mono text-xs">
-          {(['analytics', 'marketing', 'preferences'] as const).map((signal) => {
-            const value = state.consent_snapshot[signal];
-            const granted = value === 'granted';
-            return (
-              <div key={signal} data-testid={`consent-row-${signal}`} className="flex gap-3">
-                <dt className="w-28 text-u-ink-3 uppercase tracking-widest text-[10px]">
-                  {signal}
-                </dt>
-                <dd className={granted ? 'text-accent-current' : 'text-u-ink-3'}>
-                  {granted ? '[GRANTED]' : '[DENIED]'}
-                </dd>
-              </div>
-            );
-          })}
-        </dl>
-      </section>
-
-      <Divider />
-
-      <section>
-        <SectionKicker>Explore the site</SectionKicker>
-        <ul className="space-y-2 font-mono text-xs">
-          {PORTAL_LINKS.map((link) => (
-            <li
-              key={link.destination}
-              className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-4"
-            >
-              <Link
-                href={link.href}
-                onClick={() => handlePortalClick(link.destination)}
-                className="text-accent-current transition-opacity hover:opacity-80 sm:w-32"
-              >
-                {link.label}
-              </Link>
-              <span className="text-u-ink-3">{link.descriptor}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {thresholdCrossed(state) && (
-        <div className="mt-2 border border-accent-current bg-u-paper-alt p-4">
-          {/* Diagnostic kicker (terminal vocabulary) + warm outcome-framed link
-              per REQUIREMENTS.md deliverable 3's D8-deferred treatment. When
-              deliverable 8 (contact-form ride-along) ships, the link copy may
-              be extended per UX_PIVOT_SPEC §3.3 to also mention that session
-              state will ride along with the message. */}
-          <div className="mb-2 font-mono text-[10px] uppercase tracking-widest text-accent-current">
-            &gt; COVERAGE THRESHOLD REACHED
-          </div>
-          <Link
-            href="/contact"
-            data-testid="contextual-contact-cta"
-            onClick={handleContextualCtaClick}
-            className="font-display text-lg text-u-ink hover:text-accent-current"
-          >
-            Seen enough? →
-          </Link>
-        </div>
-      )}
     </div>
   );
 }

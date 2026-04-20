@@ -34,6 +34,8 @@ jest.mock('@/components/overlay/overview-tab', () => ({
 // transitions without fighting data-layer pollution.
 jest.mock('@/lib/events/track', () => ({
   trackOverviewTabView: jest.fn(),
+  trackTimelineTabView: jest.fn(),
+  trackConsentTabView: jest.fn(),
 }));
 
 import { OverlayProvider, useOverlay, type OverlayTab } from '@/components/overlay/overlay-context';

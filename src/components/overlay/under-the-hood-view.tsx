@@ -10,10 +10,25 @@ import { useOverlay } from '@/components/overlay/overlay-context';
 import { OverviewTab } from '@/components/overlay/overview-tab';
 import { useFilteredEvents } from '@/hooks/useFilteredEvents';
 import { useLiveEvents } from '@/hooks/useLiveEvents';
-import { trackOverviewTabView } from '@/lib/events/track';
+import {
+  trackConsentTabView,
+  trackOverviewTabView,
+  trackTimelineTabView,
+} from '@/lib/events/track';
 import type { PipelineEvent } from '@/lib/events/pipeline-schema';
 
 type ViewMode = 'overview' | 'timeline' | 'consent';
+type TabViewSource = 'default_landing' | 'manual_select';
+
+// Per-tab view emitters. Keeping three functions (rather than a single
+// `tab_view` event with a discriminator) so each tab gets its own
+// coverage chip and the meter can signal depth-of-exploration across
+// the three tabs.
+const TAB_VIEW_TRACKERS: Record<ViewMode, (source: TabViewSource) => void> = {
+  overview: trackOverviewTabView,
+  timeline: trackTimelineTabView,
+  consent: trackConsentTabView,
+};
 type Phase = 'idle' | 'boot' | 'on';
 
 const BOOT_DURATION_MS = 260;
@@ -65,26 +80,29 @@ function Tabs({
     <div className="overlay-chrome flex gap-1 border-b border-u-rule-soft bg-u-paper-alt px-4">
       {tabs.map((t) => {
         const isActive = active === t.mode;
-        // Terminal-style bracket framing on the active tab label
-        // (UX_PIVOT_SPEC §3.2 / REQUIREMENTS Phase 9E D2). Inactive tabs
-        // render plain text; the bracket pair is the primary retrofuture
-        // cue that the tab is selected, on top of the amber border.
+        // Terminal-style bracket framing on the active tab label is the
+        // primary cue that the tab is selected (UX_PIVOT_SPEC §3.2 +
+        // F1 UAT feedback). All three labels render in the amber accent
+        // — the bracket pair + border distinguish active from inactive.
+        // Inactive tabs render the label plain (no brackets, no border
+        // indicator) with a subtle opacity dip so they still feel like
+        // navigation targets, not disabled chrome.
         const label = isActive ? `[ ${t.label.toUpperCase()} ]` : t.label;
         return (
           <button
             key={t.mode}
             type="button"
             onClick={() => onChange(t.mode)}
-            className={`relative flex items-center gap-2 border-b-2 px-4 py-3 font-mono text-[11px] uppercase tracking-widest transition-colors ${
+            className={`relative flex items-center gap-2 border-b-2 px-4 py-3 font-mono text-xs uppercase tracking-widest text-accent-current transition-opacity ${
               isActive
-                ? 'border-accent-current text-accent-current'
-                : 'border-transparent text-u-ink-3 hover:text-u-ink'
+                ? 'border-accent-current opacity-100'
+                : 'border-transparent opacity-60 hover:opacity-90'
             }`}
             aria-label={t.label}
           >
             {label}
             {typeof t.count === 'number' && (
-              <span className="rounded-sm bg-u-paper-deep px-1.5 py-0.5 font-mono text-[9px] text-u-ink-3">
+              <span className="rounded-sm bg-u-paper-deep px-1.5 py-0.5 font-mono text-[10px] text-u-ink-3">
                 {t.count}
               </span>
             )}
@@ -114,17 +132,15 @@ export function UnderTheHoodView() {
   // emitter. Reset on close so each overlay-open restarts the landing phase.
   const landingResolvedRef = useRef(false);
 
-  // Tab-change handler that the tabs-bar calls. `manual_select` emits only
-  // when the visitor actively clicks the Overview tab from the tabs
-  // bar. Programmatic opens (overlay `open('overview')`, pendingTab
-  // consumption) go through `setViewMode` directly and do NOT emit —
-  // they are not visitor-initiated choices from within the tabs bar.
-  // The `default_landing` emitter below handles the non-click paths.
+  // Tab-change handler that the tabs-bar calls. `manual_select` emits on
+  // every active click in the tabs bar, for whichever tab was clicked.
+  // Programmatic opens (overlay `open('overview')`, pendingTab consumption)
+  // go through `setViewMode` directly and do NOT emit — they are not
+  // visitor-initiated choices from within the tabs bar. The
+  // `default_landing` emitter below handles the non-click paths.
   const handleTabChange = useCallback((mode: ViewMode) => {
     setViewMode(mode);
-    if (mode === 'overview') {
-      trackOverviewTabView('manual_select');
-    }
+    TAB_VIEW_TRACKERS[mode]('manual_select');
   }, []);
 
   // If the opener requested a specific tab (e.g. footer "Consent state" link),
@@ -138,8 +154,8 @@ export function UnderTheHoodView() {
   }, [pendingTab, isOpen, consumePendingTab]);
 
   // default_landing emission: fires once per overlay-open on the landing-
-  // phase resolution, and only when the resolved landing tab is Overview.
-  // Runs on isOpen/viewMode/pendingTab edges.
+  // phase resolution, for whichever tab the landing resolved to. Runs on
+  // isOpen/viewMode/pendingTab edges.
   //
   // The pendingTab check defers resolution until the pendingTab consumption
   // effect has run. On an `open('timeline')` call the initial render has
@@ -149,12 +165,11 @@ export function UnderTheHoodView() {
   // we always see the post-transition viewMode.
   //
   // Once resolution completes, the gate closes UNCONDITIONALLY — whether
-  // or not we emitted. This is load-bearing: if the landing resolves to
-  // Timeline and the visitor later clicks back to Overview, that click
-  // already emits `manual_select` via handleTabChange. Without this
-  // invariant, the viewMode=overview re-render would also fire
-  // default_landing (the Pass 1 dual-fire bug). The two emission paths
-  // must stay mutually exclusive per open.
+  // or not we emitted. This is load-bearing: if the visitor later clicks
+  // a different tab, that click already emits `manual_select` via
+  // handleTabChange. Without this invariant, the viewMode re-render would
+  // also re-fire default_landing (the Pass 1 dual-fire bug). The two
+  // emission paths must stay mutually exclusive per open.
   useEffect(() => {
     if (!isOpen) {
       landingResolvedRef.current = false;
@@ -163,9 +178,7 @@ export function UnderTheHoodView() {
     if (pendingTab) return;
     if (!landingResolvedRef.current) {
       landingResolvedRef.current = true;
-      if (viewMode === 'overview') {
-        trackOverviewTabView('default_landing');
-      }
+      TAB_VIEW_TRACKERS[viewMode]('default_landing');
     }
   }, [isOpen, viewMode, pendingTab]);
 

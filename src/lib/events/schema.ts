@@ -240,6 +240,26 @@ export interface OverviewTabViewEvent extends BaseEvent {
 }
 
 /**
+ * Fired when the overlay opens onto the Timeline tab. Parallel to
+ * OverviewTabViewEvent — kept as a distinct event (not a discriminator on a
+ * single `tab_view`) so each tab gets its own coverage chip and the meter
+ * can signal depth-of-exploration across the three tabs.
+ */
+export interface TimelineTabViewEvent extends BaseEvent {
+  event: 'timeline_tab_view';
+  source: 'default_landing' | 'manual_select';
+}
+
+/**
+ * Fired when the overlay opens onto the Consent tab. See TimelineTabViewEvent
+ * for the depth-of-exploration rationale.
+ */
+export interface ConsentTabViewEvent extends BaseEvent {
+  event: 'consent_tab_view';
+  source: 'default_landing' | 'manual_select';
+}
+
+/**
  * Fired when a portal link inside the Overview tab is clicked. Distinct from
  * `click_cta` so the portal's conversion rate is isolable.
  */
@@ -279,6 +299,8 @@ export type DataLayerEvent =
   | NavHintDismissedEvent
   | SessionPulseHoverEvent
   | OverviewTabViewEvent
+  | TimelineTabViewEvent
+  | ConsentTabViewEvent
   | PortalClickEvent
   | CoverageMilestoneEvent;
 
@@ -314,9 +336,34 @@ export const DATA_LAYER_EVENT_NAMES = [
   'nav_hint_dismissed',
   'session_pulse_hover',
   'overview_tab_view',
+  'timeline_tab_view',
+  'consent_tab_view',
   'portal_click',
   'coverage_milestone',
 ] as const;
+
+/**
+ * Subset of `DATA_LAYER_EVENT_NAMES` that the visitor can trigger on the
+ * current product surface. Subscription + lead-gen event types remain in
+ * the full schema (BQ columns still populated, infrastructure continuity,
+ * future reintroduction after 9F) but are hidden from the Overview tab's
+ * coverage chip grid so visitors don't see chips for events no current
+ * surface can fire.
+ *
+ * Updates follow product-surface changes, not schema changes: adding a
+ * new demo that fires an existing event removes that event from the hidden
+ * set; re-introducing subscription or leadgen demos removes those names.
+ */
+const HIDDEN_FROM_COVERAGE = new Set<DataLayerEventName>([
+  'plan_select',
+  'trial_signup',
+  'form_complete',
+  'lead_qualify',
+]);
+
+export const RENDERABLE_EVENT_NAMES: readonly DataLayerEventName[] = DATA_LAYER_EVENT_NAMES.filter(
+  (n) => !HIDDEN_FROM_COVERAGE.has(n),
+);
 
 /** Union of every event name literal — derived from `DATA_LAYER_EVENT_NAMES`. */
 export type DataLayerEventName = (typeof DATA_LAYER_EVENT_NAMES)[number];

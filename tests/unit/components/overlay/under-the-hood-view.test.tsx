@@ -41,6 +41,8 @@ jest.mock('@/components/overlay/overview-tab', () => ({
 // don't pollute window.dataLayer across tests in this file.
 jest.mock('@/lib/events/track', () => ({
   trackOverviewTabView: jest.fn(),
+  trackTimelineTabView: jest.fn(),
+  trackConsentTabView: jest.fn(),
 }));
 
 function mockReducedMotion(matches: boolean) {
@@ -137,6 +139,30 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
     // Inactive tabs render plain text (no bracket wrapping).
     const inactiveTab = screen.getByRole('button', { name: /^Consent$/i });
     expect(inactiveTab.textContent).not.toContain('[');
+  });
+
+  it('renders ALL three tab labels in the accent-current color (F2 UAT — not only the active one)', () => {
+    // Pre-F2 inactive tabs used text-u-ink-3 (grey) — visually they read
+    // as low-priority chrome. Post-F2 all three are amber; the bracket
+    // framing + border signal active. UAT feedback: "The three tab labels
+    // should be amber, not just the active tab label."
+    render(<UnderTheHoodView />);
+    for (const name of ['Overview', 'Timeline', 'Consent']) {
+      const tab = screen.getByRole('button', { name: new RegExp(`^${name}`, 'i') });
+      expect(tab.className).toMatch(/text-accent-current/);
+    }
+  });
+
+  it('inactive tabs dim via opacity, not color (accent stays constant)', () => {
+    render(<UnderTheHoodView />);
+    const active = screen.getByRole('button', { name: /^Overview$/i });
+    const inactive = screen.getByRole('button', { name: /^Timeline/i });
+    // Active: opacity-100 and border-accent-current.
+    expect(active.className).toMatch(/opacity-100/);
+    expect(active.className).toMatch(/border-accent-current/);
+    // Inactive: opacity-60 and no amber border underline.
+    expect(inactive.className).toMatch(/opacity-60/);
+    expect(inactive.className).toMatch(/border-transparent/);
   });
 
   it('renders the "Session" header label', () => {

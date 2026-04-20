@@ -10,7 +10,7 @@ import type { ReactNode } from 'react';
 
 import { OverlayProvider } from '@/components/overlay/overlay-context';
 import { OverviewTab } from '@/components/overlay/overview-tab';
-import { DATA_LAYER_EVENT_NAMES } from '@/lib/events/schema';
+import { DATA_LAYER_EVENT_NAMES, RENDERABLE_EVENT_NAMES } from '@/lib/events/schema';
 import type { EcommerceStage, SessionState } from '@/lib/session-state/types';
 
 // Mock useSessionState to feed controlled SessionState into the renderer.
@@ -96,9 +96,11 @@ describe('OverviewTab', () => {
     expect(cells).toHaveLength(16);
   });
 
-  it('fills the coverage bar proportionally to fired/total', () => {
-    // 11 of 22 fired = 50% → 8 of 16 cells.
-    const fired = DATA_LAYER_EVENT_NAMES.slice(0, 11);
+  it('fills the coverage bar proportionally to fired/total (renderable)', () => {
+    // Bar is filled from RENDERABLE_EVENT_NAMES, not the full schema. Cross
+    // 50% of renderable (which excludes sub/leadgen) → 8 of 16 cells.
+    const halfRenderable = Math.ceil(RENDERABLE_EVENT_NAMES.length / 2);
+    const fired = RENDERABLE_EVENT_NAMES.slice(0, halfRenderable);
     useSessionState.mockReturnValue(
       makeState({
         event_type_coverage: { fired: [...fired], total: [...DATA_LAYER_EVENT_NAMES] },
@@ -111,10 +113,12 @@ describe('OverviewTab', () => {
     );
     const bar = screen.getByTestId('coverage-bar').textContent ?? '';
     const filled = (bar.match(/█/g) ?? []).length;
-    expect(filled).toBe(8);
+    // Math.round(halfRenderable / RENDERABLE_EVENT_NAMES.length * 16).
+    const expected = Math.round((halfRenderable / RENDERABLE_EVENT_NAMES.length) * 16);
+    expect(filled).toBe(expected);
   });
 
-  it('shows the X/Y readout derived from state (no hardcoded 22)', () => {
+  it('shows the X/Y readout derived from RENDERABLE_EVENT_NAMES (not the full schema)', () => {
     jest.useFakeTimers();
     useSessionState.mockReturnValue(makeState());
     render(
@@ -122,12 +126,14 @@ describe('OverviewTab', () => {
         <OverviewTab />
       </Wrapper>,
     );
-    // Advance past the typewriter (one char per ~24ms, up to ~25 chars → ~600ms).
     act(() => {
       jest.advanceTimersByTime(1000);
     });
     const readout = screen.getByTestId('coverage-readout');
-    expect(readout.textContent).toMatch(/> 2\/22 event types/i);
+    // makeState fires page_view + click_cta — both renderable. Denominator
+    // is RENDERABLE_EVENT_NAMES.length (schema minus sub/leadgen).
+    const denom = RENDERABLE_EVENT_NAMES.length;
+    expect(readout.textContent).toBe(`> 2/${denom} event types`);
     jest.useRealTimers();
   });
 
@@ -144,7 +150,7 @@ describe('OverviewTab', () => {
     act(() => {
       jest.advanceTimersByTime(1000);
     });
-    expect(readout.textContent).toBe('> 2/22 event types');
+    expect(readout.textContent).toBe(`> 2/${RENDERABLE_EVENT_NAMES.length} event types`);
     jest.useRealTimers();
   });
 
@@ -161,17 +167,12 @@ describe('OverviewTab', () => {
         <OverviewTab />
       </Wrapper>,
     );
-    // First render shows the warming-up empty state; coverage-readout is not
-    // in the DOM yet.
     expect(screen.queryByTestId('coverage-readout')).toBeNull();
 
-    // Let any queued effect from the null-first render flush without consuming
-    // the one-shot.
     act(() => {
       jest.advanceTimersByTime(0);
     });
 
-    // Hydrate.
     useSessionState.mockReturnValue(makeState());
     rerender(
       <Wrapper>
@@ -184,7 +185,7 @@ describe('OverviewTab', () => {
     act(() => {
       jest.advanceTimersByTime(1000);
     });
-    expect(readout.textContent).toBe('> 2/22 event types');
+    expect(readout.textContent).toBe(`> 2/${RENDERABLE_EVENT_NAMES.length} event types`);
     jest.useRealTimers();
   });
 
@@ -206,7 +207,7 @@ describe('OverviewTab', () => {
     expect(screen.queryByText('[OK]')).toBeNull();
   });
 
-  it('renders one chip per event name in the schema (derive-from-schema)', () => {
+  it('renders one chip per RENDERABLE event name (hides sub/leadgen per F2)', () => {
     useSessionState.mockReturnValue(makeState());
     const { container } = render(
       <Wrapper>
@@ -214,10 +215,14 @@ describe('OverviewTab', () => {
       </Wrapper>,
     );
     const chips = container.querySelectorAll('[data-chip="event-chip"]');
-    expect(chips).toHaveLength(DATA_LAYER_EVENT_NAMES.length);
+    expect(chips).toHaveLength(RENDERABLE_EVENT_NAMES.length);
+    // The 4 hidden events are absent from the grid.
+    for (const hidden of ['plan_select', 'trial_signup', 'form_complete', 'lead_qualify']) {
+      expect(screen.queryByTestId(`chip-${hidden}`)).toBeNull();
+    }
   });
 
-  it('marks chips as fired / unfired based on coverage.fired', () => {
+  it('marks chips as fired / unfired based on coverage.fired (renderable only)', () => {
     useSessionState.mockReturnValue(makeState());
     render(
       <Wrapper>
@@ -225,7 +230,8 @@ describe('OverviewTab', () => {
       </Wrapper>,
     );
     const fired = screen.getByTestId('chip-page_view');
-    const unfired = screen.getByTestId('chip-plan_select');
+    // Use a renderable unfired event rather than plan_select (hidden).
+    const unfired = screen.getByTestId('chip-scroll_depth');
     expect(fired).toHaveAttribute('data-fired', 'true');
     expect(unfired).toHaveAttribute('data-fired', 'false');
   });
@@ -447,5 +453,60 @@ describe('OverviewTab', () => {
     expect(cta!.cta_location).toBe('contact_cta_threshold');
     expect(portal).toBeDefined();
     expect(portal!.destination).toBe('contact');
+  });
+
+  // --- F2 structural pins (UAT feedback) ---
+
+  it('renders the portals section at the TOP of the tab body (F2 reorder)', () => {
+    useSessionState.mockReturnValue(makeState());
+    const { container } = render(
+      <Wrapper>
+        <OverviewTab />
+      </Wrapper>,
+    );
+    // Direct children of the overview-tab root, in render order.
+    const tabRoot = container.querySelector('[data-testid="overview-tab"]');
+    expect(tabRoot).not.toBeNull();
+    const firstChild = tabRoot!.firstElementChild;
+    // The first child IS the portals section (or has it as its immediate
+    // content). Before F2 it was the session-header; a regression would
+    // flip the order and push portals below.
+    const portalsIsFirst =
+      firstChild?.getAttribute('data-testid') === 'overview-portals' ||
+      firstChild?.querySelector('[data-testid="overview-portals"]') !== null;
+    expect(portalsIsFirst).toBe(true);
+  });
+
+  it('renders the threshold CTA inside the top portals block (F2 reorder)', () => {
+    useSessionState.mockReturnValue(
+      makeState({
+        event_type_coverage: {
+          fired: RENDERABLE_EVENT_NAMES.slice(0, 11),
+          total: [...DATA_LAYER_EVENT_NAMES],
+        },
+      }),
+    );
+    render(
+      <Wrapper>
+        <OverviewTab />
+      </Wrapper>,
+    );
+    const portals = screen.getByTestId('overview-portals');
+    const cta = screen.getByTestId('contextual-contact-cta');
+    // CTA must be a descendant of the portals section, not below the funnel.
+    expect(portals.contains(cta)).toBe(true);
+  });
+
+  it('renders the 3-portal row as a grid (multi-column at sm+)', () => {
+    useSessionState.mockReturnValue(makeState());
+    render(
+      <Wrapper>
+        <OverviewTab />
+      </Wrapper>,
+    );
+    // Each portal link is isolable by testid.
+    expect(screen.getByTestId('portal-services')).toBeInTheDocument();
+    expect(screen.getByTestId('portal-about')).toBeInTheDocument();
+    expect(screen.getByTestId('portal-contact')).toBeInTheDocument();
   });
 });
