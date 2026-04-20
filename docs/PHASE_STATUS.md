@@ -20,7 +20,7 @@
 >
 > **Before Phase 9B (6b) renders in production:** set `MB_EMBEDDING_SECRET_KEY` + `METABASE_EMBED_CONFIG` in Vercel (mirrors of Secret Manager `metabase-embedding-secret-key` + `metabase-embed-config`). Without them, the confirmation page renders a visible fallback block deep-linking to the IAP-gated dashboard. This carries through into Phase 9F — the signer remains the production path for whichever embed shape 9F lands on.
 >
-> Last updated: 2026-04-20, session-2026-04-19-029 (Phase 9E Deliverables 4 + 3 dev-complete. Deliverable 4 shipped with 4-pass dual-evaluator convergence. Deliverable 3 shipped with 3-pass dual-evaluator convergence: SessionStateTab UI with all seven sections + one-shot typewriter (null→hydrated guard) + [SKIPPED] funnel status + aligned columns + portal descriptors, overlay tab integration (not yet default — d2) with click-bound session_state_tab_view emission (architecturally suppresses programmatic-open spurious emits), coverage milestone emission with sessionStorage memoization. Deliverables 1-2, 5-8 remain.)
+> Last updated: 2026-04-20, session-2026-04-19-029 (Phase 9E Deliverables 4 + 3 dev-complete. Deliverable 4 shipped with 4-pass dual-evaluator convergence. Deliverable 3 shipped with 5-pass dual-evaluator convergence: SessionStateTab UI with all seven sections + one-shot typewriter (null→hydrated guard) + [SKIPPED] funnel status + aligned columns + portal descriptors + dual-fire contextual CTA (portal_click + click_cta per REQUIREMENTS §3.3 line 368), overlay tab integration (not yet default — d2) with click-bound session_state_tab_view emission (architecturally suppresses programmatic-open spurious emits), coverage milestone emission with sessionStorage memoization. Deliverables 1-2, 5-8 remain.)
 
 ---
 
