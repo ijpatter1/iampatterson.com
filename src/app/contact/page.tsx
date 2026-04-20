@@ -4,6 +4,7 @@ import { useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { ScrollReveal } from '@/components/scroll-reveal';
+import { SessionStateRideAlong } from '@/components/contact/session-state-ride-along';
 import { trackFormFieldFocus, trackFormStart, trackFormSubmit } from '@/lib/events/track';
 
 export default function ContactPage() {
@@ -122,6 +123,7 @@ export default function ContactPage() {
                     className="mt-1.5 block w-full rounded-card border border-border bg-surface px-4 py-2.5 text-content placeholder:text-content-disabled focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                   />
                 </div>
+                <SessionStateRideAlong />
                 <button
                   type="submit"
                   className="w-full rounded-card bg-black px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-neutral-800"
