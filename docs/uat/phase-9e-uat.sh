@@ -11,7 +11,7 @@
 #   D6 Homepage Demos section rebuild (single ecommerce surface)
 #   D7 subscription + leadgen demo removal + permanent redirects (308)
 #   D8 contact form session-state ride-along (shipped with Phase 10 transport stub)
-#   D9 nav + Session analytics
+#   D9 Nav & Overview analytics (matches ARCHITECTURE.md:490 label)
 #
 # 16 scenarios across happy-path, boundary, accessibility, timing, state-change,
 # and tab-scope edges. Scenarios marked [devtools] require operator DevTools
@@ -585,7 +585,7 @@ confirm "session_pulse_hover is suppressed under coarse-pointer"
 # Deliverables: D3, D4
 
 scenario "13 — Coverage denominator matches live schema" \
-  "No rendering-path hardcodes denominator; bar is 16 cells, denominator is 22"
+  "No rendering-path hardcodes denominator; bar is 16 cells, visitor-facing denominator is 20 (RENDERABLE subset of 24 schema events)"
 
 setup "Fresh tab, cleared sessionStorage."
 

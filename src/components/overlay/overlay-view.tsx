@@ -221,9 +221,7 @@ export function OverlayView() {
   // Escape-key close (F3 UAT S8 fix). The pre-F3 overlay had a -z-10
   // "backdrop button" at absolute inset-0 but it was permanently occluded
   // by the flex-column header/tabs/content children — never received a
-  // click in practice. Since the overlay is a full-bleed modal (no visible
-  // scrim), there's no "click outside" region to capture; Escape is the
-  // standard modal escape hatch the visitor expects instead.
+  // click in practice. Escape is the standard modal escape hatch.
   useEffect(() => {
     if (!isOpen) return;
     const onKeyDown = (e: KeyboardEvent) => {
@@ -232,6 +230,21 @@ export function OverlayView() {
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [isOpen, close]);
+
+  // "Background click closes" (F8 user feedback). Clicking in non-
+  // interactive regions closes the overlay: the empty desktop gutters
+  // alongside the `max-w-content` content wrapper, and the vertical
+  // space below the content inside the scroll region. We rely on the
+  // bubble-phase `e.target === e.currentTarget` check — it only fires
+  // when the click landed directly on the listener's element, not on
+  // any descendant. So clicks on text, links, buttons, tabs, or the
+  // header still behave normally; only clicks in truly empty regions
+  // trigger close. The outermost fixed div and the flex-1 scroll
+  // wrapper both carry the handler so either the outer backdrop or
+  // the content gutter closes the overlay.
+  const handleBackgroundClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) close();
+  };
 
   if (!isOpen && !hasBooted.current) return null;
 
@@ -246,6 +259,7 @@ export function OverlayView() {
       data-testid="overlay-view"
       data-phase={phase}
       aria-hidden={!isOpen}
+      onClick={handleBackgroundClick}
       className={`fixed inset-0 z-50 flex flex-col bg-u-paper text-u-ink transition-opacity duration-200 ${
         isOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
       }`}
@@ -318,7 +332,10 @@ export function OverlayView() {
 
       <Tabs active={viewMode} onChange={handleTabChange} tabs={tabs} />
 
-      <div className="relative flex-1 overflow-y-auto bg-u-paper text-u-ink">
+      <div
+        className="relative flex-1 overflow-y-auto bg-u-paper text-u-ink"
+        onClick={handleBackgroundClick}
+      >
         <div
           key={`${String(flashKey)}-${viewMode}`}
           className="tab-flash mx-auto max-w-content px-6 py-8"

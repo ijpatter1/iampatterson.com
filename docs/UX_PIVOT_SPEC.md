@@ -285,7 +285,7 @@ interface SessionState {
   };
   event_type_coverage: {
     fired: string[]; // distinct event names fired
-    total: string[]; // all distinct event names defined in the schema (denominator)
+    total: string[]; // all schema names (internal); visitor-facing denominator filters to the renderable subset — see §3.6 Coverage denominator
   };
   demo_progress: {
     ecommerce: {
@@ -312,7 +312,7 @@ interface SessionState {
 
 **Update source:** The same mechanism that populates `useDataLayerEvents` / `useLiveEvents` populates Session State. A single listener subscribes to the data layer, parses iap_source events, and updates both the event buffer (existing) and the session state blob (new).
 
-**Coverage denominator:** `event_type_coverage.total` lists every distinct `event` name defined in `src/lib/events/schema.ts`, derived at module init from the `DATA_LAYER_EVENT_NAMES` runtime array (the single source of truth cross-checked at compile time against the `DataLayerEvent` union — no parallel hardcoded list). The count is currently 22 (the 16 pre-Phase-9E literals plus the 6 new 9E nav-analytics literals added by deliverable 9) and grows as future phases extend the union. Subscription and lead gen event-name literals remain in the denominator even though those demos are out of scope — the visitor sees them as unfired, which subtly communicates that more of the site exists.
+**Coverage denominator:** `event_type_coverage.total` lists every distinct `event` name defined in `src/lib/events/schema.ts`, derived at module init from the `DATA_LAYER_EVENT_NAMES` runtime array (the single source of truth cross-checked at compile time against the `DataLayerEvent` union — no parallel hardcoded list). Post-UAT-F2 the schema contains 24 literals (the 16 pre-Phase-9E literals, plus the 6 9E D9 nav-analytics literals, plus 2 UAT-F2 peers: `timeline_tab_view` and `consent_tab_view`) and grows as future phases extend the union. The **visitor-facing denominator** shown in the Overview coverage bar uses the narrower `RENDERABLE_EVENT_NAMES` subset (added in UAT F2 — the full schema minus the 4 subscription/leadgen event types that no current surface can fire), which is currently 20. Subscription and lead gen event-name literals stay in the schema + BigQuery columns for future reintroduction but are hidden from the visitor's chip grid so they don't see chips for events no product surface can fire. The ride-along payload projects against the same renderable subset so surface value and transmitted value stay identical (see §3.6 ride-along contract).
 
 **Demo progress trigger map (ecommerce):**
 

@@ -104,13 +104,39 @@ describe('OverlayView — editorial / CRT redesign', () => {
   });
 
   it('calls close when the Escape key is pressed (F3 UAT S8 fix)', () => {
-    // Standard modal behavior. Replaces the dead backdrop button as the
-    // non-explicit-close-button affordance.
+    // Standard modal behavior.
     render(<OverlayView />);
     act(() => {
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     });
     expect(mockClose).toHaveBeenCalled();
+  });
+
+  it('calls close when the outer overlay backdrop itself is clicked (F8 user feedback)', () => {
+    // Background-click-closes gesture: the listener uses the bubble-phase
+    // `e.target === e.currentTarget` check, so only direct clicks on the
+    // outer fixed container close — descendant clicks bubble through
+    // normally without triggering close.
+    render(<OverlayView />);
+    const view = screen.getByTestId('overlay-view');
+    act(() => {
+      view.click();
+    });
+    expect(mockClose).toHaveBeenCalled();
+  });
+
+  it('does NOT close when an interactive descendant (the close button) is clicked', async () => {
+    // Pin the contract that bubbled clicks from inner interactive
+    // elements don't accidentally trigger the background-close listener.
+    // Click → button's onClick fires close() once; the bubble reaches
+    // the outer div but target !== currentTarget so background handler
+    // no-ops. Exact-count assertion catches any regression to an
+    // always-close listener.
+    const user = userEvent.setup();
+    render(<OverlayView />);
+    mockClose.mockClear();
+    await user.click(screen.getByRole('button', { name: /back to site/i }));
+    expect(mockClose).toHaveBeenCalledTimes(1);
   });
 
   it('does NOT listen for Escape after isOpen flips false (cleanup)', () => {
