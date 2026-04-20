@@ -14,6 +14,16 @@ function isConsentValue(v: unknown): v is 'granted' | 'denied' {
   return v === 'granted' || v === 'denied';
 }
 
+/**
+ * Structural validation of a persisted blob.
+ *
+ * Intentionally loose on event-name membership: the blob may contain event
+ * names that predate a deploy's schema shape (or postdate one, if a rollback
+ * happened). The authoritative repair is `reconcileRehydrated` in `derive.ts`
+ * — this guard only rejects blobs that would crash the reducer outright.
+ * It DOES enforce the invariant that every name in `fired` also appears in
+ * `total`, so reconciliation never has to repair that particular breakage.
+ */
 function hasValidShape(value: unknown): value is SessionState {
   if (!value || typeof value !== 'object') return false;
   const v = value as Partial<SessionState>;
@@ -32,8 +42,14 @@ function hasValidShape(value: unknown): value is SessionState {
     typeof v.event_type_coverage !== 'object' ||
     v.event_type_coverage === null ||
     !Array.isArray(v.event_type_coverage.fired) ||
-    !Array.isArray(v.event_type_coverage.total)
+    !Array.isArray(v.event_type_coverage.total) ||
+    !v.event_type_coverage.fired.every((n) => typeof n === 'string') ||
+    !v.event_type_coverage.total.every((n) => typeof n === 'string')
   ) {
+    return false;
+  }
+  const totalSet = new Set<string>(v.event_type_coverage.total);
+  if (!v.event_type_coverage.fired.every((n) => totalSet.has(n))) {
     return false;
   }
   const dp = v.demo_progress;

@@ -10,6 +10,7 @@
  */
 import { DATA_LAYER_EVENT_NAMES } from '@/lib/events/schema';
 import { createInitialSessionState, reconcileRehydrated } from '@/lib/session-state/derive';
+import type { SessionState } from '@/lib/session-state/types';
 
 const INIT_NOW = new Date('2026-04-19T18:00:00.000Z');
 
@@ -22,11 +23,14 @@ describe('reconcileRehydrated', () => {
 
   it('replaces a stale (pre-deploy) total with the live schema array', () => {
     const loaded = createInitialSessionState('sid', INIT_NOW);
-    const stale = {
+    const stale: SessionState = {
       ...loaded,
       event_type_coverage: {
         fired: [],
-        total: ['page_view', 'click_cta'],
+        total: [
+          'page_view',
+          'click_cta',
+        ] as unknown as SessionState['event_type_coverage']['total'],
       },
     };
     const result = reconcileRehydrated(stale, 'sid');
@@ -44,8 +48,16 @@ describe('reconcileRehydrated', () => {
     const withRemovedEvent = {
       ...loaded,
       event_type_coverage: {
-        fired: ['page_view', 'removed_event_from_a_prior_deploy', 'click_cta'],
-        total: ['page_view', 'removed_event_from_a_prior_deploy', 'click_cta'],
+        fired: [
+          'page_view',
+          'removed_event_from_a_prior_deploy',
+          'click_cta',
+        ] as unknown as SessionState['event_type_coverage']['fired'],
+        total: [
+          'page_view',
+          'removed_event_from_a_prior_deploy',
+          'click_cta',
+        ] as unknown as SessionState['event_type_coverage']['total'],
       },
     };
     const result = reconcileRehydrated(withRemovedEvent, 'sid');
@@ -53,9 +65,61 @@ describe('reconcileRehydrated', () => {
     expect(result.event_type_coverage.total).toEqual([...DATA_LAYER_EVENT_NAMES]);
   });
 
+  it('filters events_fired keys to drop event names no longer in the schema (Pass 2 I1)', () => {
+    const loaded = createInitialSessionState('sid', INIT_NOW);
+    const withRemovedEventCount = {
+      ...loaded,
+      events_fired: {
+        page_view: 5,
+        removed_event_from_a_prior_deploy: 3,
+        click_cta: 2,
+      } as unknown as SessionState['events_fired'],
+      event_type_coverage: {
+        fired: [
+          'page_view',
+          'removed_event_from_a_prior_deploy',
+          'click_cta',
+        ] as unknown as SessionState['event_type_coverage']['fired'],
+        total: [
+          'page_view',
+          'removed_event_from_a_prior_deploy',
+          'click_cta',
+        ] as unknown as SessionState['event_type_coverage']['total'],
+      },
+    };
+    const result = reconcileRehydrated(withRemovedEventCount, 'sid');
+    expect(result.events_fired).toEqual({ page_view: 5, click_cta: 2 });
+    // The count map and the coverage.fired array stay in lockstep.
+    expect(Object.keys(result.events_fired).sort()).toEqual(
+      [...result.event_type_coverage.fired].sort(),
+    );
+  });
+
+  it('reconciles when only the session_id is stale (total is already current)', () => {
+    const loaded = createInitialSessionState('old-sid', INIT_NOW);
+    const result = reconcileRehydrated(loaded, 'fresh-sid');
+    expect(result.session_id).toBe('fresh-sid');
+    // total was already [...DATA_LAYER_EVENT_NAMES] via createInitialSessionState.
+    expect(result.event_type_coverage.total).toEqual([...DATA_LAYER_EVENT_NAMES]);
+  });
+
+  it('reconciles when only total is stale (session_id already matches)', () => {
+    const loaded = createInitialSessionState('sid', INIT_NOW);
+    const stale = {
+      ...loaded,
+      event_type_coverage: {
+        fired: [] as unknown as SessionState['event_type_coverage']['fired'],
+        total: ['page_view'] as unknown as SessionState['event_type_coverage']['total'],
+      },
+    };
+    const result = reconcileRehydrated(stale, 'sid');
+    expect(result.session_id).toBe('sid');
+    expect(result.event_type_coverage.total).toEqual([...DATA_LAYER_EVENT_NAMES]);
+  });
+
   it('preserves events_fired, demo_progress, visited_paths across reconciliation', () => {
     const loaded = createInitialSessionState('old-sid', INIT_NOW);
-    const populated = {
+    const populated: SessionState = {
       ...loaded,
       events_fired: { page_view: 3, click_cta: 2 },
       visited_paths: ['/', '/services'],
@@ -66,8 +130,11 @@ describe('reconcileRehydrated', () => {
           percentage: 50,
         },
       },
-      // stale
-      event_type_coverage: { fired: ['page_view'], total: ['page_view'] },
+      // stale total — fired is a subset so the hasValidShape invariant holds.
+      event_type_coverage: {
+        fired: ['page_view'] as unknown as SessionState['event_type_coverage']['fired'],
+        total: ['page_view'] as unknown as SessionState['event_type_coverage']['total'],
+      },
     };
     const result = reconcileRehydrated(populated, 'fresh-sid');
     expect(result.events_fired).toEqual({ page_view: 3, click_cta: 2 });

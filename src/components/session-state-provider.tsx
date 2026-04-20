@@ -2,12 +2,12 @@
 
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 
-import { DATA_LAYER_EVENT_NAMES, type DataLayerEventName } from '@/lib/events/schema';
 import { getSessionId } from '@/lib/events/session';
 import { getCurrentConsent } from '@/lib/events/track';
 import {
   createInitialSessionState,
   deriveNext,
+  isKnownEventName,
   reconcileRehydrated,
   type SessionStateEventInput,
 } from '@/lib/session-state/derive';
@@ -18,15 +18,12 @@ const SessionStateContext = createContext<SessionState | null>(null);
 
 const POLL_INTERVAL_MS = 400;
 
-/** Event names the reducer accepts — mirrors the schema's single source of truth. */
-const KNOWN_EVENT_NAMES: ReadonlySet<string> = new Set(DATA_LAYER_EVENT_NAMES);
-
 function toEventInput(entry: Record<string, unknown>): SessionStateEventInput | null {
   if (entry.iap_source !== true) return null;
   const event = entry.event;
-  if (typeof event !== 'string' || !KNOWN_EVENT_NAMES.has(event)) return null;
+  if (typeof event !== 'string' || !isKnownEventName(event)) return null;
   return {
-    event: event as DataLayerEventName,
+    event,
     timestamp: typeof entry.timestamp === 'string' ? entry.timestamp : new Date().toISOString(),
     page_path: typeof entry.page_path === 'string' ? entry.page_path : '',
     consent_analytics: entry.consent_analytics === true,
@@ -47,12 +44,20 @@ export function SessionStateProvider({ children }: { children: ReactNode }) {
       ? reconcileRehydrated(loaded, sessionId)
       : createInitialSessionState(sessionId, new Date(), { consent: getCurrentConsent() });
     setState(initial);
-    saveSessionState(initial);
+    // Skip the write when reconciliation was a no-op (reference-equal to loaded).
+    if (initial !== loaded) saveSessionState(initial);
     setReady(true);
   }, []);
 
   useEffect(() => {
     if (!ready) return;
+
+    // Re-seed consent_snapshot on the first poll tick. Cookiebot's script loads
+    // async from <head>; on a slow first visit it may not have populated by the
+    // time the mount effect runs getCurrentConsent(). A re-read ~400ms later
+    // catches the common case; the existing reducer self-heals from any event
+    // thereafter.
+    let reseededConsent = false;
 
     const interval = window.setInterval(() => {
       if (!window.dataLayer) return;
@@ -64,6 +69,34 @@ export function SessionStateProvider({ children }: { children: ReactNode }) {
         cursorRef.current++;
         const input = toEventInput(entry);
         if (input) inputs.push(input);
+      }
+
+      if (!reseededConsent) {
+        reseededConsent = true;
+        const current = getCurrentConsent();
+        setState((prev) => {
+          if (!prev) return prev;
+          const nextSnap = {
+            analytics: current.consent_analytics ? ('granted' as const) : ('denied' as const),
+            marketing: current.consent_marketing ? ('granted' as const) : ('denied' as const),
+            preferences: current.consent_preferences ? ('granted' as const) : ('denied' as const),
+          };
+          const s = prev.consent_snapshot;
+          if (
+            s.analytics === nextSnap.analytics &&
+            s.marketing === nextSnap.marketing &&
+            s.preferences === nextSnap.preferences
+          ) {
+            return prev;
+          }
+          const next: SessionState = {
+            ...prev,
+            consent_snapshot: nextSnap,
+            updated_at: new Date().toISOString(),
+          };
+          saveSessionState(next);
+          return next;
+        });
       }
 
       if (inputs.length === 0) return;

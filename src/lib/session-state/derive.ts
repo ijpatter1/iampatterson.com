@@ -14,8 +14,17 @@ import { DATA_LAYER_EVENT_NAMES, type DataLayerEventName } from '@/lib/events/sc
 
 import type { ConsentValue, EcommerceStage, SessionState } from './types';
 
-/** Frozen snapshot of the schema's event name list at module init. */
-const EVENT_NAME_SET: ReadonlySet<DataLayerEventName> = new Set(DATA_LAYER_EVENT_NAMES);
+/**
+ * Frozen snapshot of the schema's event name list at module init. Exported so
+ * the provider can reuse the same predicate set rather than rebuilding a
+ * parallel one (derive-from-schema rule applies to both consumers).
+ */
+export const EVENT_NAME_SET: ReadonlySet<string> = new Set<string>(DATA_LAYER_EVENT_NAMES);
+
+/** Runtime type guard: is this string one of the schema's known event names? */
+export function isKnownEventName(name: string): name is DataLayerEventName {
+  return EVENT_NAME_SET.has(name);
+}
 
 /** Map of ecommerce-funnel event names → stage labels. */
 const ECOMMERCE_STAGE_BY_EVENT: Partial<Record<DataLayerEventName, EcommerceStage>> = {
@@ -99,20 +108,25 @@ export function createInitialSessionState(
  * in-blob ID matches what sGTM sees on subsequent events.
  */
 export function reconcileRehydrated(loaded: SessionState, currentSessionId: string): SessionState {
-  const liveTotal: string[] = [...DATA_LAYER_EVENT_NAMES];
-  const liveTotalSet: ReadonlySet<string> = new Set(liveTotal);
+  const liveTotal: DataLayerEventName[] = [...DATA_LAYER_EVENT_NAMES];
   const totalInSync =
     loaded.event_type_coverage.total.length === liveTotal.length &&
-    loaded.event_type_coverage.total.every((name) => liveTotalSet.has(name));
+    loaded.event_type_coverage.total.every((name) => EVENT_NAME_SET.has(name));
   const sessionIdInSync = loaded.session_id === currentSessionId;
 
   if (totalInSync && sessionIdInSync) return loaded;
 
+  const filteredEventsFired: Partial<Record<DataLayerEventName, number>> = {};
+  for (const [name, count] of Object.entries(loaded.events_fired)) {
+    if (isKnownEventName(name)) filteredEventsFired[name] = count;
+  }
+
   return {
     ...loaded,
     session_id: currentSessionId,
+    events_fired: filteredEventsFired,
     event_type_coverage: {
-      fired: loaded.event_type_coverage.fired.filter((name) => liveTotalSet.has(name)),
+      fired: loaded.event_type_coverage.fired.filter((name) => EVENT_NAME_SET.has(name)),
       total: liveTotal,
     },
   };
@@ -161,9 +175,9 @@ export function deriveNext(state: SessionState, event: SessionStateEventInput): 
       },
     },
     consent_snapshot: {
-      analytics: event.consent_analytics ? 'granted' : 'denied',
-      marketing: event.consent_marketing ? 'granted' : 'denied',
-      preferences: event.consent_preferences ? 'granted' : 'denied',
+      analytics: toConsentValue(event.consent_analytics),
+      marketing: toConsentValue(event.consent_marketing),
+      preferences: toConsentValue(event.consent_preferences),
     },
     updated_at: event.timestamp,
   };

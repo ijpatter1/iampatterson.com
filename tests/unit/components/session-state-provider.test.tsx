@@ -202,15 +202,90 @@ describe('SessionStateProvider', () => {
     clearSpy.mockRestore();
   });
 
-  it('seeds the initial consent_snapshot from getCurrentConsent, not a hardcoded all-denied', () => {
-    // Defer to the consent-seeding test file for the granted-seed case — this
-    // test just pins the freshly-initialised default (no Cookiebot init in jest).
+  it('defaults consent_snapshot to all-denied when getCurrentConsent returns all-denied', () => {
+    // In jest, Cookiebot's initConsentState has not been called; the module
+    // default (all false) flows through getCurrentConsent → the seed.
     const { result } = renderHook(() => useSessionState(), { wrapper: Wrapper });
     expect(result.current!.consent_snapshot).toEqual({
       analytics: 'denied',
       marketing: 'denied',
       preferences: 'denied',
     });
+  });
+
+  it('seeds consent_snapshot from getCurrentConsent when Cookiebot has already initialised (Pass 2 m6)', () => {
+    // Simulate Cookiebot having granted consent synchronously before the
+    // provider mounts — the seed path must pick that up, not default to denied.
+    const { initConsentState } =
+      jest.requireActual<typeof import('@/lib/events/track')>('@/lib/events/track');
+    initConsentState(true, false, true);
+    try {
+      const { result } = renderHook(() => useSessionState(), { wrapper: Wrapper });
+      expect(result.current!.consent_snapshot).toEqual({
+        analytics: 'granted',
+        marketing: 'denied',
+        preferences: 'granted',
+      });
+    } finally {
+      initConsentState(false, false, false);
+    }
+  });
+
+  it('re-seeds consent_snapshot on the first poll tick if Cookiebot arrived after mount (Pass 2 m5)', () => {
+    jest.useFakeTimers();
+    const { initConsentState } =
+      jest.requireActual<typeof import('@/lib/events/track')>('@/lib/events/track');
+    const { result } = renderHook(() => useSessionState(), { wrapper: Wrapper });
+    expect(result.current!.consent_snapshot.analytics).toBe('denied');
+
+    // Cookiebot finishes loading after the mount effect; first poll tick
+    // re-reads and heals the snapshot without needing an iap_source event.
+    initConsentState(true, true, false);
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
+
+    try {
+      expect(result.current!.consent_snapshot).toEqual({
+        analytics: 'granted',
+        marketing: 'granted',
+        preferences: 'denied',
+      });
+    } finally {
+      initConsentState(false, false, false);
+    }
+  });
+
+  it('skips the sessionStorage write on init when reconciliation is a no-op (Pass 2 m4)', () => {
+    // Pre-populate a valid, up-to-date blob — reconciliation returns the loaded
+    // reference unchanged; the provider should not redundantly re-write it.
+    const prior = {
+      session_id: 'live-session-id',
+      started_at: '2026-04-19T17:00:00.000Z',
+      updated_at: '2026-04-19T17:00:00.000Z',
+      page_count: 0,
+      visited_paths: [],
+      events_fired: {},
+      event_type_coverage: {
+        fired: [],
+        total: [...DATA_LAYER_EVENT_NAMES],
+      },
+      demo_progress: { ecommerce: { stages_reached: [], percentage: 0 } },
+      consent_snapshot: { analytics: 'denied', marketing: 'denied', preferences: 'denied' },
+    };
+    window.sessionStorage.setItem(SESSION_STATE_STORAGE_KEY, JSON.stringify(prior));
+    // Line up the _iap_sid cookie with the stored session_id so reconciliation
+    // recognises the session_id as already current.
+    document.cookie = '_iap_sid=live-session-id; Path=/';
+
+    const saveSpy = jest.spyOn(Storage.prototype, 'setItem');
+    renderHook(() => useSessionState(), { wrapper: Wrapper });
+
+    const writes = saveSpy.mock.calls.filter(([key]) => key === SESSION_STATE_STORAGE_KEY);
+    expect(writes).toHaveLength(0);
+
+    saveSpy.mockRestore();
+    document.cookie = '_iap_sid=; Path=/; Max-Age=0';
   });
 
   it('useSessionState returns null when used outside a provider (SSR-safe)', () => {

@@ -60,6 +60,44 @@ describe('SessionState storage', () => {
     expect(loadSessionState()).toBeNull();
   });
 
+  it('rejects a blob whose fired array is not a subset of total (Pass 2 I2)', () => {
+    const invariantViolation = {
+      session_id: 'sid',
+      started_at: '2026-04-19T18:00:00.000Z',
+      updated_at: '2026-04-19T18:00:00.000Z',
+      page_count: 0,
+      visited_paths: [],
+      events_fired: {},
+      event_type_coverage: {
+        fired: ['page_view', 'orphan_event_not_in_total'],
+        total: ['page_view'],
+      },
+      demo_progress: { ecommerce: { stages_reached: [], percentage: 0 } },
+      consent_snapshot: { analytics: 'denied', marketing: 'denied', preferences: 'denied' },
+    };
+    window.sessionStorage.setItem(SESSION_STATE_STORAGE_KEY, JSON.stringify(invariantViolation));
+    expect(loadSessionState()).toBeNull();
+  });
+
+  it('rejects a blob whose fired array contains non-string entries', () => {
+    const bad = {
+      session_id: 'sid',
+      started_at: '2026-04-19T18:00:00.000Z',
+      updated_at: '2026-04-19T18:00:00.000Z',
+      page_count: 0,
+      visited_paths: [],
+      events_fired: {},
+      event_type_coverage: {
+        fired: ['page_view', 42],
+        total: ['page_view', 42],
+      },
+      demo_progress: { ecommerce: { stages_reached: [], percentage: 0 } },
+      consent_snapshot: { analytics: 'denied', marketing: 'denied', preferences: 'denied' },
+    };
+    window.sessionStorage.setItem(SESSION_STATE_STORAGE_KEY, JSON.stringify(bad));
+    expect(loadSessionState()).toBeNull();
+  });
+
   it('rejects a blob whose consent_snapshot carries non-canonical values', () => {
     const bad = {
       session_id: 'sid',

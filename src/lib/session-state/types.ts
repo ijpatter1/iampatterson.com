@@ -7,6 +7,7 @@
  * sessionStorage under `iampatterson.session_state`. A returning visitor
  * starts fresh — aligned with the `_iap_sid` cookie lifecycle.
  */
+import type { DataLayerEventName } from '@/lib/events/schema';
 
 /** Ecommerce demo funnel stages — monotonic set, ordered by first-reached. */
 export type EcommerceStage = 'product_view' | 'add_to_cart' | 'begin_checkout' | 'purchase';
@@ -41,17 +42,24 @@ export interface SessionState {
    * second derivation pass.
    */
   visited_paths: string[];
-  /** Per-event-name fire counts for the lifetime of the session. */
-  events_fired: { [event_name: string]: number };
+  /**
+   * Per-event-name fire counts for the lifetime of the session. Typed as a
+   * partial record over the `DataLayerEventName` union so a typo in a key name
+   * fails at compile time inside the reducer. On rehydration, entries whose
+   * keys are no longer present in the live schema are dropped via
+   * `reconcileRehydrated` — keep in lockstep with `event_type_coverage.fired`.
+   */
+  events_fired: Partial<Record<DataLayerEventName, number>>;
   event_type_coverage: {
     /** Distinct event names fired this session (insertion order). */
-    fired: string[];
+    fired: DataLayerEventName[];
     /**
      * Every distinct event name defined in the schema, derived at module init
      * from `DATA_LAYER_EVENT_NAMES`. No hardcoded count anywhere in the
-     * coverage pipeline (Phase 9E deliverable 4).
+     * coverage pipeline (Phase 9E deliverable 4). Reconciled against the live
+     * schema on rehydration so a stale (pre-deploy) array never surfaces.
      */
-    total: string[];
+    total: DataLayerEventName[];
   };
   demo_progress: {
     ecommerce: {
