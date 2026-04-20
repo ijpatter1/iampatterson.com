@@ -21,45 +21,50 @@ function makeState(overrides: Partial<SessionState> = {}): SessionState {
     visited_paths: ['/', '/services', '/about'],
     events_fired: {},
     event_type_coverage: {
+      // All names below are real entries in DATA_LAYER_EVENT_NAMES
+      // (src/lib/events/schema.ts). Test was previously fabricating
+      // names (`view_section`, `session_start`, `iap_source`, `hover_word`)
+      // that weren't in the union — passed jest because `.length` is
+      // the only thing asserted, but flagged 8 new tsc --noEmit errors.
       fired: [
         'page_view',
         'scroll_depth',
         'click_cta',
         'click_nav',
-        'view_section',
         'consent_update',
-        'session_start',
-        'iap_source',
-        'hover_word',
+        'form_start',
+        'form_field_focus',
+        'form_submit',
         'product_view',
         'add_to_cart',
         'begin_checkout',
         'purchase',
-        'form_start',
+        'nav_hint_shown',
+        'session_pulse_hover',
       ],
       total: [
         'page_view',
         'scroll_depth',
         'click_cta',
         'click_nav',
-        'view_section',
         'consent_update',
-        'session_start',
-        'iap_source',
-        'hover_word',
+        'form_start',
+        'form_field_focus',
+        'form_submit',
         'product_view',
         'add_to_cart',
         'begin_checkout',
         'purchase',
-        'form_start',
-        'form_field_focus',
-        'form_submit',
+        'nav_hint_shown',
+        'session_pulse_hover',
         'plan_select',
         'trial_signup',
         'form_complete',
         'lead_qualify',
-        'nav_hint_shown',
         'nav_hint_dismissed',
+        'session_state_tab_view',
+        'portal_click',
+        'coverage_milestone',
       ],
     },
     demo_progress: {
@@ -226,6 +231,166 @@ describe('SessionStateRideAlong', () => {
         container.querySelector<HTMLInputElement>('input[name="session_state"]')!.value,
       );
       expect(second.ecommerce_demo_percentage).toBe(100);
+    });
+  });
+
+  describe('async-init path (Pass 1 Critical #1) — null-then-populated', () => {
+    it('picks up marketing-granted default AFTER the provider init effect resolves', () => {
+      // Real browser path: the provider's init runs in useEffect, so
+      // useSessionState() returns null on the component's first render
+      // and populated on the next. A naive useState(initialFromNullState)
+      // captures false and never re-seeds — visitor sees unchecked box
+      // despite granted consent. The userOverride-null-until-clicked
+      // pattern derives `checked` from current consent every render and
+      // only pins to user intent after they interact.
+      mockState = null;
+      const { rerender } = render(<SessionStateRideAlong />);
+      // First render: state null → component returns null → no checkbox.
+      expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+
+      // Provider resolves, state populates with marketing granted.
+      mockState = makeState({
+        consent_snapshot: { analytics: 'granted', marketing: 'granted', preferences: 'granted' },
+      });
+      rerender(<SessionStateRideAlong />);
+      const cb = screen.getByRole('checkbox') as HTMLInputElement;
+      expect(cb.checked).toBe(true);
+    });
+
+    it('picks up marketing-denied default AFTER the provider init effect resolves', () => {
+      mockState = null;
+      const { rerender } = render(<SessionStateRideAlong />);
+      mockState = makeState({
+        consent_snapshot: { analytics: 'granted', marketing: 'denied', preferences: 'granted' },
+      });
+      rerender(<SessionStateRideAlong />);
+      const cb = screen.getByRole('checkbox') as HTMLInputElement;
+      expect(cb.checked).toBe(false);
+    });
+  });
+
+  describe('consent revocation after mount (Pass 1 Critical #2)', () => {
+    it('auto-unchecks the box when marketing consent flips granted→denied and user has not interacted', () => {
+      mockState = makeState({
+        consent_snapshot: { analytics: 'granted', marketing: 'granted', preferences: 'granted' },
+      });
+      const { container, rerender } = render(<SessionStateRideAlong />);
+      let cb = screen.getByRole('checkbox') as HTMLInputElement;
+      expect(cb.checked).toBe(true);
+      expect(container.querySelector('input[name="session_state"]')).not.toBeNull();
+
+      // Visitor revokes marketing consent via Cookiebot mid-page.
+      mockState = makeState({
+        consent_snapshot: { analytics: 'granted', marketing: 'denied', preferences: 'granted' },
+      });
+      rerender(<SessionStateRideAlong />);
+      cb = screen.getByRole('checkbox') as HTMLInputElement;
+      expect(cb.checked).toBe(false);
+      // Hidden field must also disappear — no silent transmission under
+      // a denied consent signal the user never explicitly overrode.
+      expect(container.querySelector('input[name="session_state"]')).toBeNull();
+    });
+
+    it('does NOT auto-flip the box if the user has explicitly interacted (override wins)', async () => {
+      mockState = makeState({
+        consent_snapshot: { analytics: 'granted', marketing: 'granted', preferences: 'granted' },
+      });
+      const user = userEvent.setup();
+      const { rerender } = render(<SessionStateRideAlong />);
+      // User explicitly unchecks (override = false).
+      await user.click(screen.getByRole('checkbox'));
+      let cb = screen.getByRole('checkbox') as HTMLInputElement;
+      expect(cb.checked).toBe(false);
+
+      // Consent flips granted→denied. User already pinned their intent
+      // to unchecked — no re-flip needed, stays unchecked.
+      mockState = makeState({
+        consent_snapshot: { analytics: 'granted', marketing: 'denied', preferences: 'granted' },
+      });
+      rerender(<SessionStateRideAlong />);
+      cb = screen.getByRole('checkbox') as HTMLInputElement;
+      expect(cb.checked).toBe(false);
+
+      // Consent flips back denied→granted. Still no auto-flip — user
+      // override governs across the session until the component unmounts.
+      mockState = makeState({
+        consent_snapshot: { analytics: 'granted', marketing: 'granted', preferences: 'granted' },
+      });
+      rerender(<SessionStateRideAlong />);
+      cb = screen.getByRole('checkbox') as HTMLInputElement;
+      expect(cb.checked).toBe(false);
+    });
+  });
+
+  describe('summary copy — four variants keyed on (checked, marketing)', () => {
+    it('checked + granted → "will ride along" with concrete payload', () => {
+      mockState = makeState({
+        consent_snapshot: { analytics: 'granted', marketing: 'granted', preferences: 'granted' },
+      });
+      render(<SessionStateRideAlong />);
+      const summary = screen.getByTestId('ride-along-summary');
+      expect(summary.textContent).toMatch(/14 of 22 event types/);
+      expect(summary.textContent).toMatch(/75%/);
+      expect(summary.textContent).toMatch(/will ride along/i);
+      expect(summary.textContent).not.toMatch(/will not be included/i);
+      expect(summary.textContent).not.toMatch(/overriding/i);
+      expect(summary.textContent).not.toMatch(/off by default/i);
+    });
+
+    it('unchecked + granted → "will not be included, check the box above"', async () => {
+      mockState = makeState({
+        consent_snapshot: { analytics: 'granted', marketing: 'granted', preferences: 'granted' },
+      });
+      const user = userEvent.setup();
+      render(<SessionStateRideAlong />);
+      await user.click(screen.getByRole('checkbox')); // uncheck
+      const summary = screen.getByTestId('ride-along-summary');
+      expect(summary.textContent).toMatch(/will not be included/i);
+      expect(summary.textContent).toMatch(/check the box above/i);
+      expect(summary.textContent).not.toMatch(/will ride along/i);
+    });
+
+    it('checked + denied → "overriding" + concrete payload (transparency at the override moment)', async () => {
+      mockState = makeState({
+        consent_snapshot: { analytics: 'granted', marketing: 'denied', preferences: 'granted' },
+      });
+      const user = userEvent.setup();
+      render(<SessionStateRideAlong />);
+      // Default: unchecked. User overrides by clicking.
+      await user.click(screen.getByRole('checkbox'));
+      const summary = screen.getByTestId('ride-along-summary');
+      expect(summary.textContent).toMatch(/overriding.*denied marketing consent/i);
+      expect(summary.textContent).toMatch(/14 of 22 event types/);
+      expect(summary.textContent).toMatch(/75%/);
+      expect(summary.textContent).toMatch(/will ride along/i);
+      // Critically: visitor must see the payload they're opting into,
+      // not just the override-invitation copy they saw pre-click.
+      expect(summary.textContent).not.toMatch(/off by default/i);
+    });
+
+    it('unchecked + denied → honest-override invitation copy', () => {
+      mockState = makeState({
+        consent_snapshot: { analytics: 'granted', marketing: 'denied', preferences: 'granted' },
+      });
+      render(<SessionStateRideAlong />);
+      const summary = screen.getByTestId('ride-along-summary');
+      expect(summary.textContent).toMatch(/denied marketing consent/i);
+      expect(summary.textContent).toMatch(/off by default/i);
+      expect(summary.textContent).toMatch(/check the box above/i);
+      expect(summary.textContent).not.toMatch(/will ride along/i);
+      expect(summary.textContent).not.toMatch(/overriding/i);
+    });
+  });
+
+  describe('a11y — aria-describedby', () => {
+    it('links the checkbox to the summary paragraph so screen readers hear the payload on focus', () => {
+      mockState = makeState();
+      render(<SessionStateRideAlong />);
+      const cb = screen.getByRole('checkbox');
+      const describedBy = cb.getAttribute('aria-describedby');
+      expect(describedBy).toBeTruthy();
+      const summary = screen.getByTestId('ride-along-summary');
+      expect(summary.id).toBe(describedBy);
     });
   });
 });
