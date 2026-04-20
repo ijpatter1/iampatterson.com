@@ -162,6 +162,324 @@
     }
   }
 
+  /* ═══════════════════════════════════════════════════════════════════
+     Phase 9E D5 — Pipeline section progressive bleed-through reveal.
+     The four `.bleed-*` siblings sit above paper, under content, all
+     pointer-transparent. JS writes `--bleed` (0..1) to the section
+     element each rAF tick; these rules read it via `color-mix` and
+     opacity calc(). Tier-class state (`warm` / `hot` / `peak`) is
+     toggled on the section by React only when a threshold crosses.
+     Reference: docs/input_artifacts/design_handoff_pipeline/styles/
+     ═══════════════════════════════════════════════════════════════════ */
+
+  .pipeline-section.bleed-layer {
+    transition: background 220ms ease;
+    background:
+      radial-gradient(
+        120% 90% at 50% 110%,
+        color-mix(in oklab, #ffa400 calc(var(--bleed, 0) * 14%), transparent) 0%,
+        transparent 60%
+      ),
+      color-mix(in oklab, #ffa400 calc(var(--bleed, 0) * 2.5%), var(--paper, #ffffff));
+  }
+
+  /* The headline + meta + log warm as bleed grows. Persimmon → amber via
+     the page's --accent (which OverlayProvider also flips when the overlay
+     opens, keeping the accent story continuous across surfaces). */
+  .pipeline-section.bleed-layer h2,
+  .pipeline-section.bleed-layer .p-meta,
+  .pipeline-section.bleed-layer .pv-edit__fn-list {
+    transition:
+      color 240ms ease,
+      text-shadow 180ms ease;
+  }
+  .pipeline-section.bleed-layer h2 em {
+    color: color-mix(in oklab, #ffa400 calc(var(--bleed, 0) * 90%), var(--accent));
+    text-shadow: 0 0 calc(var(--bleed, 0) * 14px)
+      color-mix(in oklab, #ffa400 calc(var(--bleed, 0) * 55%), transparent);
+  }
+
+  /* Active stage number bleeds toward amber at hot+. */
+  .pipeline-section.hot .pv-edit__stage[data-active='true'] .pv-edit__num {
+    color: color-mix(in oklab, #ffa400 calc(var(--bleed, 0) * 100%), var(--accent));
+  }
+
+  /* All four bleed layers — pointer-transparent, stacked above paper but
+     below the .pipeline-shell content. */
+  .pipeline-section .bleed-scanlines,
+  .pipeline-section .bleed-phosphor,
+  .pipeline-section .bleed-vignette,
+  .pipeline-section .bleed-rgb {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* --- Scanlines: horizontal CRT raster, drifts vertically --- */
+  .pipeline-section .bleed-scanlines {
+    opacity: calc(var(--bleed, 0) * 0.55);
+    background-image: repeating-linear-gradient(
+      to bottom,
+      rgba(255, 164, 0, 0.22) 0px,
+      rgba(255, 164, 0, 0.22) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    mix-blend-mode: multiply;
+    animation: bleed-scan-drift 6s linear infinite;
+  }
+  @keyframes bleed-scan-drift {
+    from {
+      background-position: 0 0;
+    }
+    to {
+      background-position: 0 6px;
+    }
+  }
+
+  /* --- Phosphor: amber bloom rising from the bottom, breathes --- */
+  .pipeline-section .bleed-phosphor {
+    opacity: calc(var(--bleed, 0) * 0.85);
+    background: radial-gradient(
+      ellipse 70% 50% at 50% 100%,
+      rgba(255, 164, 0, 0.28) 0%,
+      rgba(255, 164, 0, 0.1) 40%,
+      transparent 75%
+    );
+    mix-blend-mode: screen;
+    animation: bleed-phosphor-breathe 3.2s ease-in-out infinite;
+  }
+  @keyframes bleed-phosphor-breathe {
+    0%,
+    100% {
+      filter: brightness(0.92);
+    }
+    50% {
+      filter: brightness(1.08);
+    }
+  }
+
+  /* --- Vignette: dark corners, curved-tube effect --- */
+  .pipeline-section .bleed-vignette {
+    opacity: calc(var(--bleed, 0) * 0.65);
+    background: radial-gradient(
+      120% 100% at 50% 50%,
+      transparent 50%,
+      rgba(13, 11, 10, 0.35) 90%,
+      rgba(13, 11, 10, 0.55) 100%
+    );
+    mix-blend-mode: multiply;
+  }
+
+  /* --- RGB sweep: chromatic-aberration band, only at hot tier --- */
+  .pipeline-section .bleed-rgb {
+    opacity: 0;
+    background: linear-gradient(
+      to bottom,
+      transparent 0%,
+      transparent 47%,
+      rgba(255, 60, 0, 0.18) 49%,
+      rgba(0, 200, 255, 0.18) 51%,
+      transparent 53%,
+      transparent 100%
+    );
+    mix-blend-mode: screen;
+    transform: translateY(-100%);
+  }
+  .pipeline-section.hot .bleed-rgb {
+    opacity: 1;
+    animation: bleed-rgb-sweep 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+  @keyframes bleed-rgb-sweep {
+    0% {
+      transform: translateY(-60%);
+      opacity: 0;
+    }
+    20% {
+      opacity: 0.9;
+    }
+    80% {
+      opacity: 0.9;
+    }
+    100% {
+      transform: translateY(60%);
+      opacity: 0;
+    }
+  }
+
+  /* --- Flicker burst: short, sharp full-field amber strobe --- */
+  .pipeline-section.flick .bleed-phosphor {
+    filter: brightness(1.45) contrast(1.1);
+  }
+  .pipeline-section.flick .bleed-scanlines {
+    opacity: calc(var(--bleed, 0) * 0.95);
+    transform: translateY(1px);
+  }
+  .pipeline-section.flick .pv-edit {
+    transform: translate(0.5px, -0.5px);
+  }
+  .pipeline-section.flick h2,
+  .pipeline-section.flick .p-meta,
+  .pipeline-section.flick .pv-edit__fn-list {
+    text-shadow:
+      -1px 0 rgba(255, 60, 0, 0.6),
+      1px 0 rgba(0, 200, 255, 0.45);
+  }
+
+  /* --- Sub-pixel jitter on the schematic at peak --- */
+  .pipeline-section.peak .pv-edit {
+    animation: bleed-jitter 140ms steps(2, end) infinite;
+  }
+  @keyframes bleed-jitter {
+    0% {
+      transform: translate(0, 0);
+    }
+    50% {
+      transform: translate(0.4px, -0.3px);
+    }
+    100% {
+      transform: translate(-0.3px, 0.4px);
+    }
+  }
+
+  /* --- Top-edge scan beam, sweeps L→R as bleed grows. Pulls the eye
+       toward the CTA at the bottom of the section. --- */
+  .pipeline-section.bleed-layer::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 2px;
+    pointer-events: none;
+    z-index: 3;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 164, 0, 0.9),
+      rgba(255, 255, 255, 0.9),
+      rgba(255, 164, 0, 0.9),
+      transparent
+    );
+    filter: blur(0.5px);
+    opacity: calc(var(--bleed, 0) * 0.9);
+    transform: translateX(calc(-100% + var(--bleed, 0) * 200%));
+    transition: opacity 200ms ease;
+  }
+
+  /* --- "Watch it live" CTA — escapes the bleed.
+       Border, halo, and flip-icon rotation all couple to --bleed. At hot
+       it warms; at peak it flips solid amber and gets a sub-pixel jitter. --- */
+  .pipeline-section .flip-cta-wrap::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 260px;
+    height: 120px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(
+      ellipse at center,
+      color-mix(in oklab, #ffa400 calc(var(--bleed, 0) * 55%), transparent) 0%,
+      transparent 70%
+    );
+    filter: blur(calc(8px + var(--bleed, 0) * 14px));
+    opacity: calc(var(--bleed, 0) * 1);
+    pointer-events: none;
+    z-index: -1;
+    animation: bleed-cta-pulse 2.2s ease-in-out infinite;
+  }
+  @keyframes bleed-cta-pulse {
+    0%,
+    100% {
+      transform: translate(-50%, -50%) scale(1);
+    }
+    50% {
+      transform: translate(-50%, -50%) scale(1.12);
+    }
+  }
+
+  .pipeline-section .bleed-cta {
+    position: relative;
+    transition:
+      transform 200ms ease,
+      border-color 200ms ease,
+      box-shadow 220ms ease,
+      background 200ms ease,
+      color 200ms ease;
+    border-color: color-mix(in oklab, #ffa400 calc(var(--bleed, 0) * 80%), #111111);
+    box-shadow:
+      0 0 0 calc(var(--bleed, 0) * 1px)
+        color-mix(in oklab, #ffa400 calc(var(--bleed, 0) * 70%), transparent),
+      0 0 calc(var(--bleed, 0) * 26px)
+        color-mix(in oklab, #ffa400 calc(var(--bleed, 0) * 55%), transparent);
+  }
+  .pipeline-section.hot .bleed-cta {
+    background: color-mix(in oklab, #ffa400 14%, #ffffff);
+  }
+  .pipeline-section.peak .bleed-cta {
+    background: #ffa400;
+    color: #0d0b0a;
+    border-color: #ffa400;
+    animation: bleed-cta-jitter 420ms steps(3, end) infinite;
+  }
+  @keyframes bleed-cta-jitter {
+    0%,
+    100% {
+      transform: translate(0, 0);
+    }
+    33% {
+      transform: translate(-0.5px, 0.4px);
+    }
+    66% {
+      transform: translate(0.5px, -0.4px);
+    }
+  }
+  .pipeline-section .bleed-cta .flip-icon {
+    display: inline-block;
+    transform: rotate(calc(var(--bleed, 0) * 180deg));
+    color: color-mix(in oklab, #ffa400 calc(var(--bleed, 0) * 100%), var(--accent));
+    transition: transform 220ms ease;
+  }
+  .pipeline-section.peak .bleed-cta .flip-icon {
+    color: #0d0b0a;
+  }
+  /* "flip →" suffix fades in over the hot→peak band */
+  .pipeline-section .bleed-cta .flip-nudge {
+    font-size: 10px;
+    opacity: 0;
+    max-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    transition:
+      opacity 220ms ease,
+      max-width 260ms ease,
+      margin-left 260ms ease;
+    margin-left: 0;
+  }
+  .pipeline-section.hot .bleed-cta .flip-nudge {
+    opacity: calc((var(--bleed, 0) - 0.55) / 0.45);
+    max-width: 80px;
+    margin-left: 4px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pipeline-section .bleed-scanlines,
+    .pipeline-section .bleed-phosphor,
+    .pipeline-section .bleed-vignette,
+    .pipeline-section .bleed-rgb,
+    .pipeline-section .flip-cta-wrap::before,
+    .pipeline-section.bleed-layer::after {
+      animation: none !important;
+    }
+    .pipeline-section.peak .pv-edit,
+    .pipeline-section.peak .bleed-cta {
+      animation: none !important;
+    }
+  }
+
   /* Panel contents: hidden while the black curtain is dropping, then strobe in
      (hard steps) once phase flips to 'on'. The tab-flash element is also
      remounted via key={...} on tab change, so a fresh flash fires each tab. */

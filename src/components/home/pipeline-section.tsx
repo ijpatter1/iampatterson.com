@@ -1,37 +1,168 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 
-import { useLiveEvents } from '@/hooks/useLiveEvents';
 import { useOverlay } from '@/components/overlay/overlay-context';
 import { trackClickCta } from '@/lib/events/track';
 
-const STAGES = [
-  { n: '01', title: 'Browser', detail: 'dataLayer.push' },
-  { n: '02', title: 'Client GTM', detail: 'consent check' },
-  { n: '03', title: 'sGTM', detail: 'event processing' },
-  { n: '04', title: 'BigQuery', detail: 'warehouse write' },
-  { n: '05', title: 'Dashboards', detail: 'Metabase' },
-];
+import { computeBleed, tierClassName, tierFor, type BleedTier } from './pipeline-bleed';
+import { PipelineEditorial } from './pipeline-editorial';
 
+const FLICKER_BASE_DELAY_MS = 240;
+const FLICKER_BLEED_DELAY_RANGE_MS = 2200;
+const FLICKER_DELAY_JITTER_MS = 400;
+const FLICKER_BASE_DURATION_MS = 90;
+const FLICKER_DURATION_JITTER_MS = 120;
+
+/**
+ * Phase 9E D5 — Homepage pipeline section with progressive bleed-through reveal.
+ *
+ * The outer shell owns the scroll-driven `--bleed` ramp (0..1, anchored to the
+ * section's own height — see `computeBleed`), the tier-class state machine
+ * (warm > 0.18, hot > 0.55, peak > 0.85 — re-renders only on threshold crossing),
+ * and the random flicker burst scheduler that fires once tier ≥ warm. Four
+ * absolute-positioned sibling layers (scanlines, phosphor, vignette, RGB
+ * sweep) read `var(--bleed)` and animate via the `.pipeline-section.*` rules
+ * in `globals.css`. The schematic itself is delegated to `PipelineEditorial`.
+ *
+ * Reduced-motion gating: the rAF loop, flicker scheduler, stage rotation, CTA
+ * halo, and peak jitter are all suppressed. The bleed layers still render but
+ * without animations — the section settles into its calm editorial state.
+ *
+ * IntersectionObserver pauses the rAF loop when the section is fully off-screen,
+ * so the cost is bounded to the time the visitor is looking at the surface.
+ *
+ * Reference: docs/input_artifacts/design_handoff_pipeline/
+ */
 export function PipelineSection() {
-  const [activeStage, setActiveStage] = useState(0);
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const bleedRef = useRef(0);
+  const [bleedTier, setBleedTier] = useState<BleedTier>(0);
+  const [flickBurst, setFlickBurst] = useState(false);
   const { open } = useOverlay();
-  const { events } = useLiveEvents();
 
+  // Scroll-driven bleed ramp. Writes --bleed imperatively each frame so we
+  // re-render React only when the discrete tier class needs to change.
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     const reduced =
-      typeof window !== 'undefined' &&
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduced) return;
-    const id = window.setInterval(() => {
-      setActiveStage((s) => (s + 1) % STAGES.length);
-    }, 1400);
-    return () => window.clearInterval(id);
+
+    const el = sectionRef.current;
+    if (!el) return;
+
+    let alive = true;
+    let lastTier: BleedTier | -1 = -1;
+    let inView = true; // Default to in-view so SSR-rendered surfaces don't sit dark.
+    let rafId: number | null = null;
+
+    const compute = () => {
+      const rect = el.getBoundingClientRect();
+      const vh = window.innerHeight || 1;
+      const h = el.offsetHeight || vh;
+      const b = computeBleed(rect.top, vh, h);
+      bleedRef.current = b;
+      el.style.setProperty('--bleed', b.toFixed(3));
+      const t = tierFor(b);
+      if (t !== lastTier) {
+        lastTier = t;
+        setBleedTier(t);
+      }
+    };
+
+    const tick = () => {
+      if (!alive) return;
+      compute();
+      rafId = window.requestAnimationFrame(tick);
+    };
+
+    const startLoop = () => {
+      if (rafId !== null) return;
+      rafId = window.requestAnimationFrame(tick);
+    };
+
+    const stopLoop = () => {
+      if (rafId !== null) {
+        window.cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+    };
+
+    // IntersectionObserver gate: pause the loop when fully off-screen so we
+    // don't burn rAF frames computing bleed math the visitor can't see.
+    let observer: IntersectionObserver | null = null;
+    if (typeof window.IntersectionObserver === 'function') {
+      observer = new window.IntersectionObserver(
+        (entries) => {
+          const entry = entries[0];
+          if (!entry) return;
+          inView = entry.isIntersecting;
+          if (inView) startLoop();
+          else stopLoop();
+        },
+        { rootMargin: '200px 0px' },
+      );
+      observer.observe(el);
+    } else {
+      // No IO available — just keep the loop running.
+      startLoop();
+    }
+
+    return () => {
+      alive = false;
+      stopLoop();
+      observer?.disconnect();
+    };
   }, []);
 
-  const logRows = events.slice(0, 5);
+  // Random flicker bursts — only fire at warm or above. More frequent +
+  // sharper as bleed grows. Suppressed under reduced-motion.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const reduced =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced || bleedTier < 1) return;
+
+    let alive = true;
+    let timer: number | null = null;
+
+    const schedule = () => {
+      if (!alive) return;
+      const b = bleedRef.current;
+      const delay =
+        FLICKER_BASE_DELAY_MS +
+        (1 - b) * FLICKER_BLEED_DELAY_RANGE_MS +
+        Math.random() * FLICKER_DELAY_JITTER_MS;
+      timer = window.setTimeout(() => {
+        if (!alive) return;
+        setFlickBurst(true);
+        const burstDuration = FLICKER_BASE_DURATION_MS + Math.random() * FLICKER_DURATION_JITTER_MS;
+        timer = window.setTimeout(() => {
+          if (!alive) return;
+          setFlickBurst(false);
+          schedule();
+        }, burstDuration);
+      }, delay);
+    };
+
+    schedule();
+    return () => {
+      alive = false;
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, [bleedTier]);
+
+  const tierClass = tierClassName(bleedTier);
+  const sectionClassName = [
+    'pipeline-section bleed-layer relative isolate overflow-hidden border-t border-rule-soft bg-paper py-20 md:py-28',
+    flickBurst ? 'flick' : '',
+    tierClass,
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   const handleOpen = () => {
     trackClickCta('Watch it live', 'pipeline_watch_it_live');
@@ -40,26 +171,36 @@ export function PipelineSection() {
 
   return (
     <section
+      id="pipeline"
+      ref={sectionRef}
       data-testid="pipeline-section"
-      className="border-t border-rule-soft bg-paper py-20 md:py-28"
+      className={sectionClassName}
+      style={{ '--bleed': '0' } as CSSProperties}
     >
-      <div className="mx-auto max-w-content px-5 md:px-10">
-        <div className="grid gap-10 md:grid-cols-[1.1fr_1fr] md:items-end md:gap-20">
+      {/* Underside leak layers — sit above paper, under content. All four
+          read --bleed via CSS rules in globals.css. */}
+      <div data-bleed-layer="scanlines" className="bleed-scanlines" aria-hidden="true" />
+      <div data-bleed-layer="phosphor" className="bleed-phosphor" aria-hidden="true" />
+      <div data-bleed-layer="vignette" className="bleed-vignette" aria-hidden="true" />
+      <div data-bleed-layer="rgb" className="bleed-rgb" aria-hidden="true" />
+
+      <div className="pipeline-shell relative z-[2] mx-auto max-w-content px-5 md:px-10">
+        <div className="grid gap-5 md:grid-cols-[2fr_1fr] md:items-end md:gap-15">
           <h2
             className="font-display font-normal text-ink"
             style={{
-              fontSize: 'clamp(40px, 7vw, 96px)',
-              lineHeight: '0.95',
+              fontSize: 'clamp(36px, 5.5vw, 72px)',
+              lineHeight: 1,
               letterSpacing: '-0.02em',
             }}
           >
             Your session is
             <br />
-            being <em className="text-accent-current">measured</em>
+            being <em className="text-accent-current italic">measured</em>
             <br />
             right now.
           </h2>
-          <p className="max-w-[42ch] text-base leading-[1.7] text-ink-2 md:pb-3">
+          <p className="p-meta max-w-[42ch] font-mono text-[12px] leading-[1.6] text-ink-2 md:pb-3">
             Every scroll, click, and page view on this site flows through the same measurement
             pipeline I deploy for clients.
             <br />
@@ -68,87 +209,26 @@ export function PipelineSection() {
           </p>
         </div>
 
-        <div className="mt-16">
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-5 sm:gap-6">
-            {STAGES.map((s, i) => {
-              const active = activeStage === i;
-              return (
-                <div
-                  key={s.n}
-                  data-testid={`pipeline-stage-${s.n}`}
-                  data-active={active}
-                  className={`flex flex-col items-start gap-2 rounded-sm border px-4 py-5 transition-all ${
-                    active
-                      ? 'border-accent-current bg-paper shadow-[0_0_0_4px_color-mix(in_oklab,var(--accent)_10%,transparent)]'
-                      : 'border-rule-soft bg-paper'
-                  }`}
-                >
-                  <span
-                    className={`flex h-7 w-7 items-center justify-center rounded-full font-mono text-[10px] tracking-wide transition-colors ${
-                      active ? 'bg-accent-current text-paper' : 'bg-paper-alt text-ink-3'
-                    }`}
-                  >
-                    {s.n}
-                  </span>
-                  <span className="font-display text-lg text-ink">{s.title}</span>
-                  <span className="font-mono text-[10px] uppercase tracking-wider text-ink-3">
-                    {s.detail}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-
-          <div
-            className="mt-8 overflow-hidden rounded-sm border border-rule-soft bg-paper-alt"
-            data-testid="pipeline-log-feed"
-          >
-            <div className="border-b border-rule-soft bg-paper px-4 py-2 font-mono text-[10px] uppercase tracking-widest text-ink-3">
-              Live event stream
-            </div>
-            <div className="max-h-48 overflow-hidden px-4 py-3">
-              {logRows.length === 0 ? (
-                <p className="font-mono text-xs text-ink-3">
-                  Waiting for events… interact with the page to start the stream.
-                </p>
-              ) : (
-                <ul className="space-y-1">
-                  {logRows.map((e) => (
-                    <li
-                      key={e.pipeline_id}
-                      className="flex items-baseline gap-3 font-mono text-[11px] text-ink-2"
-                    >
-                      <span className="text-ink-4">{formatTime(e.timestamp)}</span>
-                      <span className="text-accent-current">{e.event_name}</span>
-                      <span className="text-ink-3 truncate">{e.page_path}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
+        <div className="pv-host relative z-[1] mb-10 mt-12">
+          <PipelineEditorial />
         </div>
 
-        <div className="mt-8 flex justify-center">
+        <div className="flip-cta-wrap relative z-[2] mt-8 flex justify-center">
           <button
             type="button"
             onClick={handleOpen}
-            className="inline-flex items-center gap-2 rounded-full border border-rule-soft bg-paper px-4 py-2 font-mono text-[10px] uppercase tracking-widest text-ink-2 transition-all hover:border-ink hover:bg-ink hover:text-paper"
+            className="bleed-cta inline-flex items-center gap-2 rounded-full border border-ink bg-paper px-4 py-2 font-sans text-[14px] font-medium text-ink transition-all"
           >
-            <span aria-hidden="true">↻</span>
-            Watch it live
+            <span className="flip-icon" aria-hidden="true">
+              ↻
+            </span>
+            <span className="flip-label">Watch it live</span>
+            <span className="flip-nudge font-mono uppercase tracking-[0.14em]" aria-hidden="true">
+              flip →
+            </span>
           </button>
         </div>
       </div>
     </section>
   );
-}
-
-function formatTime(iso: string): string {
-  try {
-    const d = new Date(iso);
-    return d.toTimeString().slice(0, 8);
-  } catch {
-    return '--:--:--';
-  }
 }
