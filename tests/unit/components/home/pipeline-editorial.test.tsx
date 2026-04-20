@@ -144,24 +144,38 @@ describe('PipelineEditorial', () => {
 
   it('shows the NEWEST live events in the visible window when the buffer overflows', () => {
     // useLiveEvents returns events newest-first. With >4 live events, the
-    // visible window must track the most recent activity (not the oldest
-    // four still in the buffer). We send 12 distinct events and assert
-    // that at least the absolute-newest one (e0 — useLiveEvents emits
-    // newest-first) is present in the rendered feed; an older one (e10)
-    // should NOT be visible.
+    // visible window must track the most recent activity. After reverse-
+    // to-chronological + prepend-seeds + trailing-4 slice, the visible
+    // window contains exactly the 4 newest events: [evt_3, evt_2, evt_1, evt_0]
+    // (in chronological order: oldest of the 4 newest first).
+    // Assert the exact set so a partial-reverse bug can't pass.
     mockLiveEvents = Array.from({ length: 12 }, (_, i) =>
       makeEvent(`evt-${i}`, `evt_${i}`, `2026-04-20T10:00:0${i}.000Z`),
     );
     render(<PipelineEditorial />);
     const feed = screen.getByTestId('pipeline-log-feed');
-    expect(feed.textContent).toContain('evt_0');
-    expect(feed.textContent).not.toContain('evt_11');
+    const eventNames = Array.from(feed.querySelectorAll('.e')).map((el) => el.textContent);
+    expect(eventNames).toEqual(['evt_3', 'evt_2', 'evt_1', 'evt_0']);
+    // Belt-and-braces: an older event (evt_4..evt_11) must not be visible.
+    for (let i = 4; i <= 11; i++) {
+      expect(feed.textContent).not.toContain(`evt_${i}`);
+    }
   });
 
   it('renders distinct timestamps per live event (no render-tick lockstep)', () => {
     // Two events 5 seconds apart in source data MUST render with different
     // timestamps. The pre-fix implementation stamped Date.now() on every
     // row at render time, so all live rows shared a single value.
+    //
+    // CRITICAL: Both `Date.now()` (used by startedAtRef inside the
+    // component) AND the fixture timestamps must be controlled. Without
+    // mocking Date.now, this test is wall-clock flaky — once real time
+    // passes the fixture timestamps, both deltas become negative,
+    // `fmtRelTime` clamps via `Math.max(0, ...)`, and both rows render
+    // as `00:00.00` → the Set collapses to size 1 → false-fail. Lock
+    // Date.now to a value strictly before the earliest fixture.
+    const mountTime = Date.parse('2026-04-20T09:59:00.000Z');
+    const dateSpy = jest.spyOn(Date, 'now').mockReturnValue(mountTime);
     const t0 = '2026-04-20T10:00:00.000Z';
     const t5 = '2026-04-20T10:00:05.000Z';
     mockLiveEvents = [makeEvent('e1', 'page_view', t0), makeEvent('e2', 'scroll_depth', t5)];
@@ -173,6 +187,7 @@ describe('PipelineEditorial', () => {
     // must not all be the same value. Use Set size as the witness.
     const liveTsCells = tsCells.slice(-2);
     expect(new Set(liveTsCells).size).toBe(2);
+    dateSpy.mockRestore();
   });
 
   it('renders the real session ID (last 6 chars) in the footnote header', () => {

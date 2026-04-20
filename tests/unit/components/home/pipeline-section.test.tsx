@@ -411,7 +411,10 @@ describe('PipelineSection — flicker scheduler', () => {
     expect(section.className).toMatch(/\bflick\b/);
     unmount();
 
-    // Second render: peak — bleed = 1 → delay = 240 + 0*2200 + 0 = 240ms.
+    // Second render: peak — bleed = 1 → delay = 240 + 0*2200 + 0 = 240ms,
+    // burst duration = 90 + 0 = 90ms (so it clears at ~330ms path-relative).
+    // Use a slightly-wider-than-1ms bracket but stay within the 90ms burst
+    // window so we land inside the on-state.
     stubSectionGeometry(800 * 0.95 - 1600);
     renderSection();
     act(() => {
@@ -419,11 +422,11 @@ describe('PipelineSection — flicker scheduler', () => {
     });
     section = screen.getByTestId('pipeline-section');
     act(() => {
-      jest.advanceTimersByTime(239);
+      jest.advanceTimersByTime(200); // T_path = 260, before the ~240ms-from-effect-start threshold
     });
     expect(section.className).not.toMatch(/\bflick\b/);
     act(() => {
-      jest.advanceTimersByTime(2);
+      jest.advanceTimersByTime(50); // T_path = 310, inside the 90ms burst window
     });
     expect(section.className).toMatch(/\bflick\b/);
     randSpy.mockRestore();

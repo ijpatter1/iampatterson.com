@@ -78,16 +78,20 @@ export function PipelineEditorial() {
 
   // `useLiveEvents` returns events newest-first. We want the visible window
   // to track the most recent activity, with seeds anchoring the start of
-  // session. Reverse the live slice to chronological order, prepend seeds,
+  // session. Reverse the live slice to chronological order (slice already
+  // returns a fresh array so the in-place reverse is safe), prepend seeds,
   // then take the trailing FEED_VISIBLE_ROWS so newer events push older
   // ones out as the session progresses. Each row carries its OWN
   // event-time-relative timestamp (Date.parse(e.timestamp) - t0) — using
   // Date.now() here would re-stamp every row to the current render tick,
   // making all live rows display the same value and tick forward in
-  // lockstep on every re-render.
+  // lockstep on every re-render. Corrupt timestamps fall back to delta=0
+  // (rendering as `00:00.00`) rather than being filtered out — the demo's
+  // purpose is to show data flowing through the pipeline, so dropping a
+  // row silently would be a worse signal than rendering it with a
+  // placeholder timestamp.
   const liveRows: FootnoteRow[] = events
     .slice(0, SESSION_FEED_BUFFER)
-    .slice()
     .reverse()
     .map((e) => {
       const eventTime = Date.parse(e.timestamp);

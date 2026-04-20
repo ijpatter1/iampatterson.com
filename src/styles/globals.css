@@ -498,13 +498,14 @@
     .pipeline-section.peak .bleed-cta {
       animation: none !important;
     }
-    /* Mobile reduced-motion fallback: stage rotation is suppressed in JS,
-       which would freeze the active stage on `01 Browser` and leave the
-       readouts for stages 02-05 collapsed (`max-h-0 opacity-0`). That gives
-       a reduced-motion mobile visitor only 1/5 of the substantive readout
-       content. The desktop variant always renders readouts inline so it's
-       fine there. Force every stage's readouts visible on mobile too, so
-       reduced-motion preserves the section's editorial value per spec. */
+    /* Reduced-motion readouts fallback: stage rotation is suppressed in JS,
+       which would freeze the active stage on `01 Browser`. On mobile this
+       collapses readouts for stages 02-05 (`max-h-0 opacity-0`), giving a
+       reduced-motion mobile visitor only 1/5 of the substantive readout
+       content. Desktop already renders readouts inline so this is a no-op
+       there — applying the rule to all viewports under reduced-motion
+       keeps the cascade simple, has no visual side-effect on desktop, and
+       preserves the section's editorial value on mobile per spec §3.4. */
     .pipeline-section .pv-edit__stage .pv-edit__reads {
       max-height: none !important;
       opacity: 1 !important;

@@ -156,9 +156,12 @@ export function PipelineSection() {
   const tierClass = tierClassName(bleedTier);
   // Spec calls for asymmetric padding (80px top / 100px bottom) so the
   // CTA gets editorial gravity at the close — matches design handoff
-  // pipeline_section.css `padding: 80px 0 100px`.
+  // pipeline_section.css `padding: 80px 0 100px`. Honor the asymmetry
+  // at every viewport: pt-20 = 80px top everywhere, pb-[100px] = 100px
+  // bottom everywhere. (Earlier `md:pt-28` carried over from the
+  // pre-D5 symmetric padding and broke spec on desktop.)
   const sectionClassName = [
-    'pipeline-section bleed-layer relative isolate overflow-hidden border-t border-rule-soft bg-paper pt-20 pb-[100px] md:pt-28',
+    'pipeline-section bleed-layer relative isolate overflow-hidden border-t border-rule-soft bg-paper pt-20 pb-[100px]',
     flickBurst ? 'flick' : '',
     tierClass,
   ]
