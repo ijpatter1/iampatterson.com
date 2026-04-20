@@ -12,6 +12,7 @@ import { render, renderHook, act } from '@testing-library/react';
 import type { ReactNode } from 'react';
 
 import { SessionStateProvider, useSessionState } from '@/components/session-state-provider';
+import { DATA_LAYER_EVENT_NAMES } from '@/lib/events/schema';
 import { SESSION_STATE_STORAGE_KEY, loadSessionState } from '@/lib/session-state/storage';
 
 function makeDataLayerEntry(overrides: Record<string, unknown> = {}) {
@@ -41,7 +42,7 @@ describe('SessionStateProvider', () => {
   });
 
   afterEach(() => {
-    delete (window as Record<string, unknown>).dataLayer;
+    delete (window as unknown as Record<string, unknown>).dataLayer;
     jest.useRealTimers();
   });
 
@@ -94,7 +95,7 @@ describe('SessionStateProvider', () => {
     expect(result.current!.events_fired).toEqual({});
   });
 
-  it('hydrates from sessionStorage when prior state exists', () => {
+  it('hydrates from sessionStorage when prior state exists, preserving event counts', () => {
     const prior = {
       session_id: 'prior',
       started_at: '2026-04-19T17:00:00.000Z',
@@ -104,7 +105,7 @@ describe('SessionStateProvider', () => {
       events_fired: { page_view: 2, click_cta: 1 },
       event_type_coverage: {
         fired: ['page_view', 'click_cta'],
-        total: ['page_view', 'click_cta'],
+        total: [...DATA_LAYER_EVENT_NAMES],
       },
       demo_progress: { ecommerce: { stages_reached: [], percentage: 0 } },
       consent_snapshot: { analytics: 'granted', marketing: 'denied', preferences: 'granted' },
@@ -112,8 +113,104 @@ describe('SessionStateProvider', () => {
     window.sessionStorage.setItem(SESSION_STATE_STORAGE_KEY, JSON.stringify(prior));
 
     const { result } = renderHook(() => useSessionState(), { wrapper: Wrapper });
-    expect(result.current!.session_id).toBe('prior');
     expect(result.current!.events_fired.click_cta).toBe(1);
+    expect(result.current!.page_count).toBe(2);
+  });
+
+  it('reconciles a rehydrated blob with a stale (pre-deploy) coverage total', () => {
+    const prior = {
+      session_id: 'prior',
+      started_at: '2026-04-19T17:00:00.000Z',
+      updated_at: '2026-04-19T17:05:00.000Z',
+      page_count: 0,
+      visited_paths: [],
+      events_fired: {},
+      // Simulate a pre-deploy persisted blob: only 3 of the 22 live event names.
+      event_type_coverage: {
+        fired: [],
+        total: ['page_view', 'click_cta', 'removed_event_from_a_prior_deploy'],
+      },
+      demo_progress: { ecommerce: { stages_reached: [], percentage: 0 } },
+      consent_snapshot: { analytics: 'denied', marketing: 'denied', preferences: 'denied' },
+    };
+    window.sessionStorage.setItem(SESSION_STATE_STORAGE_KEY, JSON.stringify(prior));
+
+    const { result } = renderHook(() => useSessionState(), { wrapper: Wrapper });
+    // Reconciliation swaps in the live schema list, not the stale stored list.
+    expect(result.current!.event_type_coverage.total).toEqual([...DATA_LAYER_EVENT_NAMES]);
+  });
+
+  it('rejects a structurally-partial blob and falls back to a freshly-initialised state', () => {
+    // Passes shallow shape but missing nested demo_progress.ecommerce — would
+    // have crashed the reducer on first event before Pass 1 evaluator I3 fix.
+    const malformed = {
+      session_id: 'partial',
+      started_at: '2026-04-19T17:00:00.000Z',
+      updated_at: '2026-04-19T17:00:00.000Z',
+      page_count: 0,
+      visited_paths: [],
+      events_fired: {},
+      event_type_coverage: { fired: [], total: [] },
+      demo_progress: {},
+      consent_snapshot: { analytics: 'denied', marketing: 'denied', preferences: 'denied' },
+    };
+    window.sessionStorage.setItem(SESSION_STATE_STORAGE_KEY, JSON.stringify(malformed));
+
+    const { result } = renderHook(() => useSessionState(), { wrapper: Wrapper });
+    expect(result.current!.session_id).not.toBe('partial');
+    expect(result.current!.event_type_coverage.total).toEqual([...DATA_LAYER_EVENT_NAMES]);
+  });
+
+  it('captures dataLayer entries pushed before the provider mounts', () => {
+    jest.useFakeTimers();
+    window.dataLayer.push(makeDataLayerEntry({ event: 'click_cta' }));
+    const { result } = renderHook(() => useSessionState(), { wrapper: Wrapper });
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
+    expect(result.current!.events_fired.click_cta).toBe(1);
+  });
+
+  it('persists once per batch with the final state after multiple events in a poll tick', () => {
+    jest.useFakeTimers();
+    const saveSpy = jest.spyOn(Storage.prototype, 'setItem');
+    const { result } = renderHook(() => useSessionState(), { wrapper: Wrapper });
+    const saveCountAfterInit = saveSpy.mock.calls.filter(
+      ([key]) => key === SESSION_STATE_STORAGE_KEY,
+    ).length;
+
+    act(() => {
+      window.dataLayer.push(makeDataLayerEntry({ event: 'click_cta' }));
+      window.dataLayer.push(makeDataLayerEntry({ event: 'add_to_cart' }));
+      jest.advanceTimersByTime(500);
+    });
+
+    const saveCountAfterBatch = saveSpy.mock.calls.filter(
+      ([key]) => key === SESSION_STATE_STORAGE_KEY,
+    ).length;
+    expect(saveCountAfterBatch - saveCountAfterInit).toBe(1);
+    expect(result.current!.events_fired).toEqual({ click_cta: 1, add_to_cart: 1 });
+    saveSpy.mockRestore();
+  });
+
+  it('tears down the poll interval on unmount', () => {
+    jest.useFakeTimers();
+    const clearSpy = jest.spyOn(window, 'clearInterval');
+    const { unmount } = renderHook(() => useSessionState(), { wrapper: Wrapper });
+    unmount();
+    expect(clearSpy).toHaveBeenCalled();
+    clearSpy.mockRestore();
+  });
+
+  it('seeds the initial consent_snapshot from getCurrentConsent, not a hardcoded all-denied', () => {
+    // Defer to the consent-seeding test file for the granted-seed case — this
+    // test just pins the freshly-initialised default (no Cookiebot init in jest).
+    const { result } = renderHook(() => useSessionState(), { wrapper: Wrapper });
+    expect(result.current!.consent_snapshot).toEqual({
+      analytics: 'denied',
+      marketing: 'denied',
+      preferences: 'denied',
+    });
   });
 
   it('useSessionState returns null when used outside a provider (SSR-safe)', () => {

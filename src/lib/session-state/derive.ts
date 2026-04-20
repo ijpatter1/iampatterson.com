@@ -12,7 +12,7 @@
  */
 import { DATA_LAYER_EVENT_NAMES, type DataLayerEventName } from '@/lib/events/schema';
 
-import type { EcommerceStage, SessionState } from './types';
+import type { ConsentValue, EcommerceStage, SessionState } from './types';
 
 /** Frozen snapshot of the schema's event name list at module init. */
 const EVENT_NAME_SET: ReadonlySet<DataLayerEventName> = new Set(DATA_LAYER_EVENT_NAMES);
@@ -37,8 +37,31 @@ export interface SessionStateEventInput {
   consent_preferences: boolean;
 }
 
-export function createInitialSessionState(sessionId: string, now: Date): SessionState {
+/** Optional overrides for the freshly-created state. */
+export interface InitialSessionStateOverrides {
+  /**
+   * Seed `consent_snapshot` from an authoritative source (e.g. Cookiebot via
+   * `getCurrentConsent()` in `src/lib/events/track.ts`). Without this, the
+   * snapshot defaults to all-denied until the first event supplies otherwise.
+   */
+  consent?: {
+    consent_analytics: boolean;
+    consent_marketing: boolean;
+    consent_preferences: boolean;
+  };
+}
+
+function toConsentValue(granted: boolean): ConsentValue {
+  return granted ? 'granted' : 'denied';
+}
+
+export function createInitialSessionState(
+  sessionId: string,
+  now: Date,
+  overrides: InitialSessionStateOverrides = {},
+): SessionState {
   const iso = now.toISOString();
+  const consent = overrides.consent;
   return {
     session_id: sessionId,
     started_at: iso,
@@ -56,11 +79,42 @@ export function createInitialSessionState(sessionId: string, now: Date): Session
       },
     },
     consent_snapshot: {
-      analytics: 'denied',
-      marketing: 'denied',
-      preferences: 'denied',
+      analytics: toConsentValue(consent?.consent_analytics ?? false),
+      marketing: toConsentValue(consent?.consent_marketing ?? false),
+      preferences: toConsentValue(consent?.consent_preferences ?? false),
     },
     updated_at: iso,
+  };
+}
+
+/**
+ * Reconcile a rehydrated state blob against the current runtime schema.
+ *
+ * `event_type_coverage.total` is derived from `DATA_LAYER_EVENT_NAMES` at
+ * module init — the derive-from-schema rule applies at every boundary, not
+ * just fresh-session init. If a tab was open when a deploy extended the
+ * schema, the persisted `total` is stale; reconciliation replaces it with
+ * the live schema. `session_id` is reconciled against the current
+ * `_iap_sid` cookie (which rotates after 30 minutes of idle) so the
+ * in-blob ID matches what sGTM sees on subsequent events.
+ */
+export function reconcileRehydrated(loaded: SessionState, currentSessionId: string): SessionState {
+  const liveTotal: string[] = [...DATA_LAYER_EVENT_NAMES];
+  const liveTotalSet: ReadonlySet<string> = new Set(liveTotal);
+  const totalInSync =
+    loaded.event_type_coverage.total.length === liveTotal.length &&
+    loaded.event_type_coverage.total.every((name) => liveTotalSet.has(name));
+  const sessionIdInSync = loaded.session_id === currentSessionId;
+
+  if (totalInSync && sessionIdInSync) return loaded;
+
+  return {
+    ...loaded,
+    session_id: currentSessionId,
+    event_type_coverage: {
+      fired: loaded.event_type_coverage.fired.filter((name) => liveTotalSet.has(name)),
+      total: liveTotal,
+    },
   };
 }
 

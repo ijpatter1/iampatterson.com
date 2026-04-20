@@ -431,16 +431,18 @@ Reshapes the nav model and the overlay's role across the whole site, introduces 
 
 ```typescript
 interface SessionState {
-  session_id: string;                          // matches _iap_sid
+  session_id: string;                          // matches _iap_sid (reconciled on hydrate)
   started_at: string;                          // ISO 8601
   page_count: number;                          // unique page paths visited
+  visited_paths: string[];                     // internal — backs page_count across reloads; NOT transmitted in ride-along
   events_fired: { [event_name: string]: number };
   event_type_coverage: {
     fired: string[];                           // distinct event names fired
-    total: string[];                           // derived at module init from DATA_LAYER_EVENT_NAMES in schema.ts — no hardcoded count
+    total: string[];                           // derived at module init from DATA_LAYER_EVENT_NAMES in schema.ts — no hardcoded count; reconciled on hydrate
   };
   demo_progress: {
     ecommerce: {
+      // Monotonic set ordered by first-reached. Consumers render via ECOMMERCE_FUNNEL_SEQUENCE + .includes, not iteration.
       stages_reached: ('product_view' | 'add_to_cart' | 'begin_checkout' | 'purchase')[];
       percentage: number;                      // stages_reached.length / 4 * 100
     };
@@ -453,6 +455,10 @@ interface SessionState {
   updated_at: string;                          // ISO 8601
 }
 ```
+
+**Rehydration contract.** The provider's mount effect runs `reconcileRehydrated(loaded, currentSessionId)` before setting state. This replaces `event_type_coverage.total` with the live `DATA_LAYER_EVENT_NAMES` array (so a tab open across a deploy that extended the schema sees the live denominator, not the pre-deploy one), updates `session_id` to the current `_iap_sid` cookie value (which rotates every 30 minutes of idle — sessionStorage is tab-lifetime), and filters `event_type_coverage.fired` to drop event names no longer present in the live schema. Other fields (`events_fired`, `visited_paths`, `demo_progress`, `consent_snapshot`, timestamps) are preserved verbatim. On a fresh session (no prior blob), `consent_snapshot` is seeded from Cookiebot via `getCurrentConsent()` in `src/lib/events/track.ts` so the Session State tab never briefly displays "all denied" when consent was already granted.
+
+**Ride-along projection.** The optional contact-form ride-along (deliverable 8, deferred by default in 9E) goes through `toRideAlongPayload(state)` in `src/lib/session-state/ride-along.ts` — a narrow projection that includes only `session_id`, `event_types_triggered` / `event_types_total`, `ecommerce_demo_percentage`, `pages_visited` (count, not path history), and the consent snapshot. `visited_paths` is deliberately **not** transmitted. Any future code path that serializes session state across a network boundary must use this helper, not `JSON.stringify` the whole blob.
 
 A single listener subscribes to the same data-layer source that populates the existing `useDataLayerEvents` / `useLiveEvents` buffer. On every event the listener updates the blob — the existing event buffer is unchanged. The coverage denominator (`event_type_coverage.total`) is read at module init from the exported `DATA_LAYER_EVENT_NAMES` runtime array in `src/lib/events/schema.ts` — the single source of truth for event-name iteration, cross-checked at compile time against the `DataLayerEvent` union via the `_AssertEventNamesInSync` sentinel. Post-Phase-9E-deliverable-9 the array contains 22 literals: the 16 pre-9E entries (`page_view`, `scroll_depth`, `click_nav`, `click_cta`, `form_field_focus`, `form_start`, `form_submit`, `consent_update`, `product_view`, `add_to_cart`, `begin_checkout`, `purchase`, `plan_select`, `trial_signup`, `form_complete`, `lead_qualify`) plus the 6 new 9E nav-analytics entries (`nav_hint_shown`, `nav_hint_dismissed`, `session_pulse_hover`, `session_state_tab_view`, `portal_click`, `coverage_milestone`). No intermediate implementation state hardcodes `16` or `22` as a magic number anywhere in the coverage path. Subscription and lead gen event types stay in the array even though their demos are removed in 9E, so they surface as unfired and communicate "more of the site exists." Demo-progress stages are monotonic within a session (stages reached cannot be un-reached). The Session State tab renders against this blob; an optional deliverable serializes a subset onto the contact form as a ride-along payload, gated by an explicit consent-aware checkbox.
 

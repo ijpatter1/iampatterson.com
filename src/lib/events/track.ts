@@ -22,6 +22,18 @@ export function initConsentState(
   };
 }
 
+/**
+ * Read the module's current consent snapshot. The returned object is a copy —
+ * safe to pass into a pure reducer without aliasing the mutable module state.
+ */
+export function getCurrentConsent(): {
+  consent_analytics: boolean;
+  consent_marketing: boolean;
+  consent_preferences: boolean;
+} {
+  return { ...currentConsent };
+}
+
 function baseFields(): {
   iap_source: true;
   timestamp: string;

@@ -4,9 +4,11 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 
 import { DATA_LAYER_EVENT_NAMES, type DataLayerEventName } from '@/lib/events/schema';
 import { getSessionId } from '@/lib/events/session';
+import { getCurrentConsent } from '@/lib/events/track';
 import {
   createInitialSessionState,
   deriveNext,
+  reconcileRehydrated,
   type SessionStateEventInput,
 } from '@/lib/session-state/derive';
 import { loadSessionState, saveSessionState } from '@/lib/session-state/storage';
@@ -39,7 +41,11 @@ export function SessionStateProvider({ children }: { children: ReactNode }) {
   const cursorRef = useRef(0);
 
   useEffect(() => {
-    const initial = loadSessionState() ?? createInitialSessionState(getSessionId(), new Date());
+    const sessionId = getSessionId();
+    const loaded = loadSessionState();
+    const initial = loaded
+      ? reconcileRehydrated(loaded, sessionId)
+      : createInitialSessionState(sessionId, new Date(), { consent: getCurrentConsent() });
     setState(initial);
     saveSessionState(initial);
     setReady(true);
@@ -77,8 +83,14 @@ export function SessionStateProvider({ children }: { children: ReactNode }) {
 }
 
 /**
- * Read the current SessionState. Returns `null` outside a provider or before
- * the provider's mount effect has run (SSR / first paint).
+ * Read the current SessionState.
+ *
+ * Returns `null` in two observationally-identical cases: (1) the component is
+ * outside a `SessionStateProvider`, and (2) the provider is mounted but its
+ * init effect hasn't resolved yet (SSR, first paint). Consumers must handle
+ * `null` anyway because of case (2), so this hook deliberately does NOT throw
+ * on a missing provider the way `useOverlay` does — doing so would force
+ * every consumer to choose between an SSR-safe null-check and a throw-guard.
  */
 export function useSessionState(): SessionState | null {
   return useContext(SessionStateContext);

@@ -11,6 +11,20 @@
 /** Ecommerce demo funnel stages — monotonic set, ordered by first-reached. */
 export type EcommerceStage = 'product_view' | 'add_to_cart' | 'begin_checkout' | 'purchase';
 
+/**
+ * Canonical funnel order for rendering. `stages_reached` may contain stages in
+ * first-reached order (a deep-linked visitor can fire `purchase` before
+ * `product_view`); consumers rendering the funnel should iterate this sequence
+ * and use `stages_reached.includes(stage)` for membership, not iterate
+ * `stages_reached` directly.
+ */
+export const ECOMMERCE_FUNNEL_SEQUENCE: readonly EcommerceStage[] = [
+  'product_view',
+  'add_to_cart',
+  'begin_checkout',
+  'purchase',
+] as const;
+
 /** Consent signal values mirrored into the Session State snapshot. */
 export type ConsentValue = 'granted' | 'denied';
 
@@ -41,6 +55,11 @@ export interface SessionState {
   };
   demo_progress: {
     ecommerce: {
+      /**
+       * Monotonic set of stages the visitor has reached. Order is first-reached
+       * for temporal audit; consumers rendering the funnel should iterate
+       * `ECOMMERCE_FUNNEL_SEQUENCE` and test membership via `.includes`.
+       */
       stages_reached: EcommerceStage[];
       percentage: number;
     };

@@ -47,6 +47,21 @@ describe('createInitialSessionState', () => {
     });
   });
 
+  it('seeds consent_snapshot from the optional overrides (e.g. getCurrentConsent from Cookiebot)', () => {
+    const state = createInitialSessionState('sid-abc', FIXED_NOW, {
+      consent: {
+        consent_analytics: true,
+        consent_marketing: false,
+        consent_preferences: true,
+      },
+    });
+    expect(state.consent_snapshot).toEqual({
+      analytics: 'granted',
+      marketing: 'denied',
+      preferences: 'granted',
+    });
+  });
+
   it('starts with page_count = 0 and no visited paths', () => {
     const state = createInitialSessionState('sid-abc', FIXED_NOW);
     expect(state.page_count).toBe(0);

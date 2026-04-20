@@ -279,6 +279,7 @@ interface SessionState {
   session_id: string; // matches _iap_sid cookie
   started_at: string; // ISO 8601
   page_count: number; // unique page paths visited
+  visited_paths: string[]; // ordered list of distinct page paths seen; backs page_count across reloads
   events_fired: {
     [event_name: string]: number; // count by event name
   };
@@ -301,6 +302,12 @@ interface SessionState {
   updated_at: string; // ISO 8601, updated on every change
 }
 ```
+
+`visited_paths` is persisted in the blob so `page_count` (unique paths visited) stays correct across React strict-mode remounts and sessionStorage reloads. It is **internal** — the contact-form ride-along payload below transmits `pages_visited` as a scalar count, never the path history itself. The canonical projection helper `toRideAlongPayload(state)` in `src/lib/session-state/ride-along.ts` enforces the narrow shape; any code that transmits session state across a network boundary must go through that helper rather than `JSON.stringify` the whole blob.
+
+**Rehydration reconciliation:** When the provider loads a blob from `sessionStorage`, it reconciles two fields against the current runtime before setting state: `event_type_coverage.total` is replaced with the live `DATA_LAYER_EVENT_NAMES` array (so a tab open across a deploy that extended the schema displays the live denominator, not the pre-deploy one), and `session_id` is reconciled against the current `_iap_sid` cookie (which rotates after 30 minutes of idle) so subsequent events flow under an ID that matches the in-blob identifier. Events counted under event names no longer present in the live schema are dropped from `event_type_coverage.fired`. All other fields (`events_fired`, `visited_paths`, `demo_progress`, `consent_snapshot`, timestamps) are preserved verbatim.
+
+**Initial consent seeding:** On a fresh session (no prior blob), `consent_snapshot` is seeded from the Cookiebot-aware `getCurrentConsent()` accessor in `src/lib/events/track.ts` rather than defaulting to all-denied. This eliminates the brief pre-first-event window in which the Session State tab would have displayed "all denied" even when consent was already granted.
 
 **Update source:** The same mechanism that populates `useDataLayerEvents` / `useLiveEvents` populates Session State. A single listener subscribes to the data layer, parses iap_source events, and updates both the event buffer (existing) and the session state blob (new).
 

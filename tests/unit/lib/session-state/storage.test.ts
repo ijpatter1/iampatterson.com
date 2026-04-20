@@ -44,6 +44,38 @@ describe('SessionState storage', () => {
     expect(loadSessionState()).toBeNull();
   });
 
+  it('rejects a blob whose nested demo_progress.ecommerce is missing (partial shape)', () => {
+    const partial = {
+      session_id: 'sid',
+      started_at: '2026-04-19T18:00:00.000Z',
+      updated_at: '2026-04-19T18:00:00.000Z',
+      page_count: 0,
+      visited_paths: [],
+      events_fired: {},
+      event_type_coverage: { fired: [], total: [] },
+      demo_progress: {}, // passes shallow validation but crashes reducer
+      consent_snapshot: { analytics: 'denied', marketing: 'denied', preferences: 'denied' },
+    };
+    window.sessionStorage.setItem(SESSION_STATE_STORAGE_KEY, JSON.stringify(partial));
+    expect(loadSessionState()).toBeNull();
+  });
+
+  it('rejects a blob whose consent_snapshot carries non-canonical values', () => {
+    const bad = {
+      session_id: 'sid',
+      started_at: '2026-04-19T18:00:00.000Z',
+      updated_at: '2026-04-19T18:00:00.000Z',
+      page_count: 0,
+      visited_paths: [],
+      events_fired: {},
+      event_type_coverage: { fired: [], total: [] },
+      demo_progress: { ecommerce: { stages_reached: [], percentage: 0 } },
+      consent_snapshot: { analytics: 'maybe', marketing: 'denied', preferences: 'granted' },
+    };
+    window.sessionStorage.setItem(SESSION_STATE_STORAGE_KEY, JSON.stringify(bad));
+    expect(loadSessionState()).toBeNull();
+  });
+
   it('saveSessionState swallows quota / security errors silently', () => {
     const original = Storage.prototype.setItem;
     Storage.prototype.setItem = jest.fn(() => {

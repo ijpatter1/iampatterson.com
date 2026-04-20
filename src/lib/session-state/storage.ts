@@ -10,26 +10,54 @@ import type { SessionState } from './types';
 
 export const SESSION_STATE_STORAGE_KEY = 'iampatterson.session_state';
 
+function isConsentValue(v: unknown): v is 'granted' | 'denied' {
+  return v === 'granted' || v === 'denied';
+}
+
 function hasValidShape(value: unknown): value is SessionState {
   if (!value || typeof value !== 'object') return false;
   const v = value as Partial<SessionState>;
-  return (
-    typeof v.session_id === 'string' &&
-    typeof v.started_at === 'string' &&
-    typeof v.updated_at === 'string' &&
-    typeof v.page_count === 'number' &&
-    Array.isArray(v.visited_paths) &&
-    typeof v.events_fired === 'object' &&
-    v.events_fired !== null &&
-    typeof v.event_type_coverage === 'object' &&
-    v.event_type_coverage !== null &&
-    Array.isArray(v.event_type_coverage.fired) &&
-    Array.isArray(v.event_type_coverage.total) &&
-    typeof v.demo_progress === 'object' &&
-    v.demo_progress !== null &&
-    typeof v.consent_snapshot === 'object' &&
-    v.consent_snapshot !== null
-  );
+  if (
+    typeof v.session_id !== 'string' ||
+    typeof v.started_at !== 'string' ||
+    typeof v.updated_at !== 'string' ||
+    typeof v.page_count !== 'number' ||
+    !Array.isArray(v.visited_paths) ||
+    typeof v.events_fired !== 'object' ||
+    v.events_fired === null
+  ) {
+    return false;
+  }
+  if (
+    typeof v.event_type_coverage !== 'object' ||
+    v.event_type_coverage === null ||
+    !Array.isArray(v.event_type_coverage.fired) ||
+    !Array.isArray(v.event_type_coverage.total)
+  ) {
+    return false;
+  }
+  const dp = v.demo_progress;
+  if (
+    typeof dp !== 'object' ||
+    dp === null ||
+    typeof dp.ecommerce !== 'object' ||
+    dp.ecommerce === null ||
+    !Array.isArray(dp.ecommerce.stages_reached) ||
+    typeof dp.ecommerce.percentage !== 'number'
+  ) {
+    return false;
+  }
+  const cs = v.consent_snapshot;
+  if (
+    typeof cs !== 'object' ||
+    cs === null ||
+    !isConsentValue(cs.analytics) ||
+    !isConsentValue(cs.marketing) ||
+    !isConsentValue(cs.preferences)
+  ) {
+    return false;
+  }
+  return true;
 }
 
 export function loadSessionState(): SessionState | null {
