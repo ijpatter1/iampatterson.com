@@ -417,7 +417,12 @@ describe('SessionStateTab', () => {
     expect(screen.getByTestId('contextual-contact-cta')).toBeInTheDocument();
   });
 
-  it('emits click_cta with cta_location=contact_cta_threshold on contextual CTA click', () => {
+  it('emits both portal_click(contact) AND click_cta(contact_cta_threshold) on contextual CTA click (Pass 4 dual-fire)', () => {
+    // REQUIREMENTS.md deliverable 3 line 368: "Fires `portal_click` with
+    // `destination: 'contact'` and a distinguishing `click_cta` emission
+    // with `cta_location: 'contact_cta_threshold'`". The two emissions let
+    // BI isolate (a) portal conversion rate (portal_click) AND (b) the
+    // threshold-gated variant's conversion rate (click_cta).
     useSessionState.mockReturnValue(
       makeState({
         event_type_coverage: {
@@ -435,7 +440,12 @@ describe('SessionStateTab', () => {
     const cta = window.dataLayer.find((e: { event?: string }) => e.event === 'click_cta') as
       | { event: string; cta_location: string }
       | undefined;
+    const portal = window.dataLayer.find((e: { event?: string }) => e.event === 'portal_click') as
+      | { event: string; destination: string }
+      | undefined;
     expect(cta).toBeDefined();
     expect(cta!.cta_location).toBe('contact_cta_threshold');
+    expect(portal).toBeDefined();
+    expect(portal!.destination).toBe('contact');
   });
 });

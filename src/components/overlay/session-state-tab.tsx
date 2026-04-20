@@ -199,6 +199,15 @@ export function SessionStateTab() {
   };
 
   const handleContextualCtaClick = () => {
+    // Dual-fire per REQUIREMENTS.md deliverable 3 line 368: the contextual
+    // contact CTA "Fires `portal_click` with `destination: 'contact'` and a
+    // distinguishing `click_cta` emission with `cta_location:
+    // 'contact_cta_threshold'`". The `portal_click` keeps the contextual
+    // CTA isolable in the same conversion-rate cohort as the neutral
+    // `> CONTACT` portal link above (per d9 deliverable 9: "distinct from
+    // `click_cta` so the portal's conversion rate is isolable"); the
+    // distinguishing `click_cta` tags this specific threshold-gated variant.
+    trackPortalClick('contact');
     trackClickCta('Seen enough? →', 'contact_cta_threshold');
     close();
   };
