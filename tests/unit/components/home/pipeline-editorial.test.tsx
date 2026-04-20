@@ -143,22 +143,32 @@ describe('PipelineEditorial', () => {
   });
 
   it('shows the NEWEST live events in the visible window when the buffer overflows', () => {
-    // useLiveEvents returns events newest-first. With >4 live events, the
-    // visible window must track the most recent activity. After reverse-
-    // to-chronological + prepend-seeds + trailing-4 slice, the visible
-    // window contains exactly the 4 newest events: [evt_3, evt_2, evt_1, evt_0]
-    // (in chronological order: oldest of the 4 newest first).
-    // Assert the exact set so a partial-reverse bug can't pass.
-    mockLiveEvents = Array.from({ length: 12 }, (_, i) =>
-      makeEvent(`evt-${i}`, `evt_${i}`, `2026-04-20T10:00:0${i}.000Z`),
-    );
+    // useLiveEvents returns events newest-first in production
+    // (useDataLayerEvents.ts:146 prepends; useEventStream.ts:101 prepends).
+    // The fixture MUST match that contract — otherwise the test passes
+    // for the wrong reason. Build the array newest-first: evt_11 (latest
+    // timestamp) at index 0, evt_0 (earliest) at index 11.
+    //
+    // Component pipeline:
+    //   slice(0, BUFFER=12) → [evt_11, evt_10, ..., evt_0] (newest first)
+    //   .reverse()          → [evt_0, evt_1, ..., evt_11]   (chronological)
+    //   prepend 3 seeds, take trailing 4 → [evt_8, evt_9, evt_10, evt_11]
+    // So the visible window is the 4 NEWEST events, in chronological order.
+    mockLiveEvents = Array.from({ length: 12 }, (_, i) => {
+      // i=0 → newest (evt_11, timestamp T+11s); i=11 → oldest (evt_0, T+0s).
+      const idx = 11 - i;
+      const ts = `2026-04-20T10:00:${String(idx).padStart(2, '0')}.000Z`;
+      return makeEvent(`evt-${idx}`, `evt_${idx}`, ts);
+    });
     render(<PipelineEditorial />);
     const feed = screen.getByTestId('pipeline-log-feed');
     const eventNames = Array.from(feed.querySelectorAll('.e')).map((el) => el.textContent);
-    expect(eventNames).toEqual(['evt_3', 'evt_2', 'evt_1', 'evt_0']);
-    // Belt-and-braces: an older event (evt_4..evt_11) must not be visible.
-    for (let i = 4; i <= 11; i++) {
-      expect(feed.textContent).not.toContain(`evt_${i}`);
+    expect(eventNames).toEqual(['evt_8', 'evt_9', 'evt_10', 'evt_11']);
+    // Belt-and-braces: an older event (evt_0..evt_7) must not be visible.
+    // Check the parsed eventNames array (not textContent) so `evt_1` doesn't
+    // false-match against `evt_10` / `evt_11` substrings in the joined text.
+    for (let i = 0; i <= 7; i++) {
+      expect(eventNames).not.toContain(`evt_${i}`);
     }
   });
 
@@ -176,18 +186,23 @@ describe('PipelineEditorial', () => {
     // Date.now to a value strictly before the earliest fixture.
     const mountTime = Date.parse('2026-04-20T09:59:00.000Z');
     const dateSpy = jest.spyOn(Date, 'now').mockReturnValue(mountTime);
-    const t0 = '2026-04-20T10:00:00.000Z';
-    const t5 = '2026-04-20T10:00:05.000Z';
-    mockLiveEvents = [makeEvent('e1', 'page_view', t0), makeEvent('e2', 'scroll_depth', t5)];
-    render(<PipelineEditorial />);
-    const feed = screen.getByTestId('pipeline-log-feed');
-    const items = Array.from(feed.querySelectorAll('li'));
-    const tsCells = items.map((li) => li.querySelector('.t')?.textContent ?? '');
-    // Two visible live rows (after seeds slide out) — their timestamps
-    // must not all be the same value. Use Set size as the witness.
-    const liveTsCells = tsCells.slice(-2);
-    expect(new Set(liveTsCells).size).toBe(2);
-    dateSpy.mockRestore();
+    try {
+      const t0 = '2026-04-20T10:00:00.000Z';
+      const t5 = '2026-04-20T10:00:05.000Z';
+      mockLiveEvents = [makeEvent('e1', 'page_view', t0), makeEvent('e2', 'scroll_depth', t5)];
+      render(<PipelineEditorial />);
+      const feed = screen.getByTestId('pipeline-log-feed');
+      const items = Array.from(feed.querySelectorAll('li'));
+      const tsCells = items.map((li) => li.querySelector('.t')?.textContent ?? '');
+      // Two visible live rows (after seeds slide out) — their timestamps
+      // must not all be the same value. Use Set size as the witness.
+      const liveTsCells = tsCells.slice(-2);
+      expect(new Set(liveTsCells).size).toBe(2);
+    } finally {
+      // try/finally so a failed assertion doesn't leak the spy into the
+      // next test (no project-wide restoreMocks: true in jest.config).
+      dateSpy.mockRestore();
+    }
   });
 
   it('renders the real session ID (last 6 chars) in the footnote header', () => {
