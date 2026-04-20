@@ -1,5 +1,10 @@
 import { pushEvent } from './push';
-import type { CoverageMilestoneEvent, CtaLocation, PortalClickEvent } from './schema';
+import type {
+  CoverageMilestoneEvent,
+  CtaLocation,
+  NavHintDismissedEvent,
+  PortalClickEvent,
+} from './schema';
 import { getSessionId } from './session';
 
 /** Current consent state — updated by trackConsentUpdate and initConsentState. */
@@ -194,4 +199,16 @@ export function trackPortalClick(destination: PortalClickEvent['destination']): 
 
 export function trackSessionStateTabView(source: 'default_landing' | 'manual_select'): void {
   pushEvent({ ...baseFields(), event: 'session_state_tab_view', source });
+}
+
+export function trackNavHintShown(): void {
+  pushEvent({ ...baseFields(), event: 'nav_hint_shown' });
+}
+
+export function trackNavHintDismissed(mode: NavHintDismissedEvent['dismissal_mode']): void {
+  pushEvent({ ...baseFields(), event: 'nav_hint_dismissed', dismissal_mode: mode });
+}
+
+export function trackSessionPulseHover(): void {
+  pushEvent({ ...baseFields(), event: 'session_pulse_hover' });
 }

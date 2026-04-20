@@ -185,6 +185,10 @@ const config: Config = {
         'bubble-rise': 'bubble-rise 3s ease-in-out forwards',
         'session-pulse': 'session-pulse 2.4s ease-out infinite',
         'live-strip': 'live-strip 40s linear infinite',
+        // Phase 9E D1 first-session nav hint: amber ring expanding outward
+        // from the SessionPulse. Slower + larger travel than session-pulse
+        // so the hint reads as "notice me" rather than "live signal."
+        'nav-hint-ring': 'nav-hint-ring 1.8s ease-out infinite',
       },
 
       keyframes: {
@@ -210,6 +214,11 @@ const config: Config = {
         'live-strip': {
           '0%': { transform: 'translateX(0)' },
           '100%': { transform: 'translateX(-50%)' },
+        },
+        'nav-hint-ring': {
+          '0%': { opacity: '0.8', transform: 'scale(1)' },
+          '80%': { opacity: '0', transform: 'scale(2.5)' },
+          '100%': { opacity: '0', transform: 'scale(2.5)' },
         },
       },
     },

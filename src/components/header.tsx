@@ -1,22 +1,27 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-import { MobileSheet } from '@/components/chrome/mobile-sheet';
-import { NAV_LINKS } from '@/components/chrome/nav-links';
+import { NavHint } from '@/components/chrome/nav-hint';
 import { SessionPulse } from '@/components/chrome/session-pulse';
 import { useOverlay } from '@/components/overlay/overlay-context';
-import { trackClickCta, trackClickNav } from '@/lib/events/track';
+import { trackClickCta } from '@/lib/events/track';
 
 import { LiveStrip } from '@/components/chrome/live-strip';
 
 export function Header() {
-  const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname() ?? '/';
+  const isHomepage = pathname === '/';
   const { open } = useOverlay();
+  // Phase 9E D1: conventional nav (Home/Services/Demos/About/Contact)
+  // is removed from the header; the SessionPulse is the only nav
+  // affordance. Footer carries the conventional-nav escape hatch on
+  // every page. `sessionPulseRef` lets NavHint classify clicks on the
+  // pulse as `click_session_pulse` vs `click_outside`.
+  const sessionPulseRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -38,61 +43,22 @@ export function Header() {
         }`}
       >
         <div className="mx-auto flex max-w-content items-center justify-between gap-4 px-5 py-4 md:px-10">
-          <span className="flex-shrink-0">
-            <SessionPulse onClick={handleOpenOverlay} />
+          {/* SessionPulse — primary nav affordance. Relatively positioned
+              so NavHint (child of this wrapper) can anchor itself to
+              the pulse via absolute positioning. The sr-only home link
+              preserves site-identity semantics for assistive tech; the
+              wordmark is intentionally absent per the spec's "instrument
+              as nav" principle. */}
+          <span className="relative flex-shrink-0">
+            <SessionPulse ref={sessionPulseRef} onClick={handleOpenOverlay} />
             <Link href="/" className="sr-only">
               Patterson Consulting — home
             </Link>
+            {isHomepage && <NavHint sessionPulseRef={sessionPulseRef} />}
           </span>
-
-          <nav className="hidden md:block">
-            <ul className="flex items-center gap-7">
-              {NAV_LINKS.map((l) => {
-                const active =
-                  l.href === '/#demos'
-                    ? false
-                    : l.href === '/'
-                      ? pathname === '/'
-                      : pathname.startsWith(l.href);
-                return (
-                  <li key={l.href}>
-                    <Link
-                      href={l.href}
-                      onClick={() => trackClickNav(l.label, l.href)}
-                      className={`text-sm transition-colors ${
-                        active ? 'font-medium text-ink' : 'font-normal text-ink-2 hover:text-ink'
-                      }`}
-                    >
-                      {l.label}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
-
-          <button
-            type="button"
-            onClick={() => setMenuOpen(true)}
-            aria-label="Open menu"
-            aria-expanded={menuOpen}
-            className="flex-shrink-0 rounded-sm p-1 text-ink hover:bg-paper-alt md:hidden"
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-            >
-              <path d="M4 7h16M4 12h16M4 17h16" />
-            </svg>
-          </button>
         </div>
       </header>
       <LiveStrip />
-      <MobileSheet open={menuOpen} onClose={() => setMenuOpen(false)} currentPath={pathname} />
     </div>
   );
 }
