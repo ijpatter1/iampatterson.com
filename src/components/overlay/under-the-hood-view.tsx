@@ -106,11 +106,13 @@ export function UnderTheHoodView() {
   const [phase, setPhase] = useState<Phase>('idle');
   const [flashKey, setFlashKey] = useState(false);
   const hasBooted = useRef(false);
-  // Tracks whether default_landing has already emitted for the current open.
-  // Reset on close so each overlay-open that lands on Session State gets
-  // exactly one emission — the landing event describes how the visitor
-  // arrived, not tab transitions within the same open.
-  const defaultLandingEmittedRef = useRef(false);
+  // Tracks whether the landing phase for the current overlay-open has been
+  // resolved (i.e. the first post-pendingTab render has committed). Closing
+  // this gate unconditionally on resolution — not only when default_landing
+  // emits — is the key invariant: a later manual_select click that re-enters
+  // session_state from Timeline/Consent must not re-trip the default_landing
+  // emitter. Reset on close so each overlay-open restarts the landing phase.
+  const landingResolvedRef = useRef(false);
 
   // Tab-change handler that the tabs-bar calls. `manual_select` emits only
   // when the visitor actively clicks the Session State tab from the tabs
@@ -135,26 +137,35 @@ export function UnderTheHoodView() {
     }
   }, [pendingTab, isOpen, consumePendingTab]);
 
-  // default_landing emission: fires once per overlay-open when the landing
-  // tab is Session State. Runs on isOpen/viewMode/pendingTab edges, gated
-  // by a ref so intra-open tab transitions don't re-fire (a manual_select
-  // click back to Session State is a distinct event with its own source).
+  // default_landing emission: fires once per overlay-open on the landing-
+  // phase resolution, and only when the resolved landing tab is Session
+  // State. Runs on isOpen/viewMode/pendingTab edges.
   //
-  // The pendingTab check defers emission until the pendingTab consumption
+  // The pendingTab check defers resolution until the pendingTab consumption
   // effect has run. On an `open('timeline')` call the initial render has
   // isOpen=true, viewMode='session_state' (default), pendingTab='timeline'
-  // — emitting here would fire a spurious default_landing that doesn't
-  // match where the visitor actually lands. Waiting for pendingTab=null
-  // means we always see the post-transition viewMode.
+  // — resolving here would classify the landing as session_state when the
+  // visitor actually ends up on timeline. Waiting for pendingTab=null means
+  // we always see the post-transition viewMode.
+  //
+  // Once resolution completes, the gate closes UNCONDITIONALLY — whether
+  // or not we emitted. This is load-bearing: if the landing resolves to
+  // Timeline and the visitor later clicks back to Session State, that
+  // click already emits `manual_select` via handleTabChange. Without this
+  // invariant, the viewMode=session_state re-render would also fire
+  // default_landing (the Pass 1 dual-fire bug). The two emission paths
+  // must stay mutually exclusive per open.
   useEffect(() => {
     if (!isOpen) {
-      defaultLandingEmittedRef.current = false;
+      landingResolvedRef.current = false;
       return;
     }
     if (pendingTab) return;
-    if (viewMode === 'session_state' && !defaultLandingEmittedRef.current) {
-      defaultLandingEmittedRef.current = true;
-      trackSessionStateTabView('default_landing');
+    if (!landingResolvedRef.current) {
+      landingResolvedRef.current = true;
+      if (viewMode === 'session_state') {
+        trackSessionStateTabView('default_landing');
+      }
     }
   }, [isOpen, viewMode, pendingTab]);
 

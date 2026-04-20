@@ -103,6 +103,12 @@ describe('session_state_tab_view emission', () => {
     const events = manualSelectEvents();
     expect(events).toHaveLength(1);
     expect(events[0].source).toBe('manual_select');
+    // Orthogonality guard — the filtered manual_select check above would
+    // pass even if default_landing were dual-firing (Pass 1 eval). Pin
+    // the unfiltered total at 2 (one default_landing on fresh open +
+    // one manual_select on click back) so any future regression to the
+    // dual-fire bug trips this expectation.
+    expect(dataLayerEventsNamed('session_state_tab_view')).toHaveLength(2);
   });
 
   it('does not re-emit manual_select when the overlay is closed and reopened with Session State sticky', async () => {

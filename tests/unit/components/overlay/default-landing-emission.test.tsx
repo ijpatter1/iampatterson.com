@@ -150,6 +150,61 @@ describe('session_state_tab_view default_landing emission (deliverable 2)', () =
     expect(dataLayerEventsNamed('session_state_tab_view')).toHaveLength(0);
   });
 
+  it('does NOT fire default_landing on a manual_select click after landing resolved to Timeline (orthogonality regression — Pass 1 evaluator)', async () => {
+    // Pinning the dual-fire bug caught in Pass 1 eval of D2.
+    // Scenario:
+    //   1. open('timeline') → landing resolves to Timeline, no emission.
+    //      The landing-phase gate was previously only written inside the
+    //      emission branch, so it stayed open.
+    //   2. Click Session State from the tabs bar → handleTabChange emits
+    //      manual_select (correct). viewMode transitions to session_state.
+    //   3. default_landing effect re-runs on the viewMode edge, sees the
+    //      gate still open, and ALSO emits default_landing (dual-fire).
+    // Post-fix: the gate closes on landing-phase resolution regardless of
+    // which tab the landing resolved to, so the later click-back can only
+    // fire manual_select.
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.click(screen.getByText('open-with-pending-timeline'));
+    expect(dataLayerEventsNamed('session_state_tab_view')).toHaveLength(0);
+
+    await user.click(screen.getByRole('button', { name: /^Session State$/i }));
+
+    const events = dataLayerEventsNamed('session_state_tab_view');
+    expect(events).toHaveLength(1);
+    expect(events[0].source).toBe('manual_select');
+  });
+
+  it('does NOT fire default_landing on a manual_select click after landing resolved to Consent (orthogonality regression — parallel case)', async () => {
+    // Parallel coverage for the `open('consent')` path so any future tab
+    // that resolves as a non-Session-State landing is covered by the same
+    // invariant. A third tab added later would inherit the same guard
+    // (landing-phase-resolved ref closes regardless of destination).
+    const user = userEvent.setup();
+    const Controls = () => {
+      const { open } = useOverlay();
+      return (
+        <button type="button" onClick={() => open('consent')}>
+          open-with-pending-consent
+        </button>
+      );
+    };
+    render(
+      <OverlayProvider>
+        <Controls />
+        <UnderTheHoodView />
+      </OverlayProvider>,
+    );
+    await user.click(screen.getByText('open-with-pending-consent'));
+    expect(dataLayerEventsNamed('session_state_tab_view')).toHaveLength(0);
+
+    await user.click(screen.getByRole('button', { name: /^Session State$/i }));
+
+    const events = dataLayerEventsNamed('session_state_tab_view');
+    expect(events).toHaveLength(1);
+    expect(events[0].source).toBe('manual_select');
+  });
+
   it('does NOT re-fire default_landing when the visitor clicks back to Session State from Timeline within the same open', async () => {
     const user = userEvent.setup();
     render(<Harness />);
