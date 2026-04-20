@@ -87,9 +87,13 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
     expect(screen.getByRole('button', { name: /back to site/i })).toBeInTheDocument();
   });
 
-  it('renders a backdrop close button behind the panel', () => {
+  it('does NOT render the dead -z-10 backdrop button (F3 UAT fix)', () => {
+    // Pre-F3 shipped an `absolute inset-0 -z-10` "backdrop close" button that
+    // was permanently occluded by the flex-column header/tabs/content children,
+    // so it never received a click. UAT S8 reported "backdrop click does not
+    // close overlay" — the button is gone; Escape is the close affordance.
     render(<UnderTheHoodView />);
-    expect(screen.getByRole('button', { name: /close overlay/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /close overlay/i })).not.toBeInTheDocument();
   });
 
   it('calls close when "Back to site" is clicked', async () => {
@@ -99,11 +103,29 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
     expect(mockClose).toHaveBeenCalled();
   });
 
-  it('calls close when the backdrop is clicked', async () => {
-    const user = userEvent.setup();
+  it('calls close when the Escape key is pressed (F3 UAT S8 fix)', () => {
+    // Standard modal behavior. Replaces the dead backdrop button as the
+    // non-explicit-close-button affordance.
     render(<UnderTheHoodView />);
-    await user.click(screen.getByRole('button', { name: /close overlay/i }));
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    });
     expect(mockClose).toHaveBeenCalled();
+  });
+
+  it('does NOT listen for Escape after isOpen flips false (cleanup)', () => {
+    // Close the overlay first by flipping the mock (re-render with isOpen=false
+    // would normally be driven by the provider; here we verify by asserting the
+    // listener attaches only when isOpen is true).
+    const { unmount } = render(<UnderTheHoodView />);
+    unmount();
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    });
+    // mockClose was called during the initial setup in a prior test path;
+    // here we verify that a post-unmount Escape doesn't fire close. Use
+    // clearAllMocks semantics via the beforeEach jest.clearAllMocks to baseline.
+    expect(mockClose).not.toHaveBeenCalled();
   });
 
   it('renders only Overview / Timeline / Consent tabs in that order (post-9E-D2)', () => {

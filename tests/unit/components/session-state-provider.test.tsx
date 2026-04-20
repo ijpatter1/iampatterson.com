@@ -118,6 +118,73 @@ describe('SessionStateProvider', () => {
     expect(result.current!.page_count).toBe(2);
   });
 
+  it('preserves the FULL SessionState blob across a reload (UAT S16.2 regression pin)', () => {
+    // UAT S16.2: "TAB A: Reload — coverage, chip grid amber states, funnel
+    // progress, session ID all PRESERVED. visited_paths count stable."
+    // This test pins every field the UAT step names, so a future regression
+    // that silently resets one subfield will fail here.
+    document.cookie = '_iap_sid=abc123-def456; Path=/';
+    const prior = {
+      session_id: 'abc123-def456',
+      started_at: '2026-04-19T17:00:00.000Z',
+      updated_at: '2026-04-19T17:05:30.000Z',
+      page_count: 3,
+      visited_paths: ['/', '/services', '/demo/ecommerce'],
+      events_fired: {
+        page_view: 3,
+        click_cta: 2,
+        scroll_depth: 4,
+        product_view: 1,
+        add_to_cart: 1,
+        begin_checkout: 1,
+        click_nav: 2,
+        form_start: 1,
+      },
+      event_type_coverage: {
+        fired: [
+          'page_view',
+          'click_cta',
+          'scroll_depth',
+          'product_view',
+          'add_to_cart',
+          'begin_checkout',
+          'click_nav',
+          'form_start',
+        ],
+        total: [...DATA_LAYER_EVENT_NAMES],
+      },
+      demo_progress: {
+        ecommerce: {
+          stages_reached: ['product_view', 'add_to_cart', 'begin_checkout'],
+          percentage: 75,
+        },
+      },
+      consent_snapshot: { analytics: 'granted', marketing: 'granted', preferences: 'granted' },
+      coverage_milestones_fired: [25],
+    };
+    window.sessionStorage.setItem(SESSION_STATE_STORAGE_KEY, JSON.stringify(prior));
+
+    const { result } = renderHook(() => useSessionState(), { wrapper: Wrapper });
+    const s = result.current!;
+
+    expect(s.session_id).toBe('abc123-def456');
+    expect(s.started_at).toBe('2026-04-19T17:00:00.000Z');
+    expect(s.page_count).toBe(3);
+    expect(s.visited_paths).toEqual(['/', '/services', '/demo/ecommerce']);
+    expect(s.events_fired).toEqual(prior.events_fired);
+    expect([...s.event_type_coverage.fired]).toEqual(prior.event_type_coverage.fired);
+    expect(s.demo_progress.ecommerce.stages_reached).toEqual([
+      'product_view',
+      'add_to_cart',
+      'begin_checkout',
+    ]);
+    expect(s.demo_progress.ecommerce.percentage).toBe(75);
+    expect(s.consent_snapshot).toEqual(prior.consent_snapshot);
+    expect(s.coverage_milestones_fired).toEqual([25]);
+
+    document.cookie = '_iap_sid=; Path=/; Max-Age=0';
+  });
+
   it('reconciles a rehydrated blob with a stale (pre-deploy) coverage total', () => {
     const prior = {
       session_id: 'prior',

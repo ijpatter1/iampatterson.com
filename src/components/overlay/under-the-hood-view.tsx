@@ -212,6 +212,21 @@ export function UnderTheHoodView() {
     return () => window.clearTimeout(id);
   }, [isOpen]);
 
+  // Escape-key close (F3 UAT S8 fix). The pre-F3 overlay had a -z-10
+  // "backdrop button" at absolute inset-0 but it was permanently occluded
+  // by the flex-column header/tabs/content children — never received a
+  // click in practice. Since the overlay is a full-bleed modal (no visible
+  // scrim), there's no "click outside" region to capture; Escape is the
+  // standard modal escape hatch the visitor expects instead.
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [isOpen, close]);
+
   if (!isOpen && !hasBooted.current) return null;
 
   const tabs: TabDef[] = [
@@ -229,14 +244,6 @@ export function UnderTheHoodView() {
         isOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
       }`}
     >
-      {/* Backdrop click closes */}
-      <button
-        type="button"
-        aria-label="Close overlay"
-        onClick={close}
-        className="absolute inset-0 -z-10 cursor-default"
-      />
-
       {/* Ambient amber glow — rendered as a sibling of the CRT field, with
           no explicit z-index. Paints in step 6 of the stacking context
           (positioned, z:auto), ahead of the in-flow header (step 3) but
