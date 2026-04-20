@@ -354,7 +354,18 @@ export const DATA_LAYER_EVENT_NAMES = [
  * new demo that fires an existing event removes that event from the hidden
  * set; re-introducing subscription or leadgen demos removes those names.
  */
-const HIDDEN_FROM_COVERAGE = new Set<DataLayerEventName>([
+/**
+ * Exported so tests can verify `HIDDEN_FROM_COVERAGE ⊆ DATA_LAYER_EVENT_NAMES`
+ * at runtime — the TypeScript `Set<DataLayerEventName>` type gives a
+ * compile-time subset guarantee, but `tsc --noEmit` is not in CI (see
+ * MEMORY.md) so the runtime backstop is load-bearing. A typo here (e.g.
+ * `plan_selekt`) produces a `HIDDEN_FROM_COVERAGE` entry that doesn't
+ * match any real event name — without the runtime subset pin, the
+ * `RENDERABLE_EVENT_NAMES.filter(...)` silently returns the real
+ * `plan_select` chip as renderable, and nothing fails until a human
+ * inspects the Overview chip grid.
+ */
+export const HIDDEN_FROM_COVERAGE: ReadonlySet<DataLayerEventName> = new Set<DataLayerEventName>([
   'plan_select',
   'trial_signup',
   'form_complete',

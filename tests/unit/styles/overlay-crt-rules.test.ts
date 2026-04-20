@@ -1,5 +1,5 @@
 /**
- * CSS rule-presence tests for the under-the-hood overlay's CRT boot layers.
+ * CSS rule-presence tests for the Session overlay's CRT boot layers.
  *
  * jsdom does not process stylesheet rules into computed style, so behavioral
  * assertions (`getComputedStyle(...).opacity`) return defaults rather than the

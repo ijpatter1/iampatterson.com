@@ -5,6 +5,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import ContactPage from '@/app/contact/page';
+import { RENDERABLE_EVENT_NAMES } from '@/lib/events/schema';
 
 // Mock the track module
 const mockPush = jest.fn();
@@ -160,14 +161,20 @@ describe('ContactPage', () => {
       // Hidden field serialized and visible in the DOM at submit time.
       const hidden = container.querySelector<HTMLInputElement>('input[name="session_state"]');
       expect(hidden).not.toBeNull();
-      expect(JSON.parse(hidden!.value)).toMatchObject({
+      // Post-UAT F8: ride-along denominator derives from
+      // RENDERABLE_EVENT_NAMES.length (20 post-F2), not the fixture's
+      // `total` array. `event_types_triggered` stays 3 because all 3
+      // fixture-fired events (page_view / scroll_depth / click_cta) are
+      // in the renderable subset.
+      const parsed = JSON.parse(hidden!.value);
+      expect(parsed).toMatchObject({
         session_id: 'sid-contact-test',
         event_types_triggered: 3,
-        event_types_total: 4,
         ecommerce_demo_percentage: 0,
         pages_visited: 5,
         consent: { analytics: 'granted', marketing: 'granted', preferences: 'granted' },
       });
+      expect(parsed.event_types_total).toBe(RENDERABLE_EVENT_NAMES.length);
       // Fill and submit — form still navigates to /thanks (transport is a
       // pre-existing Phase 10 stub); the hidden field would ride along with
       // the form body if/when a real submit endpoint is wired up. Anchor

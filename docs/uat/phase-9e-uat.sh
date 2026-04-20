@@ -4,14 +4,14 @@
 #
 # Phase 9E reframes the site as "one world in two states":
 #   D1 header nav pivot + NavHint
-#   D2 overlay restructure (3 tabs, Session State default)
-#   D3 Session State tab (new)
-#   D4 Session State data model (tab-scoped sessionStorage)
+#   D2 overlay restructure (3 tabs, Overview default)
+#   D3 Overview tab (new)
+#   D4 Overview data model (tab-scoped sessionStorage)
 #   D5 pipeline section progressive bleed-through reveal
 #   D6 Homepage Demos section rebuild (single ecommerce surface)
 #   D7 subscription + leadgen demo removal + permanent redirects (308)
 #   D8 contact form session-state ride-along (shipped with Phase 10 transport stub)
-#   D9 nav + Session State analytics
+#   D9 nav + Overview analytics
 #
 # 16 scenarios across happy-path, boundary, accessibility, timing, state-change,
 # and tab-scope edges. Scenarios marked [devtools] require operator DevTools
@@ -169,7 +169,7 @@ confirm "Header has no conventional nav links, SessionPulse is the only nav affo
 do_step "1.2 — Do NOTHING for ~3 seconds (no scroll/click/keydown/pointermove)."
 expect \
   "Soft amber pulse ring expands outward from the SessionPulse." \
-  "Accompanying text reads '← menu · under the hood' (or matching copy)." \
+  "Accompanying text reads '← your session' (or matching copy)." \
   "Check DevTools Console for data-layer pushes: 'nav_hint_shown' fires."
 confirm "NavHint animated pulse ring appears ~3s after idle on first visit"
 
@@ -187,19 +187,19 @@ confirm "Reload does NOT re-fire the NavHint in the same tab"
 
 do_step "1.5 — Click the SessionPulse."
 expect \
-  "Overlay opens. Active tab label reads '[ SESSION STATE ]' in terminal bracket framing." \
-  "Three tabs only: SESSION STATE → TIMELINE → CONSENT. No Overview, no Dashboards." \
-  "DevTools Console: 'session_state_tab_view' fires with source: 'default_landing'."
-confirm "Overlay lands on Session State with bracket framing, three tabs only"
+  "Overlay opens. Active tab label reads '[ OVERVIEW ]' in terminal bracket framing." \
+  "Three tabs only: OVERVIEW → TIMELINE → CONSENT. No Session State, no Dashboards." \
+  "DevTools Console: 'overview_tab_view' fires with source: 'default_landing'."
+confirm "Overlay lands on Overview with bracket framing, three tabs only"
 
-do_step "1.6 — Scan the Session State tab top-to-bottom without interacting."
+do_step "1.6 — Scan the Overview tab top-to-bottom without interacting."
 expect \
   "Session header: last-6 session ID + started UTC time + current page '/'." \
-  "16-cell ASCII coverage bar + chip grid showing 22 event-type chips." \
+  "16-cell ASCII coverage bar + chip grid showing 20 event-type chips." \
   "Ecommerce funnel: PRODUCT_VIEW [  ] / ADD_TO_CART [  ] / CHECKOUT [  ] / PURCHASE [  ]." \
   "Consent summary (three rows)." \
   "Portal section: > SERVICES / > ABOUT / > CONTACT."
-confirm "All Session State sections render (header, coverage, funnel, consent, portals)"
+confirm "All Overview sections render (header, coverage, funnel, consent, portals)"
 
 do_step "1.7 — Click '> SERVICES' in the portal section."
 expect \
@@ -239,7 +239,7 @@ setup \
 
 do_step "3.1 — Load $BASE_URL/. Sit idle ~3 seconds."
 expect \
-  "NavHint appears as STATIC TEXT ('← menu · under the hood') next to SessionPulse." \
+  "NavHint appears as STATIC TEXT ('← your session') next to SessionPulse." \
   "No pulse ring animation. Fades after ~6 seconds."
 confirm "NavHint is static text, not an animated ring"
 
@@ -250,13 +250,13 @@ expect \
   "Stage rotation does NOT advance — the active stage is frozen on stage 01."
 confirm "Pipeline section has no moving effects but still shows bleed layers and tier shifts"
 
-do_step "3.3 — At peak bleed, observe the 'Watch it live' CTA."
+do_step "3.3 — At peak bleed, observe the 'See your session' CTA."
 expect "CTA flips to solid amber fill at peak but does NOT jitter or animate halo growth."
-confirm "'Watch it live' CTA flips amber at peak but does not jitter"
+confirm "'See your session' CTA flips amber at peak but does not jitter"
 
-do_step "3.4 — Click SessionPulse, observe Session State tab."
+do_step "3.4 — Click SessionPulse, observe Overview tab."
 expect "Coverage numerals render IMMEDIATELY — no typewriter/typing animation."
-confirm "Session State coverage numbers appear immediately, no typewriter effect"
+confirm "Overview coverage numbers appear immediately, no typewriter effect"
 
 # ────────────────────────────────────────────────────────────────────────
 # SCENARIO 4 — Pipeline bleed-through reveal (Flow A)
@@ -286,7 +286,7 @@ do_step "4.4 — Scroll until ~2/3 of section has scrolled past viewport bottom.
 expect \
   "Tier crosses to 'hot'." \
   "RGB chromatic-aberration band sweeps top→bottom visibly (~2.8s loop)." \
-  "'Watch it live' CTA border warmed, halo grown, icon rotated partway." \
+  "'See your session' CTA border warmed, halo grown, icon rotated partway." \
   "'flip →' suffix text has begun fading in (starts ~bleed 0.55)."
 confirm "Hot tier: RGB sweep visible + CTA border/halo/icon couple to --bleed"
 
@@ -297,11 +297,11 @@ expect \
   "CTA is solid amber fill + jittering. 'flip →' suffix fully visible."
 confirm "Peak: active numeral flips amber + schematic jitters + CTA solid amber + 'flip →' visible"
 
-do_step "4.6 — Click 'Watch it live' at peak."
+do_step "4.6 — Click 'See your session' at peak."
 expect \
-  "Overlay opens to Session State." \
-  "DevTools Console: 'click_cta' fires with cta_location: 'pipeline_watch_it_live'."
-confirm "'Watch it live' click fires click_cta with pipeline_watch_it_live location"
+  "Overlay opens to Overview." \
+  "DevTools Console: 'click_cta' fires with cta_location: 'pipeline_see_your_session'."
+confirm "'See your session' click fires click_cta with pipeline_see_your_session location"
 
 do_step "4.7 — Close overlay (backdrop click). Scroll back up past the section."
 expect \
@@ -367,8 +367,8 @@ setup \
   "Fresh tab. Clear sessionStorage." \
   "DevTools → Console open. Optionally filter for 'coverage_milestone'."
 
-do_step "6.1 — Load $BASE_URL/. Open SessionPulse → Session State tab. Note the initial N/22 coverage."
-expect "Coverage bar is 16 cells wide regardless of denominator. Fill proportional to N/22."
+do_step "6.1 — Load $BASE_URL/. Open SessionPulse → Overview tab. Note the initial N/20 coverage."
+expect "Coverage bar is 16 cells wide regardless of denominator. Fill proportional to N/20."
 confirm "Coverage bar renders 16 cells; initial coverage low (~1–3/22)"
 
 do_step "6.2 — Close overlay. Drive coverage up: scroll, click CTAs, hover SessionPulse, etc. Aim to cross 25%."
@@ -405,12 +405,12 @@ scenario "7 — Threshold-gated contact CTA appears and routes correctly" \
 setup \
   "Fresh tab. Cleared sessionStorage."
 
-do_step "7.1 — Load /. Open Session State tab immediately."
+do_step "7.1 — Load /. Open Overview tab immediately."
 expect "Threshold-gated contact CTA is NOT visible. Only the neutral '> CONTACT' portal link."
 confirm "Contextual CTA is hidden before threshold met"
 
 do_step "7.2 — Close overlay. Navigate /demo/ecommerce, click a product, add to cart, go to checkout."
-do_step "7.3 — Return to homepage. Reopen Session State tab."
+do_step "7.3 — Return to homepage. Reopen Overview tab."
 expect \
   "Threshold-gated contact CTA IS now visible (triggered by begin_checkout)." \
   "Copy is warmer/outcome-framed (e.g. 'Seen enough? →'), distinct from '> CONTACT'." \
@@ -435,58 +435,58 @@ confirm "Portal > CONTACT fires click_cta with DIFFERENT cta_location than thres
 # SCENARIO 8 — Overlay tab navigation + analytics discriminator
 # Deliverables: D2, D9
 
-scenario "8 — Overlay tab nav + session_state_tab_view source discriminator" \
-  "Session State default; 3 tabs only; manual_select vs default_landing source"
+scenario "8 — Overlay tab nav + overview_tab_view source discriminator" \
+  "Overview default; 3 tabs only; manual_select vs default_landing source"
 
 setup "Fresh tab. Cleared sessionStorage. DevTools Console open."
 
 do_step "8.1 — Click SessionPulse to open overlay."
 expect \
-  "Three tabs in order: [ SESSION STATE ] active, TIMELINE plain, CONSENT plain." \
+  "Three tabs in order: [ OVERVIEW ] active, TIMELINE plain, CONSENT plain." \
   "No OVERVIEW. No DASHBOARDS." \
-  "'session_state_tab_view' fires with source: 'default_landing'."
-confirm "Three tabs only; Session State is default and fires source='default_landing'"
+  "'overview_tab_view' fires with source: 'default_landing'."
+confirm "Three tabs only; Overview is default and fires source='default_landing'"
 
 do_step "8.2 — Click TIMELINE tab."
-expect "[ TIMELINE ] now bracket-framed, SESSION STATE plain. Timeline body visible."
+expect "[ TIMELINE ] now bracket-framed, OVERVIEW plain. Timeline body visible."
 confirm "Active-tab bracket framing moves to TIMELINE"
 
 do_step "8.3 — Click CONSENT tab."
 expect "[ CONSENT ] active; others plain."
 confirm "Active-tab bracket framing moves to CONSENT"
 
-do_step "8.4 — Click back to SESSION STATE."
+do_step "8.4 — Click back to OVERVIEW."
 expect \
-  "[ SESSION STATE ] active again." \
-  "'session_state_tab_view' fires with source: 'manual_select' (NOT default_landing)."
-confirm "Return to Session State fires source='manual_select'"
+  "[ OVERVIEW ] active again." \
+  "'overview_tab_view' fires with source: 'manual_select' (NOT default_landing)."
+confirm "Return to Overview fires source='manual_select'"
 
 do_step "8.5 — Close overlay (backdrop click). Click SessionPulse to re-open."
 expect \
-  "Opens BACK on Session State (tab state does not persist across open/close)." \
-  "'session_state_tab_view' fires with source: 'default_landing' again."
-confirm "Re-opening overlay lands on Session State with source='default_landing'"
+  "Opens BACK on Overview (tab state does not persist across open/close)." \
+  "'overview_tab_view' fires with source: 'default_landing' again."
+confirm "Re-opening overlay lands on Overview with source='default_landing'"
 
 # ────────────────────────────────────────────────────────────────────────
 # SCENARIO 9 — Consent denied mid-session [cookiebot]
 # Deliverables: D3, D4
 
-scenario "9 — Consent denied mid-session updates Session State live" \
+scenario "9 — Consent denied mid-session updates Overview live" \
   "Consent state changes post-session-start propagate into consent_snapshot"
 
 setup \
   "Fresh tab. Cookiebot banner should appear on first load." \
   "Accept ALL consent categories in the Cookiebot banner."
 
-do_step "9.1 — Open Session State tab. Confirm consent summary."
+do_step "9.1 — Open Overview tab. Confirm consent summary."
 expect "Consent rows: analytics: granted, marketing: granted, preferences: granted."
 confirm "Initial consent summary shows all granted"
 
 do_step "9.2 — Close overlay. Re-invoke Cookiebot preferences (floating badge or stored link). Deny marketing category."
 do_step "9.3 — Interact briefly (scroll, click). Wait ~1s."
-do_step "9.4 — Reopen Session State tab."
+do_step "9.4 — Reopen Overview tab."
 expect "Consent summary: analytics: granted, marketing: DENIED, preferences: granted."
-confirm "Session State reflects mid-session consent revocation (marketing denied)"
+confirm "Overview reflects mid-session consent revocation (marketing denied)"
 
 do_step "9.5 — Switch to Timeline tab."
 expect "Recent events post-consent-change continue to appear (analytics still granted)."
@@ -503,7 +503,7 @@ setup \
   "DevTools → Network → throttle 'Slow 3G' OR block 'consent.cookiebot.com' with a request interceptor." \
   "Clear sessionStorage, local storage, and all cookies for $BASE_URL."
 
-do_step "10.1 — Load / under throttled/blocked network. IMMEDIATELY open Session State tab (before Cookiebot responds)."
+do_step "10.1 — Load / under throttled/blocked network. IMMEDIATELY open Overview tab (before Cookiebot responds)."
 expect "Consent snapshot shows all 'denied' (Cookiebot state not yet available; getCurrentConsent returns denied)."
 confirm "Pre-Cookiebot, snapshot reads all 'denied' without crashing"
 
@@ -537,8 +537,8 @@ expect "NavHint pulse ring fires, positioned sensibly relative to top-right Sess
 confirm "NavHint positions correctly on mobile"
 
 do_step "11.3 — Tap SessionPulse."
-expect "Overlay opens to Session State. Tab bar usable at mobile width. Chip grid, funnel, portals all legible; chips wrap gracefully."
-confirm "Session State tab fully usable at mobile width (no clipping)"
+expect "Overlay opens to Overview. Tab bar usable at mobile width. Chip grid, funnel, portals all legible; chips wrap gracefully."
+confirm "Overview tab fully usable at mobile width (no clipping)"
 
 do_step "11.4 — Close overlay. Scroll into pipeline section."
 expect "Schematic: 2-column layout (numeral 40px + body). Readouts collapse below each stage; expand via max-height only when is-hot. Bleed layers visible."
@@ -589,14 +589,14 @@ scenario "13 — Coverage denominator matches live schema" \
 
 setup "Fresh tab, cleared sessionStorage."
 
-do_step "13.1 — Load /. Open Session State tab."
+do_step "13.1 — Load /. Open Overview tab."
 expect \
   "Coverage readout: '<N>/22 event types' (current denominator 22 as of 9E D9)." \
   "Bar is visually 16 cells wide." \
   "Chip grid contains exactly 22 chips."
-confirm "Bar is 16 cells + denominator is 22 + chip grid has 22 chips"
+confirm "Bar is 16 cells + denominator is 20 + chip grid has 20 chips"
 
-do_step "13.2 — Scan chip grid for nav-analytics chips (added in D9): nav_hint_shown, nav_hint_dismissed, session_pulse_hover, session_state_tab_view, portal_click, coverage_milestone."
+do_step "13.2 — Scan chip grid for nav-analytics chips (added in D9): nav_hint_shown, nav_hint_dismissed, session_pulse_hover, overview_tab_view, portal_click, coverage_milestone."
 expect "All 6 nav-analytics chips present (most dimmed until fired)."
 confirm "All 6 D9 nav-analytics chips present in the chip grid"
 
@@ -604,7 +604,7 @@ do_step "13.3 — Scan for subscription/leadgen chips: plan_select, trial_signup
 expect "All 4 chips present but dimmed (unfired — intentional carry in denominator)."
 confirm "Subscription/leadgen chips present but dimmed"
 
-do_step "13.4 — Hover SessionPulse to fire session_pulse_hover. Reopen Session State tab."
+do_step "13.4 — Hover SessionPulse to fire session_pulse_hover. Reopen Overview tab."
 expect "session_pulse_hover chip has flipped from dimmed to amber."
 confirm "Firing a nav-analytics event flips its chip amber"
 
@@ -629,22 +629,22 @@ do_step "14.3 — From hero, scroll DOWN through pipeline section (full Scenario
 expect "Full bleed reveal: warm → hot → peak with CTA amber crest at footnote."
 confirm "Full pipeline reveal plays end-to-end"
 
-do_step "14.4 — Click 'Watch it live' at peak. Overlay opens."
-expect "Session State shows fired events already (page_view, scroll_depth, at least) as amber chips."
-confirm "Session State accurately reflects events fired during pipeline scroll"
+do_step "14.4 — Click 'See your session' at peak. Overlay opens."
+expect "Overview shows fired events already (page_view, scroll_depth, at least) as amber chips."
+confirm "Overview accurately reflects events fired during pipeline scroll"
 
 do_step "14.5 — Close overlay. Click 'Enter the demo →' in Demos section."
 expect "Routes to /demo/ecommerce. Ecommerce demo is 9B implementation (unchanged in 9E)."
 confirm "Ecommerce demo still works end-to-end (9E does not break 9B)"
 
 do_step "14.6 — Complete the demo through /demo/ecommerce/confirmation."
-do_step "14.7 — Return to homepage. Open Session State tab."
+do_step "14.7 — Return to homepage. Open Overview tab."
 expect \
   "Coverage jumped substantially." \
   "Ecommerce funnel: all four stages [OK]. Percentage 100%." \
   "coverage_milestone has fired at crossed thresholds." \
   "Threshold-gated contact CTA is visible."
-confirm "Post-demo Session State: 100% funnel + elevated coverage + threshold CTA visible"
+confirm "Post-demo Overview: 100% funnel + elevated coverage + threshold CTA visible"
 
 do_step "14.8 — Click threshold-gated contact CTA. Arrive at /contact."
 expect \
@@ -697,31 +697,31 @@ confirm "Return to / in same tab does not re-fire hint"
 # SCENARIO 16 — New-tab session isolation
 # Deliverables: D3, D4
 
-scenario "16 — New-tab visitor gets a fresh Session State blob" \
+scenario "16 — New-tab visitor gets a fresh Overview blob" \
   "D4 tab-scoped sessionStorage: reload preserves, new tab is fresh, per-tab isolation"
 
 setup "Two tabs A and B in the same browser window. Start with both clear."
 
-do_step "16.1 — TAB A: Load /. Navigate through a few pages, trigger events. Open Session State."
+do_step "16.1 — TAB A: Load /. Navigate through a few pages, trigger events. Open Overview."
 expect "Note coverage (e.g. 7/22) and session ID last-6."
-confirm "Tab A Session State has non-trivial coverage"
+confirm "Tab A Overview has non-trivial coverage"
 
 do_step "16.2 — TAB A: Reload (Cmd/Ctrl+R)."
 expect \
   "Coverage, chip grid amber states, funnel progress, session ID all PRESERVED." \
   "visited_paths count stable."
-confirm "Tab A reload preserves Session State"
+confirm "Tab A reload preserves Overview"
 
 do_step "16.3 — TAB B (new tab): Load $BASE_URL/."
 expect \
-  "Session State starts FRESH. Coverage at minimum (just page_view)." \
+  "Overview starts FRESH. Coverage at minimum (just page_view)." \
   "Funnel all [  ]. Session ID may differ or match (_iap_sid cookie may be shared)." \
-  "Session State BLOB is independent per-tab."
-confirm "New tab (B) starts with fresh Session State"
+  "Overview BLOB is independent per-tab."
+confirm "New tab (B) starts with fresh Overview"
 
 do_step "16.4 — TAB B: Trigger events, reach product_view in demo, return to homepage."
 do_step "16.5 — TAB A: Reload."
-expect "Tab A's Session State is STILL its own — NOT merged with Tab B's activity. Per-tab isolation holds."
+expect "Tab A's Overview is STILL its own — NOT merged with Tab B's activity. Per-tab isolation holds."
 confirm "Activity in Tab B does NOT bleed into Tab A"
 
 # ────────────────────────────────────────────────────────────────────────

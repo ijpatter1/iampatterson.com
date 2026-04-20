@@ -70,7 +70,7 @@ describe('Footer — editorial', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('renders the Under-the-hood column with overlay-triggering buttons', async () => {
+  it('renders the Session column with overlay-triggering buttons', async () => {
     const user = userEvent.setup();
     renderFooter();
     const liveStream = screen.getByRole('button', { name: /live event stream/i });

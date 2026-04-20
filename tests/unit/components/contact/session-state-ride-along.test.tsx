@@ -129,7 +129,7 @@ describe('SessionStateRideAlong', () => {
       render(<SessionStateRideAlong />);
       // Fixture has 14 fired / 22 total / 75% / 9 pages.
       const summary = screen.getByTestId('ride-along-summary');
-      expect(summary.textContent).toMatch(/14 of 22/);
+      expect(summary.textContent).toMatch(/14 of 20/);
       expect(summary.textContent).toMatch(/75%/);
       expect(summary.textContent).toMatch(/9 pages/);
       expect(summary.textContent).toMatch(/consent state and session id will ride along/i);
@@ -160,7 +160,11 @@ describe('SessionStateRideAlong', () => {
       expect(parsed).toEqual({
         session_id: 'sid-abc123def456',
         event_types_triggered: 14,
-        event_types_total: 22,
+        // Post-UAT F8: denominator comes from RENDERABLE_EVENT_NAMES.length
+        // (20 post-F2 — full schema minus the 4 hidden sub/leadgen event
+        // types), not the fixture's `total` array length. Matches the
+        // number the visitor saw on the Overview tab before submitting.
+        event_types_total: 20,
         ecommerce_demo_percentage: 75,
         pages_visited: 9,
         consent: {
@@ -354,7 +358,7 @@ describe('SessionStateRideAlong', () => {
       });
       render(<SessionStateRideAlong />);
       const summary = screen.getByTestId('ride-along-summary');
-      expect(summary.textContent).toMatch(/14 of 22 event types/);
+      expect(summary.textContent).toMatch(/14 of 20 event types/);
       expect(summary.textContent).toMatch(/75%/);
       expect(summary.textContent).toMatch(/will ride along/i);
       expect(summary.textContent).not.toMatch(/will not be included/i);
@@ -390,7 +394,7 @@ describe('SessionStateRideAlong', () => {
       await user.click(screen.getByRole('checkbox'));
       const summary = screen.getByTestId('ride-along-summary');
       expect(summary.textContent).toMatch(/overriding.*denied marketing consent/i);
-      expect(summary.textContent).toMatch(/14 of 22 event types/);
+      expect(summary.textContent).toMatch(/14 of 20 event types/);
       expect(summary.textContent).toMatch(/75%/);
       expect(summary.textContent).toMatch(/will ride along/i);
       // Critically: visitor must see the payload they're opting into,

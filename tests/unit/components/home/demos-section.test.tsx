@@ -193,19 +193,20 @@ describe('DemosSection — post-9E-D6 single ecommerce section', () => {
       expect(screen.queryByTestId('rebuild-banner')).not.toBeInTheDocument();
     });
 
-    it('resolves dismissal post-mount via useEffect on both storage paths (F4 + F8 eval)', () => {
-      // F8 eval flagged the prior version of this test as a pin-the-fix
-      // anti-pattern: jsdom runs a single client pass and CAN'T replay
-      // SSR/CSR reconciliation, so the test passed against both the
-      // pre-F4 synchronous initializer AND the post-F4 tri-state. The
-      // rewrite proves the useEffect path is consulted on BOTH storage
-      // states — structural evidence that the tri-state resolver ran:
-      //   path 1: storage dismissed → banner stays null post-effect
-      //   path 2: storage cleared   → banner renders post-effect
-      // A regression to the sync initializer would pass the path-1 arm
-      // but reveal its nature in production via the SSR mismatch. This
-      // test is the dev-time canary; the commit message + code review
-      // of the tri-state pattern catches the SSR case.
+    it('end-of-effect DOM matches storage state on both paths (F4 smoke test only — not an SSR proof)', () => {
+      // Honest framing (F8 eval re-fix): jsdom runs a single client pass
+      // and CANNOT replay SSR/CSR hydration reconciliation. This test
+      // asserts only the end-of-effect DOM: banner present when storage
+      // is clear, banner absent when storage says dismissed. It passes
+      // against BOTH the pre-F4 synchronous `useState(isRebuildBannerDismissed(...))`
+      // initializer AND the post-F4 tri-state — the regression the F4
+      // fix closes is not observable in jsdom.
+      // The fix relies on code review of the tri-state pattern for its
+      // SSR-safety guarantee; this test is a regression pin for
+      // dismissal PERSISTENCE (cross-mount), not hydration safety.
+      // If anyone reintroduces the sync initializer, this test won't
+      // catch it — but the hydration error surfaces in real Next.js
+      // builds (the symptom UAT S5.3 originally reported).
       mockSearchParams = new URLSearchParams('?rebuild=subscription');
       window.sessionStorage.setItem('iampatterson.rebuild_banner_dismissed.subscription', '1');
       const { unmount } = render(<DemosSection />);

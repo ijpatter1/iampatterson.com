@@ -5,7 +5,8 @@ import type { Config } from 'tailwindcss';
  *
  * Editorial direction (9A-redesign): paper/ink neutral palette plus a single
  * dynamic accent. Persimmon on the marketing surface, phosphor amber in the
- * under-the-hood overlay. The swap is driven at runtime via the `--accent`
+ * Session overlay (post-UAT F1 rename; originally "under-the-hood overlay").
+ * The swap is driven at runtime via the `--accent`
  * CSS variable; use `text-accent-current` / `bg-accent-current` / etc. to
  * consume it.
  *
@@ -102,7 +103,8 @@ const config: Config = {
 
         // Underside (overlay) scale — editorial's negative. Near-black paper,
         // warm cream ink, amber as luminous signal. Used ONLY inside the
-        // under-the-hood overlay surface.
+        // Session overlay surface (post-UAT F1 rename; originally
+        // "under-the-hood overlay" — the `u-*` prefix stays for brevity).
         'u-paper': {
           DEFAULT: '#0D0B0A',
           alt: '#141210',

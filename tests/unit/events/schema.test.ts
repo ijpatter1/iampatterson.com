@@ -1,4 +1,8 @@
-import { DATA_LAYER_EVENT_NAMES, RENDERABLE_EVENT_NAMES } from '@/lib/events/schema';
+import {
+  DATA_LAYER_EVENT_NAMES,
+  HIDDEN_FROM_COVERAGE,
+  RENDERABLE_EVENT_NAMES,
+} from '@/lib/events/schema';
 import type {
   BaseEvent,
   PageViewEvent,
@@ -295,16 +299,32 @@ describe('Event schema types', () => {
     expect(RENDERABLE_EVENT_NAMES).toContain('consent_tab_view');
   });
 
-  it('RENDERABLE_EVENT_NAMES is a strict subset of DATA_LAYER_EVENT_NAMES (F8 eval — prevents typo drift)', () => {
-    // Pin the subset invariant. Without it, a typo in the HIDDEN_FROM_COVERAGE
-    // set (e.g. "plan_selekt") wouldn't fail anywhere — RENDERABLE would
-    // accidentally include the typo'd name AND still contain the real
-    // `plan_select`, silently drifting.
+  it('RENDERABLE_EVENT_NAMES is a strict subset of DATA_LAYER_EVENT_NAMES', () => {
+    // Guards the RENDERABLE → DATA_LAYER direction: no renderable chip
+    // references a name that isn't in the live schema.
     const dl = new Set<string>(DATA_LAYER_EVENT_NAMES);
     for (const name of RENDERABLE_EVENT_NAMES) {
       expect(dl.has(name)).toBe(true);
     }
-    // And no renderable entry duplicates.
     expect(new Set(RENDERABLE_EVENT_NAMES).size).toBe(RENDERABLE_EVENT_NAMES.length);
+  });
+
+  it('HIDDEN_FROM_COVERAGE ⊆ DATA_LAYER_EVENT_NAMES — catches typos in the hide list (F8 eval re-fix)', () => {
+    // The previous subset-check-as-written only caught mistakes in the
+    // RENDERABLE direction. The actual HIDDEN-typo failure mode is:
+    // a bad entry like `plan_selekt` in HIDDEN doesn't match any real
+    // event, so `filter(!HIDDEN.has(n))` doesn't strip the real
+    // `plan_select`, and RENDERABLE accidentally includes it. That
+    // leaves RENDERABLE ⊆ DATA_LAYER still true — the regression is
+    // visible only as a missing chip-grid hide, with no assertion
+    // failure.
+    // This test iterates HIDDEN and asserts each entry is in the live
+    // schema — catches the typo at runtime and restores the CI backstop
+    // for the `Set<DataLayerEventName>` compile-time type (which is
+    // only enforced by `tsc --noEmit`, not the CI build).
+    const dl = new Set<string>(DATA_LAYER_EVENT_NAMES);
+    for (const name of HIDDEN_FROM_COVERAGE) {
+      expect(dl.has(name)).toBe(true);
+    }
   });
 });

@@ -107,7 +107,7 @@ var payload = {
       'consent_preferences',
       // Phase 9E deliverable 9 — nav & Session State analytics discriminators
       'dismissal_mode', // NavHintDismissedEvent
-      'source', // SessionStateTabViewEvent
+      'source', // OverviewTabViewEvent / TimelineTabViewEvent / ConsentTabViewEvent
       'destination', // PortalClickEvent
       'threshold', // CoverageMilestoneEvent
     ];

@@ -94,8 +94,9 @@ describe('BigQuery schema alignment with sGTM event data', () => {
   });
 
   it('includes Phase 9E nav & Session State discriminator fields (deliverable 9)', () => {
-    // dismissal_mode (NavHintDismissedEvent), source (SessionStateTabViewEvent),
-    // destination (PortalClickEvent), threshold (CoverageMilestoneEvent).
+    // dismissal_mode (NavHintDismissedEvent), source (OverviewTabViewEvent /
+    // TimelineTabViewEvent / ConsentTabViewEvent), destination
+    // (PortalClickEvent), threshold (CoverageMilestoneEvent).
     // Without these columns, the sGTM "Write to BigQuery" tag silently drops the
     // discriminator values (ignoreUnknownValues: true), and BI queries can't segment
     // by dismissal mode / tab source / portal destination / coverage threshold.
