@@ -40,7 +40,7 @@ export function PipelineSection() {
   const bleedRef = useRef(0);
   const [bleedTier, setBleedTier] = useState<BleedTier>(0);
   const [flickBurst, setFlickBurst] = useState(false);
-  const { open } = useOverlay();
+  const { open, isOpen } = useOverlay();
 
   // Scroll-driven bleed ramp. Writes --bleed imperatively each frame so we
   // re-render React only when the discrete tier class needs to change.
@@ -49,9 +49,14 @@ export function PipelineSection() {
   // this session, the bleed reveal is consumed — pipeline-section
   // renders in its calm editorial baseline on subsequent scroll. The
   // priming gesture has done its job; repeating on every scroll is
-  // wallpaper. Check the flag once on mount; we don't listen for
-  // changes because the visitor can't "un-consume" by closing the
-  // overlay — the first open is the decisive event.
+  // wallpaper.
+  //
+  // Effect subscribes to `isOpen` so the flag re-reads on every overlay
+  // open/close edge. When the overlay opens (OverlayProvider writes the
+  // flag in the same tick), this effect re-runs, sees the now-set flag,
+  // and the previous-effect cleanup tears down the rAF loop. Without
+  // this subscription the loop would keep running after the first
+  // overlay close (UAT F6 follow-up).
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (hasPipelineBleedConsumed()) return;
@@ -123,12 +128,13 @@ export function PipelineSection() {
       stopLoop();
       observer?.disconnect();
     };
-  }, []);
+  }, [isOpen]);
 
   // Random flicker bursts — only fire at warm or above. More frequent +
   // sharper as bleed grows. Suppressed under reduced-motion AND once
   // the bleed reveal is consumed (pipeline section has primed the
-  // visitor once; subsequent scrolls stay calm per F6 UAT).
+  // visitor once; subsequent scrolls stay calm per F6 UAT). Subscribes
+  // to `isOpen` for the same re-evaluation edge as the rAF loop above.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (hasPipelineBleedConsumed()) return;
@@ -164,7 +170,24 @@ export function PipelineSection() {
       alive = false;
       if (timer !== null) window.clearTimeout(timer);
     };
-  }, [bleedTier]);
+  }, [bleedTier, isOpen]);
+
+  // Visual reset when the bleed is consumed mid-ramp (UAT F6 follow-up).
+  // The rAF loop tear-down above stops NEW frames but leaves the last
+  // `--bleed` value frozen on the section + `bleedTier` frozen in React
+  // state. Without this effect, closing the overlay at peak bleed would
+  // leave the section stuck in the amber-flooded peak state until a
+  // page reload. On overlay-open edge, reset CSS var to 0, tier to 0,
+  // flick to false — section returns to its calm editorial baseline.
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!hasPipelineBleedConsumed()) return;
+    const el = sectionRef.current;
+    if (el) el.style.setProperty('--bleed', '0');
+    bleedRef.current = 0;
+    setBleedTier(0);
+    setFlickBurst(false);
+  }, [isOpen]);
 
   const tierClass = tierClassName(bleedTier);
   // Spec calls for asymmetric padding (80px top / 100px bottom) so the
@@ -173,8 +196,10 @@ export function PipelineSection() {
   // at every viewport: pt-20 = 80px top everywhere, pb-[100px] = 100px
   // bottom everywhere. (Earlier `md:pt-28` carried over from the
   // pre-D5 symmetric padding and broke spec on desktop.)
+  // F6 follow-up — mobile length compression. Section shrinks to
+  // pt-12 pb-16 on <md; desktop keeps the spec's 80/100 asymmetry.
   const sectionClassName = [
-    'pipeline-section bleed-layer relative isolate overflow-hidden border-t border-rule-soft bg-paper pt-20 pb-[100px]',
+    'pipeline-section bleed-layer relative isolate overflow-hidden border-t border-rule-soft bg-paper pt-12 pb-16 md:pt-20 md:pb-[100px]',
     flickBurst ? 'flick' : '',
     tierClass,
   ]
@@ -206,7 +231,9 @@ export function PipelineSection() {
           <h2
             className="font-display font-normal text-ink"
             style={{
-              fontSize: 'clamp(36px, 5.5vw, 72px)',
+              // F6 follow-up — mobile floor 36px → 28px so the 3-line
+              // display reflows at ~84px on 360px (was ~108px).
+              fontSize: 'clamp(28px, 5.5vw, 72px)',
               lineHeight: 1,
               letterSpacing: '-0.02em',
             }}
@@ -217,7 +244,7 @@ export function PipelineSection() {
             <br />
             right now.
           </h2>
-          <p className="p-meta max-w-[42ch] font-mono text-[12px] leading-[1.6] text-ink-2 md:pb-3">
+          <p className="p-meta max-w-[42ch] font-mono text-[12px] leading-[1.5] text-ink-2 md:pb-3 md:leading-[1.6]">
             Every scroll, click, and page view on this site flows through the same measurement
             pipeline I deploy for clients.
             <br />
@@ -226,11 +253,11 @@ export function PipelineSection() {
           </p>
         </div>
 
-        <div className="pv-host relative z-[1] mb-10 mt-12">
+        <div className="pv-host relative z-[1] mb-6 mt-8 md:mb-10 md:mt-12">
           <PipelineEditorial />
         </div>
 
-        <div className="flip-cta-wrap relative z-[2] mt-8 flex justify-center">
+        <div className="flip-cta-wrap relative z-[2] mt-6 flex justify-center md:mt-8">
           <button
             type="button"
             onClick={handleOpen}

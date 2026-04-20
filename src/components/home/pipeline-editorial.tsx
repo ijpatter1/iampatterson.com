@@ -135,7 +135,12 @@ export function PipelineEditorial() {
         ))}
       </ol>
 
-      <div className="pv-edit__footnote mt-7 border-t border-ink pt-4">
+      {/* F6 follow-up — footnote feed hidden on mobile. The 4-row mono
+          log at text-[11px] reads cramped on 360px and duplicates the
+          "live events" signal already surfaced by SessionPulse's event
+          counter in the header. Desktop keeps the secondary live
+          signal below the schematic. */}
+      <div className="pv-edit__footnote hidden mt-7 border-t border-ink pt-4 md:block">
         <div className="pv-edit__fn-head mb-2 flex items-baseline justify-between gap-3">
           <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-3">
             Footnote · your session
@@ -181,7 +186,7 @@ function PipelineEditorialStage({
       data-testid={`pipeline-stage-${stage.n}`}
       data-active={active}
       data-key={stage.key}
-      className={`pv-edit__stage relative grid grid-cols-[40px_1fr] gap-x-4 border-b border-rule-soft py-[18px] transition-[background] duration-300 md:grid-cols-[64px_1fr] md:gap-x-7 md:py-6 lg:grid-cols-[84px_1fr] ${
+      className={`pv-edit__stage relative grid grid-cols-[40px_1fr] gap-x-4 border-b border-rule-soft py-3 transition-[background] duration-300 md:grid-cols-[64px_1fr] md:gap-x-7 md:py-6 lg:grid-cols-[84px_1fr] ${
         active ? 'is-hot' : ''
       }`}
     >
@@ -201,17 +206,17 @@ function PipelineEditorialStage({
           rotates. Killing the readout jitter + metadata clipping +
           instrument/editorial clash in one cut (UAT S11 readout-jitter,
           S4 k/v clipping, S4 editorial clash). */}
-      <div className="pv-edit__body flex min-w-0 flex-col gap-1.5">
+      <div className="pv-edit__body flex min-w-0 flex-col gap-1 md:gap-1.5">
         <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-4">
           {stage.role}
         </div>
         <h3
           className="pv-edit__stage-title font-display font-normal leading-[1.02] tracking-[-0.02em] text-ink"
-          style={{ fontSize: 'clamp(22px, 3vw, 30px)' }}
+          style={{ fontSize: 'clamp(20px, 3vw, 30px)' }}
         >
           {stage.title}
         </h3>
-        <p className="pv-edit__detail mt-1 max-w-[60ch] text-[15px] leading-[1.55] text-ink-2">
+        <p className="pv-edit__detail mt-0.5 max-w-[60ch] text-[14px] leading-[1.5] text-ink-2 md:mt-1 md:text-[15px] md:leading-[1.55]">
           {renderDetailLine(stage.detail)}
         </p>
       </div>

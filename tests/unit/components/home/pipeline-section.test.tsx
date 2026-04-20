@@ -548,6 +548,89 @@ describe('PipelineSection — bleed-once-per-session (F6 UAT)', () => {
     await user.click(cta);
     expect(window.sessionStorage.getItem('iampatterson.pipeline_bleed.consumed')).toBe('1');
   });
+
+  it('tears down the rAF loop when the overlay opens mid-ramp (UAT follow-up — animation persists after close)', async () => {
+    // Pre-fix: rAF + flicker effects had `[]` deps so they never
+    // re-checked the consumed flag after mount. Clicking "See your
+    // session" → opening overlay → closing overlay left the loop still
+    // running. Post-fix: effects deps include `isOpen`; the open edge
+    // re-runs the effect, the now-set flag short-circuits it, and the
+    // previous-effect cleanup tears down the loop.
+    jest.useFakeTimers({ doNotFake: ['requestAnimationFrame', 'cancelAnimationFrame'] });
+    window.sessionStorage.clear();
+    const rafSpy = jest.fn((cb: FrameRequestCallback) => {
+      return window.setTimeout(() => cb(performance.now()), 16) as unknown as number;
+    });
+    Object.defineProperty(window, 'requestAnimationFrame', {
+      writable: true,
+      configurable: true,
+      value: rafSpy,
+    });
+    stubSectionGeometry(0);
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    renderSection();
+
+    // Loop is active — rAF fires repeatedly.
+    act(() => {
+      jest.advanceTimersByTime(100);
+    });
+    expect(rafSpy.mock.calls.length).toBeGreaterThan(0);
+    const callsBeforeOpen = rafSpy.mock.calls.length;
+
+    // Open the overlay via the CTA — OverlayProvider marks consumed in
+    // the same tick the isOpen state flips true.
+    await user.click(screen.getByRole('button', { name: /see your session/i }));
+
+    // Let the effect re-run + cleanup tear down the loop.
+    act(() => {
+      jest.advanceTimersByTime(200);
+    });
+    const callsAfterOpen = rafSpy.mock.calls.length;
+
+    // Some frames may fire between the click and the effect cleanup,
+    // so we don't assert exact equality. The invariant is: the loop
+    // eventually stops. Advance more time and verify no new calls.
+    const callsBaseline = rafSpy.mock.calls.length;
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
+    expect(rafSpy.mock.calls.length).toBe(callsBaseline);
+    expect(callsAfterOpen).toBeGreaterThanOrEqual(callsBeforeOpen);
+  });
+
+  it('resets --bleed to 0 when the overlay opens mid-ramp (visual baseline, not frozen peak)', () => {
+    // Without this reset, a visitor scrolling to peak bleed then opening
+    // the overlay would see the amber-flooded peak state persist after
+    // closing the overlay — the rAF loop stops but the last --bleed
+    // value stays on the section element.
+    jest.useFakeTimers({ doNotFake: ['requestAnimationFrame', 'cancelAnimationFrame'] });
+    window.sessionStorage.clear();
+    stubSectionGeometry(-1000); // near peak
+    const { rerender } = renderSection();
+    act(() => {
+      jest.advanceTimersByTime(100);
+    });
+    const section = screen.getByTestId('pipeline-section');
+    // Any non-zero bleed value written during the ramp.
+    expect(section.style.getPropertyValue('--bleed')).not.toBe('0');
+
+    // Directly mark consumed + trigger a re-render with isOpen=true by
+    // clicking the CTA.
+    act(() => {
+      screen.getByRole('button', { name: /see your session/i }).click();
+    });
+    act(() => {
+      jest.advanceTimersByTime(50);
+    });
+    rerender(
+      <OverlayProvider>
+        <PipelineSection />
+        <Probe />
+      </OverlayProvider>,
+    );
+    // --bleed forced back to 0 by the consume-reset effect.
+    expect(section.style.getPropertyValue('--bleed')).toBe('0');
+  });
 });
 
 describe('PipelineSection — See your session CTA', () => {
