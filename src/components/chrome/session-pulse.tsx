@@ -51,7 +51,13 @@ export const SessionPulse = forwardRef<HTMLElement, SessionPulseProps>(function 
         className="relative inline-block h-2 w-2 rounded-full bg-accent-current"
         style={{ boxShadow: '0 0 0 0 color-mix(in oklab, var(--accent) 60%, transparent)' }}
       >
-        <span className="absolute inset-0 animate-session-pulse rounded-full bg-accent-current" />
+        {/* Mobile: base `animate-session-pulse` (2.4s, scale→2.2).
+            Desktop (md+): `animate-session-pulse-strong` (1.9s, scale→
+            2.6, higher opacity floor) per UX_PIVOT_SPEC §3.1 — desktop
+            visitors linger and the affordance needs more presence
+            than mobile. `md:animate-session-pulse-strong` overrides
+            the default at the md breakpoint. */}
+        <span className="absolute inset-0 animate-session-pulse rounded-full bg-accent-current md:animate-session-pulse-strong" />
       </span>
       <span className="font-mono text-[11px] tracking-wide text-ink-3">
         ses <span className="text-ink">{shortId}</span> · {count} evt
@@ -72,6 +78,12 @@ export const SessionPulse = forwardRef<HTMLElement, SessionPulseProps>(function 
       }
     };
 
+    // Stable id for the tooltip so the button can aria-describedby it
+    // when visible. Keeping the id literal (not useId) because there's
+    // exactly one SessionPulse button in the header; a useId collision
+    // isn't a real risk and a literal keeps the DOM snapshot readable.
+    const tooltipId = 'session-pulse-tooltip';
+
     return (
       <span className="relative inline-flex items-center">
         <button
@@ -83,6 +95,7 @@ export const SessionPulse = forwardRef<HTMLElement, SessionPulseProps>(function 
           onFocus={() => setIsHovered(true)}
           onBlur={() => setIsHovered(false)}
           aria-label="Look under the hood — live session"
+          aria-describedby={isHovered ? tooltipId : undefined}
           // min 44×44 touch/click target per UX_PIVOT_SPEC §3.1 desktop
           // treatment — `min-h-[44px]` + padding produces a rectangular
           // hitbox that satisfies WCAG 2.5.5 without forcing a visible
@@ -103,6 +116,7 @@ export const SessionPulse = forwardRef<HTMLElement, SessionPulseProps>(function 
         </button>
         {isHovered && (
           <span
+            id={tooltipId}
             data-testid="session-pulse-tooltip"
             role="tooltip"
             className="pointer-events-none absolute left-1/2 top-full mt-1.5 -translate-x-1/2 whitespace-nowrap border border-accent-current bg-paper px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-accent-current"

@@ -109,6 +109,26 @@ describe('DemosSection — post-9E-D6 single ecommerce section', () => {
       expect(screen.queryByTestId('rebuild-banner')).not.toBeInTheDocument();
     });
 
+    it('does NOT render the banner for Object.prototype keys like "toString" (prototype-chain safety)', () => {
+      // Regression pin for Pass 1 Important finding: plain-object
+      // index lookup falls through to Object.prototype for keys like
+      // `toString`, `hasOwnProperty`, `__proto__`, `valueOf`. A URL
+      // like `?rebuild=toString` would return a Function reference,
+      // which is truthy and non-nullish, and rendering `{rebuildLabel}`
+      // as JSX would throw "Objects are not valid as a React child"
+      // and crash the homepage. The allowlist guard must use a
+      // prototype-chain-safe lookup.
+      mockSearchParams = new URLSearchParams('?rebuild=toString');
+      render(<DemosSection />);
+      expect(screen.queryByTestId('rebuild-banner')).not.toBeInTheDocument();
+    });
+
+    it('does NOT render the banner for "__proto__" (prototype-chain safety)', () => {
+      mockSearchParams = new URLSearchParams('?rebuild=__proto__');
+      render(<DemosSection />);
+      expect(screen.queryByTestId('rebuild-banner')).not.toBeInTheDocument();
+    });
+
     it('dismisses the banner on first interaction (click on the dismiss control)', async () => {
       mockSearchParams = new URLSearchParams('?rebuild=subscription');
       const user = userEvent.setup();
@@ -116,6 +136,42 @@ describe('DemosSection — post-9E-D6 single ecommerce section', () => {
       expect(screen.getByTestId('rebuild-banner')).toBeInTheDocument();
       await user.click(screen.getByRole('button', { name: /dismiss/i }));
       expect(screen.queryByTestId('rebuild-banner')).not.toBeInTheDocument();
+    });
+
+    it('persists dismissal across remounts within the same session (sessionStorage)', async () => {
+      // Pass 1 Minor: component-local useState meant a visitor who
+      // dismissed and navigated away would see the banner reappear on
+      // return within the same tab. Persist the dismissal to
+      // sessionStorage, keyed per-label so each removed demo's
+      // honesty note is an independent dismissal.
+      mockSearchParams = new URLSearchParams('?rebuild=subscription');
+      const user = userEvent.setup();
+      const { unmount } = render(<DemosSection />);
+      await user.click(screen.getByRole('button', { name: /dismiss/i }));
+      expect(screen.queryByTestId('rebuild-banner')).not.toBeInTheDocument();
+
+      // Simulate client-side nav away and back — unmount + remount.
+      unmount();
+      render(<DemosSection />);
+      expect(screen.queryByTestId('rebuild-banner')).not.toBeInTheDocument();
+    });
+
+    it('dismissal is per-label — dismissing subscription does NOT suppress leadgen', async () => {
+      mockSearchParams = new URLSearchParams('?rebuild=subscription');
+      const user = userEvent.setup();
+      const { unmount } = render(<DemosSection />);
+      await user.click(screen.getByRole('button', { name: /dismiss/i }));
+      unmount();
+
+      // Visitor lands from the other redirect in the same session.
+      mockSearchParams = new URLSearchParams('?rebuild=leadgen');
+      render(<DemosSection />);
+      const banner = screen.getByTestId('rebuild-banner');
+      expect(banner.textContent).toMatch(/lead[\s-]?gen/i);
+    });
+
+    beforeEach(() => {
+      window.sessionStorage.clear();
     });
   });
 });

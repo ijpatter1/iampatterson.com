@@ -93,6 +93,22 @@ describe('SessionPulse', () => {
     expect(screen.queryByTestId('session-pulse-tooltip')).not.toBeInTheDocument();
   });
 
+  it('links the tooltip to the button via aria-describedby when visible', async () => {
+    // Pass 1 Minor (ARIA smell): role="tooltip" without a describedby
+    // linkage is semantically inert to screen readers. The fix ties
+    // the tooltip id into aria-describedby only while the tooltip is
+    // visible, so focus/hover surfaces the tooltip text to AT users
+    // without advertising a hidden element in other states.
+    const user = userEvent.setup();
+    render(<SessionPulse onClick={jest.fn()} />);
+    const btn = screen.getByRole('button');
+    expect(btn.getAttribute('aria-describedby')).toBeNull();
+
+    await user.hover(btn);
+    const tooltip = screen.getByTestId('session-pulse-tooltip');
+    expect(btn.getAttribute('aria-describedby')).toBe(tooltip.id);
+  });
+
   it('satisfies a minimum 44×44 hitbox (WCAG 2.5.5) via min-h-[44px] on the button', () => {
     render(<SessionPulse onClick={jest.fn()} />);
     const btn = screen.getByRole('button');
@@ -100,6 +116,19 @@ describe('SessionPulse', () => {
     // JSDOM layout isn't running Tailwind, so we assert the class is
     // present as the durable contract.
     expect(btn.className).toMatch(/min-h-\[44px\]/);
+  });
+
+  it('applies the stronger pulse animation at desktop breakpoints (UX_PIVOT_SPEC §3.1)', () => {
+    // Spec: "pulse animation is slightly stronger on desktop than
+    // mobile. The mobile eye forgives more motion; desktop visitors
+    // stare longer." Mobile uses base `animate-session-pulse` (2.4s,
+    // scale 2.2); desktop layers `md:animate-session-pulse-strong`
+    // (1.9s, scale 2.6) to override. Assert both classes are present
+    // on the inner pulse element.
+    const { container } = render(<SessionPulse onClick={jest.fn()} />);
+    const pulse = container.querySelector('.animate-session-pulse');
+    expect(pulse).not.toBeNull();
+    expect(pulse?.className).toMatch(/md:animate-session-pulse-strong/);
   });
 
   it('fires session_pulse_hover on mouse pointer hover (desktop pointer)', () => {

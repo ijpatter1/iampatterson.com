@@ -184,6 +184,13 @@ const config: Config = {
         'slide-up': 'slideUp 0.6s ease-out',
         'bubble-rise': 'bubble-rise 3s ease-in-out forwards',
         'session-pulse': 'session-pulse 2.4s ease-out infinite',
+        // Phase 9E D1 — UX_PIVOT_SPEC §3.1: the pulse is "slightly
+        // stronger on desktop than mobile. The mobile eye forgives
+        // more motion; desktop visitors stare longer." Desktop
+        // variant has larger travel (scale 1 → 2.6) and faster
+        // cycle (1.9s) so the affordance has more presence as
+        // visitors linger.
+        'session-pulse-strong': 'session-pulse-strong 1.9s ease-out infinite',
         'live-strip': 'live-strip 40s linear infinite',
         // Phase 9E D1 first-session nav hint: amber ring expanding outward
         // from the SessionPulse. Slower + larger travel than session-pulse
@@ -210,6 +217,11 @@ const config: Config = {
           '0%': { opacity: '0.6', transform: 'scale(1)' },
           '80%': { opacity: '0', transform: 'scale(2.2)' },
           '100%': { opacity: '0', transform: 'scale(2.2)' },
+        },
+        'session-pulse-strong': {
+          '0%': { opacity: '0.75', transform: 'scale(1)' },
+          '80%': { opacity: '0', transform: 'scale(2.6)' },
+          '100%': { opacity: '0', transform: 'scale(2.6)' },
         },
         'live-strip': {
           '0%': { transform: 'translateX(0)' },

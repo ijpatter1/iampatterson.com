@@ -17,10 +17,17 @@ import { trackClickCta } from '@/lib/events/track';
 // param surfaces a one-line honesty banner. The label mapping is a
 // closed allowlist so unknown values (URL tampering, future redirect
 // sources) don't produce misleading copy.
-const REBUILD_LABELS: Record<string, string> = {
+//
+// Built via `Object.create(null)` so the lookup doesn't fall through
+// to `Object.prototype` for keys like `toString`, `__proto__`, or
+// `hasOwnProperty`. A URL like `?rebuild=toString` against a plain
+// object literal would return a Function reference, which is truthy
+// and non-nullish, and rendering it as a React child would crash the
+// homepage with "Objects are not valid as a React child."
+const REBUILD_LABELS: Record<string, string> = Object.assign(Object.create(null) as object, {
   subscription: 'subscription',
   leadgen: 'lead gen',
-};
+}) as Record<string, string>;
 
 /**
  * `useSearchParams()` forces a client-side rendering bailout on the
@@ -30,14 +37,53 @@ const REBUILD_LABELS: Record<string, string> = {
  * Suspense fallback is null — an absent banner during SSG is the
  * correct behavior since the visitor's `?rebuild` is only observable
  * post-hydration anyway.
+ *
+ * Dismissal persists to sessionStorage keyed by the rebuild label so a
+ * visitor who dismisses and navigates away doesn't see the banner
+ * re-appear on return within the same tab. The key includes the label
+ * so a visitor who lands from subscription and dismisses, then later
+ * lands from leadgen, still sees the leadgen banner — each removed
+ * demo's honesty note is an independent dismissal.
  */
+const REBUILD_BANNER_DISMISSED_STORAGE_PREFIX = 'iampatterson.rebuild_banner_dismissed.';
+
+function isRebuildBannerDismissed(label: string): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.sessionStorage.getItem(REBUILD_BANNER_DISMISSED_STORAGE_PREFIX + label) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function markRebuildBannerDismissed(label: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(REBUILD_BANNER_DISMISSED_STORAGE_PREFIX + label, '1');
+  } catch {
+    // Strict-privacy sessionStorage can throw — fall back to
+    // component-local dismissal only (banner re-appears on
+    // navigation, which is the pre-fix behavior).
+  }
+}
+
 function RebuildBanner() {
   const searchParams = useSearchParams();
   const rebuildParam = searchParams?.get('rebuild') ?? null;
-  const rebuildLabel = rebuildParam ? (REBUILD_LABELS[rebuildParam] ?? null) : null;
-  const [bannerDismissed, setBannerDismissed] = useState(false);
+  const rebuildLabel =
+    rebuildParam && Object.hasOwn(REBUILD_LABELS, rebuildParam)
+      ? REBUILD_LABELS[rebuildParam]
+      : null;
+  const [bannerDismissed, setBannerDismissed] = useState(
+    rebuildLabel ? isRebuildBannerDismissed(rebuildLabel) : false,
+  );
 
   if (rebuildLabel === null || bannerDismissed) return null;
+
+  const dismiss = () => {
+    markRebuildBannerDismissed(rebuildLabel);
+    setBannerDismissed(true);
+  };
 
   return (
     <div
@@ -52,7 +98,7 @@ function RebuildBanner() {
       <button
         type="button"
         aria-label="Dismiss"
-        onClick={() => setBannerDismissed(true)}
+        onClick={dismiss}
         className="flex-shrink-0 text-ink-3 transition-colors hover:text-ink"
       >
         ×

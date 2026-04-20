@@ -243,6 +243,61 @@ describe('NavHint — first-session pulse ring', () => {
     });
   });
 
+  describe('storage edge cases (Pass 1 evaluator coverage)', () => {
+    it('still renders + emits nav_hint_shown when sessionStorage.setItem throws (strict-privacy fallback)', () => {
+      // `markShownThisSession` is wrapped in try/catch specifically to
+      // survive privacy settings that throw on setItem. The hint must
+      // still render + emit in that case — the gate just won't persist
+      // (re-fires on next homepage visit). Pass 1 flagged this path
+      // as documented-but-untested.
+      const originalSetItem = Storage.prototype.setItem;
+      Storage.prototype.setItem = jest.fn(() => {
+        throw new Error('QuotaExceededError: sessionStorage disabled');
+      });
+
+      try {
+        render(<Harness />);
+        act(() => {
+          jest.advanceTimersByTime(3000);
+        });
+        expect(screen.getByTestId('nav-hint')).toBeInTheDocument();
+        expect(mockShown).toHaveBeenCalledTimes(1);
+      } finally {
+        Storage.prototype.setItem = originalSetItem;
+      }
+    });
+
+    it('homepage re-visit within the same session is suppressed by the gate after first render', () => {
+      // Full re-entry sequence: visitor enters on /services (no hint),
+      // navigates to / (hint fires, gate set), navigates to /services
+      // (no hint by scope), navigates back to / (no hint by gate).
+      mockPathname = '/services';
+      const { rerender } = render(<Harness />);
+      act(() => {
+        jest.advanceTimersByTime(10_000);
+      });
+      expect(screen.queryByTestId('nav-hint')).not.toBeInTheDocument();
+
+      mockPathname = '/';
+      rerender(<Harness />);
+      act(() => {
+        jest.advanceTimersByTime(3000);
+      });
+      expect(screen.getByTestId('nav-hint')).toBeInTheDocument();
+      expect(mockShown).toHaveBeenCalledTimes(1);
+
+      // Navigate away and back — gate is set; hint must not re-fire.
+      mockPathname = '/services';
+      rerender(<Harness />);
+      mockPathname = '/';
+      rerender(<Harness />);
+      act(() => {
+        jest.advanceTimersByTime(10_000);
+      });
+      expect(mockShown).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('reduced-motion variant', () => {
     it('renders the static-text variant under prefers-reduced-motion', () => {
       mockReducedMotion(true);
