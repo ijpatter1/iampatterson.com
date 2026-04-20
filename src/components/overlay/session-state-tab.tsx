@@ -46,10 +46,14 @@ const PORTAL_LINKS: {
   },
 ];
 
+// Funnel labels mirror the event-name literals shown in the chip grid above
+// (`> product_view`, `> add_to_cart`). Consistent retrofuture-terminal idiom
+// across both surfaces; a visitor reading the chip grid and the funnel sees
+// the same tokens. Uppercase matches the spec's example funnel rows.
 const STAGE_LABELS: Record<EcommerceStage, string> = {
-  product_view: 'PRODUCT VIEW',
-  add_to_cart: 'ADD TO CART',
-  begin_checkout: 'CHECKOUT',
+  product_view: 'PRODUCT_VIEW',
+  add_to_cart: 'ADD_TO_CART',
+  begin_checkout: 'BEGIN_CHECKOUT',
   purchase: 'PURCHASE',
 };
 
@@ -83,6 +87,12 @@ function useTypedCoverage(text: string): string {
   const hasAnimated = useRef(false);
 
   useEffect(() => {
+    // Guard: don't consume the one-shot on an empty placeholder. SessionState
+    // hydrates asynchronously in the provider, so the first render here has
+    // `text === ''`; the real readout arrives on a subsequent render. Without
+    // this guard the empty-text run flips `hasAnimated.current` and the real
+    // readout would appear instantly (Pass 2 evaluator C1).
+    if (!text) return;
     if (hasAnimated.current) {
       setDisplayed(text);
       return;
@@ -210,7 +220,7 @@ export function SessionStateTab() {
             className="m-0 text-accent-current leading-none"
           >{`[${bar}]`}</pre>
           <span data-testid="coverage-readout" className="text-u-ink-2">
-            {typedCoverage || coverageReadout.slice(0, 0)}
+            {typedCoverage}
           </span>
         </div>
         <div className="grid grid-cols-2 gap-1 font-mono text-[10px] sm:grid-cols-3">
@@ -259,7 +269,10 @@ export function SessionStateTab() {
                 data-status={status}
                 className="flex gap-3"
               >
-                <span className={tagClass}>{STAGE_STATUS_TAG[status]}</span>
+                {/* Fixed-width status column so `[SKIPPED]` and `[OK]` produce
+                    aligned funnel-label columns — the retrofuture-terminal
+                    vocabulary reads as a table, not a jagged list. */}
+                <span className={`inline-block w-20 ${tagClass}`}>{STAGE_STATUS_TAG[status]}</span>
                 <span className={labelClass}>{STAGE_LABELS[stage]}</span>
               </li>
             );
@@ -318,7 +331,7 @@ export function SessionStateTab() {
       {thresholdCrossed(state) && (
         <div className="mt-2 border border-accent-current bg-u-paper-alt p-4">
           <div className="mb-2 font-mono text-[10px] uppercase tracking-widest text-accent-current">
-            Seen enough of the stack?
+            &gt; COVERAGE THRESHOLD REACHED
           </div>
           <Link
             href="/contact"
@@ -326,7 +339,7 @@ export function SessionStateTab() {
             onClick={handleContextualCtaClick}
             className="font-display text-lg text-u-ink hover:text-accent-current"
           >
-            Seen enough? →
+            Seen enough? Let&apos;s talk →
           </Link>
         </div>
       )}

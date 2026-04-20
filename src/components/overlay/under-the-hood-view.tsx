@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { ConsentView } from '@/components/overlay/consent-view';
 import { DashboardView } from '@/components/overlay/dashboard-view';
@@ -115,28 +115,19 @@ export function UnderTheHoodView() {
     }
   }, [showOverview, viewMode]);
 
-  // `manual_select` fires only when the visitor clicks the Session State tab
-  // AFTER the overlay has already opened on a different tab — matches the spec
-  // semantic ("clicks back to Session State from Timeline or Consent").
-  // Reopening the overlay with a sticky Session State viewMode is NOT a
-  // manual-select; the first-seen tab of each overlay-open session is never
-  // treated as a manual choice regardless of which tab it is. When deliverable
-  // 2 promotes Session State to the default tab, this effect will be extended
-  // with a `default_landing` branch for the first-seen case.
-  const hasSeenTabInOpenRef = useRef(false);
-  useEffect(() => {
-    if (!isOpen) {
-      hasSeenTabInOpenRef.current = false;
-      return;
-    }
-    if (!hasSeenTabInOpenRef.current) {
-      hasSeenTabInOpenRef.current = true;
-      return;
-    }
-    if (viewMode === 'session_state') {
+  // Tab-change handler that the tabs-bar calls. `manual_select` emits only
+  // when the visitor actively clicks the Session State tab from the tabs
+  // bar. Programmatic opens (overlay `open('session_state')`, pendingTab
+  // consumption, layout/pathname-driven resets) go through `setViewMode`
+  // directly and do NOT emit — they are not visitor-initiated choices.
+  // Deliverable 2 will introduce `default_landing` via a separate emission
+  // on the first-seen path when Session State is promoted to the default.
+  const handleTabChange = useCallback((mode: ViewMode) => {
+    setViewMode(mode);
+    if (mode === 'session_state') {
       trackSessionStateTabView('manual_select');
     }
-  }, [isOpen, viewMode]);
+  }, []);
 
   // If the opener requested a specific tab (e.g. footer "Consent state" link),
   // switch to it and clear the request so a subsequent open without a hint
@@ -271,7 +262,7 @@ export function UnderTheHoodView() {
         </button>
       </header>
 
-      <Tabs active={viewMode} onChange={setViewMode} tabs={tabs} />
+      <Tabs active={viewMode} onChange={handleTabChange} tabs={tabs} />
 
       <div className="relative flex-1 overflow-y-auto bg-u-paper text-u-ink">
         <div

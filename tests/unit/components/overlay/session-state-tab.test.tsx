@@ -148,6 +148,64 @@ describe('SessionStateTab', () => {
     jest.useRealTimers();
   });
 
+  it('plays the typewriter on the null → hydrated SessionState transition (Pass 2 C1)', () => {
+    // In production the provider initialises state = null, then hydrates on
+    // its mount effect. SessionStateTab's first render sees null; the real
+    // coverage readout arrives on the subsequent render. The typewriter must
+    // animate on that second render, NOT skip because an empty placeholder
+    // text consumed the one-shot ref.
+    jest.useFakeTimers();
+    useSessionState.mockReturnValue(null);
+    const { rerender } = render(
+      <Wrapper>
+        <SessionStateTab />
+      </Wrapper>,
+    );
+    // First render shows the warming-up empty state; coverage-readout is not
+    // in the DOM yet.
+    expect(screen.queryByTestId('coverage-readout')).toBeNull();
+
+    // Let any queued effect from the null-first render flush without consuming
+    // the one-shot.
+    act(() => {
+      jest.advanceTimersByTime(0);
+    });
+
+    // Hydrate.
+    useSessionState.mockReturnValue(makeState());
+    rerender(
+      <Wrapper>
+        <SessionStateTab />
+      </Wrapper>,
+    );
+
+    const readout = screen.getByTestId('coverage-readout');
+    expect(readout.textContent).toBe('');
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(readout.textContent).toBe('> 2/22 event types');
+    jest.useRealTimers();
+  });
+
+  it('renders all four funnel stages as pending when stages_reached is empty (Pass 2 m1)', () => {
+    useSessionState.mockReturnValue(makeState());
+    render(
+      <Wrapper>
+        <SessionStateTab />
+      </Wrapper>,
+    );
+    const rows = screen.getAllByTestId('funnel-row');
+    expect(rows.map((r) => r.getAttribute('data-status'))).toEqual([
+      'pending',
+      'pending',
+      'pending',
+      'pending',
+    ]);
+    expect(screen.queryByText('[SKIPPED]')).toBeNull();
+    expect(screen.queryByText('[OK]')).toBeNull();
+  });
+
   it('renders one chip per event name in the schema (derive-from-schema)', () => {
     useSessionState.mockReturnValue(makeState());
     const { container } = render(
