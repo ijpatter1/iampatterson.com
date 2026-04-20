@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 
-export type OverlayTab = 'session_state' | 'timeline' | 'consent';
+export type OverlayTab = 'overview' | 'timeline' | 'consent';
 
 interface OverlayContextValue {
   isOpen: boolean;

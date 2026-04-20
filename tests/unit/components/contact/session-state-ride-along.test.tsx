@@ -62,7 +62,7 @@ function makeState(overrides: Partial<SessionState> = {}): SessionState {
         'form_complete',
         'lead_qualify',
         'nav_hint_dismissed',
-        'session_state_tab_view',
+        'overview_tab_view',
         'portal_click',
         'coverage_milestone',
       ],

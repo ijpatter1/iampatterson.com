@@ -228,22 +228,22 @@ export default function ServicesPage() {
                 }}
               >
                 Not sure where you&apos;d start?{' '}
-                <em className="text-accent-current">Watch it run first.</em>
+                <em className="text-accent-current">See your session first.</em>
               </h2>
               <p className="mt-5 max-w-[56ch] text-base leading-[1.65] text-ink-2">
-                Every page on this site is instrumented with the same Tier 1 foundation. Look under
-                the hood on any page to see your session flowing through the stack. The best pitch I
-                have is the one running underneath you.
+                Every page on this site is instrumented with the same Tier 1 foundation. Open your
+                session on any page to see it flowing through the stack. The best pitch I have is
+                the one running underneath you.
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
                 <EditorialButton
                   variant="accent"
                   onClick={() => {
-                    trackClickCta('Look under the hood', 'services_closer');
+                    trackClickCta('See your session', 'services_closer');
                     open();
                   }}
                 >
-                  Look under the hood →
+                  See your session →
                 </EditorialButton>
                 <EditorialLink
                   href="/contact"

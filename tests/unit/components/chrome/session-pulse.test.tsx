@@ -54,7 +54,7 @@ describe('SessionPulse', () => {
     const user = userEvent.setup();
     render(<SessionPulse onClick={onClick} />);
 
-    const btn = screen.getByRole('button', { name: /look under the hood — live session/i });
+    const btn = screen.getByRole('button', { name: /open your session/i });
     expect(btn).toBeInTheDocument();
 
     await user.click(btn);
@@ -66,47 +66,20 @@ describe('SessionPulse', () => {
     expect(screen.getByText(/123456/)).toBeInTheDocument();
   });
 
-  // Phase 9E D1 — hover affordance upgrades
+  // Phase 9E D1 — hover affordance (tooltip removed in the F1 language
+  // consolidation; the instrument-as-nav conceit stands on its own)
 
-  it('renders the NAV · UNDER THE HOOD tooltip on hover (clickable variant)', async () => {
+  it('does NOT render a verbal tooltip on hover (F1 rename — instrument-as-nav)', async () => {
+    // The "NAV · UNDER THE HOOD" tooltip was removed in the F1 language
+    // sweep. The button's aria-label carries the semantics for AT users;
+    // visible chrome stays clean to avoid re-introducing the fragmentation
+    // the rename resolved.
     const user = userEvent.setup();
     render(<SessionPulse onClick={jest.fn()} />);
     const btn = screen.getByRole('button');
-
-    // Tooltip absent at rest.
+    await user.hover(btn);
     expect(screen.queryByTestId('session-pulse-tooltip')).not.toBeInTheDocument();
-
-    // Hover (simulate mouse pointer — coarse-pointer suppression is
-    // covered by the hover-emission tests below).
-    await user.hover(btn);
-    const tooltip = screen.getByTestId('session-pulse-tooltip');
-    expect(tooltip.textContent).toMatch(/NAV[\s·]*UNDER THE HOOD/i);
-  });
-
-  it('hides the tooltip when the pointer leaves', async () => {
-    const user = userEvent.setup();
-    render(<SessionPulse onClick={jest.fn()} />);
-    const btn = screen.getByRole('button');
-    await user.hover(btn);
-    expect(screen.getByTestId('session-pulse-tooltip')).toBeInTheDocument();
-    await user.unhover(btn);
-    expect(screen.queryByTestId('session-pulse-tooltip')).not.toBeInTheDocument();
-  });
-
-  it('links the tooltip to the button via aria-describedby when visible', async () => {
-    // Pass 1 Minor (ARIA smell): role="tooltip" without a describedby
-    // linkage is semantically inert to screen readers. The fix ties
-    // the tooltip id into aria-describedby only while the tooltip is
-    // visible, so focus/hover surfaces the tooltip text to AT users
-    // without advertising a hidden element in other states.
-    const user = userEvent.setup();
-    render(<SessionPulse onClick={jest.fn()} />);
-    const btn = screen.getByRole('button');
-    expect(btn.getAttribute('aria-describedby')).toBeNull();
-
-    await user.hover(btn);
-    const tooltip = screen.getByTestId('session-pulse-tooltip');
-    expect(btn.getAttribute('aria-describedby')).toBe(tooltip.id);
+    expect(screen.queryByText(/NAV[\s·]*UNDER THE HOOD/i)).not.toBeInTheDocument();
   });
 
   it('satisfies a minimum 44×44 hitbox (WCAG 2.5.5) via min-h-[44px] on the button', () => {

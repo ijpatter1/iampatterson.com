@@ -1,14 +1,14 @@
 /**
- * `session_state_tab_view` `manual_select` emission semantics.
+ * `overview_tab_view` `manual_select` emission semantics.
  *
- * Fires ONLY when the visitor actively clicks the Session State tab
+ * Fires ONLY when the visitor actively clicks the Overview tab
  * from the tabs bar. Programmatic transitions — a sticky-tab reopen,
- * `open('session_state')` via pendingTab, the default landing on fresh
+ * `open('overview')` via pendingTab, the default landing on fresh
  * open — are the `default_landing` case covered in
  * `default-landing-emission.test.tsx`; this file pins the click-bound
  * manual_select invariant.
  *
- * Post-D2 note: Session State is now the default landing tab, so the
+ * Post-D2 note: Overview is now the default landing tab, so the
  * first overlay open fires `default_landing` (not `manual_select`).
  * Tests here filter by `source === 'manual_select'` where relevant to
  * assert the click-bound path in isolation.
@@ -46,8 +46,8 @@ function OverlayControls() {
       <button type="button" onClick={() => close()}>
         close-overlay
       </button>
-      <button type="button" onClick={() => open('session_state')}>
-        open-with-pending-session-state
+      <button type="button" onClick={() => open('overview')}>
+        open-with-pending-overview
       </button>
     </>
   );
@@ -69,10 +69,10 @@ function dataLayerEventsNamed(name: string) {
 }
 
 function manualSelectEvents() {
-  return dataLayerEventsNamed('session_state_tab_view').filter((e) => e.source === 'manual_select');
+  return dataLayerEventsNamed('overview_tab_view').filter((e) => e.source === 'manual_select');
 }
 
-describe('session_state_tab_view emission', () => {
+describe('overview_tab_view emission', () => {
   beforeEach(() => {
     window.dataLayer = [];
     window.sessionStorage.clear();
@@ -91,15 +91,15 @@ describe('session_state_tab_view emission', () => {
     expect(manualSelectEvents()).toHaveLength(0);
   });
 
-  it('fires manual_select when the visitor clicks the Session State tab from another tab', async () => {
+  it('fires manual_select when the visitor clicks the Overview tab from another tab', async () => {
     const user = userEvent.setup();
     render(<Harness />);
-    // Open — Session State is the default landing tab post-D2. Navigate
-    // to Timeline first so the click back to Session State is observable
+    // Open — Overview is the default landing tab post-D2. Navigate
+    // to Timeline first so the click back to Overview is observable
     // as a tab-bar click (the manual_select case).
     await user.click(screen.getByText('open-overlay'));
     await user.click(screen.getByRole('button', { name: /^Timeline/i }));
-    await user.click(screen.getByRole('button', { name: /^Session State$/i }));
+    await user.click(screen.getByRole('button', { name: /^Overview$/i }));
     const events = manualSelectEvents();
     expect(events).toHaveLength(1);
     expect(events[0].source).toBe('manual_select');
@@ -108,18 +108,18 @@ describe('session_state_tab_view emission', () => {
     // the unfiltered total at 2 (one default_landing on fresh open +
     // one manual_select on click back) so any future regression to the
     // dual-fire bug trips this expectation.
-    expect(dataLayerEventsNamed('session_state_tab_view')).toHaveLength(2);
+    expect(dataLayerEventsNamed('overview_tab_view')).toHaveLength(2);
   });
 
-  it('does not re-emit manual_select when the overlay is closed and reopened with Session State sticky', async () => {
+  it('does not re-emit manual_select when the overlay is closed and reopened with Overview sticky', async () => {
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(screen.getByText('open-overlay'));
     await user.click(screen.getByRole('button', { name: /^Timeline/i }));
-    await user.click(screen.getByRole('button', { name: /^Session State$/i }));
+    await user.click(screen.getByRole('button', { name: /^Overview$/i }));
     expect(manualSelectEvents()).toHaveLength(1);
 
-    // Close + reopen — viewMode stays sticky at 'session_state' but this
+    // Close + reopen — viewMode stays sticky at 'overview' but this
     // reopen is NOT a manual select; it's a default_landing (covered in
     // its own suite). manual_select count stays at 1.
     await user.click(screen.getByText('close-overlay'));
@@ -136,30 +136,30 @@ describe('session_state_tab_view emission', () => {
     expect(manualSelectEvents()).toHaveLength(0);
   });
 
-  it('fires once per active tab-bar transition back to Session State from another tab', async () => {
+  it('fires once per active tab-bar transition back to Overview from another tab', async () => {
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(screen.getByText('open-overlay'));
     // default_landing fires here; navigate away + back twice to rack up
     // two manual_select emissions.
     await user.click(screen.getByRole('button', { name: /^Timeline/i }));
-    await user.click(screen.getByRole('button', { name: /^Session State$/i }));
+    await user.click(screen.getByRole('button', { name: /^Overview$/i }));
     await user.click(screen.getByRole('button', { name: /^Timeline/i }));
-    await user.click(screen.getByRole('button', { name: /^Session State$/i }));
+    await user.click(screen.getByRole('button', { name: /^Overview$/i }));
     expect(manualSelectEvents()).toHaveLength(2);
   });
 
-  it('does NOT fire manual_select when viewMode lands on session_state via pendingTab (click-bound invariant)', async () => {
+  it('does NOT fire manual_select when viewMode lands on overview via pendingTab (click-bound invariant)', async () => {
     // Pinning the architectural invariant: manual_select emission is
     // click-bound (via `handleTabChange`), so programmatic tab changes —
-    // `open('session_state')` via pendingTab, the default landing on
+    // `open('overview')` via pendingTab, the default landing on
     // fresh open — never emit manual_select. They emit default_landing
     // instead (asserted in default-landing-emission.test.tsx). A future
     // refactor that reverts to an effect-based manual_select emitter
     // would regress the pendingTab path and fail here.
     const user = userEvent.setup();
     render(<Harness />);
-    await user.click(screen.getByText('open-with-pending-session-state'));
+    await user.click(screen.getByText('open-with-pending-overview'));
     expect(manualSelectEvents()).toHaveLength(0);
   });
 });

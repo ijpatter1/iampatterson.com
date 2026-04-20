@@ -171,7 +171,7 @@ function SectionKicker({ children }: { children: string }) {
   );
 }
 
-export function SessionStateTab() {
+export function OverviewTab() {
   const state = useSessionState();
   const pathname = usePathname() ?? '/';
   const { close } = useOverlay();
@@ -213,7 +213,7 @@ export function SessionStateTab() {
   };
 
   return (
-    <div data-testid="session-state-tab" className="space-y-6 text-sm text-u-ink">
+    <div data-testid="overview-tab" className="space-y-6 text-sm text-u-ink">
       <div>
         <div className="mb-3 font-mono text-[10px] uppercase tracking-widest text-accent-current">
           &gt; YOUR SESSION · LIVE

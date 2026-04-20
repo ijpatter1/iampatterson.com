@@ -7,13 +7,13 @@ import { EventDetail } from '@/components/overlay/event-detail';
 import { EventTimeline } from '@/components/overlay/event-timeline';
 import { NarrativeFlow } from '@/components/overlay/narrative-flow';
 import { useOverlay } from '@/components/overlay/overlay-context';
-import { SessionStateTab } from '@/components/overlay/session-state-tab';
+import { OverviewTab } from '@/components/overlay/overview-tab';
 import { useFilteredEvents } from '@/hooks/useFilteredEvents';
 import { useLiveEvents } from '@/hooks/useLiveEvents';
-import { trackSessionStateTabView } from '@/lib/events/track';
+import { trackOverviewTabView } from '@/lib/events/track';
 import type { PipelineEvent } from '@/lib/events/pipeline-schema';
 
-type ViewMode = 'session_state' | 'timeline' | 'consent';
+type ViewMode = 'overview' | 'timeline' | 'consent';
 type Phase = 'idle' | 'boot' | 'on';
 
 const BOOT_DURATION_MS = 260;
@@ -101,7 +101,7 @@ export function UnderTheHoodView() {
   const { events } = useLiveEvents();
   const { filteredEvents } = useFilteredEvents(events, false);
 
-  const [viewMode, setViewMode] = useState<ViewMode>('session_state');
+  const [viewMode, setViewMode] = useState<ViewMode>('overview');
   const [selectedEvent, setSelectedEvent] = useState<PipelineEvent | null>(null);
   const [phase, setPhase] = useState<Phase>('idle');
   const [flashKey, setFlashKey] = useState(false);
@@ -115,15 +115,15 @@ export function UnderTheHoodView() {
   const landingResolvedRef = useRef(false);
 
   // Tab-change handler that the tabs-bar calls. `manual_select` emits only
-  // when the visitor actively clicks the Session State tab from the tabs
-  // bar. Programmatic opens (overlay `open('session_state')`, pendingTab
+  // when the visitor actively clicks the Overview tab from the tabs
+  // bar. Programmatic opens (overlay `open('overview')`, pendingTab
   // consumption) go through `setViewMode` directly and do NOT emit —
   // they are not visitor-initiated choices from within the tabs bar.
   // The `default_landing` emitter below handles the non-click paths.
   const handleTabChange = useCallback((mode: ViewMode) => {
     setViewMode(mode);
-    if (mode === 'session_state') {
-      trackSessionStateTabView('manual_select');
+    if (mode === 'overview') {
+      trackOverviewTabView('manual_select');
     }
   }, []);
 
@@ -138,21 +138,21 @@ export function UnderTheHoodView() {
   }, [pendingTab, isOpen, consumePendingTab]);
 
   // default_landing emission: fires once per overlay-open on the landing-
-  // phase resolution, and only when the resolved landing tab is Session
-  // State. Runs on isOpen/viewMode/pendingTab edges.
+  // phase resolution, and only when the resolved landing tab is Overview.
+  // Runs on isOpen/viewMode/pendingTab edges.
   //
   // The pendingTab check defers resolution until the pendingTab consumption
   // effect has run. On an `open('timeline')` call the initial render has
-  // isOpen=true, viewMode='session_state' (default), pendingTab='timeline'
-  // — resolving here would classify the landing as session_state when the
+  // isOpen=true, viewMode='overview' (default), pendingTab='timeline'
+  // — resolving here would classify the landing as overview when the
   // visitor actually ends up on timeline. Waiting for pendingTab=null means
   // we always see the post-transition viewMode.
   //
   // Once resolution completes, the gate closes UNCONDITIONALLY — whether
   // or not we emitted. This is load-bearing: if the landing resolves to
-  // Timeline and the visitor later clicks back to Session State, that
-  // click already emits `manual_select` via handleTabChange. Without this
-  // invariant, the viewMode=session_state re-render would also fire
+  // Timeline and the visitor later clicks back to Overview, that click
+  // already emits `manual_select` via handleTabChange. Without this
+  // invariant, the viewMode=overview re-render would also fire
   // default_landing (the Pass 1 dual-fire bug). The two emission paths
   // must stay mutually exclusive per open.
   useEffect(() => {
@@ -163,8 +163,8 @@ export function UnderTheHoodView() {
     if (pendingTab) return;
     if (!landingResolvedRef.current) {
       landingResolvedRef.current = true;
-      if (viewMode === 'session_state') {
-        trackSessionStateTabView('default_landing');
+      if (viewMode === 'overview') {
+        trackOverviewTabView('default_landing');
       }
     }
   }, [isOpen, viewMode, pendingTab]);
@@ -202,7 +202,7 @@ export function UnderTheHoodView() {
   if (!isOpen && !hasBooted.current) return null;
 
   const tabs: TabDef[] = [
-    { mode: 'session_state', label: 'Session State' },
+    { mode: 'overview', label: 'Overview' },
     { mode: 'timeline', label: 'Timeline', count: filteredEvents.length },
     { mode: 'consent', label: 'Consent' },
   ];
@@ -270,10 +270,10 @@ export function UnderTheHoodView() {
             </svg>
           </div>
           <div>
-            <h1 className="font-display text-lg leading-none text-u-ink">Under the Hood</h1>
+            <h1 className="font-display text-lg leading-none text-u-ink">Session</h1>
             <p className="mt-1 flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-u-ink-3">
               <span className="inline-block h-1.5 w-1.5 animate-session-pulse rounded-full bg-accent-current" />
-              Live · this session, under the hood
+              Live · yours, right now
             </p>
           </div>
         </div>
@@ -302,7 +302,7 @@ export function UnderTheHoodView() {
             </>
           ) : (
             <>
-              {viewMode === 'session_state' && <SessionStateTab />}
+              {viewMode === 'overview' && <OverviewTab />}
               {viewMode === 'timeline' && (
                 <EventTimeline events={filteredEvents} onSelectEvent={setSelectedEvent} />
               )}

@@ -71,13 +71,13 @@ describe('Header — post-9E-D1 nav pivot', () => {
   it('renders the SessionPulse as the primary nav affordance and opens the overlay on click', async () => {
     const user = userEvent.setup();
     renderHeader();
-    const pulse = screen.getByRole('button', { name: /look under the hood — live session/i });
+    const pulse = screen.getByRole('button', { name: /open your session/i });
     expect(pulse).toBeInTheDocument();
 
     await user.click(pulse);
 
     expect(screen.getByTestId('overlay-status')).toHaveTextContent('open');
-    expect(mockTrackClickCta).toHaveBeenCalledWith('Under the hood', 'session_pulse');
+    expect(mockTrackClickCta).toHaveBeenCalledWith('Session', 'session_pulse');
   });
 
   it('exposes a screen-reader-only home link for site identity', () => {

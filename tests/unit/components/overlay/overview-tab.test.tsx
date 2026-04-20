@@ -1,5 +1,5 @@
 /**
- * SessionStateTab — Phase 9E deliverable 3.
+ * OverviewTab — Phase 9E deliverable 3.
  *
  * Renders the Session State blob produced by deliverable 4 as the overlay's
  * primary surface: session header, coverage bar + chip grid, ecommerce funnel,
@@ -9,7 +9,7 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 import type { ReactNode } from 'react';
 
 import { OverlayProvider } from '@/components/overlay/overlay-context';
-import { SessionStateTab } from '@/components/overlay/session-state-tab';
+import { OverviewTab } from '@/components/overlay/overview-tab';
 import { DATA_LAYER_EVENT_NAMES } from '@/lib/events/schema';
 import type { EcommerceStage, SessionState } from '@/lib/session-state/types';
 
@@ -51,7 +51,7 @@ function Wrapper({ children }: { children: ReactNode }) {
   return <OverlayProvider>{children}</OverlayProvider>;
 }
 
-describe('SessionStateTab', () => {
+describe('OverviewTab', () => {
   beforeEach(() => {
     useSessionState.mockReset();
     window.dataLayer = [];
@@ -65,7 +65,7 @@ describe('SessionStateTab', () => {
     useSessionState.mockReturnValue(null);
     render(
       <Wrapper>
-        <SessionStateTab />
+        <OverviewTab />
       </Wrapper>,
     );
     expect(screen.getByText(/warming up/i)).toBeInTheDocument();
@@ -75,7 +75,7 @@ describe('SessionStateTab', () => {
     useSessionState.mockReturnValue(makeState());
     render(
       <Wrapper>
-        <SessionStateTab />
+        <OverviewTab />
       </Wrapper>,
     );
     // Short-form session ID (last 6 chars of the UUID) — matches SessionPulse + LiveStrip.
@@ -87,7 +87,7 @@ describe('SessionStateTab', () => {
     useSessionState.mockReturnValue(makeState());
     render(
       <Wrapper>
-        <SessionStateTab />
+        <OverviewTab />
       </Wrapper>,
     );
     const bar = screen.getByTestId('coverage-bar');
@@ -106,7 +106,7 @@ describe('SessionStateTab', () => {
     );
     render(
       <Wrapper>
-        <SessionStateTab />
+        <OverviewTab />
       </Wrapper>,
     );
     const bar = screen.getByTestId('coverage-bar').textContent ?? '';
@@ -119,7 +119,7 @@ describe('SessionStateTab', () => {
     useSessionState.mockReturnValue(makeState());
     render(
       <Wrapper>
-        <SessionStateTab />
+        <OverviewTab />
       </Wrapper>,
     );
     // Advance past the typewriter (one char per ~24ms, up to ~25 chars → ~600ms).
@@ -136,7 +136,7 @@ describe('SessionStateTab', () => {
     useSessionState.mockReturnValue(makeState());
     render(
       <Wrapper>
-        <SessionStateTab />
+        <OverviewTab />
       </Wrapper>,
     );
     const readout = screen.getByTestId('coverage-readout');
@@ -150,7 +150,7 @@ describe('SessionStateTab', () => {
 
   it('plays the typewriter on the null → hydrated SessionState transition (Pass 2 C1)', () => {
     // In production the provider initialises state = null, then hydrates on
-    // its mount effect. SessionStateTab's first render sees null; the real
+    // its mount effect. OverviewTab's first render sees null; the real
     // coverage readout arrives on the subsequent render. The typewriter must
     // animate on that second render, NOT skip because an empty placeholder
     // text consumed the one-shot ref.
@@ -158,7 +158,7 @@ describe('SessionStateTab', () => {
     useSessionState.mockReturnValue(null);
     const { rerender } = render(
       <Wrapper>
-        <SessionStateTab />
+        <OverviewTab />
       </Wrapper>,
     );
     // First render shows the warming-up empty state; coverage-readout is not
@@ -175,7 +175,7 @@ describe('SessionStateTab', () => {
     useSessionState.mockReturnValue(makeState());
     rerender(
       <Wrapper>
-        <SessionStateTab />
+        <OverviewTab />
       </Wrapper>,
     );
 
@@ -192,7 +192,7 @@ describe('SessionStateTab', () => {
     useSessionState.mockReturnValue(makeState());
     render(
       <Wrapper>
-        <SessionStateTab />
+        <OverviewTab />
       </Wrapper>,
     );
     const rows = screen.getAllByTestId('funnel-row');
@@ -210,7 +210,7 @@ describe('SessionStateTab', () => {
     useSessionState.mockReturnValue(makeState());
     const { container } = render(
       <Wrapper>
-        <SessionStateTab />
+        <OverviewTab />
       </Wrapper>,
     );
     const chips = container.querySelectorAll('[data-chip="event-chip"]');
@@ -221,7 +221,7 @@ describe('SessionStateTab', () => {
     useSessionState.mockReturnValue(makeState());
     render(
       <Wrapper>
-        <SessionStateTab />
+        <OverviewTab />
       </Wrapper>,
     );
     const fired = screen.getByTestId('chip-page_view');
@@ -245,7 +245,7 @@ describe('SessionStateTab', () => {
     );
     render(
       <Wrapper>
-        <SessionStateTab />
+        <OverviewTab />
       </Wrapper>,
     );
     const rows = screen.getAllByTestId('funnel-row');
@@ -269,7 +269,7 @@ describe('SessionStateTab', () => {
     );
     render(
       <Wrapper>
-        <SessionStateTab />
+        <OverviewTab />
       </Wrapper>,
     );
     const rows = screen.getAllByTestId('funnel-row');
@@ -285,7 +285,7 @@ describe('SessionStateTab', () => {
     useSessionState.mockReturnValue(makeState());
     render(
       <Wrapper>
-        <SessionStateTab />
+        <OverviewTab />
       </Wrapper>,
     );
     expect(screen.getByText(/Four tiers of measurement infrastructure/i)).toBeInTheDocument();
@@ -307,7 +307,7 @@ describe('SessionStateTab', () => {
     );
     render(
       <Wrapper>
-        <SessionStateTab />
+        <OverviewTab />
       </Wrapper>,
     );
     const rows = screen.getAllByTestId('funnel-row');
@@ -329,7 +329,7 @@ describe('SessionStateTab', () => {
     useSessionState.mockReturnValue(makeState());
     render(
       <Wrapper>
-        <SessionStateTab />
+        <OverviewTab />
       </Wrapper>,
     );
     expect(screen.getByTestId('consent-row-analytics')).toHaveTextContent(/granted/i);
@@ -341,7 +341,7 @@ describe('SessionStateTab', () => {
     useSessionState.mockReturnValue(makeState());
     render(
       <Wrapper>
-        <SessionStateTab />
+        <OverviewTab />
       </Wrapper>,
     );
     expect(screen.getByRole('link', { name: /services/i })).toHaveAttribute('href', '/services');
@@ -353,7 +353,7 @@ describe('SessionStateTab', () => {
     useSessionState.mockReturnValue(makeState());
     render(
       <Wrapper>
-        <SessionStateTab />
+        <OverviewTab />
       </Wrapper>,
     );
     fireEvent.click(screen.getByRole('link', { name: /services/i }));
@@ -375,7 +375,7 @@ describe('SessionStateTab', () => {
     );
     render(
       <Wrapper>
-        <SessionStateTab />
+        <OverviewTab />
       </Wrapper>,
     );
     expect(screen.queryByTestId('contextual-contact-cta')).toBeNull();
@@ -392,7 +392,7 @@ describe('SessionStateTab', () => {
     );
     render(
       <Wrapper>
-        <SessionStateTab />
+        <OverviewTab />
       </Wrapper>,
     );
     expect(screen.getByTestId('contextual-contact-cta')).toBeInTheDocument();
@@ -411,7 +411,7 @@ describe('SessionStateTab', () => {
     );
     render(
       <Wrapper>
-        <SessionStateTab />
+        <OverviewTab />
       </Wrapper>,
     );
     expect(screen.getByTestId('contextual-contact-cta')).toBeInTheDocument();
@@ -433,7 +433,7 @@ describe('SessionStateTab', () => {
     );
     render(
       <Wrapper>
-        <SessionStateTab />
+        <OverviewTab />
       </Wrapper>,
     );
     fireEvent.click(screen.getByTestId('contextual-contact-cta'));

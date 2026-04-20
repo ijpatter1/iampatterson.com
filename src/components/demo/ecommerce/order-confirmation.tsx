@@ -32,8 +32,8 @@ export function OrderConfirmation({ orderId, orderTotal, itemCount }: OrderConfi
 
       <p className="mt-6 text-sm leading-relaxed text-neutral-600">
         The checkout funnel fires purchase events through sGTM, lands them in BigQuery, and feeds
-        the Dataform mart layer the dashboards below query. Look under the hood to watch event
-        traffic flow through the pipeline — or scroll down to see where it lands.
+        the Dataform mart layer the dashboards below query. Open your session to watch event traffic
+        flow through the pipeline — or scroll down to see where it lands.
       </p>
 
       <Link

@@ -8,7 +8,7 @@
  *    — disjoint and exhaustive against the listener surface
  *  - Once-per-session via sessionStorage gate (set on render, not mount)
  *  - Homepage-entry-scoped (only fires on `/`)
- *  - Reduced-motion: static text "← menu · under the hood" instead of ring
+ *  - Reduced-motion: static text "← your session" instead of ring
  *  - nav_hint_shown emits on render; nav_hint_dismissed emits on dismiss
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
@@ -307,7 +307,7 @@ describe('NavHint — first-session pulse ring', () => {
       });
       const hint = screen.getByTestId('nav-hint');
       expect(hint.dataset.variant).toBe('static');
-      expect(hint.textContent).toMatch(/menu.*under the hood/i);
+      expect(hint.textContent).toMatch(/your session/i);
     });
 
     it('auto-clears after 6s in reduced-motion (instead of 10s)', () => {

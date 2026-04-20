@@ -14,7 +14,7 @@ import type {
   NavHintShownEvent,
   NavHintDismissedEvent,
   SessionPulseHoverEvent,
-  SessionStateTabViewEvent,
+  OverviewTabViewEvent,
   PortalClickEvent,
   CoverageMilestoneEvent,
 } from '@/lib/events/schema';
@@ -95,8 +95,8 @@ describe('Event schema types', () => {
       | 'portal_about'
       | 'portal_contact'
       | 'contact_cta_threshold'
-      | 'pipeline_watch_it_live'
-      | 'footer_under_the_hood'
+      | 'pipeline_see_your_session'
+      | 'footer_session'
     >;
     const navAdjacent: Record<NavAdjacent, true> = {
       session_pulse: true,
@@ -104,8 +104,8 @@ describe('Event schema types', () => {
       portal_about: true,
       portal_contact: true,
       contact_cta_threshold: true,
-      pipeline_watch_it_live: true,
-      footer_under_the_hood: true,
+      pipeline_see_your_session: true,
+      footer_session: true,
     };
     expect(Object.keys(navAdjacent)).toHaveLength(7);
   });
@@ -196,13 +196,13 @@ describe('Event schema types', () => {
     expect(event.event).toBe('session_pulse_hover');
   });
 
-  it('defines SessionStateTabViewEvent with default_landing and manual_select sources', () => {
-    const onOpen: SessionStateTabViewEvent = {
+  it('defines OverviewTabViewEvent with default_landing and manual_select sources', () => {
+    const onOpen: OverviewTabViewEvent = {
       ...baseFields,
-      event: 'session_state_tab_view',
+      event: 'overview_tab_view',
       source: 'default_landing',
     };
-    const byReselect: SessionStateTabViewEvent = { ...onOpen, source: 'manual_select' };
+    const byReselect: OverviewTabViewEvent = { ...onOpen, source: 'manual_select' };
     expect(onOpen.source).toBe('default_landing');
     expect(byReselect.source).toBe('manual_select');
   });
@@ -265,7 +265,7 @@ describe('Event schema types', () => {
       nav_hint_shown: true,
       nav_hint_dismissed: true,
       session_pulse_hover: true,
-      session_state_tab_view: true,
+      overview_tab_view: true,
       portal_click: true,
       coverage_milestone: true,
     };

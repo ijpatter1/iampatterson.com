@@ -46,7 +46,7 @@ export interface ClickNavEvent extends BaseEvent {
  *
  * Nav-adjacent CTAs (Phase 9E deliverable 9 closed set) must use one of:
  * `session_pulse`, `portal_services`, `portal_about`, `portal_contact`,
- * `contact_cta_threshold`, `pipeline_watch_it_live`, `footer_under_the_hood`.
+ * `contact_cta_threshold`, `pipeline_see_your_session`, `footer_session`.
  * The "etc." escape hatch is closed — adding a nav-adjacent CTA extends this
  * union explicitly.
  *
@@ -70,8 +70,8 @@ export type CtaLocation =
   | 'portal_about'
   | 'portal_contact'
   | 'contact_cta_threshold'
-  | 'pipeline_watch_it_live'
-  | 'footer_under_the_hood'
+  | 'pipeline_see_your_session'
+  | 'footer_session'
   // Editorial / page-specific CTAs (not nav-adjacent — named by page or region)
   | 'hero'
   | 'services_closer'
@@ -231,16 +231,16 @@ export interface SessionPulseHoverEvent extends BaseEvent {
 }
 
 /**
- * Fired when the overlay opens onto the Session State tab.
+ * Fired when the overlay opens onto the Overview tab.
  * `default_landing` = fresh open; `manual_select` = tab re-selected from Timeline or Consent.
  */
-export interface SessionStateTabViewEvent extends BaseEvent {
-  event: 'session_state_tab_view';
+export interface OverviewTabViewEvent extends BaseEvent {
+  event: 'overview_tab_view';
   source: 'default_landing' | 'manual_select';
 }
 
 /**
- * Fired when a portal link inside the Session State tab is clicked. Distinct from
+ * Fired when a portal link inside the Overview tab is clicked. Distinct from
  * `click_cta` so the portal's conversion rate is isolable.
  */
 export interface PortalClickEvent extends BaseEvent {
@@ -278,7 +278,7 @@ export type DataLayerEvent =
   | NavHintShownEvent
   | NavHintDismissedEvent
   | SessionPulseHoverEvent
-  | SessionStateTabViewEvent
+  | OverviewTabViewEvent
   | PortalClickEvent
   | CoverageMilestoneEvent;
 
@@ -313,7 +313,7 @@ export const DATA_LAYER_EVENT_NAMES = [
   'nav_hint_shown',
   'nav_hint_dismissed',
   'session_pulse_hover',
-  'session_state_tab_view',
+  'overview_tab_view',
   'portal_click',
   'coverage_milestone',
 ] as const;

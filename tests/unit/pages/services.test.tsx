@@ -138,10 +138,10 @@ describe('ServicesPage — editorial', () => {
     renderPage();
     const closer = screen.getByText(/Not sure where you'd start/);
     expect(closer).toBeInTheDocument();
-    const cta = screen.getByRole('button', { name: /look under the hood/i });
+    const cta = screen.getByRole('button', { name: /see your session/i });
     await user.click(cta);
     expect(screen.getByTestId('overlay-status')).toHaveTextContent('open');
-    expect(trackClickCta).toHaveBeenCalledWith('Look under the hood', 'services_closer');
+    expect(trackClickCta).toHaveBeenCalledWith('See your session', 'services_closer');
   });
 
   it('closer ghost CTA links to contact', () => {

@@ -197,8 +197,8 @@ export function trackPortalClick(destination: PortalClickEvent['destination']): 
   pushEvent({ ...baseFields(), event: 'portal_click', destination });
 }
 
-export function trackSessionStateTabView(source: 'default_landing' | 'manual_select'): void {
-  pushEvent({ ...baseFields(), event: 'session_state_tab_view', source });
+export function trackOverviewTabView(source: 'default_landing' | 'manual_select'): void {
+  pushEvent({ ...baseFields(), event: 'overview_tab_view', source });
 }
 
 export function trackNavHintShown(): void {

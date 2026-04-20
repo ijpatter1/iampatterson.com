@@ -8,7 +8,7 @@ export function HeroEditorial() {
   const { open } = useOverlay();
 
   const handleOpen = () => {
-    trackClickCta('Look under the hood', 'hero');
+    trackClickCta('See your session', 'hero');
     open();
   };
 
@@ -50,7 +50,7 @@ export function HeroEditorial() {
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <EditorialButton variant="accent" onClick={handleOpen}>
-                Look under the hood →
+                See your session →
               </EditorialButton>
               <EditorialLink
                 href="/#demos"

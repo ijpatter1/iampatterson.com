@@ -31,7 +31,7 @@ export function Header() {
   }, []);
 
   const handleOpenOverlay = () => {
-    trackClickCta('Under the hood', 'session_pulse');
+    trackClickCta('Session', 'session_pulse');
     open();
   };
 

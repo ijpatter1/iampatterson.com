@@ -169,7 +169,7 @@ export function PipelineSection() {
     .join(' ');
 
   const handleOpen = () => {
-    trackClickCta('Watch it live', 'pipeline_watch_it_live');
+    trackClickCta('See your session', 'pipeline_see_your_session');
     open();
   };
 
@@ -221,14 +221,11 @@ export function PipelineSection() {
           <button
             type="button"
             onClick={handleOpen}
-            className="bleed-cta inline-flex items-center gap-2 rounded-full border border-ink bg-paper px-4 py-2 font-sans text-[14px] font-medium text-ink transition-all"
+            className="bleed-cta inline-flex items-center gap-2 rounded-full border border-ink bg-paper px-5 py-2 font-sans text-[14px] font-medium text-ink transition-all"
           >
-            <span className="flip-icon" aria-hidden="true">
-              ↻
-            </span>
-            <span className="flip-label">Watch it live</span>
-            <span className="flip-nudge font-mono uppercase tracking-[0.14em]" aria-hidden="true">
-              flip →
+            <span className="flip-label">See your session</span>
+            <span className="flip-nudge font-mono" aria-hidden="true">
+              →
             </span>
           </button>
         </div>

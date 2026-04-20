@@ -20,9 +20,11 @@ const HOVER_DEBOUNCE_MS = 60_000;
 /**
  * Live session indicator — pulsing dot + short session ID + event count.
  *
- * Clickable variant (header) opens the under-the-hood overlay and carries
- * the Phase 9E D1 hover affordance upgrades: tooltip label, ↗ glow on
- * hover, min 44×44px touch target, `session_pulse_hover` emission.
+ * Clickable variant (header) opens the overlay and carries the Phase 9E
+ * D1 hover affordances: ↗ glow on hover, min 44×44px touch target,
+ * `session_pulse_hover` emission. The instrument-as-nav conceit stands
+ * on its own without a verbal tooltip; the aria-label carries the
+ * assistive-tech semantics.
  * Display-only variant (footer, formerly mobile sheet) is a passive
  * status indicator — no hover affordance, no emission.
  *
@@ -78,12 +80,6 @@ export const SessionPulse = forwardRef<HTMLElement, SessionPulseProps>(function 
       }
     };
 
-    // Stable id for the tooltip so the button can aria-describedby it
-    // when visible. Keeping the id literal (not useId) because there's
-    // exactly one SessionPulse button in the header; a useId collision
-    // isn't a real risk and a literal keeps the DOM snapshot readable.
-    const tooltipId = 'session-pulse-tooltip';
-
     return (
       <span className="relative inline-flex items-center">
         <button
@@ -94,8 +90,7 @@ export const SessionPulse = forwardRef<HTMLElement, SessionPulseProps>(function 
           onPointerLeave={() => setIsHovered(false)}
           onFocus={() => setIsHovered(true)}
           onBlur={() => setIsHovered(false)}
-          aria-label="Look under the hood — live session"
-          aria-describedby={isHovered ? tooltipId : undefined}
+          aria-label="Open your session"
           // min 44×44 touch/click target per UX_PIVOT_SPEC §3.1 desktop
           // treatment — `min-h-[44px]` + padding produces a rectangular
           // hitbox that satisfies WCAG 2.5.5 without forcing a visible
@@ -114,16 +109,6 @@ export const SessionPulse = forwardRef<HTMLElement, SessionPulseProps>(function 
             ↗
           </span>
         </button>
-        {isHovered && (
-          <span
-            id={tooltipId}
-            data-testid="session-pulse-tooltip"
-            role="tooltip"
-            className="pointer-events-none absolute left-1/2 top-full mt-1.5 -translate-x-1/2 whitespace-nowrap border border-accent-current bg-paper px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-accent-current"
-          >
-            NAV · UNDER THE HOOD
-          </span>
-        )}
       </span>
     );
   }

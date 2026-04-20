@@ -91,10 +91,7 @@ function RebuildBanner() {
       role="status"
       className="mb-10 flex items-start justify-between gap-4 border border-rule-soft bg-paper-alt px-5 py-4 font-mono text-[11px] uppercase tracking-widest text-ink-2"
     >
-      <span>
-        The {rebuildLabel} demo is being rebuilt — it&apos;ll return after the ecommerce rebuild
-        ships.
-      </span>
+      <span>The {rebuildLabel} demo is returning soon.</span>
       <button
         type="button"
         aria-label="Dismiss"
@@ -192,7 +189,7 @@ export function DemosSection() {
         </div>
 
         <div className="mt-12 border-t border-rule-soft pt-6 font-mono text-[10px] uppercase tracking-widest text-ink-3">
-          Subscription and lead gen demos · returning after the ecommerce rebuild ships
+          Subscription and lead gen demos · returning soon
         </div>
       </div>
     </section>

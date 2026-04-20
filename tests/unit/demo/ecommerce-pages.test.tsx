@@ -195,8 +195,8 @@ describe('OrderConfirmation', () => {
     expect(screen.getByText(/\$49\.98/)).toBeInTheDocument();
   });
 
-  it('shows the under the hood prompt', () => {
+  it('shows the open-your-session prompt', () => {
     render(<OrderConfirmation orderId="ORD-TEST-001" orderTotal={49.98} itemCount={2} />);
-    expect(screen.getByText(/under the hood/i)).toBeInTheDocument();
+    expect(screen.getByText(/open your session/i)).toBeInTheDocument();
   });
 });

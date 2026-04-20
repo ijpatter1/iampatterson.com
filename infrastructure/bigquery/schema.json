@@ -315,7 +315,7 @@
     "name": "source",
     "type": "STRING",
     "mode": "NULLABLE",
-    "description": "Session State tab landing source: default_landing (fresh overlay open) or manual_select (tab re-selected from Timeline/Consent) (session_state_tab_view events, Phase 9E deliverable 9)"
+    "description": "Overview tab landing source: default_landing (fresh overlay open) or manual_select (tab re-selected from Timeline/Consent) (overview_tab_view events, Phase 9E deliverable 9)"
   },
   {
     "name": "destination",

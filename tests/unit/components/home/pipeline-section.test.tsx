@@ -497,19 +497,19 @@ describe('PipelineSection — cleanup on unmount', () => {
   });
 });
 
-describe('PipelineSection — Watch it live CTA', () => {
-  it('opens the overlay and fires click_cta with location pipeline_watch_it_live', async () => {
+describe('PipelineSection — See your session CTA', () => {
+  it('opens the overlay and fires click_cta with location pipeline_see_your_session', async () => {
     const user = userEvent.setup();
     renderSection();
-    const cta = screen.getByRole('button', { name: /watch it live/i });
+    const cta = screen.getByRole('button', { name: /see your session/i });
     await user.click(cta);
     expect(screen.getByTestId('overlay-status')).toHaveTextContent('open');
-    expect(trackClickCta).toHaveBeenCalledWith('Watch it live', 'pipeline_watch_it_live');
+    expect(trackClickCta).toHaveBeenCalledWith('See your session', 'pipeline_see_your_session');
   });
 
   it('renders a real <button> (focus-trap-safe), not a link', () => {
     renderSection();
-    const cta = screen.getByRole('button', { name: /watch it live/i });
+    const cta = screen.getByRole('button', { name: /see your session/i });
     expect(cta.tagName).toBe('BUTTON');
     expect(cta.getAttribute('type')).toBe('button');
   });

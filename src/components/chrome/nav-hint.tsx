@@ -9,8 +9,8 @@ import { trackNavHintDismissed, trackNavHintShown } from '@/lib/events/track';
 // Phase 9E D1 first-session hint: a one-time soft amber pulse ring expands
 // outward from the SessionPulse after ~3s of homepage idle and auto-clears
 // after ~10s of continued inactivity. Under prefers-reduced-motion the
-// animated ring is replaced by static text ("← menu · under the hood")
-// that fades after 6s. Full contract in REQUIREMENTS.md Phase 9E D1.
+// animated ring is replaced by static text ("← your session") that fades
+// after 6s. Full contract in REQUIREMENTS.md Phase 9E D1.
 
 type DismissalMode = NavHintDismissedEvent['dismissal_mode'];
 type HintState = 'idle' | 'showing' | 'dismissed';
@@ -186,7 +186,7 @@ export function NavHint({ sessionPulseRef }: NavHintProps) {
         role="status"
         className="pointer-events-none absolute left-full top-1/2 ml-3 -translate-y-1/2 whitespace-nowrap font-mono text-[10px] uppercase tracking-widest text-accent-current"
       >
-        ← menu · under the hood
+        ← your session
       </span>
     );
   }
