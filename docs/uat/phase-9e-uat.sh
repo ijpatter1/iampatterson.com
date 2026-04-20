@@ -9,7 +9,7 @@
 #   D4 Session State data model (tab-scoped sessionStorage)
 #   D5 pipeline section progressive bleed-through reveal
 #   D6 Homepage Demos section rebuild (single ecommerce surface)
-#   D7 subscription + leadgen demo removal + 301 redirects
+#   D7 subscription + leadgen demo removal + permanent redirects (308)
 #   D8 contact form session-state ride-along (shipped with Phase 10 transport stub)
 #   D9 nav + Session State analytics
 #
@@ -310,10 +310,10 @@ expect \
 confirm "Scrolling back up smoothly reverses the ramp"
 
 # ────────────────────────────────────────────────────────────────────────
-# SCENARIO 5 — 301 redirect from removed demo (automated + visual)
+# SCENARIO 5 — permanent redirect (308) from removed demo (automated + visual)
 # Deliverables: D7, D6
 
-scenario "5 — Visitor arrives via 301 redirect from a removed demo" \
+scenario "5 — Visitor arrives via permanent redirect from a removed demo" \
   "D7 redirects resolve from removed routes + deep-links; D6 rebuild banner surfaces"
 
 setup \
@@ -618,7 +618,7 @@ scenario "14 — Full persona run (Flow B, 'came for the dashboards')" \
 setup "Fresh tab, cleared sessionStorage."
 
 do_step "14.1 — Enter via $BASE_URL/demo/subscription (stale inbound link)."
-expect "301 redirect to /?rebuild=subscription#demos. Rebuild banner visible at Demos section."
+expect "308 redirect to /?rebuild=subscription#demos. Rebuild banner visible at Demos section."
 confirm "Stale inbound link redirects + rebuild banner appears"
 
 do_step "14.2 — Dismiss banner. Scroll UP to the hero."

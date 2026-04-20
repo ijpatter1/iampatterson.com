@@ -59,17 +59,30 @@ export function Header() {
         </div>
       </header>
       <LiveStrip />
-      {!isHomepage && <HomeBar />}
+      {showHomeBar(pathname) && <HomeBar />}
     </div>
   );
+}
+
+/**
+ * Routes where HomeBar is suppressed because the page shell already
+ * provides a back-nav affordance. Demo routes use `DemoFooterNav`
+ * (back-to-/) + inline "Back to The Tuna Shop" links; stacking HomeBar
+ * on top would triple-up the chrome. F8 eval Minor #10.
+ */
+function showHomeBar(pathname: string): boolean {
+  if (pathname === '/') return false;
+  if (pathname.startsWith('/demo/')) return false;
+  return true;
 }
 
 /**
  * Slim "Back to homepage" bar (F5 UAT fix for S2 — "each non-homepage
  * page needs a back-to-homepage CTA; navigating via footer is too much
  * friction"). Rendered directly below the LiveStrip on services / about
- * / contact / contact-thanks / any non-/ route. Stays with the header's
- * sticky block so the affordance is always in view.
+ * / contact / contact-thanks. F8 polish: text-ink-2 (was text-ink-3)
+ * so it reads as an action, not chrome; arrow gets a hover-translate
+ * for discoverability.
  */
 function HomeBar() {
   return (
@@ -77,9 +90,10 @@ function HomeBar() {
       <div className="mx-auto flex max-w-content items-center px-5 py-2 md:px-10">
         <Link
           href="/"
-          className="font-mono text-[11px] uppercase tracking-widest text-ink-3 transition-colors hover:text-accent-current"
+          className="group inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest text-ink-2 transition-colors hover:text-accent-current"
         >
-          ← Back to homepage
+          <span className="inline-block transition-transform group-hover:-translate-x-0.5">←</span>
+          Back to homepage
         </Link>
       </div>
     </div>

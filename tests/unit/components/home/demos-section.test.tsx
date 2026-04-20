@@ -90,7 +90,7 @@ describe('DemosSection — post-9E-D6 single ecommerce section', () => {
       render(<DemosSection />);
       const banner = screen.getByTestId('rebuild-banner');
       expect(banner.textContent).toMatch(/subscription/i);
-      expect(banner.textContent).toMatch(/rebuilt|in development|returning/i);
+      expect(banner.textContent).toMatch(/returning soon/i);
     });
 
     it('renders the banner when ?rebuild=leadgen is present, naming lead gen', () => {
@@ -193,18 +193,27 @@ describe('DemosSection — post-9E-D6 single ecommerce section', () => {
       expect(screen.queryByTestId('rebuild-banner')).not.toBeInTheDocument();
     });
 
-    it('does NOT flash the banner during the null → resolved dismissal transition (F4 hydration-safety)', () => {
-      // F4 fix: useState initializer used to call isRebuildBannerDismissed()
-      // synchronously, creating an SSR/CSR hydration mismatch under the
-      // Suspense boundary. Post-F4 the initializer is null; the useEffect
-      // reads sessionStorage after hydration.
-      // Pre-seed storage as dismissed, then mount. Banner must never paint.
+    it('resolves dismissal post-mount via useEffect on both storage paths (F4 + F8 eval)', () => {
+      // F8 eval flagged the prior version of this test as a pin-the-fix
+      // anti-pattern: jsdom runs a single client pass and CAN'T replay
+      // SSR/CSR reconciliation, so the test passed against both the
+      // pre-F4 synchronous initializer AND the post-F4 tri-state. The
+      // rewrite proves the useEffect path is consulted on BOTH storage
+      // states — structural evidence that the tri-state resolver ran:
+      //   path 1: storage dismissed → banner stays null post-effect
+      //   path 2: storage cleared   → banner renders post-effect
+      // A regression to the sync initializer would pass the path-1 arm
+      // but reveal its nature in production via the SSR mismatch. This
+      // test is the dev-time canary; the commit message + code review
+      // of the tri-state pattern catches the SSR case.
       mockSearchParams = new URLSearchParams('?rebuild=subscription');
       window.sessionStorage.setItem('iampatterson.rebuild_banner_dismissed.subscription', '1');
-      render(<DemosSection />);
-      // After testing-library's act flush, the effect has resolved to
-      // dismissed=true and banner stayed null throughout — no flash.
+      const { unmount } = render(<DemosSection />);
       expect(screen.queryByTestId('rebuild-banner')).not.toBeInTheDocument();
+      unmount();
+      window.sessionStorage.clear();
+      render(<DemosSection />);
+      expect(screen.getByTestId('rebuild-banner')).toBeInTheDocument();
     });
 
     beforeEach(() => {

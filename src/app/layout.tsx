@@ -4,7 +4,7 @@ import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { AmbientBubblesWrapper } from '@/components/ambient-bubbles-wrapper';
 import { OverlayProvider } from '@/components/overlay/overlay-context';
-import { UnderTheHoodView } from '@/components/overlay/under-the-hood-view';
+import { OverlayView } from '@/components/overlay/overlay-view';
 import { SessionStateProvider } from '@/components/session-state-provider';
 import { RouteTracker } from '@/components/route-tracker';
 import { ScrollDepthTracker } from '@/components/scroll-depth-tracker';
@@ -48,7 +48,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="flex-1">{children}</div>
             <Footer />
             <AmbientBubblesWrapper />
-            <UnderTheHoodView />
+            <OverlayView />
           </OverlayProvider>
         </SessionStateProvider>
       </body>

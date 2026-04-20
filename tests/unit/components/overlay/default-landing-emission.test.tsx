@@ -19,7 +19,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { OverlayProvider, useOverlay } from '@/components/overlay/overlay-context';
-import { UnderTheHoodView } from '@/components/overlay/under-the-hood-view';
+import { OverlayView } from '@/components/overlay/overlay-view';
 
 jest.mock('next/navigation', () => ({
   usePathname: () => '/',
@@ -78,7 +78,7 @@ function Harness() {
   return (
     <OverlayProvider>
       <OverlayControls />
-      <UnderTheHoodView />
+      <OverlayView />
     </OverlayProvider>
   );
 }
@@ -192,7 +192,7 @@ describe('overview_tab_view default_landing emission (deliverable 2)', () => {
     render(
       <OverlayProvider>
         <Controls />
-        <UnderTheHoodView />
+        <OverlayView />
       </OverlayProvider>,
     );
     await user.click(screen.getByText('open-with-pending-consent'));

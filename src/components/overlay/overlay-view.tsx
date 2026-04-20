@@ -119,7 +119,7 @@ function Tabs({
   );
 }
 
-export function UnderTheHoodView() {
+export function OverlayView() {
   const { isOpen, close, pendingTab, consumePendingTab } = useOverlay();
 
   const { events } = useLiveEvents();
@@ -243,7 +243,7 @@ export function UnderTheHoodView() {
 
   return (
     <div
-      data-testid="under-the-hood-view"
+      data-testid="overlay-view"
       data-phase={phase}
       aria-hidden={!isOpen}
       className={`fixed inset-0 z-50 flex flex-col bg-u-paper text-u-ink transition-opacity duration-200 ${

@@ -7,7 +7,7 @@
  * as text and asserts that the load-bearing phase-scoped rules and the
  * transform-origin fidelity fix are present. If someone deletes or renames
  * one of these rules during a refactor, the structural tests in
- * `under-the-hood-view.test.tsx` would still pass silently — these tests are
+ * `overlay-view.test.tsx` would still pass silently — these tests are
  * the second line of defense.
  */
 import { readFileSync } from 'node:fs';

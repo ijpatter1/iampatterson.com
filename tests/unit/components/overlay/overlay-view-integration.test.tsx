@@ -39,7 +39,7 @@ jest.mock('@/lib/events/track', () => ({
 }));
 
 import { OverlayProvider, useOverlay, type OverlayTab } from '@/components/overlay/overlay-context';
-import { UnderTheHoodView } from '@/components/overlay/under-the-hood-view';
+import { OverlayView } from '@/components/overlay/overlay-view';
 
 function mockReducedMotion(matches: boolean) {
   Object.defineProperty(window, 'matchMedia', {
@@ -73,7 +73,7 @@ function Controls() {
 function renderHost() {
   return render(
     <OverlayProvider>
-      <UnderTheHoodView />
+      <OverlayView />
       <Controls />
     </OverlayProvider>,
   );
@@ -92,7 +92,7 @@ afterEach(() => {
   jest.useRealTimers();
 });
 
-describe('UnderTheHoodView — integration with OverlayProvider', () => {
+describe('OverlayView — integration with OverlayProvider', () => {
   it('is hidden until first open (no test-id rendered)', () => {
     mockReducedMotion(true);
     render(
@@ -100,7 +100,7 @@ describe('UnderTheHoodView — integration with OverlayProvider', () => {
         <Controls />
       </OverlayProvider>,
     );
-    expect(screen.queryByTestId('under-the-hood-view')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('overlay-view')).not.toBeInTheDocument();
   });
 
   it('switches to the tab requested by open(tab)', async () => {
@@ -151,19 +151,19 @@ describe('UnderTheHoodView — integration with OverlayProvider', () => {
 
     // First open of the browser session fires the boot sequence.
     await user.click(screen.getByText('open'));
-    expect(screen.getByTestId('under-the-hood-view').dataset.phase).toBe('boot');
+    expect(screen.getByTestId('overlay-view').dataset.phase).toBe('boot');
     act(() => {
       jest.advanceTimersByTime(260);
     });
-    expect(screen.getByTestId('under-the-hood-view').dataset.phase).toBe('on');
+    expect(screen.getByTestId('overlay-view').dataset.phase).toBe('on');
 
     await user.click(screen.getByText('close'));
-    expect(screen.getByTestId('under-the-hood-view').dataset.phase).toBe('idle');
+    expect(screen.getByTestId('overlay-view').dataset.phase).toBe('idle');
 
     // Second open within the same session skips boot and lands on 'on'
     // directly — the boot gesture is a one-time reveal, not a repeated effect.
     await user.click(screen.getByText('open'));
-    expect(screen.getByTestId('under-the-hood-view').dataset.phase).toBe('on');
+    expect(screen.getByTestId('overlay-view').dataset.phase).toBe('on');
   });
 
   it('tab set is pathname-independent — Overview default persists across routes', async () => {
@@ -184,7 +184,7 @@ describe('UnderTheHoodView — integration with OverlayProvider', () => {
     mockPathname = '/demo/ecommerce';
     rerender(
       <OverlayProvider>
-        <UnderTheHoodView />
+        <OverlayView />
         <Controls />
       </OverlayProvider>,
     );

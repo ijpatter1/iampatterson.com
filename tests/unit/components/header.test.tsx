@@ -100,6 +100,20 @@ describe('Header — post-9E-D1 nav pivot', () => {
     expect(screen.queryByTestId('home-bar')).not.toBeInTheDocument();
   });
 
+  it('does NOT render the home bar on demo routes — DemoFooterNav already provides back-nav (F8 eval Minor #10)', () => {
+    for (const path of [
+      '/demo/ecommerce',
+      '/demo/ecommerce/tuna-plush',
+      '/demo/ecommerce/cart',
+      '/demo/ecommerce/confirmation',
+    ]) {
+      mockPathname = path;
+      const { unmount } = renderHeader();
+      expect(screen.queryByTestId('home-bar')).not.toBeInTheDocument();
+      unmount();
+    }
+  });
+
   it('renders the SessionPulse as the primary nav affordance and opens the overlay on click', async () => {
     const user = userEvent.setup();
     renderHeader();

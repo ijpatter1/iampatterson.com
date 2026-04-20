@@ -598,37 +598,40 @@ describe('PipelineSection — bleed-once-per-session (F6 UAT)', () => {
     expect(callsAfterOpen).toBeGreaterThanOrEqual(callsBeforeOpen);
   });
 
-  it('resets --bleed to 0 when the overlay opens mid-ramp (visual baseline, not frozen peak)', () => {
-    // Without this reset, a visitor scrolling to peak bleed then opening
-    // the overlay would see the amber-flooded peak state persist after
-    // closing the overlay — the rAF loop stops but the last --bleed
-    // value stays on the section element.
+  it('resets --bleed to 0 on the overlay-open edge within the SAME element tree (F6 follow-up)', () => {
+    // Pin the visual-reset effect directly. Pre-F8 this test rerendered
+    // with a FRESH OverlayProvider, which re-mounted the section with its
+    // inline style default `--bleed: 0` — the test passed even if the
+    // reset effect was removed. This rewrite keeps the SAME element
+    // instance across the open edge (same OverlayProvider, same
+    // PipelineSection) and asserts that the CSS var on that element
+    // transitions from non-zero → zero AS A RESULT of the effect running.
     jest.useFakeTimers({ doNotFake: ['requestAnimationFrame', 'cancelAnimationFrame'] });
     window.sessionStorage.clear();
     stubSectionGeometry(-1000); // near peak
-    const { rerender } = renderSection();
+    renderSection();
     act(() => {
       jest.advanceTimersByTime(100);
     });
     const section = screen.getByTestId('pipeline-section');
-    // Any non-zero bleed value written during the ramp.
-    expect(section.style.getPropertyValue('--bleed')).not.toBe('0');
+    // Ramp ran; --bleed is non-zero (captured pre-click).
+    const bleedBefore = section.style.getPropertyValue('--bleed');
+    expect(bleedBefore).not.toBe('0');
+    expect(bleedBefore).not.toBe('');
 
-    // Directly mark consumed + trigger a re-render with isOpen=true by
-    // clicking the CTA.
+    // Click the CTA on the same element tree — OverlayProvider.open()
+    // writes the consumed flag AND flips isOpen=true in the same tick;
+    // PipelineSection's visual-reset effect fires on the open edge and
+    // zeroes --bleed on the SAME DOM node.
     act(() => {
       screen.getByRole('button', { name: /see your session/i }).click();
     });
     act(() => {
       jest.advanceTimersByTime(50);
     });
-    rerender(
-      <OverlayProvider>
-        <PipelineSection />
-        <Probe />
-      </OverlayProvider>,
-    );
-    // --bleed forced back to 0 by the consume-reset effect.
+
+    // Same section element (not a re-mount). --bleed forced to 0 by the
+    // reset effect, not by a re-initialization of the inline default.
     expect(section.style.getPropertyValue('--bleed')).toBe('0');
   });
 });

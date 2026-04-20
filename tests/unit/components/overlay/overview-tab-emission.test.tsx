@@ -17,7 +17,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { OverlayProvider, useOverlay } from '@/components/overlay/overlay-context';
-import { UnderTheHoodView } from '@/components/overlay/under-the-hood-view';
+import { OverlayView } from '@/components/overlay/overlay-view';
 
 jest.mock('next/navigation', () => ({
   usePathname: () => '/',
@@ -57,7 +57,7 @@ function Harness() {
   return (
     <OverlayProvider>
       <OverlayControls />
-      <UnderTheHoodView />
+      <OverlayView />
     </OverlayProvider>
   );
 }

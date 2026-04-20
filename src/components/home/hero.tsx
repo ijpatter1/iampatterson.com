@@ -33,7 +33,7 @@ export function HeroEditorial() {
           infrastructure.
         </h1>
 
-        <div className="mt-6 grid gap-6 border-t border-rule-soft pt-6 md:mt-12 md:gap-8 md:pt-8 md:grid-cols-[1fr_1.8fr] md:gap-16">
+        <div className="mt-6 grid gap-6 border-t border-rule-soft pt-6 md:mt-12 md:grid-cols-[1fr_1.8fr] md:gap-16 md:pt-8">
           <p
             className="font-display italic text-ink"
             style={{

@@ -246,4 +246,17 @@ describe('PipelineEditorial', () => {
       expect(n.getAttribute('aria-hidden')).toBe('true');
     });
   });
+
+  it('hides the footnote feed on mobile via `hidden md:block` (F6 follow-up compression)', () => {
+    // Pin the mobile-hide class composition on the footnote wrapper.
+    // Without this pin a regression that removes the class would pass
+    // existing tests (jsdom doesn't resolve Tailwind breakpoints — all
+    // existing queries still find the element in the DOM). This test
+    // asserts the className contract directly.
+    const { container } = render(<PipelineEditorial />);
+    const footnote = container.querySelector('.pv-edit__footnote');
+    expect(footnote).not.toBeNull();
+    expect(footnote!.className).toMatch(/\bhidden\b/);
+    expect(footnote!.className).toMatch(/md:block/);
+  });
 });

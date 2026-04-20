@@ -4,7 +4,7 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import { BOOT_SESSION_KEY, UnderTheHoodView } from '@/components/overlay/under-the-hood-view';
+import { BOOT_SESSION_KEY, OverlayView } from '@/components/overlay/overlay-view';
 
 const mockClose = jest.fn();
 
@@ -73,17 +73,17 @@ afterEach(() => {
   jest.useRealTimers();
 });
 
-describe('UnderTheHoodView — editorial / CRT redesign', () => {
+describe('OverlayView — editorial / CRT redesign', () => {
   it('renders as a full-page overlay when isOpen is true', () => {
-    render(<UnderTheHoodView />);
-    const view = screen.getByTestId('under-the-hood-view');
+    render(<OverlayView />);
+    const view = screen.getByTestId('overlay-view');
     expect(view).toBeInTheDocument();
     expect(view.className).toContain('fixed');
     expect(view.className).toContain('inset-0');
   });
 
   it('renders the "Back to site" close button', () => {
-    render(<UnderTheHoodView />);
+    render(<OverlayView />);
     expect(screen.getByRole('button', { name: /back to site/i })).toBeInTheDocument();
   });
 
@@ -92,13 +92,13 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
     // was permanently occluded by the flex-column header/tabs/content children,
     // so it never received a click. UAT S8 reported "backdrop click does not
     // close overlay" — the button is gone; Escape is the close affordance.
-    render(<UnderTheHoodView />);
+    render(<OverlayView />);
     expect(screen.queryByRole('button', { name: /close overlay/i })).not.toBeInTheDocument();
   });
 
   it('calls close when "Back to site" is clicked', async () => {
     const user = userEvent.setup();
-    render(<UnderTheHoodView />);
+    render(<OverlayView />);
     await user.click(screen.getByRole('button', { name: /back to site/i }));
     expect(mockClose).toHaveBeenCalled();
   });
@@ -106,7 +106,7 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
   it('calls close when the Escape key is pressed (F3 UAT S8 fix)', () => {
     // Standard modal behavior. Replaces the dead backdrop button as the
     // non-explicit-close-button affordance.
-    render(<UnderTheHoodView />);
+    render(<OverlayView />);
     act(() => {
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     });
@@ -117,7 +117,7 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
     // Close the overlay first by flipping the mock (re-render with isOpen=false
     // would normally be driven by the provider; here we verify by asserting the
     // listener attaches only when isOpen is true).
-    const { unmount } = render(<UnderTheHoodView />);
+    const { unmount } = render(<OverlayView />);
     unmount();
     act(() => {
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
@@ -129,7 +129,7 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
   });
 
   it('renders only Overview / Timeline / Consent tabs in that order (post-9E-D2)', () => {
-    render(<UnderTheHoodView />);
+    render(<OverlayView />);
     // Overview + Timeline + Consent — the three-tab set after D2.
     expect(screen.getByRole('button', { name: /^Overview$/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^Timeline/i })).toBeInTheDocument();
@@ -147,7 +147,7 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
     // Overview replaces the legacy Overview/Session State tabs as the
     // default landing surface (UX_PIVOT_SPEC §3.2). The stubbed OverviewTab
     // component exposes a stable test-id used here.
-    render(<UnderTheHoodView />);
+    render(<OverlayView />);
     expect(screen.getByTestId('overview-tab-stub')).toBeInTheDocument();
   });
 
@@ -155,7 +155,7 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
     // UX_PIVOT_SPEC §3.2: "active tab labels get terminal-style bracket
     // framing (e.g. `[ OVERVIEW ]` for active, plain for inactive)".
     // Uses aria-label to distinguish from the bracket-wrapped visible text.
-    render(<UnderTheHoodView />);
+    render(<OverlayView />);
     const activeTab = screen.getByRole('button', { name: /^Overview$/i });
     expect(activeTab.textContent).toContain('[ OVERVIEW ]');
     // Inactive tabs render plain text (no bracket wrapping).
@@ -168,7 +168,7 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
     // as low-priority chrome. Post-F2 all three are amber; the bracket
     // framing + border signal active. UAT feedback: "The three tab labels
     // should be amber, not just the active tab label."
-    render(<UnderTheHoodView />);
+    render(<OverlayView />);
     for (const name of ['Overview', 'Timeline', 'Consent']) {
       const tab = screen.getByRole('button', { name: new RegExp(`^${name}`, 'i') });
       expect(tab.className).toMatch(/text-accent-current/);
@@ -176,7 +176,7 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
   });
 
   it('inactive tabs dim via opacity, not color (accent stays constant)', () => {
-    render(<UnderTheHoodView />);
+    render(<OverlayView />);
     const active = screen.getByRole('button', { name: /^Overview$/i });
     const inactive = screen.getByRole('button', { name: /^Timeline/i });
     // Active: opacity-100 and border-accent-current.
@@ -188,7 +188,7 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
   });
 
   it('renders the "Session" header label', () => {
-    render(<UnderTheHoodView />);
+    render(<OverlayView />);
     expect(screen.getByRole('heading', { name: /^session$/i })).toBeInTheDocument();
   });
 
@@ -197,7 +197,7 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
     // wrapper + "Live · yours, right now" subtitle both gated `hidden
     // md:flex`/`md:block`; only "Session" title + close button render
     // at <md. Desktop keeps the fuller chrome treatment.
-    render(<UnderTheHoodView />);
+    render(<OverlayView />);
     const title = screen.getByRole('heading', { name: /^session$/i });
     const header = title.closest('header');
     expect(header).not.toBeNull();
@@ -215,7 +215,7 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
   it('keeps each tab on a single line (whitespace-nowrap) with mobile overflow-x-auto (F5 UAT S11)', () => {
     // UAT feedback: bracket framing wrapped to 3 lines on 360px. Fix
     // pins the responsive layout contract.
-    render(<UnderTheHoodView />);
+    render(<OverlayView />);
     const overview = screen.getByRole('button', { name: /^Overview$/i });
     expect(overview.className).toMatch(/whitespace-nowrap/);
     expect(overview.className).toMatch(/flex-shrink-0/);
@@ -226,8 +226,8 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
 
   it('enters boot phase on open and transitions to on after ~260ms', () => {
     jest.useFakeTimers();
-    render(<UnderTheHoodView />);
-    const view = screen.getByTestId('under-the-hood-view');
+    render(<OverlayView />);
+    const view = screen.getByTestId('overlay-view');
     expect(view.dataset.phase).toBe('boot');
     // CRT field is mounted during boot so the paint-down curtain and warm
     // flicker can animate through the boot hold.
@@ -242,8 +242,8 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
 
   it('skips the boot phase under prefers-reduced-motion', () => {
     mockReducedMotion(true);
-    render(<UnderTheHoodView />);
-    const view = screen.getByTestId('under-the-hood-view');
+    render(<OverlayView />);
+    const view = screen.getByTestId('overlay-view');
     expect(view.dataset.phase).toBe('on');
     expect(screen.getByTestId('crt-field')).toBeInTheDocument();
   });
@@ -252,7 +252,7 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
     // The ambient layer is deliberately kept outside the z:3 CRT wrapper so
     // its amber blend stays scoped to the header. If it drifts back inside
     // crt-field it would cover tabs/body too, regressing the preserved effect.
-    render(<UnderTheHoodView />);
+    render(<OverlayView />);
     const ambient = screen.getByTestId('crt-ambient');
     const crtField = screen.getByTestId('crt-field');
     expect(ambient).toBeInTheDocument();
@@ -264,7 +264,7 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
     // Prototype boot sequence is: flicker → bloom → scanlines, all inside a
     // z:3 wrapper that covers positioned siblings. Guards against a layer
     // being accidentally dropped during future refactors.
-    render(<UnderTheHoodView />);
+    render(<OverlayView />);
     const crtField = screen.getByTestId('crt-field');
     expect(crtField.querySelector('.crt-flicker')).not.toBeNull();
     expect(crtField.querySelector('.crt-bloom')).not.toBeNull();
@@ -276,8 +276,8 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
     // Ambient glow must be present from the moment the overlay opens so the
     // amber reads on the header throughout boot, not just after phase-on.
     jest.useFakeTimers();
-    render(<UnderTheHoodView />);
-    const view = screen.getByTestId('under-the-hood-view');
+    render(<OverlayView />);
+    const view = screen.getByTestId('overlay-view');
     expect(view.dataset.phase).toBe('boot');
     expect(screen.getByTestId('crt-ambient')).toBeInTheDocument();
   });
@@ -286,7 +286,7 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
     // During boot the `[data-phase='boot'] .tab-flash { opacity: 0 }` rule
     // hides panel contents so the paint-down curtain reads as the terminal
     // filling in. Verify the wrapper class is present on the body pane.
-    const { container } = render(<UnderTheHoodView />);
+    const { container } = render(<OverlayView />);
     expect(container.querySelector('.tab-flash')).not.toBeNull();
   });
 
@@ -295,15 +295,15 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
     // within the same browser session go straight to phase-on. Simulate the
     // "already booted this session" state by pre-seeding the flag.
     window.sessionStorage.setItem(BOOT_SESSION_KEY, '1');
-    render(<UnderTheHoodView />);
-    const view = screen.getByTestId('under-the-hood-view');
+    render(<OverlayView />);
+    const view = screen.getByTestId('overlay-view');
     expect(view.dataset.phase).toBe('on');
   });
 
   it('sets the sessionStorage flag on first boot so re-opens skip the hold', () => {
     // Guards against regression where boot fires but the flag isn't persisted,
     // which would cause every open to re-boot (the behavior we moved away from).
-    render(<UnderTheHoodView />);
+    render(<OverlayView />);
     expect(window.sessionStorage.getItem(BOOT_SESSION_KEY)).toBe('1');
   });
 
@@ -313,7 +313,7 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
     // should NOT see the boot sequence again. Setting the flag on both
     // branches preserves the once-per-session guarantee.
     mockReducedMotion(true);
-    render(<UnderTheHoodView />);
+    render(<OverlayView />);
     expect(window.sessionStorage.getItem(BOOT_SESSION_KEY)).toBe('1');
   });
 
@@ -321,7 +321,7 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
     // During boot, a `[data-phase='boot'] .overlay-chrome { opacity: 0 }` rule
     // hides the header and tabs so they don't paint under the curtain. Verify
     // the contract classes are on both elements — the CSS rule keys off them.
-    const { container } = render(<UnderTheHoodView />);
+    const { container } = render(<OverlayView />);
     const header = container.querySelector('header');
     expect(header).not.toBeNull();
     expect(header?.className).toMatch(/overlay-chrome/);

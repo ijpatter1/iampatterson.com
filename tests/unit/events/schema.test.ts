@@ -294,4 +294,17 @@ describe('Event schema types', () => {
     expect(RENDERABLE_EVENT_NAMES).toContain('timeline_tab_view');
     expect(RENDERABLE_EVENT_NAMES).toContain('consent_tab_view');
   });
+
+  it('RENDERABLE_EVENT_NAMES is a strict subset of DATA_LAYER_EVENT_NAMES (F8 eval — prevents typo drift)', () => {
+    // Pin the subset invariant. Without it, a typo in the HIDDEN_FROM_COVERAGE
+    // set (e.g. "plan_selekt") wouldn't fail anywhere — RENDERABLE would
+    // accidentally include the typo'd name AND still contain the real
+    // `plan_select`, silently drifting.
+    const dl = new Set<string>(DATA_LAYER_EVENT_NAMES);
+    for (const name of RENDERABLE_EVENT_NAMES) {
+      expect(dl.has(name)).toBe(true);
+    }
+    // And no renderable entry duplicates.
+    expect(new Set(RENDERABLE_EVENT_NAMES).size).toBe(RENDERABLE_EVENT_NAMES.length);
+  });
 });
