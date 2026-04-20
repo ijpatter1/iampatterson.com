@@ -77,12 +77,10 @@ export type CtaLocation =
   | 'services_closer'
   | `services_tier_${'01' | '02' | '03' | '04'}`
   | 'final_cta'
-  // Legacy — removed by Phase 9E deliverable 7 (subscription + leadgen demos off-site)
-  | 'subscription_dashboard'
-  // Legacy — rebuilt by Phase 9E deliverable 6 (homepage Demos section collapse)
-  | 'demo_card_ecommerce'
-  | 'demo_card_subscription'
-  | 'demo_card_leadgen';
+  // Homepage Demos section — single ecommerce entry after D6's rebuild. Name
+  // retained across the card→section refactor so the analytics time series
+  // stays continuous (no split series from a rename).
+  | 'demo_card_ecommerce';
 
 /** Fired when a CTA button is clicked. */
 export interface ClickCtaEvent extends BaseEvent {
