@@ -135,16 +135,10 @@ describe('SessionStateRideAlong', () => {
       expect(summary.textContent).toMatch(/consent state and session id will ride along/i);
     });
 
-    it('uses the honest-override copy when marketing consent is denied', () => {
-      mockState = makeState({
-        consent_snapshot: { analytics: 'granted', marketing: 'denied', preferences: 'granted' },
-      });
-      render(<SessionStateRideAlong />);
-      // Spec §3.6: "You've denied marketing consent. Session state is off by
-      // default — check the box above if you'd like to share it anyway."
-      expect(screen.getByText(/denied marketing consent/i)).toBeInTheDocument();
-      expect(screen.getByText(/off by default/i)).toBeInTheDocument();
-    });
+    // Honest-override copy for marketing-denied (unchecked default) is
+    // tested exhaustively by the "unchecked + denied" variant in the
+    // "summary copy — four variants" block below; no need for a
+    // narrower duplicate here.
 
     it('uses the standard copy when marketing consent is granted', () => {
       mockState = makeState({
@@ -291,7 +285,7 @@ describe('SessionStateRideAlong', () => {
       expect(container.querySelector('input[name="session_state"]')).toBeNull();
     });
 
-    it('does NOT auto-flip the box if the user has explicitly interacted (override wins)', async () => {
+    it('does NOT auto-flip the box if the user has explicitly interacted (override wins, granted→denied→granted round-trip)', async () => {
       mockState = makeState({
         consent_snapshot: { analytics: 'granted', marketing: 'granted', preferences: 'granted' },
       });
@@ -320,6 +314,37 @@ describe('SessionStateRideAlong', () => {
       cb = screen.getByRole('checkbox') as HTMLInputElement;
       expect(cb.checked).toBe(false);
     });
+
+    it('user-override-wins holds in the inverse direction too (check under denied, then denied→granted→denied)', async () => {
+      // Symmetric coverage: the opposite starting position from the
+      // test above. Visitor loads with marketing denied (auto-unchecked),
+      // explicitly overrides by checking. Their check persists regardless
+      // of subsequent consent direction changes.
+      mockState = makeState({
+        consent_snapshot: { analytics: 'granted', marketing: 'denied', preferences: 'granted' },
+      });
+      const user = userEvent.setup();
+      const { rerender } = render(<SessionStateRideAlong />);
+      await user.click(screen.getByRole('checkbox'));
+      let cb = screen.getByRole('checkbox') as HTMLInputElement;
+      expect(cb.checked).toBe(true);
+
+      // Consent flips denied→granted. Override already pinned to true.
+      mockState = makeState({
+        consent_snapshot: { analytics: 'granted', marketing: 'granted', preferences: 'granted' },
+      });
+      rerender(<SessionStateRideAlong />);
+      cb = screen.getByRole('checkbox') as HTMLInputElement;
+      expect(cb.checked).toBe(true);
+
+      // Consent flips back granted→denied. Pin still holds.
+      mockState = makeState({
+        consent_snapshot: { analytics: 'granted', marketing: 'denied', preferences: 'granted' },
+      });
+      rerender(<SessionStateRideAlong />);
+      cb = screen.getByRole('checkbox') as HTMLInputElement;
+      expect(cb.checked).toBe(true);
+    });
   });
 
   describe('summary copy — four variants keyed on (checked, marketing)', () => {
@@ -347,7 +372,12 @@ describe('SessionStateRideAlong', () => {
       const summary = screen.getByTestId('ride-along-summary');
       expect(summary.textContent).toMatch(/will not be included/i);
       expect(summary.textContent).toMatch(/check the box above/i);
+      // Full cross-variant contamination check — each positive must be
+      // unique to this variant.
       expect(summary.textContent).not.toMatch(/will ride along/i);
+      expect(summary.textContent).not.toMatch(/overriding/i);
+      expect(summary.textContent).not.toMatch(/off by default/i);
+      expect(summary.textContent).not.toMatch(/denied marketing consent/i);
     });
 
     it('checked + denied → "overriding" + concrete payload (transparency at the override moment)', async () => {
@@ -365,7 +395,9 @@ describe('SessionStateRideAlong', () => {
       expect(summary.textContent).toMatch(/will ride along/i);
       // Critically: visitor must see the payload they're opting into,
       // not just the override-invitation copy they saw pre-click.
+      // Full cross-variant contamination check.
       expect(summary.textContent).not.toMatch(/off by default/i);
+      expect(summary.textContent).not.toMatch(/will not be included/i);
     });
 
     it('unchecked + denied → honest-override invitation copy', () => {
