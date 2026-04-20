@@ -273,7 +273,7 @@ export function UnderTheHoodView() {
             <h1 className="font-display text-lg leading-none text-u-ink">Under the Hood</h1>
             <p className="mt-1 flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-u-ink-3">
               <span className="inline-block h-1.5 w-1.5 animate-session-pulse rounded-full bg-accent-current" />
-              Live · streaming your session events
+              Live · this session, under the hood
             </p>
           </div>
         </div>
