@@ -46,14 +46,16 @@ const PORTAL_LINKS: {
   },
 ];
 
-// Funnel labels mirror the event-name literals shown in the chip grid above
-// (`> product_view`, `> add_to_cart`). Consistent retrofuture-terminal idiom
-// across both surfaces; a visitor reading the chip grid and the funnel sees
-// the same tokens. Uppercase matches the spec's example funnel rows.
+// Funnel labels match the REQUIREMENTS.md deliverable 3 example:
+// `PRODUCT_VIEW → ADD_TO_CART → CHECKOUT → PURCHASE`. `CHECKOUT` is the
+// spec's shorthand for `begin_checkout`; the underlying event token
+// (`> begin_checkout`) remains visible in the chip grid above, so the
+// split between "visitor-facing funnel label" and "event-name literal"
+// follows the spec's own convention.
 const STAGE_LABELS: Record<EcommerceStage, string> = {
   product_view: 'PRODUCT_VIEW',
   add_to_cart: 'ADD_TO_CART',
-  begin_checkout: 'BEGIN_CHECKOUT',
+  begin_checkout: 'CHECKOUT',
   purchase: 'PURCHASE',
 };
 
@@ -82,6 +84,19 @@ const STAGE_STATUS_TAG: Record<StageStatus, string> = {
   pending: '[  ]',
 };
 
+/**
+ * One-shot typewriter for the coverage-number readout.
+ *
+ * **Semantics:** one-shot per **component mount**, not per hydration.
+ * `SessionStateTab` early-returns to the "Warming up…" placeholder while
+ * `useSessionState()` is `null`, so the coverage-readout DOM node is
+ * remounted when state transitions away from `null` — fresh ref each time.
+ * Within a single mounted-with-hydrated-state lifetime, the animation plays
+ * only on the first non-empty `text` value; subsequent `text` changes (e.g.
+ * the visitor fires new events and the readout updates) paint instantly
+ * via the `hasAnimated.current` early branch. Under `prefers-reduced-motion`
+ * the animation is skipped entirely on the first call too.
+ */
 function useTypedCoverage(text: string): string {
   const [displayed, setDisplayed] = useState<string>('');
   const hasAnimated = useRef(false);
@@ -330,6 +345,11 @@ export function SessionStateTab() {
 
       {thresholdCrossed(state) && (
         <div className="mt-2 border border-accent-current bg-u-paper-alt p-4">
+          {/* Diagnostic kicker (terminal vocabulary) + warm outcome-framed link
+              per REQUIREMENTS.md deliverable 3's D8-deferred treatment. When
+              deliverable 8 (contact-form ride-along) ships, the link copy may
+              be extended per UX_PIVOT_SPEC §3.3 to also mention that session
+              state will ride along with the message. */}
           <div className="mb-2 font-mono text-[10px] uppercase tracking-widest text-accent-current">
             &gt; COVERAGE THRESHOLD REACHED
           </div>
@@ -339,7 +359,7 @@ export function SessionStateTab() {
             onClick={handleContextualCtaClick}
             className="font-display text-lg text-u-ink hover:text-accent-current"
           >
-            Seen enough? Let&apos;s talk →
+            Seen enough? →
           </Link>
         </div>
       )}

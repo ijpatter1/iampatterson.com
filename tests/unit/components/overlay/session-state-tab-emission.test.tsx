@@ -41,6 +41,9 @@ function OverlayControls() {
       <button type="button" onClick={() => close()}>
         close-overlay
       </button>
+      <button type="button" onClick={() => open('session_state')}>
+        open-with-pending-session-state
+      </button>
     </>
   );
 }
@@ -120,9 +123,15 @@ describe('session_state_tab_view emission', () => {
     expect(dataLayerEventsNamed('session_state_tab_view')).toHaveLength(2);
   });
 
-  // Note: `open('session_state')` — programmatic open directly to the tab
-  // — is deliverable 2's territory. D2 promotes Session State to the default
-  // and introduces the `default_landing` source; until then no caller in the
-  // codebase uses that open-to-tab path, so the emission semantic for it is
-  // not pinned here.
+  it('does NOT fire manual_select when viewMode lands on session_state via pendingTab (Pass 3 Tech M1)', async () => {
+    // Pinning the architectural invariant: emission is click-bound (via
+    // `handleTabChange`), so programmatic tab changes — `open('session_state')`,
+    // `setViewMode` in showOverview reset, pathname-driven resets — never emit
+    // manual_select. A future refactor that reverts to an effect-based emitter
+    // with first-seen dedup would regress the pendingTab path and fail here.
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.click(screen.getByText('open-with-pending-session-state'));
+    expect(dataLayerEventsNamed('session_state_tab_view')).toHaveLength(0);
+  });
 });
