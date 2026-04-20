@@ -73,6 +73,12 @@ function hasValidShape(value: unknown): value is SessionState {
   ) {
     return false;
   }
+  if (
+    !Array.isArray(v.coverage_milestones_fired) ||
+    !v.coverage_milestones_fired.every((t) => t === 25 || t === 50 || t === 75 || t === 100)
+  ) {
+    return false;
+  }
   return true;
 }
 

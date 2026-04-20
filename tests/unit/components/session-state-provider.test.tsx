@@ -109,6 +109,7 @@ describe('SessionStateProvider', () => {
       },
       demo_progress: { ecommerce: { stages_reached: [], percentage: 0 } },
       consent_snapshot: { analytics: 'granted', marketing: 'denied', preferences: 'granted' },
+      coverage_milestones_fired: [],
     };
     window.sessionStorage.setItem(SESSION_STATE_STORAGE_KEY, JSON.stringify(prior));
 
@@ -132,6 +133,7 @@ describe('SessionStateProvider', () => {
       },
       demo_progress: { ecommerce: { stages_reached: [], percentage: 0 } },
       consent_snapshot: { analytics: 'denied', marketing: 'denied', preferences: 'denied' },
+      coverage_milestones_fired: [],
     };
     window.sessionStorage.setItem(SESSION_STATE_STORAGE_KEY, JSON.stringify(prior));
 
@@ -191,6 +193,70 @@ describe('SessionStateProvider', () => {
     expect(saveCountAfterBatch - saveCountAfterInit).toBe(1);
     expect(result.current!.events_fired).toEqual({ click_cta: 1, add_to_cart: 1 });
     saveSpy.mockRestore();
+  });
+
+  it('emits a coverage_milestone data-layer event when a threshold crosses (deliverable 3)', () => {
+    jest.useFakeTimers();
+    const { result } = renderHook(() => useSessionState(), { wrapper: Wrapper });
+
+    // Fire 6 distinct iap_source events to cross 25% coverage (6/22 = 27.3%).
+    act(() => {
+      const names = [
+        'page_view',
+        'click_cta',
+        'scroll_depth',
+        'click_nav',
+        'form_start',
+        'form_submit',
+      ];
+      for (const name of names) {
+        window.dataLayer.push(makeDataLayerEntry({ event: name }));
+      }
+      jest.advanceTimersByTime(500);
+    });
+
+    const milestoneEvents = window.dataLayer.filter(
+      (e: { event?: string; threshold?: number }) => e.event === 'coverage_milestone',
+    );
+    expect(milestoneEvents).toHaveLength(1);
+    expect(milestoneEvents[0].threshold).toBe(25);
+    expect(result.current!.coverage_milestones_fired).toEqual([25]);
+  });
+
+  it('does not re-emit coverage_milestone events that were in the rehydrated blob (deliverable 3)', () => {
+    jest.useFakeTimers();
+    // Prior blob: visitor already crossed 25% pre-reload.
+    const prior = {
+      session_id: 'live-session-id',
+      started_at: '2026-04-19T17:00:00.000Z',
+      updated_at: '2026-04-19T17:05:00.000Z',
+      page_count: 1,
+      visited_paths: ['/'],
+      events_fired: { page_view: 6 },
+      event_type_coverage: {
+        fired: ['page_view', 'click_cta', 'scroll_depth', 'click_nav', 'form_start', 'form_submit'],
+        total: [...DATA_LAYER_EVENT_NAMES],
+      },
+      demo_progress: { ecommerce: { stages_reached: [], percentage: 0 } },
+      consent_snapshot: { analytics: 'granted', marketing: 'denied', preferences: 'granted' },
+      coverage_milestones_fired: [25],
+    };
+    window.sessionStorage.setItem(SESSION_STATE_STORAGE_KEY, JSON.stringify(prior));
+    document.cookie = '_iap_sid=live-session-id; Path=/';
+
+    const before = window.dataLayer.length;
+    renderHook(() => useSessionState(), { wrapper: Wrapper });
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
+
+    const newlyPushed = window.dataLayer.slice(before);
+    const milestoneEvents = newlyPushed.filter(
+      (e: { event?: string }) => e.event === 'coverage_milestone',
+    );
+    expect(milestoneEvents).toHaveLength(0);
+
+    document.cookie = '_iap_sid=; Path=/; Max-Age=0';
   });
 
   it('emits a single sessionStorage write per tick when consent reseed and events arrive together (Pass 3 M2)', () => {
@@ -302,6 +368,7 @@ describe('SessionStateProvider', () => {
       },
       demo_progress: { ecommerce: { stages_reached: [], percentage: 0 } },
       consent_snapshot: { analytics: 'denied', marketing: 'denied', preferences: 'denied' },
+      coverage_milestones_fired: [],
     };
     window.sessionStorage.setItem(SESSION_STATE_STORAGE_KEY, JSON.stringify(prior));
     // Line up the _iap_sid cookie with the stored session_id so reconciliation

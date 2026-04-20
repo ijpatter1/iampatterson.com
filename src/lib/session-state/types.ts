@@ -29,6 +29,10 @@ export const ECOMMERCE_FUNNEL_SEQUENCE: readonly EcommerceStage[] = [
 /** Consent signal values mirrored into the Session State snapshot. */
 export type ConsentValue = 'granted' | 'denied';
 
+/** Coverage milestone thresholds (percent of event-type coverage). */
+export const COVERAGE_MILESTONE_THRESHOLDS: readonly [25, 50, 75, 100] = [25, 50, 75, 100];
+export type CoverageMilestoneThreshold = (typeof COVERAGE_MILESTONE_THRESHOLDS)[number];
+
 export interface SessionState {
   /** Matches the `_iap_sid` cookie (same identifier flowing into sGTM). */
   session_id: string;
@@ -77,6 +81,14 @@ export interface SessionState {
     marketing: ConsentValue;
     preferences: ConsentValue;
   };
+  /**
+   * Thresholds (subset of COVERAGE_MILESTONE_THRESHOLDS) the visitor has
+   * crossed this session. Memoized in the persisted blob so a reload mid-
+   * session doesn't re-fire an already-crossed threshold. Monotonic — entries
+   * are never removed. The provider watches this array for new entries and
+   * emits `coverage_milestone` events.
+   */
+  coverage_milestones_fired: CoverageMilestoneThreshold[];
   /** ISO 8601 timestamp — updated on every applied event. */
   updated_at: string;
 }

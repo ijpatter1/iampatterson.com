@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { getSessionId } from '@/lib/events/session';
-import { getCurrentConsent } from '@/lib/events/track';
+import { getCurrentConsent, trackCoverageMilestone } from '@/lib/events/track';
 import {
   createInitialSessionState,
   deriveNext,
@@ -36,6 +36,7 @@ export function SessionStateProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<SessionState | null>(null);
   const [ready, setReady] = useState(false);
   const cursorRef = useRef(0);
+  const milestonesEmittedRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     const sessionId = getSessionId();
@@ -44,10 +45,26 @@ export function SessionStateProvider({ children }: { children: ReactNode }) {
       ? reconcileRehydrated(loaded, sessionId)
       : createInitialSessionState(sessionId, new Date(), { consent: getCurrentConsent() });
     setState(initial);
+    // Pre-populate the emitted-ref with any milestones the rehydrated blob
+    // already contains so the effect doesn't re-fire them on mount.
+    for (const t of initial.coverage_milestones_fired) milestonesEmittedRef.current.add(t);
     // Skip the write when reconciliation was a no-op (reference-equal to loaded).
     if (initial !== loaded) saveSessionState(initial);
     setReady(true);
   }, []);
+
+  // Emit coverage_milestone events for newly-appearing entries. Ref-based de-dup
+  // handles strict-mode double-invocation and any future state-path that could
+  // add an entry twice.
+  useEffect(() => {
+    if (!state) return;
+    for (const t of state.coverage_milestones_fired) {
+      if (!milestonesEmittedRef.current.has(t)) {
+        milestonesEmittedRef.current.add(t);
+        trackCoverageMilestone(t);
+      }
+    }
+  }, [state]);
 
   useEffect(() => {
     if (!ready) return;

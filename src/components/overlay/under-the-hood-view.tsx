@@ -11,11 +11,13 @@ import { EventTimeline } from '@/components/overlay/event-timeline';
 import { HomepageUnderside } from '@/components/overlay/homepage-underside';
 import { NarrativeFlow } from '@/components/overlay/narrative-flow';
 import { useOverlay } from '@/components/overlay/overlay-context';
+import { SessionStateTab } from '@/components/overlay/session-state-tab';
 import { useFilteredEvents } from '@/hooks/useFilteredEvents';
 import { useLiveEvents } from '@/hooks/useLiveEvents';
+import { trackSessionStateTabView } from '@/lib/events/track';
 import type { PipelineEvent } from '@/lib/events/pipeline-schema';
 
-type ViewMode = 'overview' | 'timeline' | 'consent' | 'dashboards';
+type ViewMode = 'overview' | 'timeline' | 'consent' | 'dashboards' | 'session_state';
 type Phase = 'idle' | 'boot' | 'on';
 
 const BOOT_DURATION_MS = 260;
@@ -113,6 +115,16 @@ export function UnderTheHoodView() {
     }
   }, [showOverview, viewMode]);
 
+  // Emit session_state_tab_view whenever the Session State tab becomes active
+  // while the overlay is open. `source: manual_select` today — deliverable 2
+  // will introduce the `default_landing` case when it promotes this tab to the
+  // default landing surface on open.
+  useEffect(() => {
+    if (isOpen && viewMode === 'session_state') {
+      trackSessionStateTabView('manual_select');
+    }
+  }, [isOpen, viewMode]);
+
   // If the opener requested a specific tab (e.g. footer "Consent state" link),
   // switch to it and clear the request so a subsequent open without a hint
   // doesn't re-select.
@@ -161,6 +173,7 @@ export function UnderTheHoodView() {
 
   const tabs: TabDef[] = [
     ...(showOverview ? [{ mode: 'overview' as ViewMode, label: 'Overview' }] : []),
+    { mode: 'session_state', label: 'Session State' },
     { mode: 'timeline', label: 'Timeline', count: filteredEvents.length },
     { mode: 'consent', label: 'Consent' },
     { mode: 'dashboards', label: 'Dashboards' },
@@ -265,6 +278,7 @@ export function UnderTheHoodView() {
               {viewMode === 'overview' && isEcommerce && (
                 <EcommerceUnderside pathname={pathname} events={filteredEvents} />
               )}
+              {viewMode === 'session_state' && <SessionStateTab />}
               {viewMode === 'timeline' && (
                 <EventTimeline events={filteredEvents} onSelectEvent={setSelectedEvent} />
               )}

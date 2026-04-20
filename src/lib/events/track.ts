@@ -1,5 +1,5 @@
 import { pushEvent } from './push';
-import type { CtaLocation } from './schema';
+import type { CoverageMilestoneEvent, CtaLocation, PortalClickEvent } from './schema';
 import { getSessionId } from './session';
 
 /** Current consent state — updated by trackConsentUpdate and initConsentState. */
@@ -180,4 +180,18 @@ export function trackLeadQualify(params: {
   budget_range: string;
 }): void {
   pushEvent({ ...baseFields(), event: 'lead_qualify', ...params });
+}
+
+// --- Phase 9E — nav & Session State analytics ---
+
+export function trackCoverageMilestone(threshold: CoverageMilestoneEvent['threshold']): void {
+  pushEvent({ ...baseFields(), event: 'coverage_milestone', threshold });
+}
+
+export function trackPortalClick(destination: PortalClickEvent['destination']): void {
+  pushEvent({ ...baseFields(), event: 'portal_click', destination });
+}
+
+export function trackSessionStateTabView(source: 'default_landing' | 'manual_select'): void {
+  pushEvent({ ...baseFields(), event: 'session_state_tab_view', source });
 }

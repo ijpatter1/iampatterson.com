@@ -62,7 +62,7 @@ describe('toRideAlongPayload', () => {
     });
   });
 
-  it('does NOT expose visited_paths or events_fired — projection is narrow by design', () => {
+  it('does NOT expose visited_paths, events_fired, or coverage_milestones_fired — projection is narrow by design', () => {
     let state = createInitialSessionState('sid', INIT_NOW);
     state = deriveNext(state, {
       event: 'page_view',
@@ -76,6 +76,7 @@ describe('toRideAlongPayload', () => {
     expect(payload).not.toHaveProperty('visited_paths');
     expect(payload).not.toHaveProperty('events_fired');
     expect(payload).not.toHaveProperty('event_type_coverage');
+    expect(payload).not.toHaveProperty('coverage_milestones_fired');
   });
 
   it('returns a defensive copy of consent so later state mutation cannot alias in', () => {

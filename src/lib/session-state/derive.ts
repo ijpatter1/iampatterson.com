@@ -12,7 +12,13 @@
  */
 import { DATA_LAYER_EVENT_NAMES, type DataLayerEventName } from '@/lib/events/schema';
 
-import type { ConsentValue, EcommerceStage, SessionState } from './types';
+import {
+  COVERAGE_MILESTONE_THRESHOLDS,
+  type ConsentValue,
+  type CoverageMilestoneThreshold,
+  type EcommerceStage,
+  type SessionState,
+} from './types';
 
 /**
  * Frozen snapshot of the schema's event name list at module init. Exported so
@@ -92,8 +98,22 @@ export function createInitialSessionState(
       marketing: toConsentValue(consent?.consent_marketing ?? false),
       preferences: toConsentValue(consent?.consent_preferences ?? false),
     },
+    coverage_milestones_fired: [],
     updated_at: iso,
   };
+}
+
+/**
+ * Given a coverage ratio (0..1) and the already-fired thresholds, return the
+ * thresholds newly crossed. Pure function; used inside `deriveNext` and
+ * available to tests / debug tooling in isolation.
+ */
+export function newlyCrossedMilestones(
+  coverageRatio: number,
+  alreadyFired: readonly CoverageMilestoneThreshold[],
+): CoverageMilestoneThreshold[] {
+  const percentage = coverageRatio * 100;
+  return COVERAGE_MILESTONE_THRESHOLDS.filter((t) => percentage >= t && !alreadyFired.includes(t));
 }
 
 /**
@@ -158,6 +178,13 @@ export function deriveNext(state: SessionState, event: SessionStateEventInput): 
   }
   const percentage = Math.round((stages_reached.length / STAGE_COUNT) * 100);
 
+  const coverageRatio = coverageFired.length / state.event_type_coverage.total.length;
+  const newMilestones = newlyCrossedMilestones(coverageRatio, state.coverage_milestones_fired);
+  const coverage_milestones_fired =
+    newMilestones.length > 0
+      ? [...state.coverage_milestones_fired, ...newMilestones]
+      : state.coverage_milestones_fired;
+
   return {
     ...state,
     page_count,
@@ -179,6 +206,7 @@ export function deriveNext(state: SessionState, event: SessionStateEventInput): 
       marketing: toConsentValue(event.consent_marketing),
       preferences: toConsentValue(event.consent_preferences),
     },
+    coverage_milestones_fired,
     updated_at: event.timestamp,
   };
 }
