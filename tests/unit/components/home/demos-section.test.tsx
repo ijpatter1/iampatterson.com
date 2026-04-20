@@ -170,6 +170,43 @@ describe('DemosSection — post-9E-D6 single ecommerce section', () => {
       expect(banner.textContent).toMatch(/lead[\s-]?gen/i);
     });
 
+    // F4 UAT S5.3 regression pins — deep-link redirect flow.
+    // Scenario: visitor dismisses on /?rebuild=subscription, then
+    // navigates to /demo/subscription/account/settings which redirects
+    // to /?rebuild=subscription#demos (same label, same storage key).
+    // Banner must stay dismissed; no hydration error must fire.
+    it('stays dismissed after a deep-link redirect lands on the same label (F4 UAT S5.3)', async () => {
+      mockSearchParams = new URLSearchParams('?rebuild=subscription');
+      const user = userEvent.setup();
+      const { unmount } = render(<DemosSection />);
+      await user.click(screen.getByRole('button', { name: /dismiss/i }));
+      expect(screen.queryByTestId('rebuild-banner')).not.toBeInTheDocument();
+      unmount();
+
+      // Deep link redirects to the SAME shallow destination URL —
+      // `/demo/subscription/:path*` → `/?rebuild=subscription#demos`.
+      // The banner's dismissal state is keyed on the `label`, not the
+      // inbound path, so the deep-link remount reads the same storage
+      // key and the banner stays hidden.
+      mockSearchParams = new URLSearchParams('?rebuild=subscription');
+      render(<DemosSection />);
+      expect(screen.queryByTestId('rebuild-banner')).not.toBeInTheDocument();
+    });
+
+    it('does NOT flash the banner during the null → resolved dismissal transition (F4 hydration-safety)', () => {
+      // F4 fix: useState initializer used to call isRebuildBannerDismissed()
+      // synchronously, creating an SSR/CSR hydration mismatch under the
+      // Suspense boundary. Post-F4 the initializer is null; the useEffect
+      // reads sessionStorage after hydration.
+      // Pre-seed storage as dismissed, then mount. Banner must never paint.
+      mockSearchParams = new URLSearchParams('?rebuild=subscription');
+      window.sessionStorage.setItem('iampatterson.rebuild_banner_dismissed.subscription', '1');
+      render(<DemosSection />);
+      // After testing-library's act flush, the effect has resolved to
+      // dismissed=true and banner stayed null throughout — no flash.
+      expect(screen.queryByTestId('rebuild-banner')).not.toBeInTheDocument();
+    });
+
     beforeEach(() => {
       window.sessionStorage.clear();
     });

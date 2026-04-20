@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
@@ -74,15 +74,35 @@ function RebuildBanner() {
     rebuildParam && Object.hasOwn(REBUILD_LABELS, rebuildParam)
       ? REBUILD_LABELS[rebuildParam]
       : null;
-  const [bannerDismissed, setBannerDismissed] = useState(
-    rebuildLabel ? isRebuildBannerDismissed(rebuildLabel) : false,
-  );
 
-  if (rebuildLabel === null || bannerDismissed) return null;
+  // Two-pass SSR-safe dismissal state (F4 UAT fix). Pre-F4 the initializer
+  // called `isRebuildBannerDismissed()` synchronously, which reads
+  // sessionStorage — that read returns different values between server
+  // (no window, falls through to false) and client hydration (real
+  // storage), producing a hydration mismatch inside the Suspense boundary
+  // on deep-link redirects (UAT S5.3: /demo/subscription/account/settings
+  // → redirect → "There was an error while hydrating this Suspense
+  // boundary. Switched to client rendering.").
+  //
+  // Tri-state encodes the pre-resolution period: null = "haven't read
+  // sessionStorage yet, don't render anything"; boolean = resolved. The
+  // banner stays hidden until the effect runs so first paint matches
+  // server output (null) regardless of whether the storage key exists.
+  const [dismissed, setDismissed] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!rebuildLabel) {
+      setDismissed(false);
+      return;
+    }
+    setDismissed(isRebuildBannerDismissed(rebuildLabel));
+  }, [rebuildLabel]);
+
+  if (rebuildLabel === null || dismissed === null || dismissed === true) return null;
 
   const dismiss = () => {
     markRebuildBannerDismissed(rebuildLabel);
-    setBannerDismissed(true);
+    setDismissed(true);
   };
 
   return (
