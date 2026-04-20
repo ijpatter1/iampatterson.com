@@ -50,21 +50,24 @@ describe('Footer — editorial', () => {
     );
   });
 
-  it('renders the Demos column with all three demos', () => {
+  it('renders the Demos column with the ecommerce demo (post-9E-D7)', () => {
+    // Phase 9E deliverable 7 removed the subscription + leadgen demos
+    // from the site; the Demos column reduces to the ecommerce entry
+    // per UX_PIVOT_SPEC §3.7. Those two event types remain in the
+    // schema for Session State coverage, but the UI that fired them
+    // is gone until the demos return.
     renderFooter();
     const footer = screen.getByRole('contentinfo');
     expect(within(footer).getByRole('link', { name: /tuna shop/i })).toHaveAttribute(
       'href',
       '/demo/ecommerce',
     );
-    expect(within(footer).getByRole('link', { name: /tuna subscription/i })).toHaveAttribute(
-      'href',
-      '/demo/subscription',
-    );
-    expect(within(footer).getByRole('link', { name: /tuna partnerships/i })).toHaveAttribute(
-      'href',
-      '/demo/leadgen',
-    );
+    expect(
+      within(footer).queryByRole('link', { name: /tuna subscription/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(footer).queryByRole('link', { name: /tuna partnerships/i }),
+    ).not.toBeInTheDocument();
   });
 
   it('renders the Under-the-hood column with overlay-triggering buttons', async () => {

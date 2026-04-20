@@ -1,8 +1,17 @@
 /**
  * Dashboard data types matching BigQuery Dataform mart schemas.
  * These interfaces mirror the column schemas from mart_campaign_performance,
- * mart_channel_attribution, mart_customer_ltv, mart_subscription_cohorts,
- * and mart_lead_funnel.
+ * mart_channel_attribution, and mart_customer_ltv.
+ *
+ * Phase 9E deliverable 7 removed the subscription and lead gen demos;
+ * their dashboard-data type bundles (`SubscriptionDashboardData`,
+ * `LeadGenDashboardData`, `SubscriptionCohortRow`, `LeadFunnelRow`,
+ * `CohortData`, `ChurnBreakdown`, `LeadQualityBreakdown`) were deleted
+ * because they had no remaining consumers. The corresponding
+ * `mart_subscription_cohorts` + `mart_lead_funnel` mart models in
+ * `infrastructure/dataform/` stay untouched — the warehouse tables are
+ * still built on the simulated historical data, they just aren't
+ * rendered in the UI while the demos are off-site.
  */
 
 // --- E-commerce Dashboard Types ---
@@ -61,51 +70,6 @@ export interface CustomerLtvRow {
   acquisition_month: string;
 }
 
-// --- Subscription Dashboard Types ---
-
-export interface SubscriptionCohortRow {
-  cohort_month: string;
-  plan_id: string;
-  plan_name: string;
-  plan_price: number;
-  utm_source: string;
-  utm_medium: string;
-  session_id: string;
-  signup_at: string;
-  total_renewals: number;
-  total_renewal_revenue: number;
-  lifetime_revenue: number;
-  last_renewal_month: number;
-  has_churned: boolean;
-  churn_at: string | null;
-  tenure_at_churn: number | null;
-  churn_reason: string | null;
-  days_active: number;
-}
-
-// --- Lead Gen Dashboard Types ---
-
-export interface LeadFunnelRow {
-  session_id: string;
-  session_start: string;
-  report_month: string;
-  utm_source: string;
-  utm_medium: string;
-  utm_campaign: string;
-  has_page_view: boolean;
-  has_form_start: boolean;
-  has_form_complete: boolean;
-  has_lead_qualify: boolean;
-  funnel_stage: 'visited' | 'started' | 'submitted' | 'qualified' | 'unknown';
-  partnership_type: string | null;
-  budget_range: string | null;
-  company_name: string | null;
-  lead_id: string | null;
-  qualification_tier: string | null;
-  fields_interacted: number;
-  scroll_events: number;
-}
-
 // --- Aggregated Dashboard View Models ---
 
 export interface KpiMetric {
@@ -147,24 +111,6 @@ export interface FunnelStep {
   percentage: number;
 }
 
-export interface CohortData {
-  cohortMonth: string;
-  signups: number;
-  retentionByMonth: number[]; // percentage retained at month 1, 2, 3...
-}
-
-export interface ChurnBreakdown {
-  reason: string;
-  count: number;
-  percentage: number;
-}
-
-export interface LeadQualityBreakdown {
-  tier: string;
-  count: number;
-  percentage: number;
-}
-
 // --- Dashboard Data Bundles ---
 
 export interface EcommerceDashboardData {
@@ -174,22 +120,4 @@ export interface EcommerceDashboardData {
   productPerformance: ProductPerformance[];
   acquisitionFunnel: FunnelStep[];
   campaignPerformance: CampaignPerformanceRow[];
-}
-
-export interface SubscriptionDashboardData {
-  kpis: KpiMetric[];
-  mrrTrend: TimeSeriesPoint[];
-  cohortRetention: CohortData[];
-  trialConversionByChannel: ChannelBreakdown[];
-  churnBreakdown: ChurnBreakdown[];
-  ltvBySource: { source: string; avgLtv: number; customers: number }[];
-}
-
-export interface LeadGenDashboardData {
-  kpis: KpiMetric[];
-  leadVolumeTrend: TimeSeriesPoint[];
-  funnel: FunnelStep[];
-  costPerLeadByChannel: { channel: string; costPerLead: number; leads: number; spend: number }[];
-  qualityDistribution: LeadQualityBreakdown[];
-  conversionTimeline: TimeSeriesPoint[];
 }

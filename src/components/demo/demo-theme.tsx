@@ -2,7 +2,7 @@
 
 import { createContext, useContext } from 'react';
 
-type DemoId = 'ecommerce' | 'subscription' | 'leadgen';
+type DemoId = 'ecommerce';
 
 interface DemoTheme {
   demoId: DemoId | null;
@@ -32,28 +32,6 @@ const themes: Record<DemoId, Omit<DemoTheme, 'demoId'>> = {
     textAccentClass: 'text-demo-ecommerce-dark',
     bgSurfaceClass: 'bg-demo-ecommerce-surface',
   },
-  subscription: {
-    label: 'Tuna Subscription',
-    accent: '#0d9488',
-    accentLight: '#ccfbf1',
-    accentDark: '#134e4a',
-    accentMuted: '#99f6e4',
-    accentSurface: '#f0fdfa',
-    borderAccentClass: 'border-demo-subscription',
-    textAccentClass: 'text-demo-subscription-dark',
-    bgSurfaceClass: 'bg-demo-subscription-surface',
-  },
-  leadgen: {
-    label: 'Tuna Partnerships',
-    accent: '#6366f1',
-    accentLight: '#e0e7ff',
-    accentDark: '#3730a3',
-    accentMuted: '#c7d2fe',
-    accentSurface: '#eef2ff',
-    borderAccentClass: 'border-demo-leadgen',
-    textAccentClass: 'text-demo-leadgen-dark',
-    bgSurfaceClass: 'bg-demo-leadgen-surface',
-  },
 };
 
 const defaultTheme: DemoTheme = {
@@ -73,8 +51,6 @@ const DemoThemeContext = createContext<DemoTheme>(defaultTheme);
 
 function resolveDemoId(pathname: string): DemoId | null {
   if (pathname.startsWith('/demo/ecommerce')) return 'ecommerce';
-  if (pathname.startsWith('/demo/subscription')) return 'subscription';
-  if (pathname.startsWith('/demo/leadgen')) return 'leadgen';
   return null;
 }
 
