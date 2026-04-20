@@ -4,6 +4,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
+import { RENDERABLE_EVENT_NAMES } from '@/lib/events/schema';
 import type { SessionState } from '@/lib/session-state/types';
 
 let mockState: SessionState | null = null;
@@ -127,9 +128,11 @@ describe('SessionStateRideAlong', () => {
     it('reports event types triggered over total, demo percentage, and pages visited', () => {
       mockState = makeState();
       render(<SessionStateRideAlong />);
-      // Fixture has 14 fired / 22 total / 75% / 9 pages.
+      // Fixture fires 14 events (all renderable) out of RENDERABLE_EVENT_NAMES
+      // (20 post-UAT F2). Demo progress 75%, pages visited 9.
       const summary = screen.getByTestId('ride-along-summary');
-      expect(summary.textContent).toMatch(/14 of 20/);
+      const denom = RENDERABLE_EVENT_NAMES.length;
+      expect(summary.textContent).toMatch(new RegExp(`14 of ${denom}`));
       expect(summary.textContent).toMatch(/75%/);
       expect(summary.textContent).toMatch(/9 pages/);
       expect(summary.textContent).toMatch(/consent state and session id will ride along/i);
@@ -157,14 +160,15 @@ describe('SessionStateRideAlong', () => {
       expect(hidden).not.toBeNull();
       expect(hidden!.type).toBe('hidden');
       const parsed = JSON.parse(hidden!.value);
+      // Post-UAT F8: denominator comes from RENDERABLE_EVENT_NAMES.length
+      // (not the fixture's `total` array length). Matches the number the
+      // visitor saw on the Overview tab before submitting. Using the live
+      // constant here so future renderable-set changes don't silently
+      // misalign the test from the code's source of truth.
       expect(parsed).toEqual({
         session_id: 'sid-abc123def456',
         event_types_triggered: 14,
-        // Post-UAT F8: denominator comes from RENDERABLE_EVENT_NAMES.length
-        // (20 post-F2 — full schema minus the 4 hidden sub/leadgen event
-        // types), not the fixture's `total` array length. Matches the
-        // number the visitor saw on the Overview tab before submitting.
-        event_types_total: 20,
+        event_types_total: RENDERABLE_EVENT_NAMES.length,
         ecommerce_demo_percentage: 75,
         pages_visited: 9,
         consent: {
@@ -358,7 +362,7 @@ describe('SessionStateRideAlong', () => {
       });
       render(<SessionStateRideAlong />);
       const summary = screen.getByTestId('ride-along-summary');
-      expect(summary.textContent).toMatch(/14 of 20 event types/);
+      expect(summary.textContent).toMatch(new RegExp(`14 of ${RENDERABLE_EVENT_NAMES.length} event types`));
       expect(summary.textContent).toMatch(/75%/);
       expect(summary.textContent).toMatch(/will ride along/i);
       expect(summary.textContent).not.toMatch(/will not be included/i);
@@ -394,7 +398,7 @@ describe('SessionStateRideAlong', () => {
       await user.click(screen.getByRole('checkbox'));
       const summary = screen.getByTestId('ride-along-summary');
       expect(summary.textContent).toMatch(/overriding.*denied marketing consent/i);
-      expect(summary.textContent).toMatch(/14 of 20 event types/);
+      expect(summary.textContent).toMatch(new RegExp(`14 of ${RENDERABLE_EVENT_NAMES.length} event types`));
       expect(summary.textContent).toMatch(/75%/);
       expect(summary.textContent).toMatch(/will ride along/i);
       // Critically: visitor must see the payload they're opting into,

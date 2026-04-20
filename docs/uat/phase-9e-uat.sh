@@ -6,12 +6,12 @@
 #   D1 header nav pivot + NavHint
 #   D2 overlay restructure (3 tabs, Overview default)
 #   D3 Overview tab (new)
-#   D4 Overview data model (tab-scoped sessionStorage)
+#   D4 Session State data model (backs the Overview tab; tab-scoped sessionStorage)
 #   D5 pipeline section progressive bleed-through reveal
 #   D6 Homepage Demos section rebuild (single ecommerce surface)
 #   D7 subscription + leadgen demo removal + permanent redirects (308)
 #   D8 contact form session-state ride-along (shipped with Phase 10 transport stub)
-#   D9 nav + Overview analytics
+#   D9 nav + Session analytics
 #
 # 16 scenarios across happy-path, boundary, accessibility, timing, state-change,
 # and tab-scope edges. Scenarios marked [devtools] require operator DevTools
@@ -188,7 +188,7 @@ confirm "Reload does NOT re-fire the NavHint in the same tab"
 do_step "1.5 — Click the SessionPulse."
 expect \
   "Overlay opens. Active tab label reads '[ OVERVIEW ]' in terminal bracket framing." \
-  "Three tabs only: OVERVIEW → TIMELINE → CONSENT. No Session State, no Dashboards." \
+  "Three tabs only: OVERVIEW → TIMELINE → CONSENT. No Dashboards." \
   "DevTools Console: 'overview_tab_view' fires with source: 'default_landing'."
 confirm "Overlay lands on Overview with bracket framing, three tabs only"
 
@@ -369,10 +369,10 @@ setup \
 
 do_step "6.1 — Load $BASE_URL/. Open SessionPulse → Overview tab. Note the initial N/20 coverage."
 expect "Coverage bar is 16 cells wide regardless of denominator. Fill proportional to N/20."
-confirm "Coverage bar renders 16 cells; initial coverage low (~1–3/22)"
+confirm "Coverage bar renders 16 cells; initial coverage low (~1–3/20)"
 
 do_step "6.2 — Close overlay. Drive coverage up: scroll, click CTAs, hover SessionPulse, etc. Aim to cross 25%."
-expect "When coverage crosses 25% (~6/22): 'coverage_milestone' fires with threshold: 25 in Console."
+expect "When coverage crosses 25% (~5/20): 'coverage_milestone' fires with threshold: 25 in Console."
 confirm "coverage_milestone: 25 fires when crossing 25%"
 
 do_step "6.3 — Continue exploration. Navigate into ecommerce demo briefly (trigger product_view/add_to_cart), return to homepage. Push past 50%."
@@ -591,18 +591,19 @@ setup "Fresh tab, cleared sessionStorage."
 
 do_step "13.1 — Load /. Open Overview tab."
 expect \
-  "Coverage readout: '<N>/22 event types' (current denominator 22 as of 9E D9)." \
+  "Coverage readout: '<N>/20 event types' (current visitor-facing denominator 20 post-UAT F2 — RENDERABLE subset of 24 schema events; excludes 4 sub/leadgen types that no surface can fire)." \
   "Bar is visually 16 cells wide." \
-  "Chip grid contains exactly 22 chips."
+  "Chip grid contains exactly 20 chips."
 confirm "Bar is 16 cells + denominator is 20 + chip grid has 20 chips"
 
 do_step "13.2 — Scan chip grid for nav-analytics chips (added in D9): nav_hint_shown, nav_hint_dismissed, session_pulse_hover, overview_tab_view, portal_click, coverage_milestone."
 expect "All 6 nav-analytics chips present (most dimmed until fired)."
 confirm "All 6 D9 nav-analytics chips present in the chip grid"
 
-do_step "13.3 — Scan for subscription/leadgen chips: plan_select, trial_signup, form_complete, lead_qualify."
-expect "All 4 chips present but dimmed (unfired — intentional carry in denominator)."
-confirm "Subscription/leadgen chips present but dimmed"
+do_step "13.3 — Scan for subscription/leadgen chips: plan_select, trial_signup, form_complete, lead_qualify (post-UAT F2 these are hidden from the chip grid — the `HIDDEN_FROM_COVERAGE` subset)."
+expect "None of the 4 sub/leadgen chips should appear in the chip grid." \
+  "Type definitions remain in the schema (DATA_LAYER_EVENT_NAMES = 24) but the renderable subset (20) hides them so visitors don't see chips for events no current surface can fire."
+confirm "Subscription/leadgen chips are absent from the chip grid (hidden by RENDERABLE subset)"
 
 do_step "13.4 — Hover SessionPulse to fire session_pulse_hover. Reopen Overview tab."
 expect "session_pulse_hover chip has flipped from dimmed to amber."
@@ -655,12 +656,12 @@ confirm "D8 ride-along block is visible on contact page"
 do_step "14.9 — Inspect the D8 summary copy (marketing should be granted from Cookiebot acceptance)."
 expect \
   "Checkbox is CHECKED by default (marketing granted)." \
-  "Summary reads: 'You've triggered X of 22 event types, completed 100% of the ecommerce demo, and visited N pages. Your consent state and session ID will ride along.'"
+  "Summary reads: 'You've triggered X of 20 event types, completed 100% of the ecommerce demo, and visited N pages. Your consent state and session ID will ride along.'"
 confirm "D8 checkbox checked + summary shows concrete payload + 'will ride along'"
 
 do_step "14.10 — Inspect the hidden session_state field. DevTools Elements → find input[name='session_state']."
 expect \
-  "Hidden input present. value attribute is JSON with session_id, event_types_triggered, event_types_total=22, ecommerce_demo_percentage=100, pages_visited, consent object."
+  "Hidden input present. value attribute is JSON with session_id, event_types_triggered, event_types_total=20, ecommerce_demo_percentage=100, pages_visited, consent object."
 confirm "Hidden session_state field serialized with correct projection shape"
 
 do_step "14.11 — Uncheck the checkbox. Re-inspect Elements."
@@ -703,7 +704,7 @@ scenario "16 — New-tab visitor gets a fresh Overview blob" \
 setup "Two tabs A and B in the same browser window. Start with both clear."
 
 do_step "16.1 — TAB A: Load /. Navigate through a few pages, trigger events. Open Overview."
-expect "Note coverage (e.g. 7/22) and session ID last-6."
+expect "Note coverage (e.g. 5/20) and session ID last-6."
 confirm "Tab A Overview has non-trivial coverage"
 
 do_step "16.2 — TAB A: Reload (Cmd/Ctrl+R)."

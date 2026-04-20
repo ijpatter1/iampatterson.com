@@ -343,24 +343,23 @@ export const DATA_LAYER_EVENT_NAMES = [
 ] as const;
 
 /**
- * Subset of `DATA_LAYER_EVENT_NAMES` that the visitor can trigger on the
- * current product surface. Subscription + lead-gen event types remain in
- * the full schema (BQ columns still populated, infrastructure continuity,
- * future reintroduction after 9F) but are hidden from the Overview tab's
- * coverage chip grid so visitors don't see chips for events no current
+ * Event names hidden from the Overview coverage chip grid. Subscription
+ * + lead-gen event types remain in the full schema (BQ columns still
+ * populated, infrastructure continuity, future reintroduction after 9F)
+ * but are hidden here so visitors don't see chips for events no current
  * surface can fire.
  *
  * Updates follow product-surface changes, not schema changes: adding a
- * new demo that fires an existing event removes that event from the hidden
- * set; re-introducing subscription or leadgen demos removes those names.
- */
-/**
+ * new demo that fires an existing event removes that event from the
+ * hidden set; re-introducing subscription or leadgen demos removes those
+ * names.
+ *
  * Exported so tests can verify `HIDDEN_FROM_COVERAGE ⊆ DATA_LAYER_EVENT_NAMES`
- * at runtime — the TypeScript `Set<DataLayerEventName>` type gives a
+ * at runtime. The TypeScript `Set<DataLayerEventName>` type gives a
  * compile-time subset guarantee, but `tsc --noEmit` is not in CI (see
  * MEMORY.md) so the runtime backstop is load-bearing. A typo here (e.g.
  * `plan_selekt`) produces a `HIDDEN_FROM_COVERAGE` entry that doesn't
- * match any real event name — without the runtime subset pin, the
+ * match any real event name — without the runtime pin, the
  * `RENDERABLE_EVENT_NAMES.filter(...)` silently returns the real
  * `plan_select` chip as renderable, and nothing fails until a human
  * inspects the Overview chip grid.

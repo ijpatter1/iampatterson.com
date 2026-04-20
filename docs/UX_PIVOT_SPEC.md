@@ -137,7 +137,7 @@ The Session State tab is the overlay's default landing surface and doubles as th
 
 2. **Coverage summary.** "Event coverage: X of Y event types triggered" with an ASCII-style progress bar:
    ```
-   [██████████░░░░░░░░░░] 10/24 event types
+   [████████░░░░░░░░] 10/20 event types
    ```
    Below the bar, a grid of event-type chips — fired events show amber, unfired show dimmed. Visitor can see at a glance what they haven't yet explored.
 
@@ -337,7 +337,7 @@ On the contact page (`/contact`), add a visible checkbox labeled "Share my sessi
 {
   "session_id": "89dfc3...",
   "event_types_triggered": 14,
-  "event_types_total": 22,
+  "event_types_total": 20,
   "ecommerce_demo_percentage": 75,
   "pages_visited": 9,
   "consent": {
@@ -348,9 +348,9 @@ On the contact page (`/contact`), add a visible checkbox labeled "Share my sessi
 }
 ```
 
-The `event_types_total` shown above is illustrative — the live payload reads the current schema denominator at the time of submission (22 as of Phase 9E deliverable 9, growing as future phases extend the schema).
+The `event_types_total` shown above is illustrative — the live payload reads `RENDERABLE_EVENT_NAMES.length` at the time of submission (20 as of UAT F2 — `DATA_LAYER_EVENT_NAMES.length` 24 minus the 4 subscription/leadgen event types currently hidden from the Overview coverage bar; the denominator grows as future phases reintroduce those demos or add new schema events). The transmitted number matches what the visitor saw on screen — post-UAT F8 both `event_types_triggered` and `event_types_total` filter through the same renderable subset as the Overview tab's chip grid, so the surface value and the payload value are identical.
 
-The visible UI below the checkbox shows a human-readable summary of exactly what will be sent: "You've triggered 14 of 22 event types, completed 75% of the ecommerce demo, and visited 9 pages. Your consent state and session ID will ride along." Transparency is the point — the measurement stack doesn't hide from itself.
+The visible UI below the checkbox shows a human-readable summary of exactly what will be sent: "You've triggered 14 of 20 event types, completed 75% of the ecommerce demo, and visited 9 pages. Your consent state and session ID will ride along." Transparency is the point — the measurement stack doesn't hide from itself.
 
 If the checkbox is unchecked, no session state is included in the submission. No silent transmission under any condition.
 
