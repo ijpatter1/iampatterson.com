@@ -235,6 +235,54 @@ describe('session_state_tab_view default_landing emission (deliverable 2)', () =
     expect(events[0].source).toBe('default_landing');
   });
 
+  it('fires default_landing even when the boot-hold is active (matches=false)', async () => {
+    // Pinning that the emission effect depends on [isOpen, viewMode,
+    // pendingTab] and NOT on `phase` — emission must fire on the open
+    // edge regardless of whether the CRT boot sequence is mid-animation.
+    // A future refactor that accidentally gates the effect on `phase ===
+    // 'on'` would regress the normal-motion case without this test.
+    mockReducedMotion(false);
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.click(screen.getByText('open-overlay'));
+
+    const events = dataLayerEventsNamed('session_state_tab_view');
+    expect(events).toHaveLength(1);
+    expect(events[0].source).toBe('default_landing');
+  });
+
+  it('chained sticky-Timeline reopen + click Session State emits only manual_select (no default_landing dual-fire)', async () => {
+    // Close+reopen with a sticky non-target viewMode, then click back to
+    // Session State. The landingResolvedRef must reset on close AND get
+    // closed unconditionally on the reopen's landing resolution so the
+    // later click-back fires only manual_select. Catches a regression
+    // where the ref reset logic drifts (e.g., only resetting when
+    // landingResolvedRef was set, not when the overlay closed).
+    const user = userEvent.setup();
+    render(<Harness />);
+    // First open lands on Session State — default_landing emits.
+    await user.click(screen.getByText('open-overlay'));
+    expect(dataLayerEventsNamed('session_state_tab_view')).toHaveLength(1);
+
+    // Navigate to Timeline within the same open; no new emission.
+    await user.click(screen.getByRole('button', { name: /^Timeline/i }));
+    expect(dataLayerEventsNamed('session_state_tab_view')).toHaveLength(1);
+
+    // Close with Timeline sticky, then reopen — landing resolves to
+    // Timeline (sticky), no default_landing emission.
+    await user.click(screen.getByText('close-overlay'));
+    await user.click(screen.getByText('open-overlay'));
+    expect(dataLayerEventsNamed('session_state_tab_view')).toHaveLength(1);
+
+    // Click Session State tab — emits manual_select ONLY. Dual-fire
+    // regression would push the count to 3 here.
+    await user.click(screen.getByRole('button', { name: /^Session State$/i }));
+    const events = dataLayerEventsNamed('session_state_tab_view');
+    expect(events).toHaveLength(2);
+    expect(events[0].source).toBe('default_landing');
+    expect(events[1].source).toBe('manual_select');
+  });
+
   it('does NOT fire default_landing on initial mount while the overlay is still closed', () => {
     render(<Harness />);
     expect(dataLayerEventsNamed('session_state_tab_view')).toHaveLength(0);
