@@ -71,40 +71,39 @@ export function SessionStateProvider({ children }: { children: ReactNode }) {
         if (input) inputs.push(input);
       }
 
-      if (!reseededConsent) {
-        reseededConsent = true;
-        const current = getCurrentConsent();
-        setState((prev) => {
-          if (!prev) return prev;
+      const consentReseedPending = !reseededConsent;
+      if (consentReseedPending) reseededConsent = true;
+
+      if (inputs.length === 0 && !consentReseedPending) return;
+
+      // Apply reseed + events inside a single setState so the tick produces at
+      // most one sessionStorage write even when both paths fire together.
+      setState((prev) => {
+        if (!prev) return prev;
+        let next = prev;
+
+        if (consentReseedPending) {
+          const current = getCurrentConsent();
           const nextSnap = {
             analytics: current.consent_analytics ? ('granted' as const) : ('denied' as const),
             marketing: current.consent_marketing ? ('granted' as const) : ('denied' as const),
             preferences: current.consent_preferences ? ('granted' as const) : ('denied' as const),
           };
           const s = prev.consent_snapshot;
-          if (
-            s.analytics === nextSnap.analytics &&
-            s.marketing === nextSnap.marketing &&
-            s.preferences === nextSnap.preferences
-          ) {
-            return prev;
+          const consentChanged =
+            s.analytics !== nextSnap.analytics ||
+            s.marketing !== nextSnap.marketing ||
+            s.preferences !== nextSnap.preferences;
+          if (consentChanged) {
+            next = { ...next, consent_snapshot: nextSnap, updated_at: new Date().toISOString() };
           }
-          const next: SessionState = {
-            ...prev,
-            consent_snapshot: nextSnap,
-            updated_at: new Date().toISOString(),
-          };
-          saveSessionState(next);
-          return next;
-        });
-      }
+        }
 
-      if (inputs.length === 0) return;
+        if (inputs.length > 0) {
+          next = inputs.reduce((acc, e) => deriveNext(acc, e), next);
+        }
 
-      setState((prev) => {
-        if (!prev) return prev;
-        const next = inputs.reduce((acc, e) => deriveNext(acc, e), prev);
-        saveSessionState(next);
+        if (next !== prev) saveSessionState(next);
         return next;
       });
     }, POLL_INTERVAL_MS);

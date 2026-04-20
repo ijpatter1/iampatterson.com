@@ -193,6 +193,36 @@ describe('SessionStateProvider', () => {
     saveSpy.mockRestore();
   });
 
+  it('emits a single sessionStorage write per tick when consent reseed and events arrive together (Pass 3 M2)', () => {
+    jest.useFakeTimers();
+    const { initConsentState } =
+      jest.requireActual<typeof import('@/lib/events/track')>('@/lib/events/track');
+    const saveSpy = jest.spyOn(Storage.prototype, 'setItem');
+    const { result } = renderHook(() => useSessionState(), { wrapper: Wrapper });
+    const saveCountAfterInit = saveSpy.mock.calls.filter(
+      ([key]) => key === SESSION_STATE_STORAGE_KEY,
+    ).length;
+
+    // Cookiebot arrives late AND an event arrives in the same tick — the tick
+    // should combine the reseed + reducer into a single setState+save.
+    initConsentState(true, true, false);
+    act(() => {
+      window.dataLayer.push(makeDataLayerEntry({ event: 'click_cta' }));
+      jest.advanceTimersByTime(500);
+    });
+
+    const saveCountAfterTick = saveSpy.mock.calls.filter(
+      ([key]) => key === SESSION_STATE_STORAGE_KEY,
+    ).length;
+    try {
+      expect(saveCountAfterTick - saveCountAfterInit).toBe(1);
+      expect(result.current!.events_fired.click_cta).toBe(1);
+    } finally {
+      initConsentState(false, false, false);
+      saveSpy.mockRestore();
+    }
+  });
+
   it('tears down the poll interval on unmount', () => {
     jest.useFakeTimers();
     const clearSpy = jest.spyOn(window, 'clearInterval');
