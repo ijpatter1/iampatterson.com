@@ -98,6 +98,40 @@ describe('SessionState storage', () => {
     expect(loadSessionState()).toBeNull();
   });
 
+  it('rejects a blob missing only coverage_milestones_fired (Pass 1 m7)', () => {
+    const blob: Record<string, unknown> = {
+      session_id: 'sid',
+      started_at: '2026-04-19T18:00:00.000Z',
+      updated_at: '2026-04-19T18:00:00.000Z',
+      page_count: 0,
+      visited_paths: [],
+      events_fired: {},
+      event_type_coverage: { fired: [], total: [] },
+      demo_progress: { ecommerce: { stages_reached: [], percentage: 0 } },
+      consent_snapshot: { analytics: 'denied', marketing: 'denied', preferences: 'denied' },
+      // coverage_milestones_fired intentionally omitted
+    };
+    window.sessionStorage.setItem(SESSION_STATE_STORAGE_KEY, JSON.stringify(blob));
+    expect(loadSessionState()).toBeNull();
+  });
+
+  it('rejects a blob whose coverage_milestones_fired contains non-threshold values', () => {
+    const blob = {
+      session_id: 'sid',
+      started_at: '2026-04-19T18:00:00.000Z',
+      updated_at: '2026-04-19T18:00:00.000Z',
+      page_count: 0,
+      visited_paths: [],
+      events_fired: {},
+      event_type_coverage: { fired: [], total: [] },
+      demo_progress: { ecommerce: { stages_reached: [], percentage: 0 } },
+      consent_snapshot: { analytics: 'denied', marketing: 'denied', preferences: 'denied' },
+      coverage_milestones_fired: [25, 33], // 33 not a valid threshold
+    };
+    window.sessionStorage.setItem(SESSION_STATE_STORAGE_KEY, JSON.stringify(blob));
+    expect(loadSessionState()).toBeNull();
+  });
+
   it('rejects a blob whose consent_snapshot carries non-canonical values', () => {
     const bad = {
       session_id: 'sid',

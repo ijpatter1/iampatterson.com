@@ -90,9 +90,10 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
     expect(mockClose).toHaveBeenCalled();
   });
 
-  it('renders exactly four tabs on the homepage (Overview/Timeline/Consent/Dashboards)', () => {
+  it('renders the homepage tab set (Overview/Session State/Timeline/Consent/Dashboards)', () => {
     render(<UnderTheHoodView />);
     expect(screen.getByRole('button', { name: /^Overview$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Session State$/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^Timeline/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^Consent$/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^Dashboards/i })).toBeInTheDocument();

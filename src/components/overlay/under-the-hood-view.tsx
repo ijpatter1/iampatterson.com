@@ -115,12 +115,25 @@ export function UnderTheHoodView() {
     }
   }, [showOverview, viewMode]);
 
-  // Emit session_state_tab_view whenever the Session State tab becomes active
-  // while the overlay is open. `source: manual_select` today — deliverable 2
-  // will introduce the `default_landing` case when it promotes this tab to the
-  // default landing surface on open.
+  // `manual_select` fires only when the visitor clicks the Session State tab
+  // AFTER the overlay has already opened on a different tab — matches the spec
+  // semantic ("clicks back to Session State from Timeline or Consent").
+  // Reopening the overlay with a sticky Session State viewMode is NOT a
+  // manual-select; the first-seen tab of each overlay-open session is never
+  // treated as a manual choice regardless of which tab it is. When deliverable
+  // 2 promotes Session State to the default tab, this effect will be extended
+  // with a `default_landing` branch for the first-seen case.
+  const hasSeenTabInOpenRef = useRef(false);
   useEffect(() => {
-    if (isOpen && viewMode === 'session_state') {
+    if (!isOpen) {
+      hasSeenTabInOpenRef.current = false;
+      return;
+    }
+    if (!hasSeenTabInOpenRef.current) {
+      hasSeenTabInOpenRef.current = true;
+      return;
+    }
+    if (viewMode === 'session_state') {
       trackSessionStateTabView('manual_select');
     }
   }, [isOpen, viewMode]);

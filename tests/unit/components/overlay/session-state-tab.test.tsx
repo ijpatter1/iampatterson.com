@@ -5,7 +5,7 @@
  * primary surface: session header, coverage bar + chip grid, ecommerce funnel,
  * consent summary, portal links, and the threshold-gated contact CTA.
  */
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import type { ReactNode } from 'react';
 
 import { OverlayProvider } from '@/components/overlay/overlay-context';
@@ -78,8 +78,8 @@ describe('SessionStateTab', () => {
         <SessionStateTab />
       </Wrapper>,
     );
-    // Short-form session ID (first 8 chars of the UUID).
-    expect(screen.getByText(/abc123-d/)).toBeInTheDocument();
+    // Short-form session ID (last 6 chars of the UUID) — matches SessionPulse + LiveStrip.
+    expect(screen.getByText('def456')).toBeInTheDocument();
     expect(screen.getByText('/services')).toBeInTheDocument();
   });
 
@@ -115,13 +115,37 @@ describe('SessionStateTab', () => {
   });
 
   it('shows the X/Y readout derived from state (no hardcoded 22)', () => {
+    jest.useFakeTimers();
     useSessionState.mockReturnValue(makeState());
     render(
       <Wrapper>
         <SessionStateTab />
       </Wrapper>,
     );
-    expect(screen.getByText(/2\/22 event types/i)).toBeInTheDocument();
+    // Advance past the typewriter (one char per ~24ms, up to ~25 chars → ~600ms).
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+    const readout = screen.getByTestId('coverage-readout');
+    expect(readout.textContent).toMatch(/> 2\/22 event types/i);
+    jest.useRealTimers();
+  });
+
+  it('renders the coverage readout behind a one-shot typewriter (empty → full)', () => {
+    jest.useFakeTimers();
+    useSessionState.mockReturnValue(makeState());
+    render(
+      <Wrapper>
+        <SessionStateTab />
+      </Wrapper>,
+    );
+    const readout = screen.getByTestId('coverage-readout');
+    expect(readout.textContent).toBe('');
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(readout.textContent).toBe('> 2/22 event types');
+    jest.useRealTimers();
   });
 
   it('renders one chip per event name in the schema (derive-from-schema)', () => {
@@ -148,6 +172,69 @@ describe('SessionStateTab', () => {
     expect(unfired).toHaveAttribute('data-fired', 'false');
   });
 
+  it('renders [SKIPPED] for unreached stages when a later stage has been reached (Pass 1 P2)', () => {
+    // Deep-linked visitor who fires purchase without first firing product_view /
+    // add_to_cart / begin_checkout — the middle stages are bypassed, not pending.
+    useSessionState.mockReturnValue(
+      makeState({
+        demo_progress: {
+          ecommerce: {
+            stages_reached: ['purchase'] as EcommerceStage[],
+            percentage: 25,
+          },
+        },
+      }),
+    );
+    render(
+      <Wrapper>
+        <SessionStateTab />
+      </Wrapper>,
+    );
+    const rows = screen.getAllByTestId('funnel-row');
+    const statuses = rows.map((r) => r.getAttribute('data-status'));
+    expect(statuses).toEqual(['skipped', 'skipped', 'skipped', 'reached']);
+    expect(screen.getAllByText('[SKIPPED]')).toHaveLength(3);
+    expect(screen.getByText('[OK]')).toBeInTheDocument();
+    expect(screen.queryByText('[  ]')).toBeNull();
+  });
+
+  it('renders [  ] (pending) for unreached stages when no later stage has been reached', () => {
+    useSessionState.mockReturnValue(
+      makeState({
+        demo_progress: {
+          ecommerce: {
+            stages_reached: ['product_view'] as EcommerceStage[],
+            percentage: 25,
+          },
+        },
+      }),
+    );
+    render(
+      <Wrapper>
+        <SessionStateTab />
+      </Wrapper>,
+    );
+    const rows = screen.getAllByTestId('funnel-row');
+    expect(rows.map((r) => r.getAttribute('data-status'))).toEqual([
+      'reached',
+      'pending',
+      'pending',
+      'pending',
+    ]);
+  });
+
+  it('renders portal descriptors alongside each portal label (Pass 1 P4)', () => {
+    useSessionState.mockReturnValue(makeState());
+    render(
+      <Wrapper>
+        <SessionStateTab />
+      </Wrapper>,
+    );
+    expect(screen.getByText(/Four tiers of measurement infrastructure/i)).toBeInTheDocument();
+    expect(screen.getByText(/Ian, Tuna, and the backstory/i)).toBeInTheDocument();
+    expect(screen.getByText(/Start a conversation/i)).toBeInTheDocument();
+  });
+
   it('renders the ecommerce funnel in canonical order via ECOMMERCE_FUNNEL_SEQUENCE', () => {
     useSessionState.mockReturnValue(
       makeState({
@@ -172,10 +259,11 @@ describe('SessionStateTab', () => {
       'begin_checkout',
       'purchase',
     ]);
-    // product_view and purchase are reached; add_to_cart and begin_checkout are not.
-    expect(rows[0]).toHaveAttribute('data-reached', 'true');
-    expect(rows[1]).toHaveAttribute('data-reached', 'false');
-    expect(rows[3]).toHaveAttribute('data-reached', 'true');
+    // product_view reached, add_to_cart + begin_checkout skipped (purchase is later), purchase reached.
+    expect(rows[0]).toHaveAttribute('data-status', 'reached');
+    expect(rows[1]).toHaveAttribute('data-status', 'skipped');
+    expect(rows[2]).toHaveAttribute('data-status', 'skipped');
+    expect(rows[3]).toHaveAttribute('data-status', 'reached');
     expect(screen.getByText(/50% complete/i)).toBeInTheDocument();
   });
 

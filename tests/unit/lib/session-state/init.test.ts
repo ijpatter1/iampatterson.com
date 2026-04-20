@@ -67,4 +67,9 @@ describe('createInitialSessionState', () => {
     expect(state.page_count).toBe(0);
     expect(state.visited_paths).toEqual([]);
   });
+
+  it('starts with no coverage milestones memoized (Pass 1 m4)', () => {
+    const state = createInitialSessionState('sid-abc', FIXED_NOW);
+    expect(state.coverage_milestones_fired).toEqual([]);
+  });
 });

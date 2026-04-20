@@ -103,6 +103,20 @@ describe('reconcileRehydrated', () => {
     expect(result.event_type_coverage.total).toEqual([...DATA_LAYER_EVENT_NAMES]);
   });
 
+  it('preserves coverage_milestones_fired across reconciliation (Pass 1 m5)', () => {
+    const loaded = createInitialSessionState('old-sid', INIT_NOW);
+    const populated: SessionState = {
+      ...loaded,
+      coverage_milestones_fired: [25, 50],
+      event_type_coverage: {
+        fired: [] as unknown as SessionState['event_type_coverage']['fired'],
+        total: ['page_view'] as unknown as SessionState['event_type_coverage']['total'],
+      },
+    };
+    const result = reconcileRehydrated(populated, 'fresh-sid');
+    expect(result.coverage_milestones_fired).toEqual([25, 50]);
+  });
+
   it('reconciles when only total is stale (session_id already matches)', () => {
     const loaded = createInitialSessionState('sid', INIT_NOW);
     const stale = {

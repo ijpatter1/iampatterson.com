@@ -452,9 +452,14 @@ interface SessionState {
     marketing: 'granted' | 'denied';
     preferences: 'granted' | 'denied';
   };
+  // Thresholds (subset of [25, 50, 75, 100]) the visitor has crossed this session.
+  // Monotonic; excluded from the ride-along projection.
+  coverage_milestones_fired: (25 | 50 | 75 | 100)[];
   updated_at: string;                          // ISO 8601
 }
 ```
+
+**Coverage milestone emission (Phase 9E deliverable 3).** The reducer detects newly-crossed thresholds inside `deriveNext` after recomputing the coverage ratio; `SessionStateProvider` watches `state.coverage_milestones_fired` via a ref-based dedup and emits `coverage_milestone` data-layer events (through `trackCoverageMilestone` in `track.ts`) for entries that are newly appearing. Rehydrated entries are pre-seeded into the ref on mount so a tab reload at, say, `[25, 50]` doesn't re-fire those thresholds — only the next crossing (75) will emit. The memoization lives in the persisted blob so the guarantee survives sessionStorage round-trips across the tab's lifetime.
 
 **Rehydration contract.** The provider's mount effect runs `reconcileRehydrated(loaded, currentSessionId)` before setting state. This replaces `event_type_coverage.total` with the live `DATA_LAYER_EVENT_NAMES` array (so a tab open across a deploy that extended the schema sees the live denominator, not the pre-deploy one), updates `session_id` to the current `_iap_sid` cookie value (which rotates every 30 minutes of idle — sessionStorage is tab-lifetime), and drops event names no longer present in the live schema from BOTH `event_type_coverage.fired` AND the keys of `events_fired` — the two fields stay in lockstep so consumers iterating one see the same name set as consumers iterating the other. Other fields (`visited_paths`, `demo_progress`, `consent_snapshot`, timestamps) are preserved verbatim. On the fast-path where reconciliation finds nothing stale, the function returns the loaded reference unchanged and the provider skips the redundant `sessionStorage` write. Persisted-blob validation (`hasValidShape` in `storage.ts`) also enforces the `fired ⊆ total` invariant at load so reconciliation never has to repair that particular breakage. On a fresh session (no prior blob), `consent_snapshot` is seeded from Cookiebot via `getCurrentConsent()` in `src/lib/events/track.ts`, and re-read on the first poll tick to heal the slow-Cookiebot-load case without waiting for an `iap_source` event.
 

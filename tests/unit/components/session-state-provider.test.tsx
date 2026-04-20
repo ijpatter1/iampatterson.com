@@ -259,6 +259,52 @@ describe('SessionStateProvider', () => {
     document.cookie = '_iap_sid=; Path=/; Max-Age=0';
   });
 
+  it('rehydrates at [25] then emits only 50 (not 25 again) when coverage crosses 50% on the first tick (Pass 1 m6)', () => {
+    jest.useFakeTimers();
+    const { DATA_LAYER_EVENT_NAMES } =
+      jest.requireActual<typeof import('@/lib/events/schema')>('@/lib/events/schema');
+    const alreadyFired = DATA_LAYER_EVENT_NAMES.slice(0, 6);
+    const eventsFiredMap: Record<string, number> = {};
+    for (const n of alreadyFired) eventsFiredMap[n] = 1;
+    const prior = {
+      session_id: 'live-session-id',
+      started_at: '2026-04-19T17:00:00.000Z',
+      updated_at: '2026-04-19T17:05:00.000Z',
+      page_count: 1,
+      visited_paths: ['/'],
+      events_fired: eventsFiredMap,
+      event_type_coverage: {
+        fired: [...alreadyFired],
+        total: [...DATA_LAYER_EVENT_NAMES],
+      },
+      demo_progress: { ecommerce: { stages_reached: [], percentage: 0 } },
+      consent_snapshot: { analytics: 'granted', marketing: 'denied', preferences: 'granted' },
+      coverage_milestones_fired: [25],
+    };
+    window.sessionStorage.setItem(SESSION_STATE_STORAGE_KEY, JSON.stringify(prior));
+    document.cookie = '_iap_sid=live-session-id; Path=/';
+
+    const before = window.dataLayer.length;
+    renderHook(() => useSessionState(), { wrapper: Wrapper });
+    // Fire 5 more distinct events to bring coverage to 11/22 = 50%.
+    act(() => {
+      for (const n of DATA_LAYER_EVENT_NAMES.slice(6, 11)) {
+        window.dataLayer.push(makeDataLayerEntry({ event: n }));
+      }
+      jest.advanceTimersByTime(500);
+    });
+
+    const milestones = window.dataLayer
+      .slice(before)
+      .filter((e: { event?: string }) => e.event === 'coverage_milestone') as Array<{
+      threshold?: number;
+    }>;
+    expect(milestones).toHaveLength(1);
+    expect(milestones[0].threshold).toBe(50);
+
+    document.cookie = '_iap_sid=; Path=/; Max-Age=0';
+  });
+
   it('emits a single sessionStorage write per tick when consent reseed and events arrive together (Pass 3 M2)', () => {
     jest.useFakeTimers();
     const { initConsentState } =

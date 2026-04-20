@@ -299,11 +299,12 @@ interface SessionState {
     marketing: 'granted' | 'denied';
     preferences: 'granted' | 'denied';
   };
+  coverage_milestones_fired: (25 | 50 | 75 | 100)[]; // memoized thresholds the visitor has crossed
   updated_at: string; // ISO 8601, updated on every change
 }
 ```
 
-`visited_paths` is persisted in the blob so `page_count` (unique paths visited) stays correct across React strict-mode remounts and sessionStorage reloads. It is **internal** — the contact-form ride-along payload below transmits `pages_visited` as a scalar count, never the path history itself. The canonical projection helper `toRideAlongPayload(state)` in `src/lib/session-state/ride-along.ts` enforces the narrow shape; any code that transmits session state across a network boundary must go through that helper rather than `JSON.stringify` the whole blob.
+`visited_paths` is persisted in the blob so `page_count` (unique paths visited) stays correct across React strict-mode remounts and sessionStorage reloads. It is **internal** — the contact-form ride-along payload below transmits `pages_visited` as a scalar count, never the path history itself. The canonical projection helper `toRideAlongPayload(state)` in `src/lib/session-state/ride-along.ts` enforces the narrow shape; any code that transmits session state across a network boundary must go through that helper rather than `JSON.stringify` the whole blob. `coverage_milestones_fired` is also internal — memoized so the provider's emission effect can distinguish newly-crossed thresholds (emit) from rehydrated ones (suppress), and the ride-along projection excludes it by construction.
 
 **Rehydration reconciliation:** When the provider loads a blob from `sessionStorage`, it reconciles two fields against the current runtime before setting state: `event_type_coverage.total` is replaced with the live `DATA_LAYER_EVENT_NAMES` array (so a tab open across a deploy that extended the schema displays the live denominator, not the pre-deploy one), and `session_id` is reconciled against the current `_iap_sid` cookie (which rotates after 30 minutes of idle) so subsequent events flow under an ID that matches the in-blob identifier. Event names no longer present in the live schema are dropped from BOTH `event_type_coverage.fired` AND `events_fired` — the two fields stay in lockstep, so consumers iterating one see the same name set as consumers iterating the other. All other fields (`visited_paths`, `demo_progress`, `consent_snapshot`, timestamps) are preserved verbatim.
 

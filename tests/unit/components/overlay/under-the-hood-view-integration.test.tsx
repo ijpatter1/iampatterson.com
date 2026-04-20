@@ -177,6 +177,6 @@ describe('UnderTheHoodView — integration with OverlayProvider', () => {
   it('exports OverlayTab type for consumers', () => {
     // Type-only: if the export broke, TS would fail compilation.
     const tab: OverlayTab = 'timeline';
-    expect(['overview', 'timeline', 'consent', 'dashboards']).toContain(tab);
+    expect(['overview', 'session_state', 'timeline', 'consent', 'dashboards']).toContain(tab);
   });
 });

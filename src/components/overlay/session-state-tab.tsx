@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 
 import { useOverlay } from '@/components/overlay/overlay-context';
 import { useSessionState } from '@/components/session-state-provider';
@@ -14,25 +15,98 @@ import {
 
 const BAR_WIDTH = 16;
 const EVENT_TYPE_THRESHOLD = 10;
+const TYPING_INTERVAL_MS = 24;
 
 type PortalDestination = 'services' | 'about' | 'contact';
+type StageStatus = 'reached' | 'skipped' | 'pending';
 
-const PORTAL_LINKS: { destination: PortalDestination; href: string; label: string }[] = [
-  { destination: 'services', href: '/services', label: '> SERVICES' },
-  { destination: 'about', href: '/about', label: '> ABOUT' },
-  { destination: 'contact', href: '/contact', label: '> CONTACT' },
+const PORTAL_LINKS: {
+  destination: PortalDestination;
+  href: string;
+  label: string;
+  descriptor: string;
+}[] = [
+  {
+    destination: 'services',
+    href: '/services',
+    label: '> SERVICES',
+    descriptor: '→ Four tiers of measurement infrastructure',
+  },
+  {
+    destination: 'about',
+    href: '/about',
+    label: '> ABOUT',
+    descriptor: '→ Ian, Tuna, and the backstory',
+  },
+  {
+    destination: 'contact',
+    href: '/contact',
+    label: '> CONTACT',
+    descriptor: '→ Start a conversation',
+  },
 ];
 
 const STAGE_LABELS: Record<EcommerceStage, string> = {
-  product_view: 'PRODUCT_VIEW',
-  add_to_cart: 'ADD_TO_CART',
+  product_view: 'PRODUCT VIEW',
+  add_to_cart: 'ADD TO CART',
   begin_checkout: 'CHECKOUT',
   purchase: 'PURCHASE',
 };
 
+/** Last 6 hex chars of the UUID — matches SessionPulse and LiveStrip. */
 function shortSessionId(sid: string): string {
-  // First 8 non-hyphen chars feel informative without dominating the layout.
-  return sid.slice(0, 8);
+  return sid ? sid.slice(-6) : '······';
+}
+
+/**
+ * Classify a stage's status for funnel rendering:
+ * - `reached` — the stage's trigger event fired this session.
+ * - `skipped` — unreached, but a later stage in canonical order was reached
+ *   (deep-linked visitor bypassed this stage by design).
+ * - `pending` — unreached, and no later stage reached either.
+ */
+function getStageStatus(stage: EcommerceStage, reached: readonly EcommerceStage[]): StageStatus {
+  if (reached.includes(stage)) return 'reached';
+  const idx = ECOMMERCE_FUNNEL_SEQUENCE.indexOf(stage);
+  const laterReached = ECOMMERCE_FUNNEL_SEQUENCE.slice(idx + 1).some((s) => reached.includes(s));
+  return laterReached ? 'skipped' : 'pending';
+}
+
+const STAGE_STATUS_TAG: Record<StageStatus, string> = {
+  reached: '[OK]',
+  skipped: '[SKIPPED]',
+  pending: '[  ]',
+};
+
+function useTypedCoverage(text: string): string {
+  const [displayed, setDisplayed] = useState<string>('');
+  const hasAnimated = useRef(false);
+
+  useEffect(() => {
+    if (hasAnimated.current) {
+      setDisplayed(text);
+      return;
+    }
+    hasAnimated.current = true;
+    const reduced =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) {
+      setDisplayed(text);
+      return;
+    }
+    setDisplayed('');
+    let i = 0;
+    const interval = window.setInterval(() => {
+      i++;
+      setDisplayed(text.slice(0, i));
+      if (i >= text.length) window.clearInterval(interval);
+    }, TYPING_INTERVAL_MS);
+    return () => window.clearInterval(interval);
+  }, [text]);
+
+  return displayed;
 }
 
 function formatStartedAt(iso: string): string {
@@ -77,6 +151,12 @@ export function SessionStateTab() {
   const pathname = usePathname() ?? '/';
   const { close } = useOverlay();
 
+  // Compute readout before the early return so useTypedCoverage always runs.
+  const firedCount = state?.event_type_coverage.fired.length ?? 0;
+  const totalCount = state?.event_type_coverage.total.length ?? 0;
+  const coverageReadout = state ? `> ${firedCount}/${totalCount} event types` : '';
+  const typedCoverage = useTypedCoverage(coverageReadout);
+
   if (!state) {
     return (
       <div className="font-mono text-[12px] uppercase tracking-widest text-u-ink-3">
@@ -85,8 +165,6 @@ export function SessionStateTab() {
     );
   }
 
-  const firedCount = state.event_type_coverage.fired.length;
-  const totalCount = state.event_type_coverage.total.length;
   const bar = renderBar(firedCount, totalCount);
   const firedSet = new Set(state.event_type_coverage.fired);
 
@@ -104,7 +182,7 @@ export function SessionStateTab() {
     <div data-testid="session-state-tab" className="space-y-6 text-sm text-u-ink">
       <div>
         <div className="mb-3 font-mono text-[10px] uppercase tracking-widest text-accent-current">
-          Session State · Live
+          &gt; YOUR SESSION · LIVE
         </div>
         <dl className="space-y-1 font-mono text-xs">
           <div className="flex gap-3">
@@ -131,8 +209,8 @@ export function SessionStateTab() {
             data-testid="coverage-bar"
             className="m-0 text-accent-current leading-none"
           >{`[${bar}]`}</pre>
-          <span className="text-u-ink-2">
-            {firedCount}/{totalCount} event types
+          <span data-testid="coverage-readout" className="text-u-ink-2">
+            {typedCoverage || coverageReadout.slice(0, 0)}
           </span>
         </div>
         <div className="grid grid-cols-2 gap-1 font-mono text-[10px] sm:grid-cols-3">
@@ -164,21 +242,25 @@ export function SessionStateTab() {
         <SectionKicker>Ecommerce demo · Tier 2 + 3</SectionKicker>
         <ul className="space-y-1 font-mono text-xs">
           {ECOMMERCE_FUNNEL_SEQUENCE.map((stage) => {
-            const reached = state.demo_progress.ecommerce.stages_reached.includes(stage);
+            const status = getStageStatus(stage, state.demo_progress.ecommerce.stages_reached);
+            const tagClass =
+              status === 'reached'
+                ? 'text-accent-current'
+                : status === 'skipped'
+                  ? 'text-u-ink-2'
+                  : 'text-u-ink-3';
+            const labelClass = status === 'pending' ? 'text-u-ink-3' : 'text-u-ink-2';
             return (
               <li
                 key={stage}
                 data-testid="funnel-row"
                 data-stage={stage}
-                data-reached={reached ? 'true' : 'false'}
+                data-reached={status === 'reached' ? 'true' : 'false'}
+                data-status={status}
                 className="flex gap-3"
               >
-                <span className={reached ? 'text-accent-current' : 'text-u-ink-3'}>
-                  {reached ? '[OK]' : '[  ]'}
-                </span>
-                <span className={reached ? 'text-u-ink-2' : 'text-u-ink-3'}>
-                  {STAGE_LABELS[stage]}
-                </span>
+                <span className={tagClass}>{STAGE_STATUS_TAG[status]}</span>
+                <span className={labelClass}>{STAGE_LABELS[stage]}</span>
               </li>
             );
           })}
@@ -214,16 +296,20 @@ export function SessionStateTab() {
 
       <section>
         <SectionKicker>Explore the site</SectionKicker>
-        <ul className="space-y-1 font-mono text-xs">
+        <ul className="space-y-2 font-mono text-xs">
           {PORTAL_LINKS.map((link) => (
-            <li key={link.destination}>
+            <li
+              key={link.destination}
+              className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-4"
+            >
               <Link
                 href={link.href}
                 onClick={() => handlePortalClick(link.destination)}
-                className="text-accent-current transition-opacity hover:opacity-80"
+                className="text-accent-current transition-opacity hover:opacity-80 sm:w-32"
               >
                 {link.label}
               </Link>
+              <span className="text-u-ink-3">{link.descriptor}</span>
             </li>
           ))}
         </ul>
