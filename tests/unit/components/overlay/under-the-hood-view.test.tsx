@@ -29,6 +29,20 @@ jest.mock('@/hooks/useFilteredEvents', () => ({
   useFilteredEvents: (events: unknown[]) => ({ filteredEvents: events }),
 }));
 
+// Session State tab content is tested in its own suite. Stub the component
+// here so the overlay tests stay focused on chrome + tab-level behavior and
+// don't pull the full SessionStateProvider mount chain into scope.
+jest.mock('@/components/overlay/session-state-tab', () => ({
+  SessionStateTab: () => <div data-testid="session-state-tab-stub" />,
+}));
+
+// Emission side-effects are asserted in the default-landing-emission and
+// session-state-tab-emission suites. Silence them here so repeated tab
+// renders don't pollute window.dataLayer across tests in this file.
+jest.mock('@/lib/events/track', () => ({
+  trackSessionStateTabView: jest.fn(),
+}));
+
 function mockReducedMotion(matches: boolean) {
   Object.defineProperty(window, 'matchMedia', {
     writable: true,
@@ -90,20 +104,38 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
     expect(mockClose).toHaveBeenCalled();
   });
 
-  it('renders the homepage tab set (Overview/Session State/Timeline/Consent/Dashboards)', () => {
+  it('renders only Session State / Timeline / Consent tabs in that order (post-9E-D2)', () => {
     render(<UnderTheHoodView />);
-    expect(screen.getByRole('button', { name: /^Overview$/i })).toBeInTheDocument();
+    // Session State + Timeline + Consent — the three-tab set after D2.
     expect(screen.getByRole('button', { name: /^Session State$/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^Timeline/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^Consent$/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^Dashboards/i })).toBeInTheDocument();
+    // Overview + Dashboards tabs removed as part of the D2 restructure
+    // (UX_PIVOT_SPEC §3.2). HomepageUnderside + DashboardView components
+    // deleted; EcommerceUnderside pathname routing removed.
+    expect(screen.queryByRole('button', { name: /^Overview$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Dashboards/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Narrative$/i })).not.toBeInTheDocument();
   });
 
-  it('renders HomepageUnderside content by default on homepage', () => {
+  it('renders the Session State tab content by default on first open', () => {
+    // Session State replaces Overview as the default landing surface
+    // (UX_PIVOT_SPEC §3.2). The stubbed SessionStateTab component exposes
+    // a stable test-id used here.
     render(<UnderTheHoodView />);
-    // HomepageUnderside surfaces a recognizable editorial kicker
-    expect(screen.getByText(/tier 1 · running under your session/i)).toBeInTheDocument();
+    expect(screen.getByTestId('session-state-tab-stub')).toBeInTheDocument();
+  });
+
+  it('wraps the active tab label in terminal-style brackets (e.g. [ SESSION STATE ])', () => {
+    // UX_PIVOT_SPEC §3.2: "active tab labels get terminal-style bracket
+    // framing (e.g. `[ SESSION STATE ]` for active, plain for inactive)".
+    // Uses aria-label to distinguish from the bracket-wrapped visible text.
+    render(<UnderTheHoodView />);
+    const activeTab = screen.getByRole('button', { name: /^Session State$/i });
+    expect(activeTab.textContent).toContain('[ SESSION STATE ]');
+    // Inactive tabs render plain text (no bracket wrapping).
+    const inactiveTab = screen.getByRole('button', { name: /^Consent$/i });
+    expect(inactiveTab.textContent).not.toContain('[');
   });
 
   it('renders the "Under the Hood" header label', () => {
@@ -214,7 +246,7 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
     expect(header?.className).toMatch(/overlay-chrome/);
 
     // Tabs wrapper is the parent div of the tab buttons.
-    const tabButton = screen.getByRole('button', { name: /^Overview$/i });
+    const tabButton = screen.getByRole('button', { name: /^Session State$/i });
     const tabsWrapper = tabButton.parentElement;
     expect(tabsWrapper).not.toBeNull();
     expect(tabsWrapper?.className).toMatch(/overlay-chrome/);

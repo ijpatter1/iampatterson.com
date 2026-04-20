@@ -23,6 +23,19 @@ jest.mock('@/hooks/useFilteredEvents', () => ({
   useFilteredEvents: (events: unknown[]) => ({ filteredEvents: events }),
 }));
 
+// Session State tab content is tested in its own suite. Stub it here so
+// this integration test stays focused on state-transition orchestration.
+jest.mock('@/components/overlay/session-state-tab', () => ({
+  SessionStateTab: () => <div data-testid="session-state-tab-stub" />,
+}));
+
+// Emission side-effects (manual_select + default_landing) are asserted in
+// their own focused suites. Silence them here so this file asserts viewMode
+// transitions without fighting data-layer pollution.
+jest.mock('@/lib/events/track', () => ({
+  trackSessionStateTabView: jest.fn(),
+}));
+
 import { OverlayProvider, useOverlay, type OverlayTab } from '@/components/overlay/overlay-context';
 import { UnderTheHoodView } from '@/components/overlay/under-the-hood-view';
 
@@ -49,7 +62,7 @@ function Controls() {
       <button onClick={() => open()}>open</button>
       <button onClick={() => open('consent')}>open-consent</button>
       <button onClick={() => open('timeline')}>open-timeline</button>
-      <button onClick={() => open('dashboards')}>open-dashboards</button>
+      <button onClick={() => open('session_state')}>open-session-state</button>
       <button onClick={close}>close</button>
     </div>
   );
@@ -97,15 +110,19 @@ describe('UnderTheHoodView — integration with OverlayProvider', () => {
     expect(consentTab.className).toContain('border-accent-current');
   });
 
-  it('routes tab-hinted opens: dashboards', async () => {
+  it('routes tab-hinted opens: session_state (footer deep-link case)', async () => {
     const user = userEvent.setup();
     renderHost();
-    await user.click(screen.getByText('open-dashboards'));
-    const dashTab = screen.getByRole('button', { name: /^Dashboards/i });
-    expect(dashTab.className).toContain('border-accent-current');
+    // Land on Timeline first so the pendingTab transition is observable
+    // as a viewMode change, not a no-op against the default.
+    await user.click(screen.getByText('open-timeline'));
+    await user.click(screen.getByText('close'));
+    await user.click(screen.getByText('open-session-state'));
+    const sessionStateTab = screen.getByRole('button', { name: /^Session State$/i });
+    expect(sessionStateTab.className).toContain('border-accent-current');
   });
 
-  it('reverts to Overview when reopened without a tab hint (on homepage)', async () => {
+  it('reopens to the last viewed tab when reopened without a tab hint (sticky)', async () => {
     const user = userEvent.setup();
     renderHost();
     await user.click(screen.getByText('open-consent'));
@@ -114,9 +131,10 @@ describe('UnderTheHoodView — integration with OverlayProvider', () => {
     );
 
     await user.click(screen.getByText('close'));
-    // Reopen WITHOUT a tab hint — the overlay sits wherever the user left it
-    // because viewMode is only reset when the current tab disappears.
-    // This asserts that the tab-hint mechanism does not fire on every open.
+    // Reopen WITHOUT a tab hint — viewMode is sticky. D2 removed the
+    // pathname-based tab reset (HomepageUnderside/EcommerceUnderside
+    // routing is gone), so Session State is always available and viewMode
+    // never needs to be "corrected" on reopen.
     await user.click(screen.getByText('open'));
     expect(screen.getByRole('button', { name: /^Consent$/i }).className).toContain(
       'border-accent-current',
@@ -146,18 +164,22 @@ describe('UnderTheHoodView — integration with OverlayProvider', () => {
     expect(screen.getByTestId('under-the-hood-view').dataset.phase).toBe('on');
   });
 
-  it('cross-pathname reopen drops stale overview and falls back to timeline', async () => {
+  it('tab set is pathname-independent — Session State default persists across routes', async () => {
     const user = userEvent.setup();
     mockPathname = '/';
     const { rerender } = renderHost();
 
     await user.click(screen.getByText('open'));
-    // Homepage: default viewMode is overview
-    expect(screen.getByRole('button', { name: /^Overview$/i })).toBeInTheDocument();
+    // Homepage: Session State is the default and only landing tab.
+    expect(screen.getByRole('button', { name: /^Session State$/i }).className).toContain(
+      'border-accent-current',
+    );
+    expect(screen.queryByRole('button', { name: /^Overview$/i })).not.toBeInTheDocument();
 
     await user.click(screen.getByText('close'));
-    // Navigate to /demo/subscription (no Overview tab on this route)
-    mockPathname = '/demo/subscription';
+    // Navigate to a demo route — D2 removed pathname-specific routing.
+    // The tab set is identical on every route.
+    mockPathname = '/demo/ecommerce';
     rerender(
       <OverlayProvider>
         <UnderTheHoodView />
@@ -166,17 +188,15 @@ describe('UnderTheHoodView — integration with OverlayProvider', () => {
     );
 
     await user.click(screen.getByText('open'));
-    // Overview tab should be absent
+    // Session State remains the landing tab; no pathname-dependent tabs.
+    expect(screen.getByRole('button', { name: /^Session State$/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Overview$/i })).not.toBeInTheDocument();
-    // Timeline should be the active tab
-    expect(screen.getByRole('button', { name: /^Timeline/i }).className).toContain(
-      'border-accent-current',
-    );
   });
 
-  it('exports OverlayTab type for consumers', () => {
-    // Type-only: if the export broke, TS would fail compilation.
+  it('exports OverlayTab type for consumers — narrowed to three values post-D2', () => {
+    // Type-only: if the export broke, TS would fail compilation. Array
+    // matches the post-D2 union (session_state | timeline | consent).
     const tab: OverlayTab = 'timeline';
-    expect(['overview', 'session_state', 'timeline', 'consent', 'dashboards']).toContain(tab);
+    expect(['session_state', 'timeline', 'consent']).toContain(tab);
   });
 });

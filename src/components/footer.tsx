@@ -8,20 +8,16 @@ import type { OverlayTab } from '@/components/overlay/overlay-context';
 import { useOverlay } from '@/components/overlay/overlay-context';
 import { trackClickCta, trackClickNav } from '@/lib/events/track';
 
-// Footer under-the-hood deep-links route to non-dashboards tabs; the Dashboards
-// tab is reachable from overlay chrome directly.
-type UndersideTab = Exclude<OverlayTab, 'dashboards'>;
-
-const UNDER_THE_HOOD_LINKS: { label: string; tab: UndersideTab }[] = [
+const UNDER_THE_HOOD_LINKS: { label: string; tab: OverlayTab }[] = [
+  { label: 'Session state', tab: 'session_state' },
   { label: 'Live event stream', tab: 'timeline' },
-  { label: 'Pipeline architecture', tab: 'overview' },
   { label: 'Consent state', tab: 'consent' },
 ];
 
 export function Footer() {
   const { open } = useOverlay();
 
-  const openOverlay = (label: string, tab: UndersideTab) => {
+  const openOverlay = (label: string, tab: OverlayTab) => {
     trackClickCta(label, 'footer_under_the_hood');
     open(tab);
   };

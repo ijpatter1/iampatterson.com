@@ -73,8 +73,12 @@ describe('Footer — editorial', () => {
     const liveStream = screen.getByRole('button', { name: /live event stream/i });
     await user.click(liveStream);
     expect(screen.getByTestId('overlay-status')).toHaveTextContent('open');
-    // All three entries present
-    expect(screen.getByRole('button', { name: /pipeline architecture/i })).toBeInTheDocument();
+    // Post-D2 the footer's three-entry column deep-links to the three
+    // remaining overlay tabs (Session State, Timeline, Consent). The
+    // pre-D2 "Pipeline architecture" entry routed to Overview, which
+    // was removed; it's replaced with a "Session state" entry matching
+    // the new default landing tab.
+    expect(screen.getByRole('button', { name: /session state/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /consent state/i })).toBeInTheDocument();
   });
 

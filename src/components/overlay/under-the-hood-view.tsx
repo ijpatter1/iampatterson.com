@@ -1,14 +1,10 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { ConsentView } from '@/components/overlay/consent-view';
-import { DashboardView } from '@/components/overlay/dashboard-view';
-import { EcommerceUnderside } from '@/components/overlay/ecommerce/ecommerce-underside';
 import { EventDetail } from '@/components/overlay/event-detail';
 import { EventTimeline } from '@/components/overlay/event-timeline';
-import { HomepageUnderside } from '@/components/overlay/homepage-underside';
 import { NarrativeFlow } from '@/components/overlay/narrative-flow';
 import { useOverlay } from '@/components/overlay/overlay-context';
 import { SessionStateTab } from '@/components/overlay/session-state-tab';
@@ -17,7 +13,7 @@ import { useLiveEvents } from '@/hooks/useLiveEvents';
 import { trackSessionStateTabView } from '@/lib/events/track';
 import type { PipelineEvent } from '@/lib/events/pipeline-schema';
 
-type ViewMode = 'overview' | 'timeline' | 'consent' | 'dashboards' | 'session_state';
+type ViewMode = 'session_state' | 'timeline' | 'consent';
 type Phase = 'idle' | 'boot' | 'on';
 
 const BOOT_DURATION_MS = 260;
@@ -67,61 +63,61 @@ function Tabs({
 }) {
   return (
     <div className="overlay-chrome flex gap-1 border-b border-u-rule-soft bg-u-paper-alt px-4">
-      {tabs.map((t) => (
-        <button
-          key={t.mode}
-          type="button"
-          onClick={() => onChange(t.mode)}
-          className={`relative flex items-center gap-2 border-b-2 px-4 py-3 font-mono text-[11px] uppercase tracking-widest transition-colors ${
-            active === t.mode
-              ? 'border-accent-current text-accent-current'
-              : 'border-transparent text-u-ink-3 hover:text-u-ink'
-          }`}
-        >
-          {t.label}
-          {typeof t.count === 'number' && (
-            <span className="rounded-sm bg-u-paper-deep px-1.5 py-0.5 font-mono text-[9px] text-u-ink-3">
-              {t.count}
-            </span>
-          )}
-        </button>
-      ))}
+      {tabs.map((t) => {
+        const isActive = active === t.mode;
+        // Terminal-style bracket framing on the active tab label
+        // (UX_PIVOT_SPEC §3.2 / REQUIREMENTS Phase 9E D2). Inactive tabs
+        // render plain text; the bracket pair is the primary retrofuture
+        // cue that the tab is selected, on top of the amber border.
+        const label = isActive ? `[ ${t.label.toUpperCase()} ]` : t.label;
+        return (
+          <button
+            key={t.mode}
+            type="button"
+            onClick={() => onChange(t.mode)}
+            className={`relative flex items-center gap-2 border-b-2 px-4 py-3 font-mono text-[11px] uppercase tracking-widest transition-colors ${
+              isActive
+                ? 'border-accent-current text-accent-current'
+                : 'border-transparent text-u-ink-3 hover:text-u-ink'
+            }`}
+            aria-label={t.label}
+          >
+            {label}
+            {typeof t.count === 'number' && (
+              <span className="rounded-sm bg-u-paper-deep px-1.5 py-0.5 font-mono text-[9px] text-u-ink-3">
+                {t.count}
+              </span>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }
 
 export function UnderTheHoodView() {
   const { isOpen, close, pendingTab, consumePendingTab } = useOverlay();
-  const pathname = usePathname() ?? '/';
-  const isHomepage = pathname === '/';
-  const isEcommerce = pathname.startsWith('/demo/ecommerce');
-  const showOverview = isHomepage || isEcommerce;
 
   const { events } = useLiveEvents();
   const { filteredEvents } = useFilteredEvents(events, false);
 
-  const [viewMode, setViewMode] = useState<ViewMode>(showOverview ? 'overview' : 'timeline');
+  const [viewMode, setViewMode] = useState<ViewMode>('session_state');
   const [selectedEvent, setSelectedEvent] = useState<PipelineEvent | null>(null);
   const [phase, setPhase] = useState<Phase>('idle');
   const [flashKey, setFlashKey] = useState(false);
   const hasBooted = useRef(false);
-
-  // Reset viewMode if the current tab disappears (e.g. user navigates from /
-  // to /demo/subscription while the overlay is closed; Overview tab vanishes
-  // but stale 'overview' mode would leave the content pane blank on reopen).
-  useEffect(() => {
-    if (!showOverview && viewMode === 'overview') {
-      setViewMode('timeline');
-    }
-  }, [showOverview, viewMode]);
+  // Tracks whether default_landing has already emitted for the current open.
+  // Reset on close so each overlay-open that lands on Session State gets
+  // exactly one emission — the landing event describes how the visitor
+  // arrived, not tab transitions within the same open.
+  const defaultLandingEmittedRef = useRef(false);
 
   // Tab-change handler that the tabs-bar calls. `manual_select` emits only
   // when the visitor actively clicks the Session State tab from the tabs
   // bar. Programmatic opens (overlay `open('session_state')`, pendingTab
-  // consumption, layout/pathname-driven resets) go through `setViewMode`
-  // directly and do NOT emit — they are not visitor-initiated choices.
-  // Deliverable 2 will introduce `default_landing` via a separate emission
-  // on the first-seen path when Session State is promoted to the default.
+  // consumption) go through `setViewMode` directly and do NOT emit —
+  // they are not visitor-initiated choices from within the tabs bar.
+  // The `default_landing` emitter below handles the non-click paths.
   const handleTabChange = useCallback((mode: ViewMode) => {
     setViewMode(mode);
     if (mode === 'session_state') {
@@ -134,14 +130,33 @@ export function UnderTheHoodView() {
   // doesn't re-select.
   useEffect(() => {
     if (pendingTab && isOpen) {
-      if (pendingTab === 'overview' && !showOverview) {
-        setViewMode('timeline');
-      } else {
-        setViewMode(pendingTab);
-      }
+      setViewMode(pendingTab);
       consumePendingTab();
     }
-  }, [pendingTab, isOpen, showOverview, consumePendingTab]);
+  }, [pendingTab, isOpen, consumePendingTab]);
+
+  // default_landing emission: fires once per overlay-open when the landing
+  // tab is Session State. Runs on isOpen/viewMode/pendingTab edges, gated
+  // by a ref so intra-open tab transitions don't re-fire (a manual_select
+  // click back to Session State is a distinct event with its own source).
+  //
+  // The pendingTab check defers emission until the pendingTab consumption
+  // effect has run. On an `open('timeline')` call the initial render has
+  // isOpen=true, viewMode='session_state' (default), pendingTab='timeline'
+  // — emitting here would fire a spurious default_landing that doesn't
+  // match where the visitor actually lands. Waiting for pendingTab=null
+  // means we always see the post-transition viewMode.
+  useEffect(() => {
+    if (!isOpen) {
+      defaultLandingEmittedRef.current = false;
+      return;
+    }
+    if (pendingTab) return;
+    if (viewMode === 'session_state' && !defaultLandingEmittedRef.current) {
+      defaultLandingEmittedRef.current = true;
+      trackSessionStateTabView('default_landing');
+    }
+  }, [isOpen, viewMode, pendingTab]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -176,11 +191,9 @@ export function UnderTheHoodView() {
   if (!isOpen && !hasBooted.current) return null;
 
   const tabs: TabDef[] = [
-    ...(showOverview ? [{ mode: 'overview' as ViewMode, label: 'Overview' }] : []),
     { mode: 'session_state', label: 'Session State' },
     { mode: 'timeline', label: 'Timeline', count: filteredEvents.length },
     { mode: 'consent', label: 'Consent' },
-    { mode: 'dashboards', label: 'Dashboards' },
   ];
 
   return (
@@ -278,16 +291,11 @@ export function UnderTheHoodView() {
             </>
           ) : (
             <>
-              {viewMode === 'overview' && isHomepage && <HomepageUnderside />}
-              {viewMode === 'overview' && isEcommerce && (
-                <EcommerceUnderside pathname={pathname} events={filteredEvents} />
-              )}
               {viewMode === 'session_state' && <SessionStateTab />}
               {viewMode === 'timeline' && (
                 <EventTimeline events={filteredEvents} onSelectEvent={setSelectedEvent} />
               )}
               {viewMode === 'consent' && <ConsentView events={filteredEvents} />}
-              {viewMode === 'dashboards' && <DashboardView />}
             </>
           )}
         </div>
