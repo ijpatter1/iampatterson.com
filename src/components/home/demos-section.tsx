@@ -212,9 +212,13 @@ export function DemosSection() {
           </div>
         </div>
 
-        <div className="mt-12 border-t border-rule-soft pt-6 font-mono text-[10px] uppercase tracking-widest text-ink-3">
-          Subscription and lead gen demos · returning soon
-        </div>
+        {/* F8 close-out Minor: the pre-F8 "Subscription and lead gen
+            demos · returning soon" tail line sat below the ecommerce
+            card with no action. The `RebuildBanner` at the top of this
+            section already surfaces the returning-soon message for
+            308-redirected traffic from the removed /demo/subscription +
+            /demo/leadgen URLs, so the tail line added nothing for a
+            direct visitor and read as a dangling footnote. Removed. */}
       </div>
     </section>
   );
