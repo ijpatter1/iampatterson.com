@@ -228,9 +228,13 @@ const config: Config = {
           '100%': { transform: 'translateX(-50%)' },
         },
         'nav-hint-ring': {
+          // F5 UAT S11.2 fix: max scale reduced 2.5 → 1.8 so the ring
+          // stays within safe bounds when SessionPulse sits top-right on
+          // mobile. Pre-fix the ring expanded ~55px past each side of a
+          // 44×44 button, clipping past the 360px viewport right edge.
           '0%': { opacity: '0.8', transform: 'scale(1)' },
-          '80%': { opacity: '0', transform: 'scale(2.5)' },
-          '100%': { opacity: '0', transform: 'scale(2.5)' },
+          '80%': { opacity: '0', transform: 'scale(1.8)' },
+          '100%': { opacity: '0', transform: 'scale(1.8)' },
         },
       },
     },

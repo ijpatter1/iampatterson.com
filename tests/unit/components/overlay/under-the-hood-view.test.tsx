@@ -192,6 +192,38 @@ describe('UnderTheHoodView — editorial / CRT redesign', () => {
     expect(screen.getByRole('heading', { name: /^session$/i })).toBeInTheDocument();
   });
 
+  it('hides the header icon + subtitle on mobile (F5 UAT S11 declutter)', () => {
+    // UAT feedback: overlay header too cluttered on mobile. Icon SVG
+    // wrapper + "Live · yours, right now" subtitle both gated `hidden
+    // md:flex`/`md:block`; only "Session" title + close button render
+    // at <md. Desktop keeps the fuller chrome treatment.
+    render(<UnderTheHoodView />);
+    const title = screen.getByRole('heading', { name: /^session$/i });
+    const header = title.closest('header');
+    expect(header).not.toBeNull();
+    const iconWrapper = header!.querySelector('svg')?.parentElement;
+    expect(iconWrapper).not.toBeNull();
+    expect(iconWrapper!.className).toMatch(/hidden/);
+    expect(iconWrapper!.className).toMatch(/md:flex/);
+    // Subtitle ("Live · yours, right now") is the <p> sibling of the h1.
+    const subtitle = title.parentElement?.querySelector('p');
+    expect(subtitle).not.toBeNull();
+    expect(subtitle!.className).toMatch(/hidden/);
+    expect(subtitle!.className).toMatch(/md:flex/);
+  });
+
+  it('keeps each tab on a single line (whitespace-nowrap) with mobile overflow-x-auto (F5 UAT S11)', () => {
+    // UAT feedback: bracket framing wrapped to 3 lines on 360px. Fix
+    // pins the responsive layout contract.
+    render(<UnderTheHoodView />);
+    const overview = screen.getByRole('button', { name: /^Overview$/i });
+    expect(overview.className).toMatch(/whitespace-nowrap/);
+    expect(overview.className).toMatch(/flex-shrink-0/);
+    const tabsRow = overview.parentElement;
+    expect(tabsRow).not.toBeNull();
+    expect(tabsRow!.className).toMatch(/overflow-x-auto/);
+  });
+
   it('enters boot phase on open and transitions to on after ~260ms', () => {
     jest.useFakeTimers();
     render(<UnderTheHoodView />);

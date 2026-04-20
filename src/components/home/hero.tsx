@@ -13,13 +13,16 @@ export function HeroEditorial() {
   };
 
   return (
-    <section className="bg-paper pt-8 pb-20 md:pt-12 md:pb-28">
+    <section className="bg-paper pt-4 pb-16 md:pt-12 md:pb-28">
       <div className="mx-auto max-w-content px-5 md:px-10">
         <h1
           className="font-display font-normal text-ink"
           style={{
-            fontSize: 'clamp(56px, 13vw, 200px)',
-            lineHeight: '0.88',
+            // F5 UAT S11 — shrink mobile floor 56px → 44px so the headline
+            // takes ~33px less vertical space on 360px, putting CTAs
+            // within the 667px iPhone SE fold.
+            fontSize: 'clamp(44px, 13vw, 200px)',
+            lineHeight: '0.9',
             letterSpacing: '-0.035em',
           }}
         >
@@ -30,11 +33,13 @@ export function HeroEditorial() {
           infrastructure.
         </h1>
 
-        <div className="mt-12 grid gap-8 border-t border-rule-soft pt-8 md:grid-cols-[1fr_1.8fr] md:gap-16">
+        <div className="mt-6 grid gap-6 border-t border-rule-soft pt-6 md:mt-12 md:gap-8 md:pt-8 md:grid-cols-[1fr_1.8fr] md:gap-16">
           <p
             className="font-display italic text-ink"
             style={{
-              fontSize: 'clamp(22px, 2.6vw, 34px)',
+              // Mobile italic kicker: 18px (was 22px) so 3 lines of
+              // supporting prose fit in ~68px, not ~88px.
+              fontSize: 'clamp(18px, 2.6vw, 34px)',
               lineHeight: '1.25',
             }}
           >
@@ -42,13 +47,13 @@ export function HeroEditorial() {
             dashboards. Instead of describing it, I built on it.
           </p>
           <div>
-            <p className="max-w-[52ch] text-base leading-[1.7] text-ink-2">
+            <p className="max-w-[52ch] text-[15px] leading-[1.65] text-ink-2 md:text-base md:leading-[1.7]">
               Most consultants describe what they build. I&apos;d rather you watch it run. Every
               scroll, every click on this page flows through a real server-side tag manager, into a
               real warehouse, through a real transformation pipeline — live on your session, right
               now. The instrumentation is the portfolio.
             </p>
-            <div className="mt-7 flex flex-wrap gap-3">
+            <div className="mt-5 flex flex-wrap gap-3 md:mt-7">
               <EditorialButton variant="accent" onClick={handleOpen}>
                 See your session →
               </EditorialButton>

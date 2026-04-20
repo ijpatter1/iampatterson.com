@@ -76,8 +76,14 @@ function Tabs({
   onChange: (mode: ViewMode) => void;
   tabs: TabDef[];
 }) {
+  // F5 UAT S11 fix: on 360px viewports the bracket-framed `[ OVERVIEW ]`
+  // label plus padding + Timeline count badge overflowed a three-tab
+  // row, line-wrapping the bracket to its own line. `overflow-x-auto`
+  // at the container + `whitespace-nowrap` per button keeps each label
+  // on a single line; if the row still exceeds viewport width, the
+  // visitor can scroll the tab bar horizontally.
   return (
-    <div className="overlay-chrome flex gap-1 border-b border-u-rule-soft bg-u-paper-alt px-4">
+    <div className="overlay-chrome flex gap-1 overflow-x-auto border-b border-u-rule-soft bg-u-paper-alt px-2 md:px-4">
       {tabs.map((t) => {
         const isActive = active === t.mode;
         // Terminal-style bracket framing on the active tab label is the
@@ -93,7 +99,7 @@ function Tabs({
             key={t.mode}
             type="button"
             onClick={() => onChange(t.mode)}
-            className={`relative flex items-center gap-2 border-b-2 px-4 py-3 font-mono text-xs uppercase tracking-widest text-accent-current transition-opacity ${
+            className={`relative flex flex-shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 py-3 font-mono text-xs uppercase tracking-widest text-accent-current transition-opacity md:px-4 ${
               isActive
                 ? 'border-accent-current opacity-100'
                 : 'border-transparent opacity-60 hover:opacity-90'
@@ -273,10 +279,14 @@ export function UnderTheHoodView() {
         </div>
       )}
 
-      {/* Header */}
-      <header className="overlay-chrome flex items-center justify-between border-b border-u-rule-soft bg-u-paper px-6 py-4">
+      {/* Header — F5 UAT S11 declutter: on mobile, hide the 32px icon +
+          "Live · yours, right now" subtitle so only the "Session" title
+          + close button remain. The icon + subtitle add visual weight
+          to a narrow row that already fights the tab bar below for
+          vertical real estate. Desktop keeps the fuller treatment. */}
+      <header className="overlay-chrome flex items-center justify-between border-b border-u-rule-soft bg-u-paper px-4 py-3 md:px-6 md:py-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center border border-accent-current text-accent-current">
+          <div className="hidden h-8 w-8 items-center justify-center border border-accent-current text-accent-current md:flex">
             <svg
               width="14"
               height="14"
@@ -291,7 +301,7 @@ export function UnderTheHoodView() {
           </div>
           <div>
             <h1 className="font-display text-lg leading-none text-u-ink">Session</h1>
-            <p className="mt-1 flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-u-ink-3">
+            <p className="mt-1 hidden items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-u-ink-3 md:flex">
               <span className="inline-block h-1.5 w-1.5 animate-session-pulse rounded-full bg-accent-current" />
               Live · yours, right now
             </p>

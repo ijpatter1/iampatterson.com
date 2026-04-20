@@ -281,6 +281,11 @@ export function OverviewTab() {
             {typedCoverage}
           </span>
         </div>
+        {/* F5 UAT S11 — explicit min-w-0 + truncate + whitespace-nowrap
+            keep each chip on a single line at 360px. Without min-w-0
+            the grid cell's intrinsic width wins and the long chip names
+            (e.g. `> session_pulse_hover`) overflow or wrap the leading
+            `>` to its own line. */}
         <div className="grid grid-cols-2 gap-1 font-mono text-xs sm:grid-cols-3 md:grid-cols-4">
           {RENDERABLE_EVENT_NAMES.map((name) => {
             const fired = firedSet.has(name);
@@ -291,7 +296,7 @@ export function OverviewTab() {
                 data-chip="event-chip"
                 data-chip-name={name}
                 data-fired={fired ? 'true' : 'false'}
-                className={`truncate border px-2 py-1 uppercase tracking-wide ${
+                className={`min-w-0 truncate whitespace-nowrap border px-2 py-1 uppercase tracking-wide ${
                   fired
                     ? 'border-accent-current text-accent-current'
                     : 'border-u-rule-soft text-u-ink-3'

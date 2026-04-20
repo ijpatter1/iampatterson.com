@@ -42,13 +42,13 @@ export function Header() {
           scrolled ? 'border-rule-soft shadow-[0_1px_3px_rgba(0,0,0,0.04)]' : 'border-transparent'
         }`}
       >
-        <div className="mx-auto flex max-w-content items-center justify-between gap-4 px-5 py-4 md:px-10">
-          {/* SessionPulse — primary nav affordance. Relatively positioned
-              so NavHint (child of this wrapper) can anchor itself to
-              the pulse via absolute positioning. The sr-only home link
-              preserves site-identity semantics for assistive tech; the
-              wordmark is intentionally absent per the spec's "instrument
-              as nav" principle. */}
+        {/* Mobile: SessionPulse right-aligned (hamburger position per
+            UX_PIVOT_SPEC §3.1 mobile treatment + UAT S11.1 — "SessionPulse
+            is top-right on mobile"). Desktop: left-aligned per §3.1 desktop
+            treatment — "roughly where a primary nav's first link would sit
+            — left of center or adjacent to the brand wordmark, not tucked
+            in a corner." */}
+        <div className="mx-auto flex max-w-content items-center justify-end gap-4 px-5 py-4 md:justify-start md:px-10">
           <span className="relative flex-shrink-0">
             <SessionPulse ref={sessionPulseRef} onClick={handleOpenOverlay} />
             <Link href="/" className="sr-only">
@@ -59,6 +59,29 @@ export function Header() {
         </div>
       </header>
       <LiveStrip />
+      {!isHomepage && <HomeBar />}
+    </div>
+  );
+}
+
+/**
+ * Slim "Back to homepage" bar (F5 UAT fix for S2 — "each non-homepage
+ * page needs a back-to-homepage CTA; navigating via footer is too much
+ * friction"). Rendered directly below the LiveStrip on services / about
+ * / contact / contact-thanks / any non-/ route. Stays with the header's
+ * sticky block so the affordance is always in view.
+ */
+function HomeBar() {
+  return (
+    <div data-testid="home-bar" className="border-b border-rule-soft bg-paper-alt">
+      <div className="mx-auto flex max-w-content items-center px-5 py-2 md:px-10">
+        <Link
+          href="/"
+          className="font-mono text-[11px] uppercase tracking-widest text-ink-3 transition-colors hover:text-accent-current"
+        >
+          ← Back to homepage
+        </Link>
+      </div>
     </div>
   );
 }

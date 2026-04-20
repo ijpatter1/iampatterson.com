@@ -136,11 +136,15 @@ export function DemosSection() {
           <RebuildBanner />
         </Suspense>
 
+        {/* F5 UAT S11 — hide the second-line tagline on mobile. The
+            `uppercase tracking-widest` treatment + 32ch max-width pushed
+            the eyebrow block to 7–8 lines on 360px. Desktop keeps the
+            two-part editorial framing. */}
         <div className="mb-10 flex flex-wrap items-end justify-between gap-5 border-b border-rule-soft pb-5">
           <span className="font-mono text-[11px] uppercase tracking-widest text-ink-3">
             Demo · Ecommerce · Tiers 2 + 3
           </span>
-          <p className="max-w-[32ch] font-mono text-[11px] uppercase tracking-widest text-ink-3">
+          <p className="hidden max-w-[32ch] font-mono text-[11px] uppercase tracking-widest text-ink-3 md:block">
             One coherent demo. Instrumentation reveals itself in flow.
           </p>
         </div>

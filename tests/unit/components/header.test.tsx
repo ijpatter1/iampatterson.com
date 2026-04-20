@@ -68,6 +68,38 @@ describe('Header — post-9E-D1 nav pivot', () => {
     expect(screen.queryByRole('button', { name: /open menu/i })).not.toBeInTheDocument();
   });
 
+  it('right-aligns the SessionPulse on mobile and left-aligns on desktop (F5 UAT S11.1)', () => {
+    // Mobile: SessionPulse sits top-right (hamburger position per
+    // UX_PIVOT_SPEC §3.1). Desktop: left-adjacent per §3.1 desktop treatment.
+    // Assert the responsive justify classes on the header's inner row.
+    const { container } = renderHeader();
+    const row = container.querySelector('header > div');
+    expect(row).not.toBeNull();
+    expect(row!.className).toMatch(/justify-end/);
+    expect(row!.className).toMatch(/md:justify-start/);
+  });
+
+  it('renders the "Back to homepage" slim bar on non-homepage routes (F5 UAT S2)', () => {
+    // Non-homepage pages need an obvious back-to-/ affordance — the
+    // footer was flagged as too much friction in UAT S2. The slim bar
+    // sits directly below the LiveStrip so it stays in view across the
+    // sticky-header block.
+    mockPathname = '/services';
+    renderHeader();
+    const bar = screen.getByTestId('home-bar');
+    expect(bar).toBeInTheDocument();
+    const link = bar.querySelector('a');
+    expect(link).not.toBeNull();
+    expect(link!.getAttribute('href')).toBe('/');
+    expect(link!.textContent).toMatch(/back to homepage/i);
+  });
+
+  it('does NOT render the home bar on the homepage itself (/)', () => {
+    mockPathname = '/';
+    renderHeader();
+    expect(screen.queryByTestId('home-bar')).not.toBeInTheDocument();
+  });
+
   it('renders the SessionPulse as the primary nav affordance and opens the overlay on click', async () => {
     const user = userEvent.setup();
     renderHeader();
