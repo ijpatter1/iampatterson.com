@@ -1,29 +1,20 @@
 /**
  * Pipeline-section content schema for the homepage's progressive bleed-
- * through reveal (Phase 9E D5). Mirrors the `PIPELINE_STAGES` constant in
- * docs/input_artifacts/design_handoff_pipeline/app/data.js, but with the
- * real production identifiers in place of the prototype's mock fields:
+ * through reveal (Phase 9E D5 — simplified in F6 UAT close-out).
  *
- *   - Web GTM container is GTM-MWHFMTZN (NEXT_PUBLIC_GTM_ID, also pinned
- *     in infrastructure/gtm/web-container.json).
- *   - Server GTM (sGTM) container is GTM-NTTKZFWD (pinned in
- *     infrastructure/gtm/server-container.json), self-hosted on Cloud Run
- *     at the io.iampatterson.com custom domain.
- *   - BigQuery dataset.table is iampatterson_raw.events_raw, the live raw sink.
- *   - GA4 measurement ID is the real G-9M2G3RLHWF.
+ * F6 rewrite: dropped the dense instrument-panel `tech` / `sub` / `reads`
+ * fields in favor of an editorial `detail` one-liner under each stage
+ * title. The pipeline-section on paper reads as editorial prose; the
+ * dense metadata surface lived in the overlay all along (Timeline tab
+ * event-detail + routing destinations, Consent tab, Overview tab header).
+ * The editorial/instrument clash UAT flagged is the symptom; the density
+ * mismatch was the cause.
  *
- * Runtime-varying readouts (rows-today counts, query rates, latency
- * numbers) are illustrative — the schematic is editorial, not a live
- * dashboard. The live event log below the schematic carries the real
- * per-session data via `useLiveEvents`.
+ * Identifier anchors kept where they earn their keep in the prose
+ * (e.g. `iampatterson_raw.events_raw` on Stage 04, load-bearing proof
+ * of "events land in a real warehouse"). Other container IDs and the
+ * sGTM subdomain removed — the surrounding prose carries the weight.
  */
-
-export interface PipelineStageRead {
-  /** Mono label (snake_case) — short identifier displayed in dt. */
-  k: string;
-  /** Value displayed in dd — short, single-line, mono. */
-  v: string;
-}
 
 export interface PipelineStage {
   /** Stable identifier — used as React key and data-testid suffix. */
@@ -34,14 +25,8 @@ export interface PipelineStage {
   title: string;
   /** Role label — small mono caps above the title. */
   role: string;
-  /** Tech identifier — container ID, hostname, dataset.table, etc. */
-  tech: string;
-  /** Sub-line — short mono caps under the tech line (region, layer, etc). */
-  sub: string;
-  /** Short prose detail — one-line description of what happens at this stage. */
+  /** Editorial one-liner under the title — carries the stage's substance. */
   detail: string;
-  /** Inline readouts displayed in the right column on desktop, collapsed under the stage on mobile. */
-  reads: PipelineStageRead[];
 }
 
 export const PIPELINE_STAGES: readonly PipelineStage[] = Object.freeze([
@@ -50,69 +35,36 @@ export const PIPELINE_STAGES: readonly PipelineStage[] = Object.freeze([
     n: '01',
     title: 'Browser',
     role: 'Source',
-    tech: 'GTM-MWHFMTZN',
-    sub: 'client container',
-    detail: 'dataLayer.push()',
-    reads: [
-      { k: 'session_id', v: 'ses_x9b2…' },
-      { k: 'client_id', v: 'GA1.1.482…' },
-      { k: 'page_path', v: '/' },
-    ],
+    detail: '`dataLayer.push()` every click, scroll, and pageview into the web container.',
   },
   {
     key: 'cgtm',
     n: '02',
     title: 'Client GTM',
     role: 'Consent gate',
-    tech: 'GTM-MWHFMTZN',
-    sub: 'web container',
-    detail: 'consent check · enrich',
-    reads: [
-      { k: 'consent_mode', v: 'v2' },
-      { k: 'analytics_storage', v: 'granted' },
-      { k: 'ad_storage', v: 'denied' },
-    ],
+    detail: 'Consent Mode v2 decides what leaves the browser.',
   },
   {
     key: 'sgtm',
     n: '03',
     title: 'Server GTM',
     role: 'Processor',
-    tech: 'GTM-NTTKZFWD',
-    sub: 'cloud run · us-central1',
-    detail: 'enrich · route · redact',
-    reads: [
-      { k: 'host', v: 'io.iampatterson.com' },
-      { k: 'ip_override', v: 'hashed' },
-      { k: 'latency_ms', v: '38' },
-    ],
+    detail:
+      'Self-hosted sGTM on Cloud Run — enriches payloads, hashes PII, fans out to GA4, BigQuery, Meta CAPI, and Google Ads.',
   },
   {
     key: 'bq',
     n: '04',
     title: 'BigQuery',
     role: 'Warehouse',
-    tech: 'iampatterson_raw.events_raw',
-    sub: 'us-central1 · streaming',
-    detail: 'streaming insert',
-    reads: [
-      { k: 'dataset', v: 'iampatterson_raw' },
-      { k: 'table', v: 'events_raw' },
-      { k: 'rows_today', v: '14,287' },
-    ],
+    detail: 'Streaming inserts land in `iampatterson_raw.events_raw` within seconds.',
   },
   {
     key: 'dash',
     n: '05',
     title: 'Dashboards',
     role: 'Consumption',
-    tech: 'metabase + dataform',
-    sub: 'self-serve layer',
-    detail: 'Dataform marts',
-    reads: [
-      { k: 'marts', v: 'sessions · attribution · ltv' },
-      { k: 'refresh', v: 'streaming · 60s' },
-      { k: 'queries', v: '2,417 / day' },
-    ],
+    detail:
+      'Dataform transforms the raw table into session, attribution, and LTV marts; Metabase serves them.',
   },
 ]);

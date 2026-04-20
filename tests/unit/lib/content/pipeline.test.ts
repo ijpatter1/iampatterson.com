@@ -1,17 +1,21 @@
 /**
- * Pipeline-section content schema tests. The `PIPELINE_STAGES` constant
- * is the spine of the editorial schematic in `PipelineEditorial`, and
- * the values that appear in the rendered readouts (GTM container IDs,
- * sGTM hostname, BQ dataset) are real production values verified against
- * `infrastructure/gtm/web-container.json` and
- * `infrastructure/gtm/server-container.json` — not the prototype's mock
- * fields. Pinning them here so a future schema change doesn't silently
- * drift, and so a fabricated value can't slip past review.
+ * Pipeline-section content schema tests (F6 UAT close-out rewrite).
+ *
+ * Pre-F6 the schema carried dense instrument-panel metadata (`tech`,
+ * `sub`, `reads[]`) with real production identifiers. F6 cut that
+ * metadata in favor of an editorial `detail` one-liner — the
+ * instrument-panel surface lives in the overlay now (Timeline event-
+ * detail, Consent tab, Overview tab), where the density fits the
+ * CRT/terminal aesthetic. The pipeline section reads as editorial prose.
+ *
+ * Remaining identifier anchors kept in the detail copy (e.g.
+ * `iampatterson_raw.events_raw` in Stage 04) are pinned here so a
+ * future copy edit doesn't silently drop the load-bearing anchor.
  */
 
 import { PIPELINE_STAGES, type PipelineStage } from '@/lib/content/pipeline';
 
-describe('PIPELINE_STAGES', () => {
+describe('PIPELINE_STAGES (F6 editorial rewrite)', () => {
   it('declares exactly five stages in browser → dashboards order', () => {
     expect(PIPELINE_STAGES).toHaveLength(5);
     expect(PIPELINE_STAGES.map((s) => s.key)).toEqual(['browser', 'cgtm', 'sgtm', 'bq', 'dash']);
@@ -21,60 +25,41 @@ describe('PIPELINE_STAGES', () => {
     expect(PIPELINE_STAGES.map((s) => s.n)).toEqual(['01', '02', '03', '04', '05']);
   });
 
-  it('each stage carries title, role, tech, sub, and reads[]', () => {
+  it('each stage carries title, role, and detail (instrument-panel fields dropped)', () => {
     PIPELINE_STAGES.forEach((stage: PipelineStage) => {
       expect(stage.title.length).toBeGreaterThan(0);
       expect(stage.role.length).toBeGreaterThan(0);
-      expect(stage.tech.length).toBeGreaterThan(0);
-      expect(stage.sub.length).toBeGreaterThan(0);
-      expect(stage.reads.length).toBeGreaterThanOrEqual(2);
-      stage.reads.forEach((r) => {
-        expect(r.k.length).toBeGreaterThan(0);
-        expect(r.v.length).toBeGreaterThan(0);
-      });
+      expect(stage.detail.length).toBeGreaterThan(0);
     });
+    // The legacy instrument-panel fields (`tech`, `sub`, `reads`) are
+    // gone — assert via index-type narrowing that the current schema
+    // doesn't carry them. A test that simply reads `.tech` would
+    // compile-fail under strict mode; pin the intent via hasOwn.
+    const keys = Object.keys(PIPELINE_STAGES[0]);
+    expect(keys).not.toContain('tech');
+    expect(keys).not.toContain('sub');
+    expect(keys).not.toContain('reads');
   });
 
-  it('uses the real web GTM container ID (GTM-MWHFMTZN) for browser + cgtm stages', () => {
-    // Pinning value verified against infrastructure/gtm/web-container.json
-    // and process.env.NEXT_PUBLIC_GTM_ID. Fabricating this would let a
-    // marketing-ops reader catch the section in a lie on the very surface
-    // whose copy says "the events aren't simulated. The warehouse is real."
-    const browser = PIPELINE_STAGES.find((s) => s.key === 'browser');
-    const cgtm = PIPELINE_STAGES.find((s) => s.key === 'cgtm');
-    expect(browser?.tech).toBe('GTM-MWHFMTZN');
-    expect(cgtm?.tech).toBe('GTM-MWHFMTZN');
-  });
-
-  it('uses the real server GTM container ID (GTM-NTTKZFWD) on the sgtm stage', () => {
-    // Pinning value verified against infrastructure/gtm/server-container.json.
-    const sgtm = PIPELINE_STAGES.find((s) => s.key === 'sgtm');
-    expect(sgtm?.tech).toBe('GTM-NTTKZFWD');
-  });
-
-  it('surfaces the real sGTM hostname (io.iampatterson.com) on the sgtm stage readouts', () => {
-    const sgtm = PIPELINE_STAGES.find((s) => s.key === 'sgtm');
-    const hostRead = sgtm?.reads.find((r) => r.k === 'host');
-    expect(hostRead?.v).toBe('io.iampatterson.com');
-  });
-
-  it('uses the real BigQuery raw events table (iampatterson_raw.events_raw)', () => {
+  it('pins iampatterson_raw.events_raw as the load-bearing BigQuery anchor (Stage 04)', () => {
+    // The detail copy references the real dataset.table by name — that
+    // specific identifier is the "events land in a real warehouse" proof
+    // and must not silently drift or vanish in copy edits.
     const bq = PIPELINE_STAGES.find((s) => s.key === 'bq');
-    // The tech line should reference the real raw dataset; specific cell
-    // values may vary but the dataset.table identity must be honest.
-    expect(bq?.tech.toLowerCase()).toContain('iampatterson_raw');
-    expect(bq?.tech.toLowerCase()).toContain('events_raw');
-  });
-
-  it('readout keys are stable mono-readout labels (snake_case)', () => {
-    const allKeys = PIPELINE_STAGES.flatMap((s) => s.reads.map((r) => r.k));
-    allKeys.forEach((k) => {
-      expect(k).toMatch(/^[a-z][a-z0-9_]*$/);
-    });
+    expect(bq?.detail).toMatch(/iampatterson_raw\.events_raw/);
   });
 
   it('keys are unique across the stages list', () => {
     const keys = PIPELINE_STAGES.map((s) => s.key);
     expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it('detail copy stays short-form prose (≤ 200 chars per stage)', () => {
+    // Editorial one-liner constraint — a regression that adds dense
+    // paragraphs would degrade the "pipeline reads as editorial" signal
+    // that this rewrite is meant to restore. Not exact; just a cap.
+    PIPELINE_STAGES.forEach((stage) => {
+      expect(stage.detail.length).toBeLessThanOrEqual(200);
+    });
   });
 });

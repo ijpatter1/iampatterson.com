@@ -212,11 +212,19 @@ describe('PipelineEditorial', () => {
     expect(idEl.textContent).toBe('ses_123def');
   });
 
-  it('renders stage.detail copy on each stage', () => {
-    render(<PipelineEditorial />);
-    // stage.detail strings from PIPELINE_STAGES — must reach the DOM.
-    PIPELINE_STAGES.forEach((s) => {
-      expect(screen.getByText(s.detail)).toBeInTheDocument();
+  it('renders stage.detail copy on each stage (prose + inline code fragments)', () => {
+    // F6 rewrite: detail copy can contain backtick-fenced tokens that
+    // render as <code>. getByText with a string matcher won't work
+    // because the text is split across elements. Search by role/heading
+    // then scan the stage list item's combined textContent with the
+    // backticks stripped out.
+    const { container } = render(<PipelineEditorial />);
+    const stageItems = Array.from(container.querySelectorAll('[data-testid^="pipeline-stage-"]'));
+    expect(stageItems).toHaveLength(PIPELINE_STAGES.length);
+    PIPELINE_STAGES.forEach((stage, i) => {
+      const expected = stage.detail.replace(/`/g, '');
+      const actual = (stageItems[i].textContent ?? '').replace(/\s+/g, ' ').trim();
+      expect(actual).toContain(expected);
     });
   });
 

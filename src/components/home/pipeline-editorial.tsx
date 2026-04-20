@@ -181,7 +181,7 @@ function PipelineEditorialStage({
       data-testid={`pipeline-stage-${stage.n}`}
       data-active={active}
       data-key={stage.key}
-      className={`pv-edit__stage relative grid grid-cols-[40px_1fr] gap-x-4 gap-y-2.5 border-b border-rule-soft py-[18px] transition-[background] duration-300 md:grid-cols-[64px_240px_1fr] md:gap-x-7 md:py-6 lg:grid-cols-[84px_300px_1fr] ${
+      className={`pv-edit__stage relative grid grid-cols-[40px_1fr] gap-x-4 border-b border-rule-soft py-[18px] transition-[background] duration-300 md:grid-cols-[64px_1fr] md:gap-x-7 md:py-6 lg:grid-cols-[84px_1fr] ${
         active ? 'is-hot' : ''
       }`}
     >
@@ -194,7 +194,14 @@ function PipelineEditorialStage({
       >
         {stage.n}
       </div>
-      <div className="pv-edit__body flex min-w-0 flex-col gap-1">
+      {/* F6 UAT close-out: the dense instrument-panel columns (tech id,
+          sub-caps line, is-hot-gated readouts) are gone. Each stage is
+          now just role + title + editorial detail — no dl readout block,
+          no max-height animation, no layout shift when the active stage
+          rotates. Killing the readout jitter + metadata clipping +
+          instrument/editorial clash in one cut (UAT S11 readout-jitter,
+          S4 k/v clipping, S4 editorial clash). */}
+      <div className="pv-edit__body flex min-w-0 flex-col gap-1.5">
         <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-4">
           {stage.role}
         </div>
@@ -204,31 +211,10 @@ function PipelineEditorialStage({
         >
           {stage.title}
         </h3>
-        <div className="pv-edit__detail mt-0.5 font-mono text-[11px] italic text-ink-3">
-          {stage.detail}
-        </div>
-        <div className="pv-edit__tech break-all font-mono text-[11px] text-ink-2">{stage.tech}</div>
-        <div className="pv-edit__sub font-mono text-[11px] uppercase tracking-[0.06em] text-ink-4">
-          {stage.sub}
-        </div>
+        <p className="pv-edit__detail mt-1 max-w-[60ch] text-[15px] leading-[1.55] text-ink-2">
+          {renderDetailLine(stage.detail)}
+        </p>
       </div>
-      <dl
-        className={`pv-edit__reads col-span-2 ml-[18px] grid grid-cols-1 overflow-hidden border-l border-rule-soft pl-14 transition-[max-height,opacity,margin] duration-300 ease-in-out md:col-span-1 md:ml-0 md:max-h-none md:overflow-visible md:border-l-0 md:pl-5 md:opacity-100 ${
-          active ? 'mt-1.5 max-h-[220px] opacity-100' : 'mt-0 max-h-0 opacity-0'
-        }`}
-      >
-        {stage.reads.map((r, idx) => (
-          <div
-            key={r.k}
-            className={`pv-edit__read grid grid-cols-[100px_1fr] gap-2.5 py-1 font-mono text-[10.5px] ${
-              idx === 0 ? '' : 'border-t border-dashed border-rule-faint'
-            }`}
-          >
-            <dt className="tracking-[0.04em] text-ink-4">{r.k}</dt>
-            <dd className="break-all text-ink">{r.v}</dd>
-          </div>
-        ))}
-      </dl>
       {!isLast && (
         <div
           aria-hidden="true"
@@ -239,4 +225,29 @@ function PipelineEditorialStage({
       )}
     </li>
   );
+}
+
+/**
+ * Split a detail line by backtick-quoted mono tokens and render each
+ * mono fragment inside an inline `<code>` with the editorial mono
+ * treatment. Lets the copy write `iampatterson_raw.events_raw` naturally
+ * inside prose while the code substring still renders as code. No HTML
+ * interpolation — plain React string children only.
+ */
+function renderDetailLine(detail: string): React.ReactNode {
+  const parts = detail.split(/(`[^`]+`)/g).filter(Boolean);
+  return parts.map((part, i) => {
+    if (part.startsWith('`') && part.endsWith('`')) {
+      return (
+        <code
+          key={i}
+          className="font-mono text-[13px] text-ink"
+          style={{ wordBreak: 'break-word' }}
+        >
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
 }

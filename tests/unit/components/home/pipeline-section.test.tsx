@@ -497,6 +497,59 @@ describe('PipelineSection — cleanup on unmount', () => {
   });
 });
 
+describe('PipelineSection — bleed-once-per-session (F6 UAT)', () => {
+  it('starts the rAF bleed loop on a fresh mount (bleed not yet consumed)', () => {
+    // Opt out of jest's rAF/cAF faking so the beforeEach overrides
+    // (rAF → setTimeout, cAF → clearTimeout) stay in effect.
+    jest.useFakeTimers({ doNotFake: ['requestAnimationFrame', 'cancelAnimationFrame'] });
+    window.sessionStorage.clear();
+    const rafSpy = jest.fn((cb: FrameRequestCallback) => {
+      return window.setTimeout(() => cb(performance.now()), 16) as unknown as number;
+    });
+    Object.defineProperty(window, 'requestAnimationFrame', {
+      writable: true,
+      configurable: true,
+      value: rafSpy,
+    });
+    stubSectionGeometry(0);
+    renderSection();
+    act(() => {
+      jest.advanceTimersByTime(60);
+    });
+    expect(rafSpy).toHaveBeenCalled();
+  });
+
+  it('skips the rAF bleed loop when the pipeline-bleed.consumed flag is set', () => {
+    jest.useFakeTimers({ doNotFake: ['requestAnimationFrame', 'cancelAnimationFrame'] });
+    window.sessionStorage.setItem('iampatterson.pipeline_bleed.consumed', '1');
+    const rafSpy = jest.fn((cb: FrameRequestCallback) => {
+      return window.setTimeout(() => cb(performance.now()), 16) as unknown as number;
+    });
+    Object.defineProperty(window, 'requestAnimationFrame', {
+      writable: true,
+      configurable: true,
+      value: rafSpy,
+    });
+    stubSectionGeometry(0);
+    renderSection();
+    act(() => {
+      jest.advanceTimersByTime(200);
+    });
+    expect(rafSpy).not.toHaveBeenCalled();
+    // Section still renders — only the animation loop is skipped.
+    expect(screen.getByTestId('pipeline-section')).toBeInTheDocument();
+  });
+
+  it('clicking "See your session" marks the bleed consumed (so subsequent scrolls stay calm)', async () => {
+    window.sessionStorage.clear();
+    const user = userEvent.setup();
+    renderSection();
+    const cta = screen.getByRole('button', { name: /see your session/i });
+    await user.click(cta);
+    expect(window.sessionStorage.getItem('iampatterson.pipeline_bleed.consumed')).toBe('1');
+  });
+});
+
 describe('PipelineSection — See your session CTA', () => {
   it('opens the overlay and fires click_cta with location pipeline_see_your_session', async () => {
     const user = userEvent.setup();

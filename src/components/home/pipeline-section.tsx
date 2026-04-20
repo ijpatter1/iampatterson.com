@@ -6,6 +6,7 @@ import { useOverlay } from '@/components/overlay/overlay-context';
 import { trackClickCta } from '@/lib/events/track';
 
 import { computeBleed, tierClassName, tierFor, type BleedTier } from './pipeline-bleed';
+import { hasPipelineBleedConsumed } from './pipeline-bleed-consumed';
 import { PipelineEditorial } from './pipeline-editorial';
 
 const FLICKER_BASE_DELAY_MS = 240;
@@ -43,8 +44,17 @@ export function PipelineSection() {
 
   // Scroll-driven bleed ramp. Writes --bleed imperatively each frame so we
   // re-render React only when the discrete tier class needs to change.
+  //
+  // F6 UAT close-out: once the visitor has opened the overlay (any tab)
+  // this session, the bleed reveal is consumed — pipeline-section
+  // renders in its calm editorial baseline on subsequent scroll. The
+  // priming gesture has done its job; repeating on every scroll is
+  // wallpaper. Check the flag once on mount; we don't listen for
+  // changes because the visitor can't "un-consume" by closing the
+  // overlay — the first open is the decisive event.
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (hasPipelineBleedConsumed()) return;
     const reduced =
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -116,9 +126,12 @@ export function PipelineSection() {
   }, []);
 
   // Random flicker bursts — only fire at warm or above. More frequent +
-  // sharper as bleed grows. Suppressed under reduced-motion.
+  // sharper as bleed grows. Suppressed under reduced-motion AND once
+  // the bleed reveal is consumed (pipeline section has primed the
+  // visitor once; subsequent scrolls stay calm per F6 UAT).
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (hasPipelineBleedConsumed()) return;
     const reduced =
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
