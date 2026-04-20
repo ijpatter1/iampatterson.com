@@ -102,7 +102,13 @@ verify_http() {
   local expected_status="$2"
   local label="$3"
   local actual
-  actual=$(curl -s -o /dev/null -w "%{http_code}" -L --max-redirs 0 "$url" || echo "000")
+  # `-L --max-redirs 0` was the F7-fixed bug: `-L` asks curl to follow
+  # redirects, `--max-redirs 0` refuses to follow any, and some curl
+  # versions concatenate the intermediate + final status code into
+  # something like `308000` (308 + 000 curl-error-marker). Dropping `-L`
+  # makes curl report only the first response's status code — what we
+  # actually want when testing a redirect contract.
+  actual=$(curl -s -o /dev/null -w "%{http_code}" --max-redirs 0 "$url" || echo "000")
   if [[ "$actual" == "$expected_status" ]]; then
     echo "  ✓ $label ($actual)"
     ((PASS++))
@@ -314,13 +320,18 @@ setup \
   "No browser setup needed for automated checks; manual verification follows."
 
 echo "  AUTOMATED:"
-verify_http "$BASE_URL/demo/subscription" "301" "GET /demo/subscription → 301"
+# Next.js emits 308 (Permanent Redirect) for `permanent: true` redirects,
+# not 301. 308 preserves the HTTP method on redirect — same permanence
+# signal to search engines, stricter semantics (spec comment in
+# `next.config.mjs`). Some CDNs rewrite 308 → 301 at the edge; either
+# way search engines re-index. UAT contract: expect 308 from the origin.
+verify_http "$BASE_URL/demo/subscription" "308" "GET /demo/subscription → 308"
 verify_redirect_location "$BASE_URL/demo/subscription" "rebuild=subscription" "  → redirects to ?rebuild=subscription"
-verify_http "$BASE_URL/demo/subscription/anything/deep" "301" "GET /demo/subscription/:path* → 301 (deep-link wildcard)"
+verify_http "$BASE_URL/demo/subscription/anything/deep" "308" "GET /demo/subscription/:path* → 308 (deep-link wildcard)"
 verify_redirect_location "$BASE_URL/demo/subscription/anything/deep" "rebuild=subscription" "  → deep-link also redirects to ?rebuild=subscription"
-verify_http "$BASE_URL/demo/leadgen" "301" "GET /demo/leadgen → 301"
+verify_http "$BASE_URL/demo/leadgen" "308" "GET /demo/leadgen → 308"
 verify_redirect_location "$BASE_URL/demo/leadgen" "rebuild=leadgen" "  → redirects to ?rebuild=leadgen"
-verify_http "$BASE_URL/demo/leadgen/thanks" "301" "GET /demo/leadgen/:path* → 301 (deep-link wildcard)"
+verify_http "$BASE_URL/demo/leadgen/thanks" "308" "GET /demo/leadgen/:path* → 308 (deep-link wildcard)"
 echo ""
 
 do_step "5.1 — In a fresh browser tab with cleared sessionStorage, navigate directly to $BASE_URL/demo/subscription."
