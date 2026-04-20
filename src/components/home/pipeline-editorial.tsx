@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { useLiveEvents } from '@/hooks/useLiveEvents';
+import { getSessionId } from '@/lib/events/session';
 import { PIPELINE_STAGES, type PipelineStage } from '@/lib/content/pipeline';
 
 const STAGE_ROTATION_MS = 1800;
@@ -23,22 +24,23 @@ const SEED_ROWS: FootnoteRow[] = [
 ];
 
 function fmtRelTime(deltaMs: number): string {
-  const s = Math.max(0, Math.floor(deltaMs / 1000));
+  const safe = Math.max(0, deltaMs);
+  const s = Math.floor(safe / 1000);
   const mm = String(Math.floor(s / 60)).padStart(2, '0');
   const ss = String(s % 60).padStart(2, '0');
-  const cs = String(Math.floor((Math.max(0, deltaMs) % 1000) / 10)).padStart(2, '0');
+  const cs = String(Math.floor((safe % 1000) / 10)).padStart(2, '0');
   return `${mm}:${ss}.${cs}`;
 }
 
 function formatPayload(
-  pageMath: string,
+  pagePath: string,
   params: Record<string, string | number | boolean>,
 ): string {
   const paramStr = Object.entries(params)
     .slice(0, 2)
     .map(([k, v]) => `${k}=${v}`)
     .join(' ');
-  return paramStr ? `path=${pageMath} ${paramStr}` : `path=${pageMath}`;
+  return paramStr ? `path=${pagePath} ${paramStr}` : `path=${pagePath}`;
 }
 
 /**
@@ -52,8 +54,13 @@ function formatPayload(
  */
 export function PipelineEditorial() {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [sessionId, setSessionId] = useState<string>('');
   const { events } = useLiveEvents();
   const startedAtRef = useRef<number>(Date.now());
+
+  useEffect(() => {
+    setSessionId(getSessionId());
+  }, []);
 
   useEffect(() => {
     const reduced =
@@ -67,18 +74,38 @@ export function PipelineEditorial() {
     return () => window.clearInterval(id);
   }, []);
 
-  // Build footnote rows: prepend seed events (relative to mount), then
-  // append live events with their own delta-since-mount timestamp. Capped
-  // to FEED_VISIBLE_ROWS in the render path.
   const t0 = startedAtRef.current;
-  const liveRows: FootnoteRow[] = events.slice(0, SESSION_FEED_BUFFER).map((e) => ({
-    id: e.pipeline_id,
-    ts: fmtRelTime(Date.now() - t0),
-    evt: e.event_name,
-    pay: formatPayload(e.page_path, e.parameters),
-  }));
+
+  // `useLiveEvents` returns events newest-first. We want the visible window
+  // to track the most recent activity, with seeds anchoring the start of
+  // session. Reverse the live slice to chronological order, prepend seeds,
+  // then take the trailing FEED_VISIBLE_ROWS so newer events push older
+  // ones out as the session progresses. Each row carries its OWN
+  // event-time-relative timestamp (Date.parse(e.timestamp) - t0) — using
+  // Date.now() here would re-stamp every row to the current render tick,
+  // making all live rows display the same value and tick forward in
+  // lockstep on every re-render.
+  const liveRows: FootnoteRow[] = events
+    .slice(0, SESSION_FEED_BUFFER)
+    .slice()
+    .reverse()
+    .map((e) => {
+      const eventTime = Date.parse(e.timestamp);
+      const delta = Number.isFinite(eventTime) ? eventTime - t0 : 0;
+      return {
+        id: e.pipeline_id,
+        ts: fmtRelTime(delta),
+        evt: e.event_name,
+        pay: formatPayload(e.page_path, e.parameters),
+      };
+    });
   const allRows = [...SEED_ROWS, ...liveRows];
   const visibleRows = allRows.slice(-FEED_VISIBLE_ROWS);
+
+  // Match SessionPulse's last-6-char convention so the footer ID matches
+  // what the visitor sees in the header chrome — "your session" reads as
+  // the same session across both surfaces.
+  const sessionShort = sessionId ? `ses_${sessionId.slice(-6)}` : 'ses_······';
 
   return (
     <div data-testid="pipeline-editorial" className="pv pv-edit relative">
@@ -95,7 +122,12 @@ export function PipelineEditorial() {
 
       <ol className="pv-edit__stages list-none border-t border-ink pt-6">
         {PIPELINE_STAGES.map((stage, i) => (
-          <PipelineEditorialStage key={stage.key} stage={stage} active={activeIndex === i} />
+          <PipelineEditorialStage
+            key={stage.key}
+            stage={stage}
+            active={activeIndex === i}
+            isLast={i === PIPELINE_STAGES.length - 1}
+          />
         ))}
       </ol>
 
@@ -104,7 +136,12 @@ export function PipelineEditorial() {
           <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-3">
             Footnote · your session
           </span>
-          <span className="font-mono text-[11px] text-ink-4">ses_live</span>
+          <span
+            data-testid="pipeline-footnote-session"
+            className="font-mono text-[11px] text-ink-4"
+          >
+            {sessionShort}
+          </span>
         </div>
         <ul
           data-testid="pipeline-log-feed"
@@ -126,7 +163,15 @@ export function PipelineEditorial() {
   );
 }
 
-function PipelineEditorialStage({ stage, active }: { stage: PipelineStage; active: boolean }) {
+function PipelineEditorialStage({
+  stage,
+  active,
+  isLast,
+}: {
+  stage: PipelineStage;
+  active: boolean;
+  isLast: boolean;
+}) {
   return (
     <li
       data-testid={`pipeline-stage-${stage.n}`}
@@ -137,6 +182,7 @@ function PipelineEditorialStage({ stage, active }: { stage: PipelineStage; activ
       }`}
     >
       <div
+        aria-hidden="true"
         className={`pv-edit__num font-display italic leading-none tracking-[-0.02em] ${
           active ? 'text-accent-current' : 'text-ink'
         }`}
@@ -154,9 +200,10 @@ function PipelineEditorialStage({ stage, active }: { stage: PipelineStage; activ
         >
           {stage.title}
         </h3>
-        <div className="pv-edit__tech mt-0.5 break-all font-mono text-[11px] text-ink-2">
-          {stage.tech}
+        <div className="pv-edit__detail mt-0.5 font-mono text-[11px] italic text-ink-3">
+          {stage.detail}
         </div>
+        <div className="pv-edit__tech break-all font-mono text-[11px] text-ink-2">{stage.tech}</div>
         <div className="pv-edit__sub font-mono text-[11px] uppercase tracking-[0.06em] text-ink-4">
           {stage.sub}
         </div>
@@ -178,6 +225,14 @@ function PipelineEditorialStage({ stage, active }: { stage: PipelineStage; activ
           </div>
         ))}
       </dl>
+      {!isLast && (
+        <div
+          aria-hidden="true"
+          className="pv-edit__arrow absolute bottom-[-11px] left-[14px] grid h-5 w-5 place-items-center bg-paper text-sm leading-none text-ink-4 md:left-9"
+        >
+          ↓
+        </div>
+      )}
     </li>
   );
 }

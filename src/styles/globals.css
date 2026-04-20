@@ -204,6 +204,26 @@
     color: color-mix(in oklab, #ffa400 calc(var(--bleed, 0) * 100%), var(--accent));
   }
 
+  /* Active-stage background highlight — base persimmon wash on the active
+     row at every tier, escalating to an amber wash bound to --bleed at
+     the hot+ tiers. The highlight is the schematic's primary signal of
+     "this stage is the active one"; without it the rotation reads as
+     copy-flicker rather than a guided tour. */
+  .pv-edit__stage.is-hot {
+    background: linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--accent) 6%, transparent),
+      transparent 60%
+    );
+  }
+  .pipeline-section.hot .pv-edit__stage.is-hot {
+    background: linear-gradient(
+      90deg,
+      color-mix(in oklab, #ffa400 calc(var(--bleed, 0) * 16%), transparent),
+      transparent 70%
+    );
+  }
+
   /* All four bleed layers — pointer-transparent, stacked above paper but
      below the .pipeline-shell content. */
   .pipeline-section .bleed-scanlines,
@@ -477,6 +497,19 @@
     .pipeline-section.peak .pv-edit,
     .pipeline-section.peak .bleed-cta {
       animation: none !important;
+    }
+    /* Mobile reduced-motion fallback: stage rotation is suppressed in JS,
+       which would freeze the active stage on `01 Browser` and leave the
+       readouts for stages 02-05 collapsed (`max-h-0 opacity-0`). That gives
+       a reduced-motion mobile visitor only 1/5 of the substantive readout
+       content. The desktop variant always renders readouts inline so it's
+       fine there. Force every stage's readouts visible on mobile too, so
+       reduced-motion preserves the section's editorial value per spec. */
+    .pipeline-section .pv-edit__stage .pv-edit__reads {
+      max-height: none !important;
+      opacity: 1 !important;
+      margin-top: 6px !important;
+      overflow: visible !important;
     }
   }
 

@@ -4,10 +4,13 @@
  * docs/input_artifacts/design_handoff_pipeline/app/data.js, but with the
  * real production identifiers in place of the prototype's mock fields:
  *
- *   - sGTM hostname is the self-hosted Cloud Run endpoint (io.iampatterson.com).
+ *   - Web GTM container is GTM-MWHFMTZN (NEXT_PUBLIC_GTM_ID, also pinned
+ *     in infrastructure/gtm/web-container.json).
+ *   - Server GTM (sGTM) container is GTM-NTTKZFWD (pinned in
+ *     infrastructure/gtm/server-container.json), self-hosted on Cloud Run
+ *     at the io.iampatterson.com custom domain.
  *   - BigQuery dataset.table is iampatterson_raw.events_raw, the live raw sink.
  *   - GA4 measurement ID is the real G-9M2G3RLHWF.
- *   - Client-side GTM container ID is the real GTM-N5JJ7VT4.
  *
  * Runtime-varying readouts (rows-today counts, query rates, latency
  * numbers) are illustrative — the schematic is editorial, not a live
@@ -47,7 +50,7 @@ export const PIPELINE_STAGES: readonly PipelineStage[] = Object.freeze([
     n: '01',
     title: 'Browser',
     role: 'Source',
-    tech: 'GTM-N5JJ7VT4',
+    tech: 'GTM-MWHFMTZN',
     sub: 'client container',
     detail: 'dataLayer.push()',
     reads: [
@@ -61,7 +64,7 @@ export const PIPELINE_STAGES: readonly PipelineStage[] = Object.freeze([
     n: '02',
     title: 'Client GTM',
     role: 'Consent gate',
-    tech: 'GTM-N5JJ7VT4',
+    tech: 'GTM-MWHFMTZN',
     sub: 'web container',
     detail: 'consent check · enrich',
     reads: [
@@ -75,12 +78,12 @@ export const PIPELINE_STAGES: readonly PipelineStage[] = Object.freeze([
     n: '03',
     title: 'Server GTM',
     role: 'Processor',
-    tech: 'io.iampatterson.com',
+    tech: 'GTM-NTTKZFWD',
     sub: 'cloud run · us-central1',
     detail: 'enrich · route · redact',
     reads: [
+      { k: 'host', v: 'io.iampatterson.com' },
       { k: 'ip_override', v: 'hashed' },
-      { k: 'user_agent', v: 'normalized' },
       { k: 'latency_ms', v: '38' },
     ],
   },

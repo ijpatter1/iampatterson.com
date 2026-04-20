@@ -1,11 +1,12 @@
 /**
  * Pipeline-section content schema tests. The `PIPELINE_STAGES` constant
  * is the spine of the editorial schematic in `PipelineEditorial`, and
- * the values that appear in the rendered readouts (sGTM hostname, BQ
- * dataset, GA4 ID) are real production values pulled from
- * `project_deployment.md` / `project_sgtm_selfhost.md` memories — not
- * the prototype's mock fields. Pinning them here so a future schema
- * change doesn't silently drift.
+ * the values that appear in the rendered readouts (GTM container IDs,
+ * sGTM hostname, BQ dataset) are real production values verified against
+ * `infrastructure/gtm/web-container.json` and
+ * `infrastructure/gtm/server-container.json` — not the prototype's mock
+ * fields. Pinning them here so a future schema change doesn't silently
+ * drift, and so a fabricated value can't slip past review.
  */
 
 import { PIPELINE_STAGES, type PipelineStage } from '@/lib/content/pipeline';
@@ -34,9 +35,27 @@ describe('PIPELINE_STAGES', () => {
     });
   });
 
-  it('uses the real sGTM hostname (io.iampatterson.com — self-hosted on Cloud Run)', () => {
+  it('uses the real web GTM container ID (GTM-MWHFMTZN) for browser + cgtm stages', () => {
+    // Pinning value verified against infrastructure/gtm/web-container.json
+    // and process.env.NEXT_PUBLIC_GTM_ID. Fabricating this would let a
+    // marketing-ops reader catch the section in a lie on the very surface
+    // whose copy says "the events aren't simulated. The warehouse is real."
+    const browser = PIPELINE_STAGES.find((s) => s.key === 'browser');
+    const cgtm = PIPELINE_STAGES.find((s) => s.key === 'cgtm');
+    expect(browser?.tech).toBe('GTM-MWHFMTZN');
+    expect(cgtm?.tech).toBe('GTM-MWHFMTZN');
+  });
+
+  it('uses the real server GTM container ID (GTM-NTTKZFWD) on the sgtm stage', () => {
+    // Pinning value verified against infrastructure/gtm/server-container.json.
     const sgtm = PIPELINE_STAGES.find((s) => s.key === 'sgtm');
-    expect(sgtm?.tech).toBe('io.iampatterson.com');
+    expect(sgtm?.tech).toBe('GTM-NTTKZFWD');
+  });
+
+  it('surfaces the real sGTM hostname (io.iampatterson.com) on the sgtm stage readouts', () => {
+    const sgtm = PIPELINE_STAGES.find((s) => s.key === 'sgtm');
+    const hostRead = sgtm?.reads.find((r) => r.k === 'host');
+    expect(hostRead?.v).toBe('io.iampatterson.com');
   });
 
   it('uses the real BigQuery raw events table (iampatterson_raw.events_raw)', () => {

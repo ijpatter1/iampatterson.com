@@ -55,7 +55,6 @@ export function PipelineSection() {
 
     let alive = true;
     let lastTier: BleedTier | -1 = -1;
-    let inView = true; // Default to in-view so SSR-rendered surfaces don't sit dark.
     let rafId: number | null = null;
 
     const compute = () => {
@@ -98,8 +97,7 @@ export function PipelineSection() {
         (entries) => {
           const entry = entries[0];
           if (!entry) return;
-          inView = entry.isIntersecting;
-          if (inView) startLoop();
+          if (entry.isIntersecting) startLoop();
           else stopLoop();
         },
         { rootMargin: '200px 0px' },
@@ -156,8 +154,11 @@ export function PipelineSection() {
   }, [bleedTier]);
 
   const tierClass = tierClassName(bleedTier);
+  // Spec calls for asymmetric padding (80px top / 100px bottom) so the
+  // CTA gets editorial gravity at the close — matches design handoff
+  // pipeline_section.css `padding: 80px 0 100px`.
   const sectionClassName = [
-    'pipeline-section bleed-layer relative isolate overflow-hidden border-t border-rule-soft bg-paper py-20 md:py-28',
+    'pipeline-section bleed-layer relative isolate overflow-hidden border-t border-rule-soft bg-paper pt-20 pb-[100px] md:pt-28',
     flickBurst ? 'flick' : '',
     tierClass,
   ]
@@ -185,7 +186,7 @@ export function PipelineSection() {
       <div data-bleed-layer="rgb" className="bleed-rgb" aria-hidden="true" />
 
       <div className="pipeline-shell relative z-[2] mx-auto max-w-content px-5 md:px-10">
-        <div className="grid gap-5 md:grid-cols-[2fr_1fr] md:items-end md:gap-15">
+        <div className="grid gap-5 md:grid-cols-[2fr_1fr] md:items-end md:gap-[60px]">
           <h2
             className="font-display font-normal text-ink"
             style={{

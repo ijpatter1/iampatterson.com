@@ -26,6 +26,8 @@ beforeEach(() => {
       removeEventListener: jest.fn(),
     })),
   });
+  // Pin a known session ID so the footnote ID is deterministic.
+  document.cookie = '_iap_sid=fixed-session-abc123def; path=/';
 });
 
 afterEach(() => {
@@ -131,12 +133,79 @@ describe('PipelineEditorial', () => {
     expect(feed.textContent).toContain('click_cta');
   });
 
-  it('caps the footnote feed to 4 visible rows', () => {
+  it('caps the footnote feed to exactly 4 visible rows when the buffer overflows', () => {
     mockLiveEvents = Array.from({ length: 12 }, (_, i) =>
       makeEvent(`e${i}`, `evt_${i}`, '2026-04-20T10:00:00.000Z'),
     );
     render(<PipelineEditorial />);
     const items = screen.getByTestId('pipeline-log-feed').querySelectorAll('li');
-    expect(items.length).toBeLessThanOrEqual(4);
+    expect(items).toHaveLength(4);
+  });
+
+  it('shows the NEWEST live events in the visible window when the buffer overflows', () => {
+    // useLiveEvents returns events newest-first. With >4 live events, the
+    // visible window must track the most recent activity (not the oldest
+    // four still in the buffer). We send 12 distinct events and assert
+    // that at least the absolute-newest one (e0 — useLiveEvents emits
+    // newest-first) is present in the rendered feed; an older one (e10)
+    // should NOT be visible.
+    mockLiveEvents = Array.from({ length: 12 }, (_, i) =>
+      makeEvent(`evt-${i}`, `evt_${i}`, `2026-04-20T10:00:0${i}.000Z`),
+    );
+    render(<PipelineEditorial />);
+    const feed = screen.getByTestId('pipeline-log-feed');
+    expect(feed.textContent).toContain('evt_0');
+    expect(feed.textContent).not.toContain('evt_11');
+  });
+
+  it('renders distinct timestamps per live event (no render-tick lockstep)', () => {
+    // Two events 5 seconds apart in source data MUST render with different
+    // timestamps. The pre-fix implementation stamped Date.now() on every
+    // row at render time, so all live rows shared a single value.
+    const t0 = '2026-04-20T10:00:00.000Z';
+    const t5 = '2026-04-20T10:00:05.000Z';
+    mockLiveEvents = [makeEvent('e1', 'page_view', t0), makeEvent('e2', 'scroll_depth', t5)];
+    render(<PipelineEditorial />);
+    const feed = screen.getByTestId('pipeline-log-feed');
+    const items = Array.from(feed.querySelectorAll('li'));
+    const tsCells = items.map((li) => li.querySelector('.t')?.textContent ?? '');
+    // Two visible live rows (after seeds slide out) — their timestamps
+    // must not all be the same value. Use Set size as the witness.
+    const liveTsCells = tsCells.slice(-2);
+    expect(new Set(liveTsCells).size).toBe(2);
+  });
+
+  it('renders the real session ID (last 6 chars) in the footnote header', () => {
+    render(<PipelineEditorial />);
+    const idEl = screen.getByTestId('pipeline-footnote-session');
+    // Cookie is fixed-session-abc123def → last 6 chars = '123def'
+    expect(idEl.textContent).toBe('ses_123def');
+  });
+
+  it('renders stage.detail copy on each stage', () => {
+    render(<PipelineEditorial />);
+    // stage.detail strings from PIPELINE_STAGES — must reach the DOM.
+    PIPELINE_STAGES.forEach((s) => {
+      expect(screen.getByText(s.detail)).toBeInTheDocument();
+    });
+  });
+
+  it('renders inter-stage ↓ arrows between every pair of consecutive stages (4 total)', () => {
+    const { container } = render(<PipelineEditorial />);
+    const arrows = container.querySelectorAll('.pv-edit__arrow');
+    expect(arrows).toHaveLength(PIPELINE_STAGES.length - 1);
+    arrows.forEach((a) => {
+      expect(a.textContent).toBe('↓');
+      expect(a.getAttribute('aria-hidden')).toBe('true');
+    });
+  });
+
+  it('marks numeral spans as aria-hidden so screen readers do not double-count', () => {
+    const { container } = render(<PipelineEditorial />);
+    const numerals = container.querySelectorAll('.pv-edit__num');
+    expect(numerals.length).toBe(PIPELINE_STAGES.length);
+    numerals.forEach((n) => {
+      expect(n.getAttribute('aria-hidden')).toBe('true');
+    });
   });
 });

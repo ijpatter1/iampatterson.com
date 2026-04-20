@@ -346,6 +346,154 @@ describe('PipelineSection — bleed reveal', () => {
   });
 });
 
+describe('PipelineSection — flicker scheduler', () => {
+  it('schedules a flicker burst at warm tier and clears it after the burst window', () => {
+    // Pin Math.random to a deterministic value so we can compute the
+    // exact delay/duration the scheduler will use:
+    //   delay = 240 + (1 - bleed) * 2200 + rand * 400
+    //   duration = 90 + rand * 120
+    // With bleed ≈ 0.4 (warm) and rand = 0.5:
+    //   delay = 240 + 0.6*2200 + 200 = 240 + 1320 + 200 = 1760ms
+    //   duration = 90 + 60 = 150ms
+    // The first setTimeout chain inside the scheduler effect is what
+    // we drive — burst toggles on around 1762ms (240+0.601*2200+200),
+    // off around 1762+150. Use generous brackets to absorb the floating-
+    // point fraction in the bleed value and the 60ms warm-up overhead.
+    const randSpy = jest.spyOn(Math, 'random').mockReturnValue(0.5);
+    jest.useFakeTimers();
+    stubSectionGeometry(-457); // warm tier (bleed ≈ 0.4)
+    renderSection();
+    act(() => {
+      jest.advanceTimersByTime(60); // let the rAF compute the bleed → tier flips to warm
+    });
+    const section = screen.getByTestId('pipeline-section');
+    expect(section.className).not.toMatch(/\bflick\b/);
+    act(() => {
+      jest.advanceTimersByTime(1700); // before the ~1762ms threshold
+    });
+    expect(section.className).not.toMatch(/\bflick\b/);
+    act(() => {
+      jest.advanceTimersByTime(100); // crosses the burst-on threshold
+    });
+    expect(section.className).toMatch(/\bflick\b/);
+    act(() => {
+      jest.advanceTimersByTime(200); // crosses the burst-off threshold (90+60=150ms duration)
+    });
+    expect(section.className).not.toMatch(/\bflick\b/);
+    randSpy.mockRestore();
+  });
+
+  it('schedules MORE FREQUENT bursts as bleed grows (delay decreases with bleed)', () => {
+    // The (1 - b) * 2200 term means higher bleed → shorter delay. Test
+    // the two endpoints of the formula directly via the in-component
+    // constants by asserting that warm-tier first-burst arrives later
+    // than peak-tier first-burst.
+    const randSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
+    jest.useFakeTimers();
+
+    // First render: warm. rectTop=-457 with VH=800, H=1600 produces:
+    //   p = 1 - ((-457 - (-840)) / 1040) = 1 - 0.3683 = 0.6317
+    //   bleed = p² ≈ 0.399 → delay = 240 + (1-0.399)*2200 + 0 ≈ 1562.2ms.
+    // Use a generous in/out bracket to absorb the floating-point fraction.
+    stubSectionGeometry(-457);
+    const { unmount } = renderSection();
+    act(() => {
+      jest.advanceTimersByTime(60);
+    });
+    let section = screen.getByTestId('pipeline-section');
+    act(() => {
+      jest.advanceTimersByTime(1500); // before the 1562ms threshold
+    });
+    expect(section.className).not.toMatch(/\bflick\b/);
+    act(() => {
+      jest.advanceTimersByTime(100); // crosses 1562ms → burst fires
+    });
+    expect(section.className).toMatch(/\bflick\b/);
+    unmount();
+
+    // Second render: peak — bleed = 1 → delay = 240 + 0*2200 + 0 = 240ms.
+    stubSectionGeometry(800 * 0.95 - 1600);
+    renderSection();
+    act(() => {
+      jest.advanceTimersByTime(60);
+    });
+    section = screen.getByTestId('pipeline-section');
+    act(() => {
+      jest.advanceTimersByTime(239);
+    });
+    expect(section.className).not.toMatch(/\bflick\b/);
+    act(() => {
+      jest.advanceTimersByTime(2);
+    });
+    expect(section.className).toMatch(/\bflick\b/);
+    randSpy.mockRestore();
+  });
+});
+
+describe('PipelineSection — cleanup on unmount', () => {
+  it('cancels rAF and disconnects IntersectionObserver on unmount', () => {
+    // Fake timers FIRST — modern Jest replaces window.requestAnimationFrame
+    // and window.cancelAnimationFrame when fake timers are enabled, so any
+    // earlier override would be clobbered. Override our spies AFTER.
+    jest.useFakeTimers({ doNotFake: ['requestAnimationFrame', 'cancelAnimationFrame'] });
+
+    const rafIds: number[] = [];
+    let nextId = 1000;
+    Object.defineProperty(window, 'requestAnimationFrame', {
+      writable: true,
+      configurable: true,
+      value: (cb: FrameRequestCallback) => {
+        const id = nextId++;
+        rafIds.push(id);
+        window.setTimeout(() => cb(performance.now()), 16);
+        return id;
+      },
+    });
+    const cancelSpy = jest.fn();
+    Object.defineProperty(window, 'cancelAnimationFrame', {
+      writable: true,
+      configurable: true,
+      value: cancelSpy,
+    });
+    const disconnectSpy = jest.fn();
+    // Capture the IO callback and fire isIntersecting=true on observe so
+    // the rAF loop actually starts — only then will unmount have a frame
+    // to cancel.
+    class CapturingIO {
+      callback: IntersectionObserverCallback;
+      constructor(cb: IntersectionObserverCallback) {
+        this.callback = cb;
+      }
+      observe = jest.fn(() => {
+        this.callback(
+          [{ isIntersecting: true } as IntersectionObserverEntry],
+          this as unknown as IntersectionObserver,
+        );
+      });
+      unobserve = jest.fn();
+      disconnect = disconnectSpy;
+      takeRecords = jest.fn(() => []);
+    }
+    Object.defineProperty(window, 'IntersectionObserver', {
+      writable: true,
+      configurable: true,
+      value: CapturingIO,
+    });
+    stubSectionGeometry(800 * 0.95 - 1600);
+    const { unmount } = renderSection();
+    act(() => {
+      jest.advanceTimersByTime(60);
+    });
+    // Sanity: the rAF stub was hit at least once → loop is actually running.
+    expect(rafIds.length).toBeGreaterThan(0);
+    act(() => {
+      unmount();
+    });
+    expect(disconnectSpy).toHaveBeenCalled();
+    expect(cancelSpy).toHaveBeenCalled();
+  });
+});
+
 describe('PipelineSection — Watch it live CTA', () => {
   it('opens the overlay and fires click_cta with location pipeline_watch_it_live', async () => {
     const user = userEvent.setup();
