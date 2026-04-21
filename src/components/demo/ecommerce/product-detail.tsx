@@ -20,10 +20,10 @@ interface ProductDetailProps {
  *
  * Fires `trackProductView` + a `product_view` `near-product` toast on mount;
  * renders the 2-column editorial layout (palette-tile image + info panel
- * with palette swatches, blurb, add-to-cart, pr-details list) and a
- * Pattern 2 `LiveSidebar` showing the staging-layer transformation for the
- * current event. Add-to-cart wires `trackAddToCart` + `useCart.addItem` +
- * an `add_to_cart` `near-cart` toast.
+ * with blurb, add-to-cart, pr-details list) and a Pattern 2 `LiveSidebar`
+ * showing the staging-layer transformation for the current event.
+ * Add-to-cart wires `trackAddToCart` + `useCart.addItem` + an
+ * `add_to_cart` `near-cart` toast.
  */
 export function ProductDetail({ product }: ProductDetailProps) {
   const { addItem } = useCart();
@@ -126,20 +126,6 @@ export function ProductDetail({ product }: ProductDetailProps) {
           <p className="text-[15px] leading-relaxed text-[var(--shop-warm-brown,#5C4A3D)]/80">
             {product.blurb}
           </p>
-
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--shop-warm-brown,#5C4A3D)]/60">
-              palette
-            </span>
-            {product.palette.map((c, i) => (
-              <span
-                key={i}
-                className="inline-block h-4 w-4 rounded-full border border-[var(--shop-warm-brown,#5C4A3D)]/20"
-                style={{ background: c }}
-                aria-hidden="true"
-              />
-            ))}
-          </div>
 
           <button
             type="button"

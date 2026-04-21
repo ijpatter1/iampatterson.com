@@ -178,6 +178,24 @@ describe('ListingView (Phase 9F D5 — product listing)', () => {
     expect(listCard.textContent).toContain('count=6');
   });
 
+  // UAT r1 item 4 — the `all · plush · calendar · cameo · bundles`
+  // row read as a filter control but filtering 6 products has no value.
+  // Remove it to stop drawing attention to pointless UI.
+  it('does NOT render the pointless filter-chip row (UAT r1 item 4)', () => {
+    renderView();
+    const labels = ['plush', 'calendar', 'cameo', 'bundles'];
+    for (const label of labels) {
+      // Each token previously rendered as its own <span>, so the DOM
+      // surface we're killing is the exact-text span inside the
+      // listing header. Query for the chip span explicitly rather
+      // than the substring (which would match the product blurbs).
+      const matches = Array.from(document.querySelectorAll('span')).filter(
+        (el) => el.textContent?.trim().toLowerCase() === label,
+      );
+      expect(matches).toHaveLength(0);
+    }
+  });
+
   it('cascade fires exactly once across re-renders (no duplicate toasts)', () => {
     const { rerender } = renderView();
     rerender(

@@ -158,4 +158,18 @@ describe('ProductDetail (Phase 9F D6)', () => {
     const sidebar = document.querySelector('aside[data-live-sidebar]');
     expect(sidebar?.textContent).toMatch(/product_view/);
   });
+
+  // UAT r1 item 7 — the palette swatch row under the product blurb
+  // was a design reference in the hi-fi prototype, not intended as
+  // shipped UI. Remove it.
+  it('does NOT render a "palette" swatch row under the blurb (UAT r1 item 7)', () => {
+    renderDetail();
+    // Kill the specific mono-uppercase "palette" label inside the
+    // info panel. The product's colored hero tile (which also uses
+    // palette colors) is the intended imagery — that stays.
+    const paletteLabels = Array.from(document.querySelectorAll('span')).filter(
+      (el) => el.textContent?.trim().toLowerCase() === 'palette',
+    );
+    expect(paletteLabels).toHaveLength(0);
+  });
 });
