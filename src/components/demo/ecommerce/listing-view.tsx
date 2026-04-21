@@ -152,7 +152,9 @@ export function ListingView() {
       <WalkthroughBlurb route="listing" hasLiveSidebar={false}>
         The Tuna Shop front. Every click you make fires a real GTM event — watch the toasts up top,
         they&apos;re the events landing in BigQuery. The amber panel above shows the utm_campaign
-        classification step that sGTM runs on the way in.
+        classification step sGTM runs on the way in. On the next pages you&apos;ll see a{' '}
+        <em className="not-italic">see the stack ↓</em> link — that&apos;s how you reach the
+        instrumentation sidebars on mobile.
       </WalkthroughBlurb>
 
       <section className="flex flex-col gap-5">

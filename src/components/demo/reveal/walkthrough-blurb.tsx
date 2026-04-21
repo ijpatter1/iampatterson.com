@@ -46,7 +46,7 @@ function writePersisted(route: string, collapsed: boolean) {
  */
 export function WalkthroughBlurb({
   route,
-  title = "What you're looking at",
+  title = "what you're looking at",
   children,
   hasLiveSidebar = true,
 }: {
@@ -105,7 +105,10 @@ export function WalkthroughBlurb({
             <button
               type="button"
               onClick={handleSeeStack}
-              className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--shop-terracotta,#C4703A)] hover:underline md:hidden"
+              // Tap-target padding so the chip has ~44px hit height on
+              // mobile without bloating the visible chip (Tailwind
+              // py-2.5 = 10px top+bottom → 32px + content ≈ 44px).
+              className="-my-2.5 px-1 py-2.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--shop-terracotta,#C4703A)] hover:underline md:hidden"
               data-walkthrough-stack-link=""
             >
               see the stack ↓
@@ -117,9 +120,14 @@ export function WalkthroughBlurb({
             aria-expanded={!collapsed}
             aria-controls={bodyId}
             aria-label={collapsed ? 'Expand walkthrough' : 'Collapse walkthrough'}
-            className="font-mono text-[14px] leading-none text-[var(--shop-warm-brown,#5C4A3D)]/70 hover:text-[var(--shop-terracotta,#C4703A)]"
+            // Tap-target: 44×44 minimum via h-11 w-11 so the +/- glyph
+            // has a real hit area on mobile (product-reviewer Minor #4).
+            // Glyph stays visually compact via the inner span's font-size.
+            className="inline-flex h-11 w-11 items-center justify-center text-[var(--shop-warm-brown,#5C4A3D)]/70 hover:text-[var(--shop-terracotta,#C4703A)]"
           >
-            {collapsed ? '+' : '\u2212'}
+            <span aria-hidden="true" className="font-mono text-[18px] leading-none">
+              {collapsed ? '+' : '\u2212'}
+            </span>
           </button>
         </div>
       </header>

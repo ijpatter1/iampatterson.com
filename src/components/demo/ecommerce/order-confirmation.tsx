@@ -37,6 +37,15 @@ export function OrderConfirmation({ orderId, orderTotal, itemCount }: OrderConfi
   const { push } = useToast();
   const firedRef = useRef(false);
 
+  // One-shot `purchase` toast on mount. The `firedRef` guards against
+  // React 18 Strict-Mode double-invocation in dev; the effect-level
+  // cleanup clears the pending setTimeout if the page unmounts before
+  // the 500ms delay elapses. `[orderId, push]` are listed in the dep
+  // array for exhaustive-deps compliance, but the parent page reads
+  // `orderId` once from Server-Component searchParams and never
+  // re-renders with a changed value in practice — the ref-guard is
+  // belt-and-braces against a future client-side re-render, not the
+  // primary correctness mechanism.
   useEffect(() => {
     if (firedRef.current) return;
     firedRef.current = true;

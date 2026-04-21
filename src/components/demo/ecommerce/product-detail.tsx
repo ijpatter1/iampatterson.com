@@ -92,7 +92,7 @@ export function ProductDetail({ product }: ProductDetailProps) {
       </Link>
 
       <WalkthroughBlurb route={`product-${product.id}`}>
-        A product page. Landing here fired a <span className="font-mono">product_view</span> event
+        The product detail. A <span className="font-mono">product_view</span> event already fired
         through sGTM into BigQuery. On mobile, tap <em className="not-italic">see the stack ↓</em>{' '}
         to jump to the staging-layer sidebar — it shows the raw-to-typed cast Dataform runs on each
         row before it reaches the marts.
