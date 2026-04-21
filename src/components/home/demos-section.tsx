@@ -145,7 +145,7 @@ export function DemosSection() {
             Demo · Ecommerce · Tiers 2 + 3
           </span>
           <p className="hidden max-w-[32ch] font-mono text-[11px] uppercase tracking-widest text-ink-3 md:block">
-            One coherent demo. Instrumentation reveals itself in flow.
+            One demo. The measurement is on screen as it happens.
           </p>
         </div>
 
@@ -160,18 +160,16 @@ export function DemosSection() {
                 maxWidth: '14ch',
               }}
             >
-              Watch a purchase become a <em className="text-accent-current">KPI</em>.
+              Shop a little. Watch the events land in{' '}
+              <em className="text-accent-current">BigQuery</em>.
             </h2>
             <p className="mt-8 max-w-[42ch] text-[17px] leading-[1.55] text-ink-2">
-              The Tuna Shop is a fully instrumented storefront. Browse, add to cart, check out —
-              each interaction fires real events that flow through the full stack. Instead of
-              toggling an overlay to see what&apos;s happening, the demo reveals its instrumentation
-              in-flow — toasts near the cart, a live sidebar showing staging-layer transformations,
-              data-quality assertions running against your event.
+              Browse, add a plush to cart, check out with a test card. Every interaction fires a
+              real GTM event through server-side GTM into BigQuery. The cart and checkout pages show
+              the staging-layer transforms and data-quality checks running against your own session.
             </p>
             <p className="mt-4 max-w-[42ch] text-[17px] leading-[1.55] text-ink-2">
-              The confirmation page is the Tier 3 payoff. Live Metabase embeds query the mart tables
-              Dataform built from the events your session just fired.
+              The confirmation page loads a Metabase dashboard built from the events you just fired.
             </p>
             <div className="mt-10">
               <Link
@@ -207,7 +205,7 @@ export function DemosSection() {
   [OK] routed: GA4 · BigQuery · Pub/Sub`}
             </pre>
             <p className="mt-6 border-t border-rule-soft pt-4 font-mono text-[10px] uppercase tracking-widest text-ink-3">
-              Every click, add-to-cart, and checkout fires a real event.
+              Every interaction here fires a real event.
             </p>
           </div>
         </div>

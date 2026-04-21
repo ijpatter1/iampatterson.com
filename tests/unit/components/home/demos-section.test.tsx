@@ -79,6 +79,44 @@ describe('DemosSection — post-9E-D6 single ecommerce section', () => {
     expect(screen.queryByTestId('swipe-bar-0')).not.toBeInTheDocument();
   });
 
+  // UAT r1 item 1 — the pre-rework headline + body fought non-existent
+  // friction ("Instead of toggling an overlay…") and puffed significance
+  // ("Watch a purchase become a KPI"). These regression pins make sure
+  // the reverted phrasing does not come back.
+  describe('UAT r1 item 1 — headline + body voice rework', () => {
+    it('does NOT use the pre-rework headline "Watch a purchase become a KPI"', () => {
+      render(<DemosSection />);
+      const section = screen.getByTestId('demos-section');
+      expect(section.textContent).not.toMatch(/watch a purchase become a kpi/i);
+    });
+
+    it('headline names BigQuery (specific, in-voice replacement for the abstract "KPI" headline)', () => {
+      render(<DemosSection />);
+      const h2 = screen.getByRole('heading', { level: 2 });
+      expect(h2.textContent).toMatch(/bigquery/i);
+    });
+
+    it('body does NOT use the "Instead of toggling an overlay" framing (attacks non-existent friction)', () => {
+      render(<DemosSection />);
+      const section = screen.getByTestId('demos-section');
+      expect(section.textContent).not.toMatch(/instead of toggling/i);
+    });
+
+    it('body does NOT use internal jargon "Tier 3 payoff"', () => {
+      render(<DemosSection />);
+      const section = screen.getByTestId('demos-section');
+      expect(section.textContent).not.toMatch(/tier 3 payoff/i);
+    });
+
+    it('body names the real stack pieces (server-side GTM, BigQuery, Metabase)', () => {
+      render(<DemosSection />);
+      const section = screen.getByTestId('demos-section');
+      expect(section.textContent).toMatch(/server-side gtm/i);
+      expect(section.textContent).toMatch(/bigquery/i);
+      expect(section.textContent).toMatch(/metabase/i);
+    });
+  });
+
   describe('rebuild banner (post-301-redirect landing)', () => {
     it('does NOT render the banner when ?rebuild param is absent', () => {
       render(<DemosSection />);
