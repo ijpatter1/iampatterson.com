@@ -5,6 +5,10 @@ import { render } from '@testing-library/react';
 
 import EcommerceLayout from '@/app/demo/ecommerce/layout';
 
+jest.mock('next/navigation', () => ({
+  usePathname: () => '/demo/ecommerce',
+}));
+
 describe('EcommerceLayout — Tuna Shop brand scope', () => {
   it('renders a wrapper with data-demo="ecommerce" so the palette override applies', () => {
     const { container } = render(
