@@ -5,12 +5,10 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import { ProductDetail } from '@/components/demo/ecommerce/product-detail';
 import { CartView } from '@/components/demo/ecommerce/cart-view';
 import { CheckoutForm } from '@/components/demo/ecommerce/checkout-form';
 import { OrderConfirmation } from '@/components/demo/ecommerce/order-confirmation';
 import { CartProvider, useCart } from '@/components/demo/ecommerce/cart-context';
-import { getProduct } from '@/lib/demo/products';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn() }),
@@ -48,58 +46,11 @@ beforeEach(() => {
 // introduced the ListingView client wrapper which composes it with the
 // session-boot toast cascade + hero block + cart wiring.
 
-describe('ProductDetail', () => {
-  const product = getProduct('tuna-plush-classic')!;
-
-  it('renders product name and price', () => {
-    render(
-      <CartProvider>
-        <ProductDetail product={product} />
-      </CartProvider>,
-    );
-    expect(screen.getByText('Tuna Plush')).toBeInTheDocument();
-    expect(screen.getByText('$26.00')).toBeInTheDocument();
-  });
-
-  it('fires trackProductView on mount', () => {
-    render(
-      <CartProvider>
-        <ProductDetail product={product} />
-      </CartProvider>,
-    );
-    expect(mockTrackProductView).toHaveBeenCalledWith({
-      product_id: 'tuna-plush-classic',
-      product_name: 'Tuna Plush',
-      product_price: 26,
-      product_category: 'plush',
-    });
-  });
-
-  it('fires trackAddToCart when Add to Cart is clicked', async () => {
-    const user = userEvent.setup();
-    render(
-      <CartProvider>
-        <ProductDetail product={product} />
-      </CartProvider>,
-    );
-    await user.click(screen.getByRole('button', { name: /add to cart/i }));
-    expect(mockTrackAddToCart).toHaveBeenCalledWith({
-      product_id: 'tuna-plush-classic',
-      product_name: 'Tuna Plush',
-      product_price: 26,
-      quantity: 1,
-    });
-  });
-
-  it('renders product description', () => {
-    render(
-      <CartProvider>
-        <ProductDetail product={product} />
-      </CartProvider>,
-    );
-    expect(screen.getByText(/moldable body, bendable legs/i)).toBeInTheDocument();
-  });
-});
+// ProductDetail's direct-render tests moved to
+// `tests/unit/components/demo/ecommerce/product-detail.test.tsx`. Phase 9F D6
+// rewrote ProductDetail to the Tuna Shop hi-fi design + fire the product_view
+// toast + render the staging-layer LiveSidebar; the new tests cover that
+// composed surface (ToastProvider + CartProvider render context).
 
 describe('CartView', () => {
   it('shows empty cart message when no items', () => {
