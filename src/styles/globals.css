@@ -14,6 +14,46 @@
     --u-paper: #0d0b0a;
   }
 
+  /* Tuna Shop brand palette — Phase 9F deliverable 12. Scoped to the
+     ecommerce demo subtree via `data-demo="ecommerce"` on the layout wrapper.
+     Inside this scope:
+     - `--accent` flips from site-wide persimmon (#EA5F2A) to Tuna Shop
+       terracotta (#C4703A). Preserves the UX_PIVOT_SPEC §1.4 invariant that
+       no editorial surface adopts amber as its primary accent — the shop's
+       primary is terracotta, not amber.
+     - Editorial surfaces warm to a cream page (#FBF6EA) with warm-brown
+       depth (#5C4A3D) — the Tuna Shop's authored palette mirroring
+       `docs/input_artifacts/design_handoff_ecommerce/styles/ecommerce.css`.
+     - Terminal reveal-pattern surfaces (Pattern 1 toast, Pattern 2 sidebar,
+       Pattern 3 inline diagnostic, Pattern 4 full-page diagnostic) use the
+       warm amber #F3C769 rather than the site-wide phosphor amber #FFA400 —
+       the prototype frames terminal surfaces as "the inverse of the shop,
+       not a separate environment." The palette-family continuity is the
+       point; the components themselves hardcode these hex values because
+       the scope is demo-local, not cross-site.
+     Keep in sync with docs/REQUIREMENTS.md Phase 9F constraints. */
+  [data-demo='ecommerce'] {
+    --accent: #c4703a;
+    --shop-cream: #fbf6ea;
+    --shop-cream-2: #f5eedb;
+    --shop-amber: #e6b769;
+    --shop-terracotta: #c4703a;
+    --shop-warm-brown: #5c4a3d;
+
+    --term-bg: #0d0b09;
+    --term-bg-2: #161310;
+    --term-ink: #ead9bc;
+    --term-ink-2: #9e8a6b;
+    --term-ink-3: #6b5c45;
+    --term-amber: #f3c769;
+    --term-amber-dim: #b5893b;
+    --term-ok: #8fbf7a;
+    --term-warn: #e6a94a;
+    --term-err: #d9725b;
+    --term-rule: rgba(234, 217, 188, 0.14);
+    --term-rule-2: rgba(234, 217, 188, 0.28);
+  }
+
   /* Smooth scrolling with reduced-motion respect */
   html {
     scroll-behavior: smooth;
