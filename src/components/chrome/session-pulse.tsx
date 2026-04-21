@@ -2,6 +2,7 @@
 
 import { forwardRef, useEffect, useRef, useState } from 'react';
 
+import { useSessionState } from '@/components/session-state-provider';
 import { useDataLayerEvents } from '@/hooks/useDataLayerEvents';
 import { getSessionId } from '@/lib/events/session';
 import { trackSessionPulseHover } from '@/lib/events/track';
@@ -38,6 +39,7 @@ export const SessionPulse = forwardRef<HTMLElement, SessionPulseProps>(function 
   const [sessionId, setSessionId] = useState('');
   const [isHovered, setIsHovered] = useState(false);
   const { events } = useDataLayerEvents();
+  const sessionState = useSessionState();
   const lastHoverEmitRef = useRef<number>(0);
 
   useEffect(() => {
@@ -45,7 +47,18 @@ export const SessionPulse = forwardRef<HTMLElement, SessionPulseProps>(function 
   }, []);
 
   const shortId = sessionId ? sessionId.slice(-6) : '······';
-  const count = events.length;
+  // Event count reads from the persisted SessionState blob so the
+  // counter survives a page refresh (user-reported regression:
+  // `window.dataLayer` is fresh-empty after reload, so reading the
+  // live hook would reset the counter even when the visitor's
+  // session has real history). The blob's `events_fired` is a
+  // name-keyed count map; sum all counts for the running total.
+  // Falls back to `events.length` (live data-layer buffer) during
+  // the brief pre-hydration window when `sessionState` is null.
+  const persistedCount = sessionState
+    ? Object.values(sessionState.events_fired).reduce((total, n) => total + (n ?? 0), 0)
+    : null;
+  const count = persistedCount ?? events.length;
 
   const body = (
     <>

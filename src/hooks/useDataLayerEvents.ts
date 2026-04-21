@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { DATA_LAYER_EVENT_NAMES } from '@/lib/events/schema';
 import type { ConsentState, PipelineEvent, RoutingResult } from '@/lib/events/pipeline-schema';
+import { loadTimelineBuffer, saveTimelineBuffer } from '@/lib/events/timeline-buffer';
 
 export interface UseDataLayerEventsOptions {
   /** Maximum events to keep in the buffer. Default: 100. */
@@ -118,12 +119,21 @@ export function useDataLayerEvents({
   maxBufferSize = 100,
   pollInterval = 400,
 }: UseDataLayerEventsOptions = {}): UseDataLayerEventsReturn {
-  const [events, setEvents] = useState<PipelineEvent[]>([]);
+  // F8 fix: eager-load the persisted ring buffer on first client render so
+  // Timeline isn't empty after a page refresh. Server render sees empty
+  // array (window undefined) → consumer renders empty-state placeholder,
+  // which matches the first client render BEFORE hydration finishes
+  // because useState's lazy init only runs on first mount. After hydration
+  // the loaded buffer is present and Timeline shows history.
+  const [events, setEvents] = useState<PipelineEvent[]>(() => loadTimelineBuffer());
   const lastIndexRef = useRef(0);
   const bufferSizeRef = useRef(maxBufferSize);
   bufferSizeRef.current = maxBufferSize;
 
-  const clearEvents = useCallback(() => setEvents([]), []);
+  const clearEvents = useCallback(() => {
+    setEvents([]);
+    saveTimelineBuffer([]);
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -144,9 +154,11 @@ export function useDataLayerEvents({
       if (newEvents.length > 0) {
         setEvents((prev) => {
           const merged = [...newEvents.reverse(), ...prev];
-          return merged.length > bufferSizeRef.current
-            ? merged.slice(0, bufferSizeRef.current)
-            : merged;
+          const capped =
+            merged.length > bufferSizeRef.current ? merged.slice(0, bufferSizeRef.current) : merged;
+          // Persist the sliding window so Timeline survives refresh.
+          saveTimelineBuffer(capped);
+          return capped;
         });
       }
     }, pollInterval);

@@ -15,7 +15,14 @@ import {
 } from '@/lib/session-state/types';
 
 const BAR_WIDTH = 16;
-const EVENT_TYPE_THRESHOLD = 10;
+// Post-UAT threshold lowered from 10 to 5. Original spec set 10 against
+// a denominator of 22 (pre-UAT F2), ≈45% engagement — too high; the CTA
+// rarely surfaced during casual exploration. Post-UAT F2 the visitor-
+// facing denominator is 20 (RENDERABLE subset), so 5 events = 25% —
+// reliably crossed by a visitor who scrolls, clicks a CTA, navigates,
+// accepts consent, and opens the overlay. User-reported in the F8 final
+// review that the CTA never showed.
+const EVENT_TYPE_THRESHOLD = 5;
 const TYPING_INTERVAL_MS = 24;
 
 type PortalDestination = 'services' | 'about' | 'contact';

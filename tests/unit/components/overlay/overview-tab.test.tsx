@@ -370,11 +370,11 @@ describe('OverviewTab', () => {
     expect(portal!.destination).toBe('services');
   });
 
-  it('hides the contextual contact CTA below the threshold (<=10 event types, no checkout)', () => {
+  it('hides the contextual contact CTA below the threshold (<=5 event types, no checkout — post-F8)', () => {
     useSessionState.mockReturnValue(
       makeState({
         event_type_coverage: {
-          fired: DATA_LAYER_EVENT_NAMES.slice(0, 5),
+          fired: DATA_LAYER_EVENT_NAMES.slice(0, 3),
           total: [...DATA_LAYER_EVENT_NAMES],
         },
       }),
@@ -387,11 +387,11 @@ describe('OverviewTab', () => {
     expect(screen.queryByTestId('contextual-contact-cta')).toBeNull();
   });
 
-  it('surfaces the contextual contact CTA when coverage.fired.length > 10', () => {
+  it('surfaces the contextual contact CTA when coverage.fired.length > 5 (post-F8 threshold)', () => {
     useSessionState.mockReturnValue(
       makeState({
         event_type_coverage: {
-          fired: DATA_LAYER_EVENT_NAMES.slice(0, 11),
+          fired: DATA_LAYER_EVENT_NAMES.slice(0, 6),
           total: [...DATA_LAYER_EVENT_NAMES],
         },
       }),

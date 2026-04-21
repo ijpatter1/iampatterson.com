@@ -27,6 +27,10 @@ function makeDataLayerEntry(overrides: Record<string, unknown> = {}) {
 describe('useDataLayerEvents', () => {
   beforeEach(() => {
     window.dataLayer = [];
+    // F8 added a timeline-buffer sessionStorage persistence. Clear the
+    // key between tests so previous-test fixtures don't bleed into
+    // useState(() => loadTimelineBuffer()) on the next mount.
+    window.sessionStorage.clear();
   });
 
   afterEach(() => {
@@ -37,6 +41,39 @@ describe('useDataLayerEvents', () => {
   it('returns empty events initially', () => {
     const { result } = renderHook(() => useDataLayerEvents());
     expect(result.current.events).toEqual([]);
+  });
+
+  it('eager-loads the persisted timeline buffer on mount (F8 refresh fix)', () => {
+    // Seed the sessionStorage ring buffer as if a prior page-load had
+    // captured these events. On mount the hook should return them
+    // immediately — not wait for the first poll tick.
+    window.sessionStorage.setItem(
+      'iampatterson.timeline_buffer',
+      JSON.stringify([
+        {
+          pipeline_id: 'prev-1',
+          received_at: '2026-04-21T00:00:01.000Z',
+          session_id: 'sid-xyz',
+          event_name: 'page_view',
+          timestamp: '2026-04-21T00:00:00.000Z',
+          page_path: '/',
+          page_title: '',
+          page_location: 'http://localhost/',
+          parameters: {},
+          consent: {
+            analytics_storage: 'granted',
+            ad_storage: 'denied',
+            ad_user_data: 'denied',
+            ad_personalization: 'denied',
+            functionality_storage: 'granted',
+          },
+          routing: [],
+        },
+      ]),
+    );
+    const { result } = renderHook(() => useDataLayerEvents());
+    expect(result.current.events).toHaveLength(1);
+    expect(result.current.events[0].pipeline_id).toBe('prev-1');
   });
 
   it('converts a dataLayer push into a PipelineEvent', () => {
