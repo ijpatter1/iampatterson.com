@@ -74,6 +74,38 @@ describe('ListingView (Phase 9F D5 — product listing)', () => {
     expect(screen.getByText(/prospecting · lookalike/i)).toBeInTheDocument();
   });
 
+  // UAT r2 item 11 — mobile: products swipe horizontally instead of
+  // stacking vertically. Pure CSS scroll-snap; no JS carousel lib.
+  describe('UAT r2 item 11 — mobile swipeable product carousel', () => {
+    it('product-listing container carries scroll-snap classes (mobile) and grid classes (sm+)', () => {
+      renderView();
+      const listing = document.querySelector('[data-product-listing]') as HTMLElement;
+      expect(listing).not.toBeNull();
+      // Mobile: flex + overflow-x-auto + snap-x snap-mandatory.
+      expect(listing.className).toMatch(/\bflex\b/);
+      expect(listing.className).toMatch(/\boverflow-x-auto\b/);
+      expect(listing.className).toMatch(/\bsnap-x\b/);
+      expect(listing.className).toMatch(/\bsnap-mandatory\b/);
+      // sm+: grid + snap-none override.
+      expect(listing.className).toMatch(/sm:grid\b/);
+      expect(listing.className).toMatch(/sm:snap-none/);
+    });
+
+    it('each product card carries snap-start + fixed-width on mobile, auto on sm+', () => {
+      renderView();
+      const cards = document.querySelectorAll('[data-product-card]');
+      expect(cards.length).toBe(6);
+      cards.forEach((card) => {
+        expect(card.className).toMatch(/\bsnap-start\b/);
+        expect(card.className).toMatch(/w-\[78vw\]/);
+        expect(card.className).toMatch(/\bshrink-0\b/);
+        // sm+ resets to grid sizing.
+        expect(card.className).toMatch(/sm:w-auto/);
+        expect(card.className).toMatch(/sm:snap-none/);
+      });
+    });
+  });
+
   // UAT r2 item 12 — every demo screen needs a "what am I looking at"
   // walkthrough blurb so visitors don't bounce off the data surfaces.
   describe('UAT r2 item 12 — walkthrough blurb', () => {

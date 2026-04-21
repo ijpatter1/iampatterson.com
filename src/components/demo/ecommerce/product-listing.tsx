@@ -12,7 +12,10 @@ interface ProductCardProps {
 function ProductCard({ product, onAddToCart }: ProductCardProps) {
   const [c1, c2, c3] = product.palette;
   return (
-    <article className="group relative flex flex-col gap-3 rounded-md border border-[#5C4A3D]/12 bg-[var(--shop-cream-2,#F5EEDB)] p-3 transition-shadow hover:shadow-md">
+    <article
+      data-product-card=""
+      className="group relative flex w-[78vw] max-w-[320px] shrink-0 snap-start flex-col gap-3 rounded-md border border-[#5C4A3D]/12 bg-[var(--shop-cream-2,#F5EEDB)] p-3 transition-shadow hover:shadow-md sm:w-auto sm:max-w-none sm:shrink sm:snap-none"
+    >
       <Link href={`/demo/ecommerce/${product.id}`} className="flex flex-col gap-3">
         <div
           className="relative aspect-[4/5] w-full overflow-hidden rounded"
@@ -67,13 +70,33 @@ interface ProductListingProps {
 }
 
 /**
- * Pure 3-column product grid (Phase 9F D5). Effects (toast cascade,
- * useSearchParams, cart context wiring) live in `ListingView`; this
- * component is presentational so it composes cleanly into tests.
+ * Product listing — 3-column grid on desktop, horizontal scroll-snap
+ * carousel on mobile (UAT r2 item 11).
+ *
+ * Pre-r2, mobile stacked the 6 cards as a single-column grid, making
+ * the listing page a long scroll. Per the user: products should swipe
+ * left-to-right on mobile instead.
+ *
+ * Implementation uses pure CSS scroll-snap — no JS library needed.
+ * - Mobile (<sm): flex with `overflow-x-auto snap-x snap-mandatory`;
+ *   each card is `w-[78vw] max-w-[320px] snap-start`. The `-mx-6 px-6`
+ *   gutter trick lets the carousel bleed to the viewport edge while
+ *   keeping the first/last card's padding intact.
+ * - sm+ (≥640px): flips back to 2-column grid; all snap/width rules
+ *   clear via `sm:w-auto sm:shrink sm:snap-none` on the card + the
+ *   responsive overrides on the container.
+ * - lg+ (≥1024px): 3-column grid.
+ *
+ * Effects (toast cascade, useSearchParams, cart context wiring) live
+ * in `ListingView`; this component is presentational so it composes
+ * cleanly into tests.
  */
 export function ProductListing({ products, onAddToCart }: ProductListingProps) {
   return (
-    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+    <div
+      data-product-listing=""
+      className="-mx-6 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-6 pb-2 sm:mx-0 sm:grid sm:snap-none sm:grid-cols-2 sm:gap-5 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-3"
+    >
       {products.map((p) => (
         <ProductCard key={p.id} product={p} onAddToCart={onAddToCart} />
       ))}
