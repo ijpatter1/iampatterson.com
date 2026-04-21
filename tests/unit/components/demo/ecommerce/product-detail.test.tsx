@@ -21,6 +21,23 @@ jest.mock('@/lib/events/track', () => ({
   trackAddToCart: (...a: unknown[]) => mockAddToCart(...a),
 }));
 
+// Live session context — mocked so the product-detail sidebar can
+// prove it's threading real values through (UAT r1 item 6).
+const mockSession = jest.fn();
+jest.mock('@/hooks/useSessionContext', () => ({
+  useSessionContext: () => mockSession(),
+}));
+const DEFAULT_SESSION = {
+  session_id: '',
+  last_event_name: '',
+  last_event_at: '',
+  seconds_since_last_event: 0,
+  events_in_session: 0,
+  add_to_cart_in_last_30s: 0,
+  consent_analytics: false,
+  consent_marketing: false,
+};
+
 function renderDetail(productId = 'tuna-plush-classic') {
   const product = getProduct(productId)!;
   return render(
@@ -37,6 +54,7 @@ describe('ProductDetail (Phase 9F D6)', () => {
     jest.useFakeTimers();
     mockProductView.mockClear();
     mockAddToCart.mockClear();
+    mockSession.mockReturnValue(DEFAULT_SESSION);
   });
   afterEach(() => {
     act(() => {
@@ -157,6 +175,51 @@ describe('ProductDetail (Phase 9F D6)', () => {
     renderDetail();
     const sidebar = document.querySelector('aside[data-live-sidebar]');
     expect(sidebar?.textContent).toMatch(/product_view/);
+  });
+
+  // UAT r1 item 6 — the staging-layer sidebar was advertised as live but
+  // rendered hardcoded session_id / event_timestamp / event count. With
+  // live session context present, those fields must substitute.
+  describe('UAT r1 item 6 — live staging-layer readout', () => {
+    it("substitutes the visitor's real session_id into the session_id row", () => {
+      mockSession.mockReturnValue({
+        ...DEFAULT_SESSION,
+        session_id: 'abc12345-6789-4def-8abc-deadbeefcafe',
+        events_in_session: 3,
+      });
+      renderDetail();
+      const sidebar = document.querySelector('aside[data-live-sidebar]');
+      expect(sidebar?.textContent).toMatch(/abc12345…/);
+    });
+
+    it('substitutes the real last_event_at into the event_timestamp row', () => {
+      const ts = '2026-04-21T18:15:02.000Z';
+      mockSession.mockReturnValue({
+        ...DEFAULT_SESSION,
+        last_event_at: ts,
+      });
+      renderDetail();
+      const sidebar = document.querySelector('aside[data-live-sidebar]');
+      expect(sidebar?.textContent).toContain(ts);
+    });
+
+    it('session_stitch detail reflects the real session_id + event count', () => {
+      mockSession.mockReturnValue({
+        ...DEFAULT_SESSION,
+        session_id: 'abc12345-6789-4def-8abc-deadbeefcafe',
+        events_in_session: 7,
+      });
+      renderDetail();
+      const sidebar = document.querySelector('aside[data-live-sidebar]');
+      expect(sidebar?.textContent).toMatch(/linked to abc12345… \(7 events\)/);
+    });
+
+    it('renders the seed placeholders when live session is empty (pre-first-event / SSR)', () => {
+      renderDetail();
+      const sidebar = document.querySelector('aside[data-live-sidebar]');
+      // Seed session_id row renders the prototype "ses_x9b2…" placeholder.
+      expect(sidebar?.textContent).toMatch(/ses_x9b2/);
+    });
   });
 
   // UAT r1 item 7 — the palette swatch row under the product blurb

@@ -9,6 +9,7 @@ import { trackAddToCart, trackProductView } from '@/lib/events/track';
 import { useCart } from './cart-context';
 import { useToast } from '@/components/demo/reveal/toast-provider';
 import { LiveSidebar } from '@/components/demo/reveal/live-sidebar';
+import { useSessionContext } from '@/hooks/useSessionContext';
 import { StagingLayerReadout } from './staging-layer-readout';
 
 interface ProductDetailProps {
@@ -28,6 +29,7 @@ interface ProductDetailProps {
 export function ProductDetail({ product }: ProductDetailProps) {
   const { addItem } = useCart();
   const { push } = useToast();
+  const session = useSessionContext();
   const firedRef = useRef(false);
 
   useEffect(() => {
@@ -162,7 +164,14 @@ export function ProductDetail({ product }: ProductDetailProps) {
           title="Staging layer · product_view"
           tag="UNDER · TIER 2"
         >
-          <StagingLayerReadout product={{ id: product.id, price: product.price }} />
+          <StagingLayerReadout
+            product={{ id: product.id, price: product.price }}
+            live={{
+              session_id: session.session_id,
+              last_event_at: session.last_event_at,
+              events_in_session: session.events_in_session,
+            }}
+          />
         </LiveSidebar>
       </div>
 

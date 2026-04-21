@@ -1,16 +1,27 @@
 'use client';
 
-import { stagingRowsForProduct, STAGING_STITCH_OPS } from '@/lib/demo/reveal/staging-layer';
+import { stagingRowsForProduct, stitchOpsForSession } from '@/lib/demo/reveal/staging-layer';
 
 /**
  * Staging-layer Tier 2 readout — rendered as children of `LiveSidebar` on
  * the product-detail page. Shows the raw → typed cast table with the
- * visitor's current product substituted + the four stitch-and-enrich ops
- * as an `[OK]` checklist + the `→ stg_product_views [written]` destination
- * footer per the prototype.
+ * visitor's current product + real session_id + real event timestamp
+ * substituted. The stitch-and-enrich ops reflect the visitor's real
+ * session (id + event count) where applicable.
  */
-export function StagingLayerReadout({ product }: { product: { id: string; price: number } }) {
-  const rows = stagingRowsForProduct(product);
+export function StagingLayerReadout({
+  product,
+  live,
+}: {
+  product: { id: string; price: number };
+  live?: {
+    session_id?: string;
+    last_event_at?: string;
+    events_in_session?: number;
+  };
+}) {
+  const rows = stagingRowsForProduct(product, live);
+  const ops = stitchOpsForSession(live);
   return (
     <div className="flex flex-col gap-3">
       <section className="flex flex-col gap-2">
@@ -53,7 +64,7 @@ export function StagingLayerReadout({ product }: { product: { id: string; price:
           </span>
         </header>
         <ul className="flex flex-col gap-1.5">
-          {STAGING_STITCH_OPS.map((o) => {
+          {ops.map((o) => {
             const tagClass =
               o.status === 'OK'
                 ? 'border-[#8FBF7A]/40 text-[#8FBF7A]'
