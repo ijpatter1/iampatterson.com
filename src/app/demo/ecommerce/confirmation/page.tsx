@@ -1,6 +1,7 @@
 import { OrderConfirmation } from '@/components/demo/ecommerce/order-confirmation';
-import { Tier3Embeds } from '@/components/demo/ecommerce/tier3-embeds';
-import { mintConfirmationEmbedUrls } from '@/lib/metabase/embed';
+import { DashboardPayoff } from '@/components/demo/ecommerce/dashboard-payoff';
+import { ToastProvider } from '@/components/demo/reveal/toast-provider';
+import { mintConfirmationDashboardUrl } from '@/lib/metabase/embed';
 
 interface ConfirmationPageProps {
   // Next.js App Router types searchParams values as string | string[] | undefined.
@@ -20,28 +21,40 @@ function sanitizeNumber(raw: string | undefined, fallback: number, parse: (s: st
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 }
 
+/**
+ * Phase 9F D9 — confirmation page.
+ *
+ * Server Component renders the order-confirmation surface (editorial
+ * header + Pattern 3 inline diagnostic pipeline-journey list) plus the
+ * Pattern 3 `DashboardPayoff` which embeds the full Metabase dashboard
+ * via a single server-signed JWT (replaces 9B's three question-level
+ * iframe embeds). Numeric query params are sanitized at this boundary
+ * so downstream components can trust finite non-negative inputs. The
+ * page is wrapped in `ToastProvider` so the `purchase` toast fired by
+ * `OrderConfirmation` on mount has a portal to land in.
+ *
+ * `orderTotal` missing / zero / non-finite renders the generic-but-coherent
+ * lead paragraph per the doc spec (closes 9B follow-up #5 zombie-state drift).
+ */
 export default function ConfirmationPage({ searchParams }: ConfirmationPageProps) {
   const orderId = firstValue(searchParams.order_id) ?? 'ORD-UNKNOWN';
-  // Sanitize numeric params at the page boundary. parseFloat('abc') is NaN,
-  // and malicious URLs can supply Infinity — both render as "$NaN" / "$Infinity"
-  // in the receipt without this guard. Downstream components can trust they
-  // get finite non-negative numbers.
   const orderTotal = sanitizeNumber(firstValue(searchParams.total), 0, parseFloat);
   const itemCount = sanitizeNumber(firstValue(searchParams.items), 0, (s) => parseInt(s, 10));
 
-  // Secret + card IDs come from env at render time. If either is missing
-  // (local dev, preview without the Vercel env wired up), mintConfirmationEmbedUrls
-  // returns null and Tier3Embeds renders a visible fallback pointing visitors
-  // at the live Metabase instance — never a silent empty state.
-  const embedUrls = mintConfirmationEmbedUrls({
+  // If either env is missing (local dev / preview without Vercel env wired),
+  // mintConfirmationDashboardUrl returns null and DashboardPayoff renders
+  // a visible fallback linking to the IAP-gated dashboard. No silent empty.
+  const dashboardUrl = mintConfirmationDashboardUrl({
     secret: process.env.MB_EMBEDDING_SECRET_KEY,
     configRaw: process.env.METABASE_EMBED_CONFIG,
   });
 
   return (
-    <>
-      <OrderConfirmation orderId={orderId} orderTotal={orderTotal} itemCount={itemCount} />
-      <Tier3Embeds urls={embedUrls} orderTotal={orderTotal} />
-    </>
+    <ToastProvider>
+      <main className="mx-auto flex max-w-[1200px] flex-col gap-12 px-6 py-12">
+        <OrderConfirmation orderId={orderId} orderTotal={orderTotal} itemCount={itemCount} />
+        <DashboardPayoff dashboardUrl={dashboardUrl} />
+      </main>
+    </ToastProvider>
   );
 }

@@ -1,0 +1,65 @@
+'use client';
+
+import { InlineDiagnostic } from '@/components/demo/reveal/inline-diagnostic';
+import { METABASE_BASE_URL } from '@/lib/metabase/embed';
+
+/**
+ * Phase 9F D9 — Tier 3 dashboard payoff surface.
+ *
+ * Wraps a single full-dashboard Metabase embed in `InlineDiagnostic` so
+ * the Tier 3 payoff reads visually continuous with the rest of the demo's
+ * reveal aesthetic (amber headers, terminal-style separators). Renders a
+ * visible IAP-gated deep-link on mobile as an honest "here's where this
+ * lives in production" affordance.
+ *
+ * The lead paragraph lives OUTSIDE this component — `ConfirmationView`
+ * owns the editorial prose so the $total interpolation is one concern,
+ * and this component is purely the embed chrome.
+ */
+export function DashboardPayoff({ dashboardUrl }: { dashboardUrl: string | null }) {
+  if (!dashboardUrl) {
+    return (
+      <InlineDiagnostic
+        tag="TIER 3 · DASHBOARDS"
+        title="dashboard embeds disabled in this environment"
+      >
+        <p className="text-[13px] leading-relaxed text-[#EAD9BC]/80">
+          the signing env vars aren&apos;t wired in this environment. the dashboard lives at{' '}
+          <a
+            href={`${METABASE_BASE_URL}/dashboard/2`}
+            className="underline decoration-[#F3C769]/60 underline-offset-2 hover:text-[#F3C769]"
+            target="_blank"
+            rel="noreferrer"
+          >
+            bi.iampatterson.com/dashboard/2
+          </a>{' '}
+          behind Google SSO.
+        </p>
+      </InlineDiagnostic>
+    );
+  }
+
+  return (
+    <InlineDiagnostic tag="TIER 3 · DASHBOARDS" title="here's what your team sees, right now.">
+      <div className="w-full">
+        <iframe
+          src={dashboardUrl}
+          title="E-Commerce Executive dashboard"
+          loading="lazy"
+          className="block h-[1400px] w-full rounded border-0 bg-white md:h-[1100px]"
+          allow="fullscreen"
+        />
+      </div>
+      <p className="mt-2 text-[11px] text-[#EAD9BC]/60 md:hidden">
+        <a
+          href={`${METABASE_BASE_URL}/dashboard/2`}
+          target="_blank"
+          rel="noreferrer"
+          className="underline decoration-[#F3C769]/60 underline-offset-2 hover:text-[#F3C769]"
+        >
+          view full dashboard → (Google SSO required — internal BI)
+        </a>
+      </p>
+    </InlineDiagnostic>
+  );
+}
