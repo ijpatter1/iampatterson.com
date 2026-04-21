@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 
 import { CheckoutForm } from '@/components/demo/ecommerce/checkout-form';
+import { ToastProvider } from '@/components/demo/reveal/toast-provider';
 
 export const metadata: Metadata = {
   title: 'Checkout | The Tuna Shop',
@@ -8,9 +9,10 @@ export const metadata: Metadata = {
 
 export default function CheckoutPage() {
   return (
-    <main className="mx-auto max-w-4xl px-6 py-12">
-      <h1 className="mb-8 text-2xl font-bold text-neutral-900">Checkout</h1>
-      <CheckoutForm />
-    </main>
+    <ToastProvider>
+      <main className="mx-auto max-w-content px-6 py-12">
+        <CheckoutForm />
+      </main>
+    </ToastProvider>
   );
 }
