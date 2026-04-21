@@ -244,6 +244,46 @@ describe('CartProvider — localStorage persistence (Phase 9F D7)', () => {
     expect(screen.getAllByText('$52.00').length).toBeGreaterThanOrEqual(1);
   });
 
+  it('hydrates from a cross-tab storage event on the same key', () => {
+    const { rerender } = render(
+      <ToastProvider>
+        <CartProvider>
+          <CartView />
+        </CartProvider>
+      </ToastProvider>,
+    );
+    // Simulate another tab writing to the same localStorage key
+    localStorage.setItem(
+      'iampatterson.tunashop.cart.v1',
+      JSON.stringify([
+        { product_id: 'colin-plush', product_name: 'Colin Plush', product_price: 16, quantity: 1 },
+      ]),
+    );
+    window.dispatchEvent(new StorageEvent('storage', { key: 'iampatterson.tunashop.cart.v1' }));
+    rerender(
+      <ToastProvider>
+        <CartProvider>
+          <CartView />
+        </CartProvider>
+      </ToastProvider>,
+    );
+    expect(screen.getByText('Colin Plush')).toBeInTheDocument();
+  });
+
+  it('ignores storage events for unrelated keys', () => {
+    render(
+      <ToastProvider>
+        <CartProvider>
+          <CartView />
+        </CartProvider>
+      </ToastProvider>,
+    );
+    expect(screen.getByText(/\[ cart · empty \]/i)).toBeInTheDocument();
+    // A storage event for a different key should not dispatch HYDRATE
+    window.dispatchEvent(new StorageEvent('storage', { key: 'unrelated.other.v1' }));
+    expect(screen.getByText(/\[ cart · empty \]/i)).toBeInTheDocument();
+  });
+
   it('discards malformed persisted data (invalid JSON or unexpected shape)', () => {
     localStorage.setItem('iampatterson.tunashop.cart.v1', 'not-json');
     render(

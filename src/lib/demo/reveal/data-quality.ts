@@ -55,7 +55,7 @@ const VOLUME_ANOMALY_THRESHOLD = 10;
  * also be parameterisable in real deployment — kept static here to keep the
  * demo behaviour predictable for screenshots and tests.
  */
-export function assertionsForCart(params: { itemCount: number; uniqueItems: number }): Assertion[] {
+export function assertionsForCart(params: { itemCount: number }): Assertion[] {
   return DATA_QUALITY_ASSERTIONS.map((a) => {
     if (a.k === 'volume_anomaly' && params.itemCount > VOLUME_ANOMALY_THRESHOLD) {
       return {

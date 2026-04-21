@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
+/** Elements to exclude from the focus-restore target (dialog itself). */
+
 const DEFAULT_DURATION_MS = 1900;
 
 export interface DiagnosticLine {
@@ -38,6 +40,8 @@ export function FullPageDiagnostic({
   const completedRef = useRef(false);
   const [reduced, setReduced] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -86,22 +90,47 @@ export function FullPageDiagnostic({
     };
   }, [duration, lines, reduced, complete]);
 
-  // Skippable via any keydown.
+  // Skippable via any keydown; also keeps Tab focus trapped on the dialog
+  // container (no interactive children, so Tab has nowhere valid to go —
+  // preventDefault keeps focus on the dialog).
   useEffect(() => {
     if (reduced) return;
-    const onKey = () => complete();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        dialogRef.current?.focus();
+        return;
+      }
+      complete();
+    };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [reduced, complete]);
+
+  // On mount: capture the previously-focused element + move focus to the
+  // dialog. On unmount: restore focus to the captured element. Without this,
+  // a Tab during the 1.9s window could land focus on an element hidden
+  // behind the portal (e.g. a form input on the checkout page).
+  useEffect(() => {
+    if (reduced || !mounted) return;
+    previousFocusRef.current = (document.activeElement as HTMLElement) ?? null;
+    dialogRef.current?.focus();
+    return () => {
+      previousFocusRef.current?.focus?.();
+    };
+  }, [reduced, mounted]);
 
   // Don't render anything under reduced-motion (already completed) or before mount.
   if (reduced || !mounted || typeof document === 'undefined') return null;
 
   return createPortal(
     <div
+      ref={dialogRef}
       role="dialog"
+      aria-modal="true"
       aria-label={lines[0]?.text ?? 'Pipeline diagnostic'}
-      className="fixed inset-0 z-full-page-diagnostic flex items-center justify-center bg-[#0D0B09] text-[#EAD9BC]"
+      tabIndex={-1}
+      className="fixed inset-0 z-full-page-diagnostic flex items-center justify-center bg-[#0D0B09] text-[#EAD9BC] outline-none"
     >
       <div
         aria-hidden="true"

@@ -33,6 +33,13 @@
        the scope is demo-local, not cross-site.
      Keep in sync with docs/REQUIREMENTS.md Phase 9F constraints. */
   [data-demo='ecommerce'] {
+    /* Cream page background so product cards breathe on cream rather than
+       floating on the site's white surface. Per the prototype README
+       §Visual direction: "Warm cream background (#FBF6EA)... Product cards
+       breathe on the cream." Product review 2026-04-21 Major #3. */
+    background-color: #fbf6ea;
+    color: #5c4a3d;
+
     --accent: #c4703a;
     --shop-cream: #fbf6ea;
     --shop-cream-2: #f5eedb;

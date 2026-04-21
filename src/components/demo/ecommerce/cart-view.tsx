@@ -173,7 +173,7 @@ export function CartView() {
           title="Data quality · 6 assertions running"
           tag="UNDER · TIER 2 · DATAFORM"
         >
-          <DataQualityReadout itemCount={itemCount} uniqueItems={items.length} />
+          <DataQualityReadout itemCount={itemCount} />
         </LiveSidebar>
       </div>
     </div>

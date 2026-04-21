@@ -18,10 +18,16 @@
  */
 import { test, expect } from '@playwright/test';
 
-// Skip when the webServer config couldn't stand up the app (e.g., the
-// sandbox this phase is developed in). Remove the skip when running in
-// an environment with the dev server and browsers available.
+// Gate the spec on an explicit env flag so accidental invocations in a
+// sandbox without the webServer + browsers don't fail outright. Set
+// `E2E_ENABLED=1` to run (the webServer config will stand up `npm run dev`
+// automatically). The spec file comment above explains the gate; this
+// code enforces it.
+const E2E_ENABLED = process.env.E2E_ENABLED === '1';
+
 test.describe('Ecommerce SessionPulse reachability (D11)', () => {
+  test.skip(!E2E_ENABLED, 'E2E_ENABLED=1 not set — Playwright spec gated for ready environments');
+
   test('SessionPulse is present on every /demo/ecommerce/* page', async ({ page }) => {
     const routes = [
       '/demo/ecommerce',

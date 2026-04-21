@@ -159,6 +159,11 @@ const config: Config = {
         toast: '45',
         'full-page-diagnostic': '49',
         overlay: '50',
+        // Cookiebot's own banner uses a very high z-index (~2147483647) that
+        // we don't set; this token reserves a high slot for any in-app
+        // affordance that must sit above the Cookiebot layer (none today —
+        // documented here for budget completeness per UAT eval note).
+        cookiebot: '100',
       },
 
       fontFamily: {

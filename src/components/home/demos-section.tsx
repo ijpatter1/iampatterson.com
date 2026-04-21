@@ -198,9 +198,9 @@ export function DemosSection() {
             </span>
             <pre className="mt-4 whitespace-pre-wrap font-mono text-[13px] leading-[1.6] text-ink">
               {`> product_view
-  product_id:   tuna-plush
-  product_name: Tuna Plush Toy
-  product_price: 24.99
+  product_id:   tuna-plush-classic
+  product_name: Tuna Plush
+  product_price: 26.00
 
   [OK] schema_validation
   [OK] session_stitch

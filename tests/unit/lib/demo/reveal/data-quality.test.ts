@@ -26,20 +26,20 @@ describe('data-quality assertions', () => {
 
 describe('assertionsForCart', () => {
   it('returns all 6 assertions for a normal-shaped cart', () => {
-    const out = assertionsForCart({ itemCount: 3, uniqueItems: 2 });
+    const out = assertionsForCart({ itemCount: 3 });
     expect(out).toHaveLength(6);
     expect(out.every((a) => a.status === 'OK')).toBe(true);
   });
 
   it('flags volume_anomaly as FAIL when item count exceeds the theoretical threshold', () => {
-    const out = assertionsForCart({ itemCount: 20, uniqueItems: 1 });
+    const out = assertionsForCart({ itemCount: 20 });
     const va = out.find((a) => a.k === 'volume_anomaly');
     expect(va?.status).toBe('FAIL');
     expect(va?.detail).toMatch(/exceeds/i);
   });
 
   it('preserves original detail messages when all OK', () => {
-    const out = assertionsForCart({ itemCount: 0, uniqueItems: 0 });
+    const out = assertionsForCart({ itemCount: 0 });
     const schema = out.find((a) => a.k === 'schema_validation');
     expect(schema?.detail).toMatch(/required fields/i);
   });

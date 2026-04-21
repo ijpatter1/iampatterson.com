@@ -1,7 +1,7 @@
 import { OrderConfirmation } from '@/components/demo/ecommerce/order-confirmation';
 import { DashboardPayoff } from '@/components/demo/ecommerce/dashboard-payoff';
 import { ToastProvider } from '@/components/demo/reveal/toast-provider';
-import { mintConfirmationDashboardUrl } from '@/lib/metabase/embed';
+import { mintConfirmationDashboardUrl, readConfirmationDashboardId } from '@/lib/metabase/embed';
 
 interface ConfirmationPageProps {
   // Next.js App Router types searchParams values as string | string[] | undefined.
@@ -44,16 +44,22 @@ export default function ConfirmationPage({ searchParams }: ConfirmationPageProps
   // If either env is missing (local dev / preview without Vercel env wired),
   // mintConfirmationDashboardUrl returns null and DashboardPayoff renders
   // a visible fallback linking to the IAP-gated dashboard. No silent empty.
+  const configRaw = process.env.METABASE_EMBED_CONFIG;
   const dashboardUrl = mintConfirmationDashboardUrl({
     secret: process.env.MB_EMBEDDING_SECRET_KEY,
-    configRaw: process.env.METABASE_EMBED_CONFIG,
+    configRaw,
   });
+  // Thread the canonical dashboardId (from the same env config) into
+  // DashboardPayoff so its mobile deep-link + fallback text track the env
+  // contract rather than hardcoding `2`. Undefined falls back to the
+  // pinned default in the component.
+  const dashboardId = readConfirmationDashboardId(configRaw) ?? undefined;
 
   return (
     <ToastProvider>
       <main className="mx-auto flex max-w-[1200px] flex-col gap-12 px-6 py-12">
         <OrderConfirmation orderId={orderId} orderTotal={orderTotal} itemCount={itemCount} />
-        <DashboardPayoff dashboardUrl={dashboardUrl} />
+        <DashboardPayoff dashboardUrl={dashboardUrl} dashboardId={dashboardId} />
       </main>
     </ToastProvider>
   );

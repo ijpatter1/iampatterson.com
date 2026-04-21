@@ -1,25 +1,28 @@
 'use client';
 
 import { CartProvider } from '@/components/demo/ecommerce/cart-context';
+import { EcomFooter } from '@/components/demo/ecommerce/ecom-footer';
 import { EcomSubNav } from '@/components/demo/ecommerce/ecom-sub-nav';
 
 export default function EcommerceLayout({ children }: { children: React.ReactNode }) {
   // `data-demo="ecommerce"` scopes the Tuna Shop palette override in
   // `src/styles/globals.css`. The shop's terracotta `--accent` replaces the
-  // site-wide persimmon inside this subtree only, and terminal surfaces
-  // (toast / sidebar / inline / full-page diagnostic) pick up the warm Tuna
-  // palette rather than the site-wide phosphor amber. See docs/REQUIREMENTS.md
-  // Phase 9F deliverable 12 + docs/ARCHITECTURE.md "Brand treatment".
+  // site-wide persimmon inside this subtree only, terminal surfaces pick
+  // up the warm Tuna palette, and the subtree gets a cream page background
+  // so product cards breathe on cream rather than the site's white surface.
+  // See docs/REQUIREMENTS.md Phase 9F deliverable 12 + docs/ARCHITECTURE.md
+  // "Brand treatment".
   //
-  // EcomSubNav (Phase 9F follow-up, 2026-04-21) renders the demo's own
-  // `shop · cart` wayfinding below the site chrome. This is distinct from
-  // the session-scoped SessionPulse nav; the demo has its own shop-scoped
-  // navigation inside the demo subtree.
+  // EcomSubNav renders the Tuna Shop wordmark + `shop · cart` wayfinding
+  // at the top; EcomFooter renders the "this is a demo / no-kill rescues"
+  // brand beat + back-to-site links at the bottom. Both are distinct from
+  // the session-scoped site chrome (SessionPulse + LiveStrip + HomeBar).
   return (
-    <div data-demo="ecommerce" className="ecommerce-demo-scope">
+    <div data-demo="ecommerce" className="flex min-h-screen flex-col">
       <CartProvider>
         <EcomSubNav />
-        {children}
+        <div className="flex-1">{children}</div>
+        <EcomFooter />
       </CartProvider>
     </div>
   );

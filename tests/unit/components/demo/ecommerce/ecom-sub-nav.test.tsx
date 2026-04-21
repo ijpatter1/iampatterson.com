@@ -2,7 +2,6 @@
  * @jest-environment jsdom
  */
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 
 import { EcomSubNav } from '@/components/demo/ecommerce/ecom-sub-nav';
 import { CartProvider, useCart } from '@/components/demo/ecommerce/cart-context';

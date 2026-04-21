@@ -87,6 +87,23 @@ export function mintConfirmationDashboardUrl(env: {
   }
 }
 
+/**
+ * Read the dashboardId from the env config without signing — useful for
+ * downstream components (mobile deep-link, fallback text) that need to
+ * reference the dashboard's canonical URL without a JWT. Returns null on
+ * missing / malformed input, same failure mode as
+ * `mintConfirmationDashboardUrl`. Silent on `console.warn` because callers
+ * already see the null-URL fallback from the signer.
+ */
+export function readConfirmationDashboardId(configRaw: string | undefined): number | null {
+  if (!configRaw) return null;
+  try {
+    return parseEmbedConfig(configRaw).dashboardId;
+  } catch {
+    return null;
+  }
+}
+
 function isEmbedConfig(x: unknown): x is EmbedConfig {
   if (typeof x !== 'object' || x === null) return false;
   const obj = x as Record<string, unknown>;

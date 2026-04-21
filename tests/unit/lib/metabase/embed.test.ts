@@ -12,6 +12,7 @@ import {
   METABASE_BASE_URL,
   mintConfirmationDashboardUrl,
   parseEmbedConfig,
+  readConfirmationDashboardId,
   signDashboardEmbedUrl,
 } from '@/lib/metabase/embed';
 
@@ -145,5 +146,25 @@ describe('mintConfirmationDashboardUrl', () => {
     const decoded = jwt.verify(token, TEST_SECRET) as jwt.JwtPayload;
     // VALID_CONFIG fixture sets dashboardId = 2
     expect(decoded.resource).toEqual({ dashboard: 2 });
+  });
+});
+
+describe('readConfirmationDashboardId', () => {
+  const VALID_CONFIG = '{"dashboardId":7,"cardIds":{"funnel":40,"aov":41,"dailyRevenue":45}}';
+
+  it('returns the dashboardId when config is valid', () => {
+    expect(readConfirmationDashboardId(VALID_CONFIG)).toBe(7);
+  });
+
+  it('returns null when configRaw is undefined', () => {
+    expect(readConfirmationDashboardId(undefined)).toBeNull();
+  });
+
+  it('returns null when configRaw is malformed (no throw)', () => {
+    expect(readConfirmationDashboardId('not-json')).toBeNull();
+  });
+
+  it('returns null when config is structurally invalid', () => {
+    expect(readConfirmationDashboardId('{"something":"else"}')).toBeNull();
   });
 });

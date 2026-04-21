@@ -210,6 +210,41 @@ describe('FullPageDiagnostic', () => {
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
+  it('dialog has aria-modal="true" and receives focus on mount (focus trap)', () => {
+    // Seed a focused element outside the dialog to verify focus moves to the
+    // dialog + is restored on unmount.
+    const outside = document.createElement('button');
+    outside.textContent = 'outside';
+    document.body.appendChild(outside);
+    outside.focus();
+    expect(document.activeElement).toBe(outside);
+
+    const { unmount } = render(
+      <FullPageDiagnostic lines={[{ text: 'a' }]} onComplete={jest.fn()} />,
+    );
+    const dialog = document.querySelector('[role="dialog"]') as HTMLElement;
+    expect(dialog.getAttribute('aria-modal')).toBe('true');
+    expect(dialog.getAttribute('tabindex')).toBe('-1');
+    expect(document.activeElement).toBe(dialog);
+
+    unmount();
+    // Focus restored to the previously-focused element
+    expect(document.activeElement).toBe(outside);
+    outside.remove();
+  });
+
+  it('Tab keydown keeps focus trapped on the dialog (does not skip)', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const onComplete = jest.fn();
+    render(<FullPageDiagnostic lines={[{ text: 'a' }]} onComplete={onComplete} />);
+    // Tab should NOT skip (only non-Tab keys skip)
+    await user.keyboard('{Tab}');
+    expect(onComplete).not.toHaveBeenCalled();
+    // Focus remains on the dialog
+    const dialog = document.querySelector('[role="dialog"]');
+    expect(document.activeElement).toBe(dialog);
+  });
+
   it('renders into a portal at document.body', () => {
     render(<FullPageDiagnostic lines={[{ text: 'a' }]} onComplete={jest.fn()} />);
     const dialog = document.body.querySelector('[role="dialog"]');

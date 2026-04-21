@@ -137,7 +137,25 @@ export function ListingView() {
         </dl>
       </section>
 
-      <ProductListing products={allProducts} onAddToCart={handleAddToCart} />
+      <section className="flex flex-col gap-5">
+        <header className="flex items-baseline justify-between gap-4 border-b border-[var(--shop-warm-brown,#5C4A3D)]/12 pb-3">
+          <h2 className="font-display text-[22px] leading-tight text-[var(--shop-warm-brown,#5C4A3D)]">
+            everything in the shop
+          </h2>
+          <div className="hidden flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--shop-warm-brown,#5C4A3D)]/50 md:flex">
+            <span className="text-[var(--shop-terracotta,#C4703A)]">all</span>
+            <span aria-hidden="true">·</span>
+            <span>plush</span>
+            <span aria-hidden="true">·</span>
+            <span>calendar</span>
+            <span aria-hidden="true">·</span>
+            <span>cameo</span>
+            <span aria-hidden="true">·</span>
+            <span>bundles</span>
+          </div>
+        </header>
+        <ProductListing products={allProducts} onAddToCart={handleAddToCart} />
+      </section>
     </div>
   );
 }

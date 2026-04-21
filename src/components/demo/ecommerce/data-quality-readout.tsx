@@ -8,14 +8,8 @@ import { assertionsForCart } from '@/lib/demo/reveal/data-quality';
  * one-line detail per row, preceded by a `source: raw.events · streaming`
  * header and a 6-cell pipeline-health meter.
  */
-export function DataQualityReadout({
-  itemCount,
-  uniqueItems,
-}: {
-  itemCount: number;
-  uniqueItems: number;
-}) {
-  const assertions = assertionsForCart({ itemCount, uniqueItems });
+export function DataQualityReadout({ itemCount }: { itemCount: number }) {
+  const assertions = assertionsForCart({ itemCount });
   const passing = assertions.filter((a) => a.status === 'OK').length;
 
   return (

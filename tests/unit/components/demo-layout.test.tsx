@@ -7,8 +7,9 @@ jest.mock('@/lib/events/track', () => ({
   trackClickNav: jest.fn(),
 }));
 
+let mockPathname = '/demo/ecommerce';
 jest.mock('next/navigation', () => ({
-  usePathname: () => '/demo/ecommerce',
+  usePathname: () => mockPathname,
 }));
 
 import DemoLayout from '@/app/demo/layout';
@@ -33,13 +34,26 @@ describe('DemoLayout', () => {
     expect(screen.getByTestId('demo-child')).toBeInTheDocument();
   });
 
-  it('renders a demo footer with cross-demo navigation', () => {
+  it('suppresses the generic DemoFooterNav on /demo/ecommerce/* routes', () => {
+    // Phase 9F Major #4: the ecommerce demo carries its own brand-voiced
+    // EcomFooter; the generic DemoFooterNav is suppressed so the two
+    // footers don't stack.
+    mockPathname = '/demo/ecommerce';
     render(
       <DemoLayout>
         <div>Demo content</div>
       </DemoLayout>,
     );
-    // Demo footer should provide links back to homepage demos section and to other demos
+    expect(screen.queryByRole('link', { name: /back to demos/i })).not.toBeInTheDocument();
+  });
+
+  it('renders DemoFooterNav on non-ecommerce demo routes (when future demos return)', () => {
+    mockPathname = '/demo/subscription';
+    render(
+      <DemoLayout>
+        <div>Demo content</div>
+      </DemoLayout>,
+    );
     expect(screen.getByRole('link', { name: /back to demos/i })).toHaveAttribute('href', '/#demos');
   });
 });

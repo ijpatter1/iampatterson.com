@@ -53,20 +53,28 @@ export function StagingLayerReadout({ product }: { product: { id: string; price:
           </span>
         </header>
         <ul className="flex flex-col gap-1.5">
-          {STAGING_STITCH_OPS.map((o) => (
-            <li key={o.op} className="flex items-start gap-2 text-[11px] leading-snug">
-              <span
-                data-status={o.status}
-                className="shrink-0 rounded border border-[#8FBF7A]/40 px-1 py-[1px] text-[9px] tracking-[0.1em] text-[#8FBF7A]"
-              >
-                [{o.status}]
-              </span>
-              <span className="flex-1">
-                <span className="text-[#F3C769]">{o.op}</span>
-                <span className="ml-2 text-[#EAD9BC]/70">{o.detail}</span>
-              </span>
-            </li>
-          ))}
+          {STAGING_STITCH_OPS.map((o) => {
+            const tagClass =
+              o.status === 'OK'
+                ? 'border-[#8FBF7A]/40 text-[#8FBF7A]'
+                : o.status === 'WARN'
+                  ? 'border-[#E6A94A]/40 text-[#E6A94A]'
+                  : 'border-[#D9725B]/40 text-[#D9725B]';
+            return (
+              <li key={o.op} className="flex items-start gap-2 text-[11px] leading-snug">
+                <span
+                  data-status={o.status}
+                  className={`shrink-0 rounded border px-1 py-[1px] text-[9px] tracking-[0.1em] ${tagClass}`}
+                >
+                  [{o.status}]
+                </span>
+                <span className="flex-1">
+                  <span className="text-[#F3C769]">{o.op}</span>
+                  <span className="ml-2 text-[#EAD9BC]/70">{o.detail}</span>
+                </span>
+              </li>
+            );
+          })}
         </ul>
       </section>
 

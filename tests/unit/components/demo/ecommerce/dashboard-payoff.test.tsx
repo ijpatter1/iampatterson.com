@@ -20,7 +20,7 @@ describe('DashboardPayoff (Phase 9F D9)', () => {
     );
     const link = screen.getByText(/view full dashboard/i);
     expect(link.getAttribute('href')).toBe('https://bi.iampatterson.com/dashboard/2');
-    expect(link.textContent).toMatch(/google sso required/i);
+    expect(link.textContent).toMatch(/google sso required · internal bi/i);
   });
 
   it('renders a visible fallback (no iframe) when dashboardUrl is null', () => {
@@ -46,6 +46,21 @@ describe('DashboardPayoff (Phase 9F D9)', () => {
       <DashboardPayoff dashboardUrl="https://bi.iampatterson.com/embed/dashboard/x#bordered=true" />,
     );
     expect(screen.getByText(/TIER 3 · DASHBOARDS/i)).toBeInTheDocument();
+  });
+
+  it('dashboardId prop threads into the mobile deep-link and fallback text', () => {
+    // Explicit id=7 should appear in the mobile deep-link href
+    const { rerender } = render(
+      <DashboardPayoff
+        dashboardUrl="https://bi.iampatterson.com/embed/dashboard/x#bordered=true"
+        dashboardId={7}
+      />,
+    );
+    const link = screen.getByText(/view full dashboard/i);
+    expect(link.getAttribute('href')).toBe('https://bi.iampatterson.com/dashboard/7');
+    // Same id shows in the fallback block when URL is null
+    rerender(<DashboardPayoff dashboardUrl={null} dashboardId={7} />);
+    expect(screen.getByText(/bi\.iampatterson\.com\/dashboard\/7/i)).toBeInTheDocument();
   });
 
   it('iframe carries an accessible title and loading=lazy', () => {

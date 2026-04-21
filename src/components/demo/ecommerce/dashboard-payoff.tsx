@@ -3,6 +3,11 @@
 import { InlineDiagnostic } from '@/components/demo/reveal/inline-diagnostic';
 import { METABASE_BASE_URL } from '@/lib/metabase/embed';
 
+/** Fallback dashboard id — mirrors `METABASE_EMBED_CONFIG.dashboardId` when
+ * the env isn't wired. Update here + in 9B-infra `metabase-embed-config`
+ * Secret Manager entry if the canonical dashboard moves. */
+const FALLBACK_DASHBOARD_ID = 2;
+
 /**
  * Phase 9F D9 — Tier 3 dashboard payoff surface.
  *
@@ -16,7 +21,17 @@ import { METABASE_BASE_URL } from '@/lib/metabase/embed';
  * owns the editorial prose so the $total interpolation is one concern,
  * and this component is purely the embed chrome.
  */
-export function DashboardPayoff({ dashboardUrl }: { dashboardUrl: string | null }) {
+export function DashboardPayoff({
+  dashboardUrl,
+  dashboardId = FALLBACK_DASHBOARD_ID,
+}: {
+  dashboardUrl: string | null;
+  /** Threaded from `METABASE_EMBED_CONFIG.dashboardId` at the page
+   * boundary so the canonical deep-link + fallback text track the env
+   * contract. Defaults to the pinned fallback when not supplied. */
+  dashboardId?: number;
+}) {
+  const deepLinkUrl = `${METABASE_BASE_URL}/dashboard/${dashboardId}`;
   if (!dashboardUrl) {
     return (
       <InlineDiagnostic
@@ -26,12 +41,12 @@ export function DashboardPayoff({ dashboardUrl }: { dashboardUrl: string | null 
         <p className="text-[13px] leading-relaxed text-[#EAD9BC]/80">
           the signing env vars aren&apos;t wired in this environment. the dashboard lives at{' '}
           <a
-            href={`${METABASE_BASE_URL}/dashboard/2`}
+            href={deepLinkUrl}
             className="underline decoration-[#F3C769]/60 underline-offset-2 hover:text-[#F3C769]"
             target="_blank"
             rel="noreferrer"
           >
-            bi.iampatterson.com/dashboard/2
+            bi.iampatterson.com/dashboard/{dashboardId}
           </a>{' '}
           behind Google SSO.
         </p>
@@ -52,12 +67,12 @@ export function DashboardPayoff({ dashboardUrl }: { dashboardUrl: string | null 
       </div>
       <p className="mt-2 text-[11px] text-[#EAD9BC]/60 md:hidden">
         <a
-          href={`${METABASE_BASE_URL}/dashboard/2`}
+          href={deepLinkUrl}
           target="_blank"
           rel="noreferrer"
           className="underline decoration-[#F3C769]/60 underline-offset-2 hover:text-[#F3C769]"
         >
-          view full dashboard → (Google SSO required — internal BI)
+          view full dashboard → (Google SSO required · internal BI)
         </a>
       </p>
     </InlineDiagnostic>

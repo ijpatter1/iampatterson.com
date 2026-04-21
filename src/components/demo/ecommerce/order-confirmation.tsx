@@ -112,6 +112,19 @@ export function OrderConfirmation({ orderId, orderTotal, itemCount }: OrderConfi
         </ol>
       </InlineDiagnostic>
 
+      <section className="flex flex-col gap-4 border-t border-[var(--shop-warm-brown,#5C4A3D)]/12 pt-8">
+        <p className="max-w-[640px] font-display text-[20px] leading-snug text-[var(--shop-warm-brown,#5C4A3D)]">
+          dashboards are not the payoff. answers are. the mart layer is what makes the answers
+          trustworthy.
+        </p>
+        <Link
+          href="/services"
+          className="font-mono text-xs uppercase tracking-[0.12em] text-[var(--shop-terracotta,#C4703A)] hover:underline"
+        >
+          read about the services →
+        </Link>
+      </section>
+
       <nav className="flex flex-wrap items-center gap-4 border-t border-[var(--shop-warm-brown,#5C4A3D)]/12 pt-6 text-sm">
         <Link
           href="/demo/ecommerce"
