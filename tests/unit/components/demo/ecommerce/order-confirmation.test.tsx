@@ -3,7 +3,10 @@
  */
 import { act, render, screen } from '@testing-library/react';
 
-import { OrderConfirmation } from '@/components/demo/ecommerce/order-confirmation';
+import {
+  ConfirmationCloser,
+  OrderConfirmation,
+} from '@/components/demo/ecommerce/order-confirmation';
 import { ToastProvider } from '@/components/demo/reveal/toast-provider';
 
 function renderConfirmation(
@@ -64,11 +67,17 @@ describe('OrderConfirmation (Phase 9F D9)', () => {
     expect(screen.getByText(/A real order just landed in production BigQuery/)).toBeInTheDocument();
   });
 
-  it('closing beat is sentence-cased (UAT r2 item 18)', () => {
-    renderConfirmation();
-    expect(
-      screen.getByText(/Dashboards are not the payoff\. Answers are\. The mart layer/),
-    ).toBeInTheDocument();
+  it('does NOT render the "Dashboards are not the payoff" closing beat (moved to ConfirmationCloser in UAT r2 item 20)', () => {
+    const { container } = renderConfirmation();
+    // The closing beat lives in ConfirmationCloser now so the page can
+    // render it AFTER the DashboardPayoff embed.
+    expect(container.textContent).not.toMatch(/Dashboards are not the payoff/);
+  });
+
+  it('does NOT render the back-to-shop / return-to-site nav (moved to ConfirmationCloser)', () => {
+    const { container } = renderConfirmation();
+    expect(container.textContent).not.toMatch(/back to the shop/);
+    expect(container.textContent).not.toMatch(/return to iampatterson\.com/);
   });
 
   it('inline-diagnostic title drops the ~840ms specific claim (UAT r2 item 19)', () => {
@@ -117,11 +126,21 @@ describe('OrderConfirmation (Phase 9F D9)', () => {
     const diag = document.querySelector('[data-inline-diagnostic]');
     expect(diag?.textContent).toContain('[LIVE]');
   });
+});
 
-  it('has back-to-shop and return-to-iampatterson links', () => {
-    renderConfirmation();
+describe('ConfirmationCloser (UAT r2 item 20 split)', () => {
+  it('renders the "Dashboards are not the payoff" closing beat', () => {
+    render(<ConfirmationCloser />);
+    expect(
+      screen.getByText(/Dashboards are not the payoff\. Answers are\. The mart layer/),
+    ).toBeInTheDocument();
+  });
+
+  it('renders the services link + back-to-shop and return-to-site nav', () => {
+    render(<ConfirmationCloser />);
     const links = screen.getAllByRole('link');
     const hrefs = links.map((l) => l.getAttribute('href'));
+    expect(hrefs).toContain('/services');
     expect(hrefs).toContain('/demo/ecommerce');
     expect(hrefs).toContain('/');
   });

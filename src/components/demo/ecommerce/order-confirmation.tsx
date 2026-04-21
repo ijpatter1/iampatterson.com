@@ -16,18 +16,22 @@ interface OrderConfirmationProps {
  * Phase 9F D9 — confirmation page editorial head + Pattern 3 inline diagnostic.
  *
  * Fires a `purchase` toast on mount and renders:
- *   (a) the lowercase editorial order-confirmed block with $total-
- *       interpolated lead paragraph (with zombie-state fallback for
- *       missing / zero / non-finite totals — closes 9B follow-up #5);
+ *   (a) the editorial order-confirmed block with $total-interpolated
+ *       lead paragraph (with zombie-state fallback for missing / zero /
+ *       non-finite totals — closes 9B follow-up #5);
  *   (b) the Pattern 3 InlineDiagnostic-wrapped timestamped 6-step
  *       pipeline-journey list (+0ms → +840ms). Per-step timings are
  *       representative; a muted footer inside the diagnostic surfaces
  *       this honestly (UAT r2 item 19).
  *
- * The full-dashboard Metabase embed renders separately via `DashboardPayoff`
- * — this component is the narrative + pipeline-journey side; the dashboard
- * payoff is the BI-canvas side. Composed together by `ConfirmationView` /
- * the page-level server component.
+ * UAT r2 item 20 split: the "Dashboards are not the payoff" closing
+ * beat + back-nav used to live inside this component, rendered ABOVE
+ * the `DashboardPayoff` Metabase embed. That put the CTA above the
+ * payoff, which fought the payoff. The closing beat moved into
+ * `ConfirmationCloser` (exported below); the page-level server
+ * component renders `<OrderConfirmation /> → <DashboardPayoff /> →
+ * <ConfirmationCloser />` so the dashboard is the first thing below
+ * the pipeline journey and the CTA lands AFTER it.
  */
 export function OrderConfirmation({ orderId, orderTotal, itemCount }: OrderConfirmationProps) {
   const { push } = useToast();
@@ -113,7 +117,21 @@ export function OrderConfirmation({ orderId, orderTotal, itemCount }: OrderConfi
           representative cadence · real latency varies with pipeline load
         </p>
       </InlineDiagnostic>
+    </div>
+  );
+}
 
+/**
+ * Confirmation-page closing beat — "Dashboards are not the payoff"
+ * paragraph + services link + back-nav. Split out of `OrderConfirmation`
+ * in UAT r2 item 20 so the page-level composition can render it AFTER
+ * the `DashboardPayoff` Metabase embed (pre-r2 it rendered above,
+ * putting the "dashboards are not the payoff" CTA in conflict with the
+ * dashboard-as-payoff framing by appearing first).
+ */
+export function ConfirmationCloser() {
+  return (
+    <div className="flex flex-col gap-10">
       <section className="flex flex-col gap-4 border-t border-[var(--shop-warm-brown,#5C4A3D)]/12 pt-8">
         <p className="max-w-[640px] font-display text-[20px] leading-snug text-[var(--shop-warm-brown,#5C4A3D)]">
           Dashboards are not the payoff. Answers are. The mart layer is what makes the answers

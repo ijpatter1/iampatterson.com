@@ -1,4 +1,7 @@
-import { OrderConfirmation } from '@/components/demo/ecommerce/order-confirmation';
+import {
+  ConfirmationCloser,
+  OrderConfirmation,
+} from '@/components/demo/ecommerce/order-confirmation';
 import { DashboardPayoff } from '@/components/demo/ecommerce/dashboard-payoff';
 import { ToastProvider } from '@/components/demo/reveal/toast-provider';
 import { mintConfirmationDashboardUrl, readConfirmationDashboardId } from '@/lib/metabase/embed';
@@ -55,11 +58,17 @@ export default function ConfirmationPage({ searchParams }: ConfirmationPageProps
   // pinned default in the component.
   const dashboardId = readConfirmationDashboardId(configRaw) ?? undefined;
 
+  // UAT r2 item 20 — dashboard must land above the "Dashboards are not
+  // the payoff" closing beat. Order is: editorial head + pipeline
+  // journey → DashboardPayoff embed → closing beat + back nav. Pre-r2
+  // the closing beat was baked into `OrderConfirmation`, which put it
+  // above the dashboard and fought the payoff framing.
   return (
     <ToastProvider>
       <main className="mx-auto flex max-w-[1200px] flex-col gap-12 px-6 py-12">
         <OrderConfirmation orderId={orderId} orderTotal={orderTotal} itemCount={itemCount} />
         <DashboardPayoff dashboardUrl={dashboardUrl} dashboardId={dashboardId} />
+        <ConfirmationCloser />
       </main>
     </ToastProvider>
   );

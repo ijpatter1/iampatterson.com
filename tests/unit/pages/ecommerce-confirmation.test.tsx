@@ -123,4 +123,41 @@ describe('ConfirmationPage — env → dashboard-embed wiring', () => {
     const main = container.querySelector('main');
     expect(main?.className).toMatch(/max-w-\[1200px\]/);
   });
+
+  // UAT r2 item 20 — the dashboard was rendering AFTER the "Dashboards
+  // are not the payoff" CTA, which fought the payoff framing.
+  describe('UAT r2 item 20 — dashboard lands before the closing beat', () => {
+    it('dashboard embed (iframe) appears before the closing beat in the DOM', () => {
+      process.env.MB_EMBEDDING_SECRET_KEY = VALID_SECRET;
+      process.env.METABASE_EMBED_CONFIG = VALID_CONFIG;
+
+      const { container } = renderPage({ order_id: 'demo-d9', total: '44.98', items: '2' });
+      const iframe = container.querySelector('iframe');
+      const closingBeat = Array.from(container.querySelectorAll('p')).find((p) =>
+        /Dashboards are not the payoff/.test(p.textContent ?? ''),
+      );
+      expect(iframe).not.toBeNull();
+      expect(closingBeat).toBeDefined();
+      // documentPosition FOLLOWING means the second arg comes AFTER the first.
+      const pos = iframe!.compareDocumentPosition(closingBeat as Node);
+      expect(pos & Node.DOCUMENT_POSITION_FOLLOWING).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+
+    it('even in the fallback path (no env), the closing beat still comes after the dashboard-payoff block', () => {
+      delete process.env.MB_EMBEDDING_SECRET_KEY;
+      process.env.METABASE_EMBED_CONFIG = VALID_CONFIG;
+
+      const { container } = renderPage({ order_id: 'demo-d9', total: '44.98', items: '2' });
+      const fallback = Array.from(container.querySelectorAll('p')).find((p) =>
+        /signing env vars aren't wired/i.test(p.textContent ?? ''),
+      );
+      const closingBeat = Array.from(container.querySelectorAll('p')).find((p) =>
+        /Dashboards are not the payoff/.test(p.textContent ?? ''),
+      );
+      expect(fallback).toBeDefined();
+      expect(closingBeat).toBeDefined();
+      const pos = fallback!.compareDocumentPosition(closingBeat as Node);
+      expect(pos & Node.DOCUMENT_POSITION_FOLLOWING).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+  });
 });
