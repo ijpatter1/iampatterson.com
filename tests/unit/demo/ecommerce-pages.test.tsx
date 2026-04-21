@@ -53,19 +53,21 @@ describe('ProductListing', () => {
 
   it('renders price for each product', () => {
     render(<ProductListing />);
-    expect(screen.getByText('$24.99')).toBeInTheDocument();
-    expect(screen.getByText('$19.99')).toBeInTheDocument();
+    expect(screen.getByText('$26.00')).toBeInTheDocument();
+    expect(screen.getByText('$14.00')).toBeInTheDocument();
   });
 
   it('renders links to product detail pages', () => {
     render(<ProductListing />);
     const links = screen.getAllByRole('link');
-    expect(links.some((l) => l.getAttribute('href') === '/demo/ecommerce/tuna-plush')).toBe(true);
+    expect(links.some((l) => l.getAttribute('href') === '/demo/ecommerce/tuna-plush-classic')).toBe(
+      true,
+    );
   });
 });
 
 describe('ProductDetail', () => {
-  const product = getProduct('tuna-plush')!;
+  const product = getProduct('tuna-plush-classic')!;
 
   it('renders product name and price', () => {
     render(
@@ -73,8 +75,8 @@ describe('ProductDetail', () => {
         <ProductDetail product={product} />
       </CartProvider>,
     );
-    expect(screen.getByText('Tuna Plush Toy')).toBeInTheDocument();
-    expect(screen.getByText('$24.99')).toBeInTheDocument();
+    expect(screen.getByText('Tuna Plush')).toBeInTheDocument();
+    expect(screen.getByText('$26.00')).toBeInTheDocument();
   });
 
   it('fires trackProductView on mount', () => {
@@ -84,10 +86,10 @@ describe('ProductDetail', () => {
       </CartProvider>,
     );
     expect(mockTrackProductView).toHaveBeenCalledWith({
-      product_id: 'tuna-plush',
-      product_name: 'Tuna Plush Toy',
-      product_price: 24.99,
-      product_category: 'toys',
+      product_id: 'tuna-plush-classic',
+      product_name: 'Tuna Plush',
+      product_price: 26,
+      product_category: 'plush',
     });
   });
 
@@ -100,9 +102,9 @@ describe('ProductDetail', () => {
     );
     await user.click(screen.getByRole('button', { name: /add to cart/i }));
     expect(mockTrackAddToCart).toHaveBeenCalledWith({
-      product_id: 'tuna-plush',
-      product_name: 'Tuna Plush Toy',
-      product_price: 24.99,
+      product_id: 'tuna-plush-classic',
+      product_name: 'Tuna Plush',
+      product_price: 26,
       quantity: 1,
     });
   });
@@ -113,7 +115,7 @@ describe('ProductDetail', () => {
         <ProductDetail product={product} />
       </CartProvider>,
     );
-    expect(screen.getByText(/soft, judgmental/i)).toBeInTheDocument();
+    expect(screen.getByText(/moldable body, bendable legs/i)).toBeInTheDocument();
   });
 });
 
@@ -144,9 +146,9 @@ function AddItemThenCheckout() {
   const { addItem } = useCart();
   React.useEffect(() => {
     addItem({
-      product_id: 'tuna-plush',
-      product_name: 'Tuna Plush Toy',
-      product_price: 24.99,
+      product_id: 'tuna-plush-classic',
+      product_name: 'Tuna Plush',
+      product_price: 26,
       quantity: 1,
     });
   }, [addItem]);
