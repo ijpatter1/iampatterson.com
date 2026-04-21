@@ -18,11 +18,11 @@ export function DataTable<T>({ columns, rows, keyField }: DataTableProps<T>) {
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-neutral-200">
+          <tr className="border-b border-rule-soft">
             {columns.map((col) => (
               <th
                 key={col.key}
-                className={`pb-2 text-xs font-medium text-neutral-500 ${
+                className={`pb-2 text-xs font-medium text-ink-3 ${
                   col.align === 'right' ? 'text-right' : 'text-left'
                 }`}
               >
@@ -35,7 +35,7 @@ export function DataTable<T>({ columns, rows, keyField }: DataTableProps<T>) {
           {rows.map((row, rowIdx) => (
             <tr
               key={String((row as Record<string, unknown>)[keyField] ?? rowIdx)}
-              className="border-b border-neutral-100"
+              className="border-b border-rule-faint"
             >
               {columns.map((col) => (
                 <td
