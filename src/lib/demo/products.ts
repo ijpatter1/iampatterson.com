@@ -8,7 +8,10 @@
  *
  * Fields:
  * - `id`, `name`, `price`, `category` — core SKU identity.
- * - `blurb` — lowercase brand-voice product description per prototype.
+ * - `blurb` — sentence-cased brand-voice product description (UAT r2
+ *   item 18: the pre-9F prototype's all-lowercase prose read unprofessional
+ *   on multi-sentence blocks; switched to sentence case while keeping the
+ *   warm/casual register).
  * - `tag` — optional display tag (`bestseller` / `new` / `one of one` /
  *   `bundle`). `null` for no tag.
  * - `palette` — three hex colors, used by the palette-tile placeholder
@@ -36,7 +39,7 @@ const productSeeds: Product[] = [
     category: 'plush',
     tag: 'bestseller',
     blurb:
-      "handmade velvet plush. moldable body, bendable legs, so if tuna's ears flop the wrong way you can just reform him. ICTI-certified factory. 12in nose-to-tail.",
+      "Handmade velvet plush. Moldable body, bendable legs, so if Tuna's ears flop the wrong way you can just reform him. ICTI-certified factory. 12in nose-to-tail.",
     palette: ['#E8D8BD', '#8A6A4A', '#3B2A1E'],
     imageLabel: 'PRODUCT · tuna plush · classic · 12in',
   },
@@ -47,7 +50,7 @@ const productSeeds: Product[] = [
     category: 'calendar',
     tag: 'new',
     blurb:
-      "twelve months of tuna. this year's theme is decades. AI-generated, because tuna is fifteen and retired from photoshoots. he does look sharp in a leisure suit.",
+      "Twelve months of Tuna. This year's theme is decades. AI-generated, because Tuna is fifteen and retired from photoshoots. He does look sharp in a leisure suit.",
     palette: ['#F3DFA8', '#C4703A', '#2B2424'],
     imageLabel: 'PRODUCT · 2026 wall calendar · 11×8.5',
   },
@@ -58,7 +61,7 @@ const productSeeds: Product[] = [
     category: 'plush',
     tag: null,
     blurb:
-      "tuna's best friend colin, from monster factory. licensed exclusive to our shop. soft, judgemental, excellent hugger.",
+      "Tuna's best friend Colin, from Monster Factory. Licensed exclusive to our shop. Soft, judgemental, excellent hugger.",
     palette: ['#D7C4A8', '#6F5236', '#2B2424'],
     imageLabel: 'PRODUCT · colin plush · 10in',
   },
@@ -69,7 +72,7 @@ const productSeeds: Product[] = [
     category: 'plush',
     tag: 'one of one',
     blurb:
-      'the ones that came out a little weird. a short leg, a lopsided eye, a tail that curls wrong. each is one of one. each goes home with someone.',
+      'The ones that came out a little weird. A short leg, a lopsided eye, a tail that curls wrong. Each is one of one. Each goes home with someone.',
     palette: ['#EADBBF', '#A87145', '#C4703A'],
     imageLabel: 'PRODUCT · PI plush · variant #0247',
   },
@@ -80,7 +83,7 @@ const productSeeds: Product[] = [
     category: 'personalized',
     tag: null,
     blurb:
-      'a personalized video from tuna, delivered via cameo. birthdays, pep talks, breakup announcements. usually 2–5 days.',
+      'A personalized video from Tuna, delivered via Cameo. Birthdays, pep talks, breakup announcements. Usually 2–5 days.',
     palette: ['#2B2424', '#C4703A', '#F3DFA8'],
     imageLabel: 'PRODUCT · cameo · 30s personalized video',
   },
@@ -91,7 +94,7 @@ const productSeeds: Product[] = [
     category: 'bundle',
     tag: 'bundle',
     blurb:
-      'one tuna plush and the 2026 calendar. saves you $8, which is a reasonable percentage of a tuna.',
+      'One Tuna plush and the 2026 calendar. Saves you $8, which is a reasonable percentage of a tuna.',
     palette: ['#F3DFA8', '#8A6A4A', '#C4703A'],
     imageLabel: 'PRODUCT · bundle · plush + calendar',
   },

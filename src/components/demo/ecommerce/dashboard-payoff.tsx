@@ -39,7 +39,7 @@ export function DashboardPayoff({
         title="dashboard embeds disabled in this environment"
       >
         <p className="text-[13px] leading-relaxed text-[#EAD9BC]/80">
-          the signing env vars aren&apos;t wired in this environment. the dashboard lives at{' '}
+          The signing env vars aren&apos;t wired in this environment. The dashboard lives at{' '}
           <a
             href={deepLinkUrl}
             className="underline decoration-[#F3C769]/60 underline-offset-2 hover:text-[#F3C769]"

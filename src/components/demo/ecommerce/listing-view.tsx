@@ -112,8 +112,8 @@ export function ListingView() {
           <em className="not-italic text-[var(--shop-terracotta,#C4703A)]">overbite.</em>
         </h1>
         <p className="max-w-[640px] text-[15px] leading-relaxed text-[var(--shop-warm-brown,#5C4A3D)]/80">
-          tuna is a chiweenie with a famous face. this is his shop. plushes, a calendar, a cameo or
-          two. a portion of every order goes to no-kill rescues. every click you make is also a
+          Tuna is a chiweenie with a famous face. This is his shop. Plushes, a calendar, a cameo or
+          two. A portion of every order goes to no-kill rescues. Every click you make is also a
           demo: the toasts up top are your browser talking to sGTM, which talks to BigQuery.
         </p>
         <dl className="grid grid-cols-1 gap-2 rounded border border-[var(--shop-warm-brown,#5C4A3D)]/12 bg-[var(--shop-cream-2,#F5EEDB)] p-4 sm:grid-cols-[max-content_1fr] sm:gap-x-6 sm:gap-y-3">
@@ -146,11 +146,6 @@ export function ListingView() {
       </section>
 
       <section className="flex flex-col gap-5">
-        <header className="flex items-baseline border-b border-[var(--shop-warm-brown,#5C4A3D)]/12 pb-3">
-          <h2 className="font-display text-[22px] leading-tight text-[var(--shop-warm-brown,#5C4A3D)]">
-            everything in the shop
-          </h2>
-        </header>
         <ProductListing products={allProducts} onAddToCart={handleAddToCart} />
       </section>
     </div>

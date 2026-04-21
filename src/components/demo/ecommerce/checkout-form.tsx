@@ -124,7 +124,7 @@ export function CheckoutForm() {
           [ cart · empty ]
         </div>
         <p className="text-[15px] text-[var(--shop-warm-brown,#5C4A3D)]/80">
-          nothing to check out. your cart&apos;s empty.
+          Nothing to check out. Your cart&apos;s empty.
         </p>
         <Link
           href="/demo/ecommerce"
@@ -269,7 +269,7 @@ export function CheckoutForm() {
             <span>${total.toFixed(2)}</span>
           </button>
           <p className="text-[11px] text-[var(--shop-warm-brown,#5C4A3D)]/70">
-            no real charge. placing the order fires the{' '}
+            No real charge. Placing the order fires the{' '}
             <span className="font-mono text-[var(--shop-warm-brown,#5C4A3D)]">purchase</span> event
             through the full pipeline.
           </p>

@@ -20,7 +20,9 @@ interface OrderConfirmationProps {
  *       interpolated lead paragraph (with zombie-state fallback for
  *       missing / zero / non-finite totals — closes 9B follow-up #5);
  *   (b) the Pattern 3 InlineDiagnostic-wrapped timestamped 6-step
- *       pipeline-journey list (+0ms → +840ms).
+ *       pipeline-journey list (+0ms → +840ms). Per-step timings are
+ *       representative; a muted footer inside the diagnostic surfaces
+ *       this honestly (UAT r2 item 19).
  *
  * The full-dashboard Metabase embed renders separately via `DashboardPayoff`
  * — this component is the narrative + pipeline-journey side; the dashboard
@@ -48,8 +50,8 @@ export function OrderConfirmation({ orderId, orderTotal, itemCount }: OrderConfi
 
   const hasFiniteTotal = Number.isFinite(orderTotal) && orderTotal > 0;
   const leadSentence1 = hasFiniteTotal
-    ? `your $${orderTotal.toFixed(2)} order just landed in production BigQuery and is rolling into today's revenue below.`
-    : `a real order just landed in production BigQuery and is rolling into today's revenue below.`;
+    ? `Your $${orderTotal.toFixed(2)} order just landed in production BigQuery and is rolling into today's revenue below.`
+    : `A real order just landed in production BigQuery and is rolling into today's revenue below.`;
 
   return (
     <div className="flex flex-col gap-10">
@@ -58,10 +60,10 @@ export function OrderConfirmation({ orderId, orderTotal, itemCount }: OrderConfi
           order confirmed · <span className="font-mono">{orderId}</span> · tuna is proud
         </div>
         <h1 className="font-display text-[clamp(2.5rem,5vw,4rem)] leading-[1.05] tracking-[-0.015em] text-[var(--shop-warm-brown,#5C4A3D)]">
-          thanks. the event made it all the way through.
+          Thanks. The event made it all the way through.
         </h1>
         <p className="max-w-[640px] text-[15px] leading-relaxed text-[var(--shop-warm-brown,#5C4A3D)]/80">
-          {leadSentence1} the dashboard ops reads in the morning is what you&apos;re looking at.
+          {leadSentence1} The dashboard ops reads in the morning is what you&apos;re looking at.
         </p>
         <div className="flex flex-wrap gap-6 text-xs text-[var(--shop-warm-brown,#5C4A3D)]/80">
           <span>
@@ -81,10 +83,7 @@ export function OrderConfirmation({ orderId, orderTotal, itemCount }: OrderConfi
         </div>
       </section>
 
-      <InlineDiagnostic
-        tag="WHAT JUST HAPPENED"
-        title="from click to dashboard · ~840ms end-to-end"
-      >
+      <InlineDiagnostic tag="WHAT JUST HAPPENED" title="from click to dashboard">
         <ol className="flex flex-col gap-1.5">
           {PIPELINE_JOURNEY.map((step, i) => (
             <li
@@ -110,11 +109,14 @@ export function OrderConfirmation({ orderId, orderTotal, itemCount }: OrderConfi
             </li>
           ))}
         </ol>
+        <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.1em] text-[#9E8A6B]">
+          representative cadence · real latency varies with pipeline load
+        </p>
       </InlineDiagnostic>
 
       <section className="flex flex-col gap-4 border-t border-[var(--shop-warm-brown,#5C4A3D)]/12 pt-8">
         <p className="max-w-[640px] font-display text-[20px] leading-snug text-[var(--shop-warm-brown,#5C4A3D)]">
-          dashboards are not the payoff. answers are. the mart layer is what makes the answers
+          Dashboards are not the payoff. Answers are. The mart layer is what makes the answers
           trustworthy.
         </p>
         <Link

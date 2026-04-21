@@ -31,7 +31,7 @@ export function WarehouseWriteReadout({
         <span className="font-mono text-[#EAD9BC]">iampatterson_raw.events_raw</span>
       </header>
       <p className="text-[11px] leading-snug text-[#EAD9BC]/70">
-        this is the row that will be <span className="text-[#F3C769]">inserted</span> when the
+        This is the row that will be <span className="text-[#F3C769]">inserted</span> when the
         purchase event fires. {cols.length} of 51 columns shown.{' '}
         <span className="text-[#9E8A6B]">
           {utmIsExample

@@ -17,15 +17,12 @@ describe('InlineDiagnostic', () => {
 
   it('renders the tag and title when provided', () => {
     render(
-      <InlineDiagnostic
-        tag="WHAT JUST HAPPENED · TIER 2 + 3"
-        title="from click to dashboard · 840ms"
-      >
+      <InlineDiagnostic tag="WHAT JUST HAPPENED · SAMPLE" title="from click to dashboard">
         <div>x</div>
       </InlineDiagnostic>,
     );
-    expect(screen.getByText('WHAT JUST HAPPENED · TIER 2 + 3')).toBeInTheDocument();
-    expect(screen.getByText('from click to dashboard · 840ms')).toBeInTheDocument();
+    expect(screen.getByText('WHAT JUST HAPPENED · SAMPLE')).toBeInTheDocument();
+    expect(screen.getByText('from click to dashboard')).toBeInTheDocument();
   });
 
   it('omits tag and title when not provided', () => {

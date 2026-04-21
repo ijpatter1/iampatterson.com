@@ -34,31 +34,49 @@ describe('OrderConfirmation (Phase 9F D9)', () => {
     expect(screen.getByText(/ORD-ABC123/)).toBeInTheDocument();
   });
 
-  it('renders the lowercase serif headline', () => {
+  it('renders the sentence-cased serif headline', () => {
     renderConfirmation();
-    expect(screen.getByText('thanks. the event made it all the way through.')).toBeInTheDocument();
+    expect(screen.getByText('Thanks. The event made it all the way through.')).toBeInTheDocument();
   });
 
   it('lead paragraph interpolates the order total when finite and positive', () => {
     renderConfirmation({ orderTotal: 47.5 });
     expect(
-      screen.getByText(/your \$47\.50 order just landed in production BigQuery/i),
+      screen.getByText(/Your \$47\.50 order just landed in production BigQuery/),
+    ).toBeInTheDocument();
+  });
+
+  it('lead paragraph second sentence is sentence-cased (UAT r2 item 18)', () => {
+    renderConfirmation({ orderTotal: 47.5 });
+    expect(
+      screen.getByText(/The dashboard ops reads in the morning is what you/),
     ).toBeInTheDocument();
   });
 
   it('falls back to generic copy when orderTotal is 0 (zombie-state drift fix)', () => {
     renderConfirmation({ orderTotal: 0 });
-    expect(
-      screen.getByText(/a real order just landed in production BigQuery/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/A real order just landed in production BigQuery/)).toBeInTheDocument();
     expect(screen.queryByText(/\$0\.00/)).not.toBeInTheDocument();
   });
 
   it('falls back to generic copy when orderTotal is non-finite', () => {
     renderConfirmation({ orderTotal: Infinity });
+    expect(screen.getByText(/A real order just landed in production BigQuery/)).toBeInTheDocument();
+  });
+
+  it('closing beat is sentence-cased (UAT r2 item 18)', () => {
+    renderConfirmation();
     expect(
-      screen.getByText(/a real order just landed in production BigQuery/i),
+      screen.getByText(/Dashboards are not the payoff\. Answers are\. The mart layer/),
     ).toBeInTheDocument();
+  });
+
+  it('inline-diagnostic title drops the ~840ms specific claim (UAT r2 item 19)', () => {
+    renderConfirmation();
+    const diag = document.querySelector('[data-inline-diagnostic]');
+    expect(diag?.textContent).not.toContain('840ms end-to-end');
+    expect(diag?.textContent).toContain('from click to dashboard');
+    expect(diag?.textContent).toContain('representative cadence');
   });
 
   it('renders item count meta', () => {
