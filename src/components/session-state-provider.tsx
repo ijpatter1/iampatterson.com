@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 
-import { getSessionId, readSessionCookie } from '@/lib/events/session';
+import { getSessionId } from '@/lib/events/session';
 import { getCurrentConsent, trackCoverageMilestone } from '@/lib/events/track';
 import {
   createInitialSessionState,
@@ -18,36 +18,14 @@ const SessionStateContext = createContext<SessionState | null>(null);
 
 const POLL_INTERVAL_MS = 400;
 
-/**
- * Eager client-side load. Runs during useState's lazy initializer so the
- * first client render already has the hydrated state — returning visitors
- * never flash the "Warming up…" placeholder on page refresh (F8 user report).
- *
- * SSR-safe: returns null when window is undefined. Hydration-safe: any
- * consumer that would differ between SSR and client (ride-along
- * checkbox, Overview tab chips) gates its render on `state != null`, so
- * the client-first-render producing populated state while the SSR pass
- * produced null reaches the same "render nothing" leaf on first paint.
- * The overlay surface is entirely client-only (opacity-0 until opened),
- * so its internal state differences don't affect hydration at all.
- *
- * Deliberately does NOT call `getSessionId()` here — that function
- * writes a cookie as a side effect, which is inappropriate during
- * React's render phase. Just reads the existing cookie; the provider's
- * mount effect below calls getSessionId (which may refresh the cookie)
- * and reconciles the state if needed.
- */
-function initialLoad(): SessionState | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const loaded = loadSessionState();
-    if (!loaded) return null;
-    const sid = readSessionCookie();
-    return sid ? reconcileRehydrated(loaded, sid) : loaded;
-  } catch {
-    return null;
-  }
-}
+// A prior F8 iteration eager-loaded the persisted blob via
+// `useState(initialLoad)` to eliminate the "Warming up…" flash on
+// refresh. That broke hydration: the SSR render had state=null (window
+// undefined → initialLoad returned null), the client first render had
+// state=loaded blob, and every SSR'd consumer (SessionPulse, LiveStrip,
+// ride-along) rendered different text content → React hydration error.
+// Reverted to `useState(null)` + post-mount useEffect load; brief flash
+// beats error-dialog UX in dev.
 
 function toEventInput(entry: Record<string, unknown>): SessionStateEventInput | null {
   if (entry.iap_source !== true) return null;
@@ -64,18 +42,18 @@ function toEventInput(entry: Record<string, unknown>): SessionStateEventInput | 
 }
 
 export function SessionStateProvider({ children }: { children: ReactNode }) {
-  // Eager-load via lazy initializer: returning visitors get their
-  // hydrated state on first render, no "Warming up…" flash (F8 fix).
-  const [state, setState] = useState<SessionState | null>(initialLoad);
+  // Initial state = null on both SSR and client-first-render so hydration
+  // never mismatches. Post-mount useEffect loads the persisted blob and
+  // re-renders with real data. Consumers that render SSR-side (Header's
+  // SessionPulse + LiveStrip, /contact ride-along) fall through to their
+  // null-state rendering on SSR + first client render; the subsequent
+  // re-render paints the loaded state.
+  const [state, setState] = useState<SessionState | null>(null);
   const [ready, setReady] = useState(false);
   const cursorRef = useRef(0);
   const milestonesEmittedRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
-    // The lazy-init above may have loaded a blob but couldn't safely
-    // call getSessionId() (which writes the cookie). Here we do the
-    // side-effectful work: refresh the cookie, reconcile against it,
-    // fill in a fresh state if no blob existed.
     const sessionId = getSessionId();
     const loaded = loadSessionState();
     const initial = loaded

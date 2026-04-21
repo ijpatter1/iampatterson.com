@@ -43,10 +43,12 @@ describe('useDataLayerEvents', () => {
     expect(result.current.events).toEqual([]);
   });
 
-  it('eager-loads the persisted timeline buffer on mount (F8 refresh fix)', () => {
+  it('hydrates the persisted timeline buffer via post-mount effect (F8 refresh fix — hydration-safe)', () => {
     // Seed the sessionStorage ring buffer as if a prior page-load had
-    // captured these events. On mount the hook should return them
-    // immediately — not wait for the first poll tick.
+    // captured these events. Initial state is []; the post-mount useEffect
+    // reads the persisted buffer and re-renders with it. Testing-library's
+    // renderHook flushes effects synchronously so result.current.events
+    // reflects the post-effect state after renderHook returns.
     window.sessionStorage.setItem(
       'iampatterson.timeline_buffer',
       JSON.stringify([

@@ -119,13 +119,11 @@ export function useDataLayerEvents({
   maxBufferSize = 100,
   pollInterval = 400,
 }: UseDataLayerEventsOptions = {}): UseDataLayerEventsReturn {
-  // F8 fix: eager-load the persisted ring buffer on first client render so
-  // Timeline isn't empty after a page refresh. Server render sees empty
-  // array (window undefined) → consumer renders empty-state placeholder,
-  // which matches the first client render BEFORE hydration finishes
-  // because useState's lazy init only runs on first mount. After hydration
-  // the loaded buffer is present and Timeline shows history.
-  const [events, setEvents] = useState<PipelineEvent[]>(() => loadTimelineBuffer());
+  // Initial empty array — matches SSR output and client-first-render so
+  // the Timeline / Consent / pipeline-footnote consumers (some SSR'd)
+  // don't hydration-mismatch. The persisted ring buffer is loaded in a
+  // post-mount useEffect below (client-only, never runs on server).
+  const [events, setEvents] = useState<PipelineEvent[]>([]);
   const lastIndexRef = useRef(0);
   const bufferSizeRef = useRef(maxBufferSize);
   bufferSizeRef.current = maxBufferSize;
@@ -133,6 +131,16 @@ export function useDataLayerEvents({
   const clearEvents = useCallback(() => {
     setEvents([]);
     saveTimelineBuffer([]);
+  }, []);
+
+  // Post-mount hydration from sessionStorage ring buffer. Runs once on
+  // the client; SSR safely skipped (useEffect never runs server-side).
+  // Net result: first client render shows [] (matches server), then
+  // this effect populates from persisted buffer → re-render shows
+  // prior events. Brief flash is the tradeoff for hydration safety.
+  useEffect(() => {
+    const persisted = loadTimelineBuffer();
+    if (persisted.length > 0) setEvents(persisted);
   }, []);
 
   useEffect(() => {
