@@ -148,6 +148,19 @@ const config: Config = {
         },
       },
 
+      // Z-index budget for Phase 9F reveal layers + the 9E overlay. Highest →
+      // lowest: Cookiebot (managed externally, ~int max) > overlay > full-page
+      // diagnostic > toast > sidebar > page content. Existing surfaces keep
+      // using their numeric tokens (header `z-40`, overlay `z-50`); these new
+      // tokens map onto the same scale so collisions are predictable. See
+      // `docs/REQUIREMENTS.md` Phase 9F constraints "Z-index budget".
+      zIndex: {
+        sidebar: '20',
+        toast: '45',
+        'full-page-diagnostic': '49',
+        overlay: '50',
+      },
+
       fontFamily: {
         display: ['var(--font-display)', 'Georgia', 'serif'],
         sans: ['var(--font-body)', 'system-ui', 'sans-serif'],
