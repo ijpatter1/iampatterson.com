@@ -12,8 +12,8 @@ export const metadata: Metadata = {
 
 export default function EcommerceDemoPage() {
   // ToastProvider at the page root (not demo layout) so the three reveal
-  // patterns that fire on this route — plus any add_to_cart toasts firing
-  // from the grid — land in the same portal host as the cascade. Suspense
+  // patterns that fire on this route, plus any add_to_cart toasts firing
+  // from the grid, land in the same portal host as the cascade. Suspense
   // around ListingView isolates `useSearchParams` so the route stays static.
   return (
     <ToastProvider>

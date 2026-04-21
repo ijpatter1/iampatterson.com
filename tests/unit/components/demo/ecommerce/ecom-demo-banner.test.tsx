@@ -28,7 +28,7 @@ describe('EcomDemoBanner (UAT r2 item 7)', () => {
     expect(dot?.className).toMatch(/animate-pulse/);
   });
 
-  // Tech-evaluator Minor #5 — the component spreads extra HTMLAttributes
+  // Tech-evaluator Minor #5, the component spreads extra HTMLAttributes
   // via `{...props}` so callers can override the className, add
   // data-testid, etc. Pin the extensibility so a refactor that drops
   // the spread doesn't silently break existing callers.

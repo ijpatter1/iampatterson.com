@@ -1,6 +1,6 @@
 /**
  * Pipeline-section content schema for the homepage's progressive bleed-
- * through reveal (Phase 9E D5 — simplified in F6 UAT close-out).
+ * through reveal (Phase 9E D5, simplified in F6 UAT close-out).
  *
  * F6 rewrite: dropped the dense instrument-panel `tech` / `sub` / `reads`
  * fields in favor of an editorial `detail` one-liner under each stage
@@ -13,19 +13,19 @@
  * Identifier anchors kept where they earn their keep in the prose
  * (e.g. `iampatterson_raw.events_raw` on Stage 04, load-bearing proof
  * of "events land in a real warehouse"). Other container IDs and the
- * sGTM subdomain removed — the surrounding prose carries the weight.
+ * sGTM subdomain removed, the surrounding prose carries the weight.
  */
 
 export interface PipelineStage {
-  /** Stable identifier — used as React key and data-testid suffix. */
+  /** Stable identifier, used as React key and data-testid suffix. */
   key: 'browser' | 'cgtm' | 'sgtm' | 'bq' | 'dash';
   /** Display numeral, zero-padded to two digits. */
   n: string;
-  /** Stage title — Instrument Serif headline. */
+  /** Stage title, Instrument Serif headline. */
   title: string;
-  /** Role label — small mono caps above the title. */
+  /** Role label, small mono caps above the title. */
   role: string;
-  /** Editorial one-liner under the title — carries the stage's substance. */
+  /** Editorial one-liner under the title, carries the stage's substance. */
   detail: string;
 }
 
@@ -50,7 +50,7 @@ export const PIPELINE_STAGES: readonly PipelineStage[] = Object.freeze([
     title: 'Server GTM',
     role: 'Processor',
     detail:
-      'Self-hosted sGTM on Cloud Run — enriches payloads, hashes PII, fans out to GA4, BigQuery, Meta CAPI, and Google Ads.',
+      'Self-hosted sGTM on Cloud Run, enriches payloads, hashes PII, fans out to GA4, BigQuery, Meta CAPI, and Google Ads.',
   },
   {
     key: 'bq',

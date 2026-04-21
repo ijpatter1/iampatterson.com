@@ -1,24 +1,24 @@
 /**
- * Tuna Shop product catalog — Phase 9F.
+ * Tuna Shop product catalog, Phase 9F.
  *
  * Mirrors `docs/input_artifacts/design_handoff_ecommerce/app/data.js` verbatim.
  * Six SKUs mapping to real products on tunameltsmyheart.com. Replaces the
- * pre-9F placeholder catalog (`tuna-plush` / `tuna-tote` / etc.) — the IDs
+ * pre-9F placeholder catalog (`tuna-plush` / `tuna-tote` / etc.), the IDs
  * and prices here are the canonical shop catalog.
  *
  * Fields:
- * - `id`, `name`, `price`, `category` — core SKU identity.
- * - `blurb` — sentence-cased brand-voice product description (UAT r2
+ * - `id`, `name`, `price`, `category`, core SKU identity.
+ * - `blurb`, sentence-cased brand-voice product description (UAT r2
  *   item 18: the pre-9F prototype's all-lowercase prose read unprofessional
  *   on multi-sentence blocks; switched to sentence case while keeping the
  *   warm/casual register).
- * - `tag` — optional display tag (`bestseller` / `new` / `one of one` /
+ * - `tag`, optional display tag (`bestseller` / `new` / `one of one` /
  *   `bundle`). `null` for no tag.
- * - `palette` — three hex colors, used by the palette-tile placeholder
+ * - `palette`, three hex colors, used by the palette-tile placeholder
  *   treatment on listing cards (4:5) + product detail hero (1:1). Real
  *   product photography replaces placeholders when the client provides a
  *   photography-on-cream asset kit.
- * - `imageLabel` — short display label shown over the placeholder tile.
+ * - `imageLabel`, short display label shown over the placeholder tile.
  */
 export interface Product {
   id: string;

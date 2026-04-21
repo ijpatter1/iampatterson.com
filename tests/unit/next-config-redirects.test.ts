@@ -46,7 +46,7 @@ describe('next.config.mjs redirects (Phase 9E D7)', () => {
 
   it('all D7 redirects are permanent (so search engines update their index)', async () => {
     // Guard against a future edit that adds a demo-removal redirect
-    // without `permanent: true` — Next.js defaults to 302, which
+    // without `permanent: true`, Next.js defaults to 302, which
     // search engines treat as temporary and don't re-index.
     const redirects = await nextConfig.redirects?.();
     const demoRedirects = redirects!.filter(

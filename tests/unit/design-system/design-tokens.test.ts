@@ -43,9 +43,9 @@ describe('Design System Tokens', () => {
     });
 
     it('defines editorial persimmon + phosphor accent tokens', () => {
-      // Paper state — marketing surface
+      // Paper state, marketing surface
       expect(colors.persimmon).toBe('#EA5F2A');
-      // Underside state — Session overlay (post-UAT F1 rename)
+      // Underside state, Session overlay (post-UAT F1 rename)
       expect(colors.phosphor).toBe('#FFA400');
     });
 

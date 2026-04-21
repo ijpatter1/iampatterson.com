@@ -15,7 +15,7 @@
 /**
  * Compute the 0..1 bleed value for a given scroll position.
  *
- * The ramp anchors to the section's *own* height — not a viewport
+ * The ramp anchors to the section's *own* height, not a viewport
  * fraction. If it tracked viewport scroll distance instead, the amber
  * peaks before the reader's finished and the entire reveal dies.
  *
@@ -58,7 +58,7 @@ export type BleedTier = (typeof BLEED_TIER)[keyof typeof BLEED_TIER];
 /**
  * Map a bleed value to its discrete tier. Thresholds match the design
  * handoff: warm > 0.18, hot > 0.55, peak > 0.85. Strict-greater-than is
- * intentional — at exactly 0.18 you're still calm, etc. — so that
+ * intentional, at exactly 0.18 you're still calm, etc., so that
  * floating-point boundary jitter doesn't flicker the class.
  */
 export function tierFor(bleed: number): BleedTier {

@@ -37,7 +37,7 @@ describe('ConsentView', () => {
   it('renders an empty-state placeholder when no events have landed yet', () => {
     render(<ConsentView events={[]} />);
     // Editorial empty state: kicker + headline + prompt
-    expect(screen.getByText(/consent enforcement — live/i)).toBeInTheDocument();
+    expect(screen.getByText(/consent enforcement, live/i)).toBeInTheDocument();
     expect(screen.getByText(/What happens when you/i)).toBeInTheDocument();
   });
 

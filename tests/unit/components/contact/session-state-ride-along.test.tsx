@@ -25,7 +25,7 @@ function makeState(overrides: Partial<SessionState> = {}): SessionState {
       // All names below are real entries in DATA_LAYER_EVENT_NAMES
       // (src/lib/events/schema.ts). Test was previously fabricating
       // names (`view_section`, `session_start`, `iap_source`, `hover_word`)
-      // that weren't in the union — passed jest because `.length` is
+      // that weren't in the union, passed jest because `.length` is
       // the only thing asserted, but flagged 8 new tsc --noEmit errors.
       fired: [
         'page_view',
@@ -140,7 +140,7 @@ describe('SessionStateRideAlong', () => {
 
     // Honest-override copy for marketing-denied (unchecked default) is
     // tested exhaustively by the "unchecked + denied" variant in the
-    // "summary copy — four variants" block below; no need for a
+    // "summary copy, four variants" block below; no need for a
     // narrower duplicate here.
 
     it('uses the standard copy when marketing consent is granted', () => {
@@ -152,7 +152,7 @@ describe('SessionStateRideAlong', () => {
     });
   });
 
-  describe('hidden session_state field — serialization contract', () => {
+  describe('hidden session_state field, serialization contract', () => {
     it('renders the hidden input with serialized toRideAlongPayload when checked', () => {
       mockState = makeState();
       const { container } = render(<SessionStateRideAlong />);
@@ -210,7 +210,7 @@ describe('SessionStateRideAlong', () => {
     });
   });
 
-  describe('payload freshness — re-serializes on state change', () => {
+  describe('payload freshness, re-serializes on state change', () => {
     it('reflects an updated SessionState on the next render', () => {
       mockState = makeState();
       const { container, rerender } = render(<SessionStateRideAlong />);
@@ -236,12 +236,12 @@ describe('SessionStateRideAlong', () => {
     });
   });
 
-  describe('async-init path (Pass 1 Critical #1) — null-then-populated', () => {
+  describe('async-init path (Pass 1 Critical #1), null-then-populated', () => {
     it('picks up marketing-granted default AFTER the provider init effect resolves', () => {
       // Real browser path: the provider's init runs in useEffect, so
       // useSessionState() returns null on the component's first render
       // and populated on the next. A naive useState(initialFromNullState)
-      // captures false and never re-seeds — visitor sees unchecked box
+      // captures false and never re-seeds, visitor sees unchecked box
       // despite granted consent. The userOverride-null-until-clicked
       // pattern derives `checked` from current consent every render and
       // only pins to user intent after they interact.
@@ -288,7 +288,7 @@ describe('SessionStateRideAlong', () => {
       rerender(<SessionStateRideAlong />);
       cb = screen.getByRole('checkbox') as HTMLInputElement;
       expect(cb.checked).toBe(false);
-      // Hidden field must also disappear — no silent transmission under
+      // Hidden field must also disappear, no silent transmission under
       // a denied consent signal the user never explicitly overrode.
       expect(container.querySelector('input[name="session_state"]')).toBeNull();
     });
@@ -305,7 +305,7 @@ describe('SessionStateRideAlong', () => {
       expect(cb.checked).toBe(false);
 
       // Consent flips granted→denied. User already pinned their intent
-      // to unchecked — no re-flip needed, stays unchecked.
+      // to unchecked, no re-flip needed, stays unchecked.
       mockState = makeState({
         consent_snapshot: { analytics: 'granted', marketing: 'denied', preferences: 'granted' },
       });
@@ -313,7 +313,7 @@ describe('SessionStateRideAlong', () => {
       cb = screen.getByRole('checkbox') as HTMLInputElement;
       expect(cb.checked).toBe(false);
 
-      // Consent flips back denied→granted. Still no auto-flip — user
+      // Consent flips back denied→granted. Still no auto-flip, user
       // override governs across the session until the component unmounts.
       mockState = makeState({
         consent_snapshot: { analytics: 'granted', marketing: 'granted', preferences: 'granted' },
@@ -355,7 +355,7 @@ describe('SessionStateRideAlong', () => {
     });
   });
 
-  describe('summary copy — four variants keyed on (checked, marketing)', () => {
+  describe('summary copy, four variants keyed on (checked, marketing)', () => {
     it('checked + granted → "will ride along" with concrete payload', () => {
       mockState = makeState({
         consent_snapshot: { analytics: 'granted', marketing: 'granted', preferences: 'granted' },
@@ -380,7 +380,7 @@ describe('SessionStateRideAlong', () => {
       const summary = screen.getByTestId('ride-along-summary');
       expect(summary.textContent).toMatch(/will not be included/i);
       expect(summary.textContent).toMatch(/check the box above/i);
-      // Full cross-variant contamination check — each positive must be
+      // Full cross-variant contamination check, each positive must be
       // unique to this variant.
       expect(summary.textContent).not.toMatch(/will ride along/i);
       expect(summary.textContent).not.toMatch(/overriding/i);
@@ -422,7 +422,7 @@ describe('SessionStateRideAlong', () => {
     });
   });
 
-  describe('a11y — aria-describedby', () => {
+  describe('a11y, aria-describedby', () => {
     it('links the checkbox to the summary paragraph so screen readers hear the payload on focus', () => {
       mockState = makeState();
       render(<SessionStateRideAlong />);

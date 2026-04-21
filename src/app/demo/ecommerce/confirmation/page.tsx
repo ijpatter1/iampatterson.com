@@ -25,7 +25,7 @@ function sanitizeNumber(raw: string | undefined, fallback: number, parse: (s: st
 }
 
 /**
- * Phase 9F D9 — confirmation page.
+ * Phase 9F D9, confirmation page.
  *
  * Server Component renders the order-confirmation surface (editorial
  * header + Pattern 3 inline diagnostic pipeline-journey list) plus the
@@ -58,7 +58,7 @@ export default function ConfirmationPage({ searchParams }: ConfirmationPageProps
   // pinned default in the component.
   const dashboardId = readConfirmationDashboardId(configRaw) ?? undefined;
 
-  // UAT r2 item 20 — dashboard must land above the "Dashboards are not
+  // UAT r2 item 20, dashboard must land above the "Dashboards are not
   // the payoff" closing beat. Order is: editorial head + pipeline
   // journey → DashboardPayoff embed → closing beat + back nav. Pre-r2
   // the closing beat was baked into `OrderConfirmation`, which put it

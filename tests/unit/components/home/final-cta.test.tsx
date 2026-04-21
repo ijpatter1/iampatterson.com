@@ -34,7 +34,7 @@ beforeEach(() => {
 describe('FinalCta', () => {
   it('renders the contact eyebrow with the email address', () => {
     renderCta();
-    const eyebrow = screen.getByRole('link', { name: /contact — ian@iampatterson\.com/i });
+    const eyebrow = screen.getByRole('link', { name: /contact, ian@iampatterson\.com/i });
     expect(eyebrow).toHaveAttribute('href', 'mailto:ian@iampatterson.com');
   });
 

@@ -1,5 +1,5 @@
 /**
- * SessionStateProvider — bridges window.dataLayer → SessionState blob.
+ * SessionStateProvider, bridges window.dataLayer → SessionState blob.
  *
  * Contract (Phase 9E deliverable 4):
  * - Hydrates from sessionStorage on mount, or creates initial state.
@@ -119,7 +119,7 @@ describe('SessionStateProvider', () => {
   });
 
   it('preserves the FULL SessionState blob across a reload (UAT S16.2 regression pin)', () => {
-    // UAT S16.2: "TAB A: Reload — coverage, chip grid amber states, funnel
+    // UAT S16.2: "TAB A: Reload, coverage, chip grid amber states, funnel
     // progress, session ID all PRESERVED. visited_paths count stable."
     // This test pins every field the UAT step names, so a future regression
     // that silently resets one subfield will fail here.
@@ -210,7 +210,7 @@ describe('SessionStateProvider', () => {
   });
 
   it('rejects a structurally-partial blob and falls back to a freshly-initialised state', () => {
-    // Passes shallow shape but missing nested demo_progress.ecommerce — would
+    // Passes shallow shape but missing nested demo_progress.ecommerce, would
     // have crashed the reducer on first event before Pass 1 evaluator I3 fix.
     const malformed = {
       session_id: 'partial',
@@ -353,7 +353,7 @@ describe('SessionStateProvider', () => {
 
     const before = window.dataLayer.length;
     renderHook(() => useSessionState(), { wrapper: Wrapper });
-    // Fire enough more distinct events to cross 50% — crossing threshold
+    // Fire enough more distinct events to cross 50%, crossing threshold
     // derives from the live DATA_LAYER_EVENT_NAMES.length (24 post-F2, was
     // 22 pre-F2). Ceil(0.51 * total) gives the first index that puts us
     // past half so the milestone event actually fires.
@@ -386,7 +386,7 @@ describe('SessionStateProvider', () => {
       ([key]) => key === SESSION_STATE_STORAGE_KEY,
     ).length;
 
-    // Cookiebot arrives late AND an event arrives in the same tick — the tick
+    // Cookiebot arrives late AND an event arrives in the same tick, the tick
     // should combine the reseed + reducer into a single setState+save.
     initConsentState(true, true, false);
     act(() => {
@@ -428,7 +428,7 @@ describe('SessionStateProvider', () => {
 
   it('seeds consent_snapshot from getCurrentConsent when Cookiebot has already initialised (Pass 2 m6)', () => {
     // Simulate Cookiebot having granted consent synchronously before the
-    // provider mounts — the seed path must pick that up, not default to denied.
+    // provider mounts, the seed path must pick that up, not default to denied.
     const { initConsentState } =
       jest.requireActual<typeof import('@/lib/events/track')>('@/lib/events/track');
     initConsentState(true, false, true);
@@ -470,7 +470,7 @@ describe('SessionStateProvider', () => {
   });
 
   it('skips the sessionStorage write on init when reconciliation is a no-op (Pass 2 m4)', () => {
-    // Pre-populate a valid, up-to-date blob — reconciliation returns the loaded
+    // Pre-populate a valid, up-to-date blob, reconciliation returns the loaded
     // reference unchanged; the provider should not redundantly re-write it.
     const prior = {
       session_id: 'live-session-id',

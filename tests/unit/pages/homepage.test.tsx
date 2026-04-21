@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  *
- * The homepage composes section components — each has its own dedicated
+ * The homepage composes section components, each has its own dedicated
  * test file (hero.test.tsx, pipeline.test.tsx, etc.). This file only
  * verifies that the composition itself is in place.
  */

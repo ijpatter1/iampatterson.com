@@ -8,7 +8,7 @@ import * as path from 'path';
 const specPath = path.resolve(__dirname, '../../infrastructure/gtm/server-container.json');
 const spec = JSON.parse(fs.readFileSync(specPath, 'utf-8'));
 
-describe('sGTM server container spec — Phase 2 pipeline', () => {
+describe('sGTM server container spec, Phase 2 pipeline', () => {
   it('has a Pub/Sub tag in the main tags array', () => {
     const pubsubTag = spec.tags.find(
       (t: Record<string, unknown>) => typeof t.name === 'string' && t.name.includes('Pub/Sub'),

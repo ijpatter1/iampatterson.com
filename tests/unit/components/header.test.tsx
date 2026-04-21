@@ -15,7 +15,7 @@ jest.mock('@/lib/events/track', () => ({
   trackNavHintDismissed: jest.fn(),
 }));
 
-// Stub NavHint during header tests — the hint has its own focused suite
+// Stub NavHint during header tests, the hint has its own focused suite
 // and pulls in timers/listeners that would otherwise complicate header
 // chrome assertions.
 jest.mock('@/components/chrome/nav-hint', () => ({
@@ -50,7 +50,7 @@ beforeEach(() => {
   mockPathname = '/';
 });
 
-describe('Header — post-9E-D1 nav pivot', () => {
+describe('Header, post-9E-D1 nav pivot', () => {
   it('does NOT render the conventional nav links (Home / Services / Demos / About / Contact)', () => {
     // Phase 9E D1: conventional header nav removed. The SessionPulse
     // is the only nav affordance in the header; the footer carries
@@ -80,7 +80,7 @@ describe('Header — post-9E-D1 nav pivot', () => {
   });
 
   it('renders the "Back to homepage" slim bar on non-homepage routes (F5 UAT S2)', () => {
-    // Non-homepage pages need an obvious back-to-/ affordance — the
+    // Non-homepage pages need an obvious back-to-/ affordance, the
     // footer was flagged as too much friction in UAT S2. The slim bar
     // sits directly below the LiveStrip so it stays in view across the
     // sticky-header block.
@@ -100,7 +100,7 @@ describe('Header — post-9E-D1 nav pivot', () => {
     expect(screen.queryByTestId('home-bar')).not.toBeInTheDocument();
   });
 
-  it('does NOT render the home bar on demo routes — DemoFooterNav already provides back-nav (F8 eval Minor #10)', () => {
+  it('does NOT render the home bar on demo routes, DemoFooterNav already provides back-nav (F8 eval Minor #10)', () => {
     for (const path of [
       '/demo/ecommerce',
       '/demo/ecommerce/tuna-plush',
@@ -128,7 +128,7 @@ describe('Header — post-9E-D1 nav pivot', () => {
 
   it('exposes a screen-reader-only home link for site identity', () => {
     renderHeader();
-    const srLink = screen.getByRole('link', { name: /patterson consulting — home/i });
+    const srLink = screen.getByRole('link', { name: /patterson consulting, home/i });
     expect(srLink).toHaveAttribute('href', '/');
     expect(srLink.className).toContain('sr-only');
   });

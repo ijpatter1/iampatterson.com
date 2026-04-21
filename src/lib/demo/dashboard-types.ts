@@ -9,7 +9,7 @@
  * `CohortData`, `ChurnBreakdown`, `LeadQualityBreakdown`) were deleted
  * because they had no remaining consumers. The corresponding
  * `mart_subscription_cohorts` + `mart_lead_funnel` mart models in
- * `infrastructure/dataform/` stay untouched — the warehouse tables are
+ * `infrastructure/dataform/` stay untouched, the warehouse tables are
  * still built on the simulated historical data, they just aren't
  * rendered in the UI while the demos are off-site.
  */

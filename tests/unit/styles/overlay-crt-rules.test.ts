@@ -7,7 +7,7 @@
  * as text and asserts that the load-bearing phase-scoped rules and the
  * transform-origin fidelity fix are present. If someone deletes or renames
  * one of these rules during a refactor, the structural tests in
- * `overlay-view.test.tsx` would still pass silently — these tests are
+ * `overlay-view.test.tsx` would still pass silently, these tests are
  * the second line of defense.
  */
 import { readFileSync } from 'node:fs';
@@ -15,7 +15,7 @@ import { join } from 'node:path';
 
 const css = readFileSync(join(__dirname, '../../../src/styles/globals.css'), 'utf8');
 
-describe('globals.css — overlay CRT rules', () => {
+describe('globals.css, overlay CRT rules', () => {
   it('declares crt-paint-down animation on .crt-bloom during phase-boot', () => {
     // [data-phase='boot'] .crt-bloom { animation: crt-paint-down ... }
     expect(css).toMatch(

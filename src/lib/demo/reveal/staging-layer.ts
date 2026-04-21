@@ -5,10 +5,10 @@
  * STAGING_TRANSFORM. Pre-9E `StagingLayerUnderside` salvage destination.
  *
  * Two content sets:
- * - `STAGING_FIELD_CASTS` — 6-row raw → typed cast table shown under the
+ * - `STAGING_FIELD_CASTS`, 6-row raw → typed cast table shown under the
  *   "01 · raw → typed cast" step. `product_id` / `product_price` substitute
  *   with the current visitor's product via `stagingRowsForProduct()`.
- * - `STAGING_STITCH_OPS` — 4-line `[OK]` checklist of staging operations
+ * - `STAGING_STITCH_OPS`, 4-line `[OK]` checklist of staging operations
  *   shown under the "02 · stitch & enrich" step.
  */
 
@@ -109,7 +109,7 @@ export function stagingRowsForProduct(
 }
 
 /**
- * Parameterise the stitch ops with live session facts — the pre-9F list
+ * Parameterise the stitch ops with live session facts, the pre-9F list
  * was entirely static (hardcoded event counts, session ids). When live
  * context is present, the `session_stitch` detail shows the real session
  * and real event count; other ops stay static (dedupe + param_extract +
@@ -124,7 +124,7 @@ export function stitchOpsForSession(live?: {
 
   return STAGING_STITCH_OPS.map((o) => {
     // Only rewrite the session_stitch detail when we have BOTH a real
-    // session_id AND at least one event — otherwise we'd emit
+    // session_id AND at least one event, otherwise we'd emit
     // "linked to abc12345… (0 events)" which reads as a lie during the
     // window between cookie load and first event fire.
     if (o.op === 'session_stitch' && sid && count > 0) {

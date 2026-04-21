@@ -4,13 +4,13 @@ import type { HTMLAttributes } from 'react';
  * Persistent "this is a demo" banner (UAT r2 item 7).
  *
  * Rendered at the very top of every `/demo/ecommerce/*` route, above
- * EcomSubNav. Previously the same reminder lived only in EcomFooter —
+ * EcomSubNav. Previously the same reminder lived only in EcomFooter, 
  * visitors who skipped the footer never saw the disclaimer. Moving it
  * to the top ensures the framing is the first thing they see on every
  * demo page load.
  *
  * Terminal palette (amber on near-black) deliberately matches the
- * under-the-hood reveal surfaces — the visible demo-scaffolding at the
+ * under-the-hood reveal surfaces, the visible demo-scaffolding at the
  * top is itself a small "you're looking at infrastructure" moment,
  * which is the whole pitch of the site.
  */

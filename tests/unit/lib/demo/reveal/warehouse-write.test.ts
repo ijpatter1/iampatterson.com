@@ -5,7 +5,7 @@ import {
   diagnosticLinesForConsent,
 } from '@/lib/demo/reveal/warehouse-write';
 
-describe('warehouse-write — BQ row preview', () => {
+describe('warehouse-write, BQ row preview', () => {
   it('exposes 21 representative columns from the ~51-col raw schema', () => {
     expect(BQ_ROW_COLUMNS).toHaveLength(21);
   });
@@ -48,9 +48,9 @@ describe('bqRowForCart', () => {
     expect(sid?.v).toBe('"ses_x9b2jk3q"'); // seed
   });
 
-  // UAT r1 items 11 + 13 — checkout sidebar advertised as live but all
+  // UAT r1 items 11 + 13, checkout sidebar advertised as live but all
   // visitor-scoped columns (session_id, timestamps, consent) were static.
-  describe('UAT r1 items 11 + 13 — live substitutions', () => {
+  describe('UAT r1 items 11 + 13, live substitutions', () => {
     it('substitutes session_id with the real id (truncated 8 chars + ellipsis)', () => {
       const rows = bqRowForCart({
         total: 26,
@@ -176,7 +176,7 @@ describe('FULL_PAGE_DIAGNOSTIC_LINES', () => {
   });
 });
 
-describe('diagnosticLinesForConsent (UAT r1 item 14 — real consent data)', () => {
+describe('diagnosticLinesForConsent (UAT r1 item 14, real consent data)', () => {
   it('reports analytics=granted + marketing=denied on the consent-check line', () => {
     const lines = diagnosticLinesForConsent({ analytics: true, marketing: false });
     const consentLine = lines.find((l) => l.text.startsWith('consent check'));

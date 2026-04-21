@@ -7,7 +7,7 @@ import type {
 } from './schema';
 import { getSessionId } from './session';
 
-/** Current consent state — updated by trackConsentUpdate and initConsentState. */
+/** Current consent state, updated by trackConsentUpdate and initConsentState. */
 let currentConsent = {
   consent_analytics: false,
   consent_marketing: false,
@@ -28,7 +28,7 @@ export function initConsentState(
 }
 
 /**
- * Read the module's current consent snapshot. The returned object is a copy —
+ * Read the module's current consent snapshot. The returned object is a copy, 
  * safe to pass into a pure reducer without aliasing the mutable module state.
  */
 export function getCurrentConsent(): {
@@ -187,7 +187,7 @@ export function trackLeadQualify(params: {
   pushEvent({ ...baseFields(), event: 'lead_qualify', ...params });
 }
 
-// --- Phase 9E — nav & Session State analytics ---
+// --- Phase 9E, nav & Session State analytics ---
 
 export function trackCoverageMilestone(threshold: CoverageMilestoneEvent['threshold']): void {
   pushEvent({ ...baseFields(), event: 'coverage_milestone', threshold });

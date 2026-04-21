@@ -77,7 +77,7 @@ describe('ToastProvider + useToast', () => {
   });
 
   it('auto-dismisses after the default duration (~3200ms)', async () => {
-    // UAT r1 item 9 — default duration bumped 2400 → 3200ms so
+    // UAT r1 item 9, default duration bumped 2400 → 3200ms so
     // readers have a full read + reaction window; pre-rework toasts
     // felt "abrupt" partly because they vanished too fast.
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
@@ -302,12 +302,12 @@ describe('ToastProvider + useToast', () => {
     expect(portal?.getAttribute('data-reduced-motion')).toBe('true');
   });
 
-  // UAT r1 item 9 — pre-rework toasts appeared abruptly (no entry
+  // UAT r1 item 9, pre-rework toasts appeared abruptly (no entry
   // motion), which made them feel like the site was bugging out. The
   // card applies a `motion-safe:animate-toast-enter` class so the
   // reveal is a deliberate slide+fade for motion-tolerant visitors
   // and an instant appearance under `prefers-reduced-motion: reduce`.
-  describe('UAT r1 item 9 — intentional toast entry', () => {
+  describe('UAT r1 item 9, intentional toast entry', () => {
     it('card has motion-safe entry animation class', async () => {
       const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       render(

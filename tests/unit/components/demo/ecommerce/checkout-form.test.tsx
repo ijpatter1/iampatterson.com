@@ -161,7 +161,7 @@ describe('CheckoutForm (Phase 9F D8)', () => {
     await user.click(screen.getByRole('button', { name: /place order/i }));
     // Diagnostic dialog should be mounted
     expect(document.querySelector('[role="dialog"]')).not.toBeNull();
-    // Let the full 4.5s sequence complete (UAT r1 item 14 — bumped
+    // Let the full 4.5s sequence complete (UAT r1 item 14, bumped
     // from 1.9s so readers have time to read each line).
     act(() => {
       jest.advanceTimersByTime(3300);
@@ -189,16 +189,16 @@ describe('CheckoutForm (Phase 9F D8)', () => {
     renderCheckout();
     await user.click(screen.getByRole('button', { name: /place order/i }));
     expect(document.querySelector('[role="dialog"]')).not.toBeNull();
-    // Press any key — onComplete fires, router.push called
+    // Press any key, onComplete fires, router.push called
     await user.keyboard('{Enter}');
     expect(mockPush).toHaveBeenCalledTimes(1);
   });
 
-  // UAT r1 item 14 — the full-page intermission was too fast + used
+  // UAT r1 item 14, the full-page intermission was too fast + used
   // hardcoded consent values. The duration bump (1900 → 4500) is pinned
   // in the full-page-diagnostic test; the live-consent substitution is
   // pinned here.
-  describe('UAT r1 item 14 — live consent in full-page diagnostic', () => {
+  describe('UAT r1 item 14, live consent in full-page diagnostic', () => {
     it('uses live consent in the diagnostic consent-check line when events have flowed', async () => {
       mockSession.mockReturnValue({
         ...DEFAULT_SESSION,
@@ -231,8 +231,8 @@ describe('CheckoutForm (Phase 9F D8)', () => {
     });
   });
 
-  // UAT r1 items 11 + 13 — warehouse-write sidebar reflects real session.
-  describe('UAT r1 items 11 + 13 — live warehouse-write sidebar', () => {
+  // UAT r1 items 11 + 13, warehouse-write sidebar reflects real session.
+  describe('UAT r1 items 11 + 13, live warehouse-write sidebar', () => {
     it('substitutes real session_id into the BQ row preview', () => {
       mockSession.mockReturnValue({
         ...DEFAULT_SESSION,
@@ -277,8 +277,8 @@ describe('CheckoutForm (Phase 9F D8)', () => {
     });
   });
 
-  // UAT r2 item 12 — walkthrough blurb with mobile scroll-to-sidebar chip.
-  describe('UAT r2 item 12 — walkthrough blurb', () => {
+  // UAT r2 item 12, walkthrough blurb with mobile scroll-to-sidebar chip.
+  describe('UAT r2 item 12, walkthrough blurb', () => {
     it('renders a WalkthroughBlurb with route="checkout"', () => {
       renderCheckout();
       const blurb = document.querySelector('[data-walkthrough-blurb]');
@@ -292,11 +292,11 @@ describe('CheckoutForm (Phase 9F D8)', () => {
     });
   });
 
-  // UAT r2 item 16 — the mobile checkout had flex items spilling past the
+  // UAT r2 item 16, the mobile checkout had flex items spilling past the
   // viewport. The fix is a belt-and-braces set: inputs are all w-full, the
   // form + aside columns both carry min-w-0 so they can shrink inside the
   // grid, and the grid template uses minmax(0, 1fr) instead of plain 1fr.
-  describe('UAT r2 item 16 — mobile viewport containment', () => {
+  describe('UAT r2 item 16, mobile viewport containment', () => {
     it('every form input is w-full with min-w-0 so nothing forces the form wider than its column', () => {
       renderCheckout();
       const inputs = document.querySelectorAll('input');
@@ -318,11 +318,11 @@ describe('CheckoutForm (Phase 9F D8)', () => {
     });
   });
 
-  // UAT r2 item 13 — warehouse-write readout's key/value cells used to
+  // UAT r2 item 13, warehouse-write readout's key/value cells used to
   // overflow on narrow viewports because the first two grid tracks were
   // plain `1fr` (which lets grid items grow past their track) with no
   // truncate on the key span.
-  describe('UAT r2 item 13 — warehouse-write readout cells truncate on narrow viewports', () => {
+  describe('UAT r2 item 13, warehouse-write readout cells truncate on narrow viewports', () => {
     it('BQ row rows use minmax(0, 1fr) tracks with truncate on both key + value spans', () => {
       renderCheckout();
       const sidebar = document.querySelector('aside[data-live-sidebar]') as HTMLElement;
@@ -340,10 +340,10 @@ describe('CheckoutForm (Phase 9F D8)', () => {
     });
   });
 
-  // UAT r1 item 10 — the pre-rework defaults "Courtney" / "Patterson"
+  // UAT r1 item 10, the pre-rework defaults "Courtney" / "Patterson"
   // carried the site owner's own family name into the demo checkout.
   // Generic placeholder names only.
-  describe('UAT r1 item 10 — generic checkout placeholder names', () => {
+  describe('UAT r1 item 10, generic checkout placeholder names', () => {
     it('does NOT prefill "Courtney" as first name', () => {
       renderCheckout();
       const firstName = screen.getByLabelText(/first name/i) as HTMLInputElement;

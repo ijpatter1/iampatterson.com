@@ -41,13 +41,13 @@ export function EventTimeline({ events, onSelectEvent, selectedEventId }: EventT
     return (
       <div>
         <div className="mb-3 font-mono text-[10px] uppercase tracking-widest text-accent-current">
-          Session timeline — streaming
+          Session timeline, streaming
         </div>
         <h3 className="font-display text-2xl font-normal leading-tight text-u-ink">
           Waiting for events.
         </h3>
         <p className="mt-3 max-w-[62ch] text-sm leading-relaxed text-u-ink-2">
-          Interact with the page — scroll, click, navigate — and each event will appear here with
+          Interact with the page, scroll, click, navigate, and each event will appear here with
           its routing destinations.
         </p>
       </div>

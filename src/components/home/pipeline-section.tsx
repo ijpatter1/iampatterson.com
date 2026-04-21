@@ -16,11 +16,11 @@ const FLICKER_BASE_DURATION_MS = 90;
 const FLICKER_DURATION_JITTER_MS = 120;
 
 /**
- * Phase 9E D5 — Homepage pipeline section with progressive bleed-through reveal.
+ * Phase 9E D5, Homepage pipeline section with progressive bleed-through reveal.
  *
  * The outer shell owns the scroll-driven `--bleed` ramp (0..1, anchored to the
- * section's own height — see `computeBleed`), the tier-class state machine
- * (warm > 0.18, hot > 0.55, peak > 0.85 — re-renders only on threshold crossing),
+ * section's own height, see `computeBleed`), the tier-class state machine
+ * (warm > 0.18, hot > 0.55, peak > 0.85, re-renders only on threshold crossing),
  * and the random flicker burst scheduler that fires once tier ≥ warm. Four
  * absolute-positioned sibling layers (scanlines, phosphor, vignette, RGB
  * sweep) read `var(--bleed)` and animate via the `.pipeline-section.*` rules
@@ -28,7 +28,7 @@ const FLICKER_DURATION_JITTER_MS = 120;
  *
  * Reduced-motion gating: the rAF loop, flicker scheduler, stage rotation, CTA
  * halo, and peak jitter are all suppressed. The bleed layers still render but
- * without animations — the section settles into its calm editorial state.
+ * without animations, the section settles into its calm editorial state.
  *
  * IntersectionObserver pauses the rAF loop when the section is fully off-screen,
  * so the cost is bounded to the time the visitor is looking at the surface.
@@ -46,7 +46,7 @@ export function PipelineSection() {
   // re-render React only when the discrete tier class needs to change.
   //
   // F6 UAT close-out: once the visitor has opened the overlay (any tab)
-  // this session, the bleed reveal is consumed — pipeline-section
+  // this session, the bleed reveal is consumed, pipeline-section
   // renders in its calm editorial baseline on subsequent scroll. The
   // priming gesture has done its job; repeating on every scroll is
   // wallpaper.
@@ -119,7 +119,7 @@ export function PipelineSection() {
       );
       observer.observe(el);
     } else {
-      // No IO available — just keep the loop running.
+      // No IO available, just keep the loop running.
       startLoop();
     }
 
@@ -130,7 +130,7 @@ export function PipelineSection() {
     };
   }, [isOpen]);
 
-  // Random flicker bursts — only fire at warm or above. More frequent +
+  // Random flicker bursts, only fire at warm or above. More frequent +
   // sharper as bleed grows. Suppressed under reduced-motion AND once
   // the bleed reveal is consumed (pipeline section has primed the
   // visitor once; subsequent scrolls stay calm per F6 UAT). Subscribes
@@ -178,7 +178,7 @@ export function PipelineSection() {
   // state. Without this effect, closing the overlay at peak bleed would
   // leave the section stuck in the amber-flooded peak state until a
   // page reload. On overlay-open edge, reset CSS var to 0, tier to 0,
-  // flick to false — section returns to its calm editorial baseline.
+  // flick to false, section returns to its calm editorial baseline.
   useEffect(() => {
     if (!isOpen) return;
     if (!hasPipelineBleedConsumed()) return;
@@ -191,12 +191,12 @@ export function PipelineSection() {
 
   const tierClass = tierClassName(bleedTier);
   // Spec calls for asymmetric padding (80px top / 100px bottom) so the
-  // CTA gets editorial gravity at the close — matches design handoff
+  // CTA gets editorial gravity at the close, matches design handoff
   // pipeline_section.css `padding: 80px 0 100px`. Honor the asymmetry
   // at every viewport: pt-20 = 80px top everywhere, pb-[100px] = 100px
   // bottom everywhere. (Earlier `md:pt-28` carried over from the
   // pre-D5 symmetric padding and broke spec on desktop.)
-  // F6 follow-up — mobile length compression. Section shrinks to
+  // F6 follow-up, mobile length compression. Section shrinks to
   // pt-12 pb-16 on <md; desktop keeps the spec's 80/100 asymmetry.
   const sectionClassName = [
     'pipeline-section bleed-layer relative isolate overflow-hidden border-t border-rule-soft bg-paper pt-12 pb-16 md:pt-20 md:pb-[100px]',
@@ -219,7 +219,7 @@ export function PipelineSection() {
       className={sectionClassName}
       style={{ '--bleed': '0' } as CSSProperties}
     >
-      {/* Underside leak layers — sit above paper, under content. All four
+      {/* Underside leak layers, sit above paper, under content. All four
           read --bleed via CSS rules in globals.css. */}
       <div data-bleed-layer="scanlines" className="bleed-scanlines" aria-hidden="true" />
       <div data-bleed-layer="phosphor" className="bleed-phosphor" aria-hidden="true" />
@@ -231,7 +231,7 @@ export function PipelineSection() {
           <h2
             className="font-display font-normal text-ink"
             style={{
-              // F6 follow-up — mobile floor 36px → 28px so the 3-line
+              // F6 follow-up, mobile floor 36px → 28px so the 3-line
               // display reflows at ~84px on 360px (was ~108px).
               fontSize: 'clamp(28px, 5.5vw, 72px)',
               lineHeight: 1,

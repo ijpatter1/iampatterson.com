@@ -80,9 +80,9 @@ describe('useSessionContext', () => {
       events: [
         makeEvent({ event_name: 'add_to_cart', received_at: new Date(now - 5000).toISOString() }),
         makeEvent({ event_name: 'add_to_cart', received_at: new Date(now - 15_000).toISOString() }),
-        // Outside 30s window — should not count.
+        // Outside 30s window, should not count.
         makeEvent({ event_name: 'add_to_cart', received_at: new Date(now - 45_000).toISOString() }),
-        // Different event name — should not count toward add_to_cart.
+        // Different event name, should not count toward add_to_cart.
         makeEvent({ event_name: 'product_view', received_at: new Date(now).toISOString() }),
       ],
       source: 'dataLayer',
@@ -91,7 +91,7 @@ describe('useSessionContext', () => {
     expect(result.current.add_to_cart_in_last_30s).toBe(2);
   });
 
-  it('seconds_since_last_event does not freeze while idle — re-ticks on interval', () => {
+  it('seconds_since_last_event does not freeze while idle, re-ticks on interval', () => {
     jest.useFakeTimers();
     try {
       const tenSecAgo = new Date(Date.now() - 10_000).toISOString();

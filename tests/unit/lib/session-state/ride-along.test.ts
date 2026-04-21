@@ -1,7 +1,7 @@
 /**
  * `toRideAlongPayload` projects `SessionState` onto the minimal shape the
  * contact-form ride-along transmits (UX_PIVOT_SPEC §3.6). The projection
- * deliberately excludes `visited_paths` — the spec transmits `pages_visited`
+ * deliberately excludes `visited_paths`, the spec transmits `pages_visited`
  * as a count, never a path history. This helper is the authoritative gate
  * against accidentally `JSON.stringify`-ing the whole blob into a form field.
  */
@@ -28,7 +28,7 @@ describe('toRideAlongPayload', () => {
     });
   });
 
-  it('filters event_types_triggered to RENDERABLE events (F8 eval — hidden sub/leadgen events do not count)', () => {
+  it('filters event_types_triggered to RENDERABLE events (F8 eval, hidden sub/leadgen events do not count)', () => {
     let state = createInitialSessionState('sid', INIT_NOW);
     // Fire a renderable + a hidden event. Pre-F8 the payload counted
     // both toward `event_types_triggered`; post-F8 only the renderable
@@ -94,7 +94,7 @@ describe('toRideAlongPayload', () => {
     });
   });
 
-  it('does NOT expose visited_paths, events_fired, or coverage_milestones_fired — projection is narrow by design', () => {
+  it('does NOT expose visited_paths, events_fired, or coverage_milestones_fired, projection is narrow by design', () => {
     let state = createInitialSessionState('sid', INIT_NOW);
     state = deriveNext(state, {
       event: 'page_view',

@@ -13,7 +13,7 @@ import { useCart } from './cart-context';
  * (left) Tuna Shop wordmark + "the underdog with the overbite · shop"
  * sub-tagline, (right) `shop` / `cart` wayfinding with a live item-count
  * badge. The current route is highlighted via the terracotta accent.
- * Distinct from the site's session-scoped nav — this is the demo's own
+ * Distinct from the site's session-scoped nav, this is the demo's own
  * shop-scoped wayfinding, and the wordmark is the "you've entered the
  * Tuna Shop" brand signal per the product review 2026-04-21 Major #2.
  */

@@ -149,7 +149,7 @@ describe('FullPageDiagnostic', () => {
         onComplete={jest.fn()}
       />,
     );
-    // perLine = 1500 / (1 + 1) = 750ms — advance past it to reveal the line
+    // perLine = 1500 / (1 + 1) = 750ms, advance past it to reveal the line
     act(() => {
       jest.advanceTimersByTime(800);
     });
@@ -199,7 +199,7 @@ describe('FullPageDiagnostic', () => {
 
   it('uses default duration ~3200ms when not provided (UAT r1 item 14)', () => {
     // 1900ms was too fast (UAT). 4500ms was over-correction (eval).
-    // Landed at 3200ms — ~400ms per line across 7 lines.
+    // Landed at 3200ms, ~400ms per line across 7 lines.
     const onComplete = jest.fn();
     render(<FullPageDiagnostic lines={[{ text: 'a' }]} onComplete={onComplete} />);
     act(() => {

@@ -116,7 +116,7 @@ describe('LiveSidebar', () => {
     expect(screen.queryByText('readout')).not.toBeInTheDocument();
   });
 
-  it('does not persist state across routes — separate routes use separate storage keys', async () => {
+  it('does not persist state across routes, separate routes use separate storage keys', async () => {
     const user = userEvent.setup();
     const { rerender } = render(
       <LiveSidebar route="route-a" title="t" tag="UNDER">
@@ -206,7 +206,7 @@ describe('LiveSidebar', () => {
         </LiveSidebar>,
       ),
     ).not.toThrow();
-    // Falls back to defaultOpen (true) — readout visible.
+    // Falls back to defaultOpen (true), readout visible.
     expect(screen.getByText('readout')).toBeInTheDocument();
     getItemSpy.mockRestore();
   });
@@ -229,16 +229,16 @@ describe('LiveSidebar', () => {
       </LiveSidebar>,
     );
     const aside = document.querySelector('aside[data-live-sidebar]') as HTMLElement;
-    // Class list should not include `fixed` — sidebar must scroll with content.
+    // Class list should not include `fixed`, sidebar must scroll with content.
     expect(aside.className).not.toMatch(/\bfixed\b/);
   });
 
-  // UAT r2 items 14 + 17 — mobile round-trip. On mobile the sidebar
+  // UAT r2 items 14 + 17, mobile round-trip. On mobile the sidebar
   // stacks below main content, so a visitor who scrolled to read it
   // ends up at the bottom. The header carries a mobile-only "↑ back to
   // top" chip that smooth-scrolls to the page's walkthrough blurb (or
   // window top as fallback).
-  describe('UAT r2 items 14 + 17 — back-to-top chip', () => {
+  describe('UAT r2 items 14 + 17, back-to-top chip', () => {
     it('renders a mobile-only back-to-top chip in the header when open', () => {
       render(
         <LiveSidebar route="cart" title="Data quality" tag="UNDER · DATAFORM ASSERTIONS">
@@ -271,7 +271,7 @@ describe('LiveSidebar', () => {
     });
 
     it('back-to-top chip does not render when the sidebar is collapsed', () => {
-      // Persisted collapsed state — simulate a visitor who has already
+      // Persisted collapsed state, simulate a visitor who has already
       // tapped the collapse chevron. The header collapses into a single
       // writing-mode-rotated expand-button; the back-to-top chip is
       // scoped to the expanded state.

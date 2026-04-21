@@ -219,7 +219,7 @@ describe('useEventStream connection lifecycle', () => {
     const instanceCountBeforeUnmount = MockEventSource.instances.length;
     unmount();
 
-    // Advance past retry delay — no new EventSource should be created
+    // Advance past retry delay, no new EventSource should be created
     act(() => {
       jest.advanceTimersByTime(5000);
     });

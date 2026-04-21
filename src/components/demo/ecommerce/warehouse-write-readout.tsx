@@ -3,7 +3,7 @@
 import { bqRowForCart, type LiveCheckoutContext } from '@/lib/demo/reveal/warehouse-write';
 
 /**
- * Warehouse-write Tier 2 readout — children of `LiveSidebar` on the
+ * Warehouse-write Tier 2 readout, children of `LiveSidebar` on the
  * checkout page. Renders the row preview being written to BigQuery with
  * cart-reactive fields (`cart_value`, `cart_item_count`, `items`) updated
  * live as the visitor modifies cart state. When live session context is
@@ -35,7 +35,7 @@ export function WarehouseWriteReadout({
         purchase event fires. {cols.length} of 51 columns shown.{' '}
         <span className="text-[#9E8A6B]">
           {utmIsExample
-            ? 'utm_* / client_id / geo_country are example seeds — no utm_campaign in your url.'
+            ? 'utm_* / client_id / geo_country are example seeds, no utm_campaign in your url.'
             : 'client_id / geo_country are example seeds; the remaining visitor-scoped columns reflect your real session.'}
         </span>
       </p>

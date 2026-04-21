@@ -4,7 +4,7 @@ const PROOF = [
     metric: '2.5',
     unit: 'M',
     context:
-      'Followers on the Tuna Melts My Heart brand — a Chiweenie with an overbite. Serious infrastructure, applied to a dog.',
+      'Followers on the Tuna Melts My Heart brand, a Chiweenie with an overbite. Serious infrastructure, applied to a dog.',
   },
   {
     tag: 'Revenue proof',
@@ -49,7 +49,7 @@ export function ProofSection() {
         <p className="mt-6 max-w-[48ch] text-base leading-[1.6] text-ink-2">
           A MarTech consulting practice that also runs a 2.5M-follower pet brand and produced
           AI-generated calendars that made $45k. The measurement infrastructure isn&apos;t a case
-          study — it&apos;s the proof.
+          study, it&apos;s the proof.
         </p>
 
         <div className="mt-12 grid gap-4 sm:grid-cols-2 md:grid-cols-3 md:gap-6">

@@ -70,14 +70,14 @@ interface ProductListingProps {
 }
 
 /**
- * Product listing — 3-column grid on desktop, horizontal scroll-snap
+ * Product listing, 3-column grid on desktop, horizontal scroll-snap
  * carousel on mobile (UAT r2 item 11).
  *
  * Pre-r2, mobile stacked the 6 cards as a single-column grid, making
  * the listing page a long scroll. Per the user: products should swipe
  * left-to-right on mobile instead.
  *
- * Implementation uses pure CSS scroll-snap — no JS library needed.
+ * Implementation uses pure CSS scroll-snap, no JS library needed.
  * - Mobile (<sm): flex with `overflow-x-auto snap-x snap-mandatory`;
  *   each card is `w-[78vw] max-w-[320px] snap-start`. The `-mx-6 px-6`
  *   gutter trick lets the carousel bleed to the viewport edge while

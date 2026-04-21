@@ -1,5 +1,5 @@
 /**
- * Phase 9B deliverable 6b — Metabase static-embed signer.
+ * Phase 9B deliverable 6b, Metabase static-embed signer.
  *
  * The signer is the boundary between Next.js and Metabase's embed feature.
  * Everything downstream (iframe rendering, fallback handling) depends on
@@ -20,7 +20,7 @@ const TEST_SECRET = 'test-secret-0123456789abcdef0123456789abcdef';
 
 // Phase 9F D10 note: the pre-9F question-level signEmbedUrl +
 // mintConfirmationEmbedUrls helpers (and their 9 + 6 tests) were removed as
-// part of the cleanup — D9's full-dashboard embed path superseded them and
+// part of the cleanup, D9's full-dashboard embed path superseded them and
 // no callers remained. The dashboard-level signDashboardEmbedUrl tests near
 // the bottom of this file cover the preserved signing invariants (URL
 // shape, JWT payload, HS256, TTL behaviour, empty-secret guard).
@@ -75,7 +75,7 @@ function extractToken(url: string): string {
   return url.slice(prefix.length, hashIdx);
 }
 
-// Phase 9F D9 — full-dashboard embed path (replaces the three question-level
+// Phase 9F D9, full-dashboard embed path (replaces the three question-level
 // embeds from 9B with a single dashboard-level JWT per the doc spec's
 // "one full-dashboard embed, not six individual" decision).
 describe('signDashboardEmbedUrl (Phase 9F D9)', () => {

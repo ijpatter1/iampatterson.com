@@ -21,7 +21,7 @@ jest.mock('@/lib/events/track', () => ({
   trackAddToCart: (...a: unknown[]) => mockAddToCart(...a),
 }));
 
-// Live session context — mocked so the product-detail sidebar can
+// Live session context, mocked so the product-detail sidebar can
 // prove it's threading real values through (UAT r1 item 6).
 const mockSession = jest.fn();
 jest.mock('@/hooks/useSessionContext', () => ({
@@ -177,10 +177,10 @@ describe('ProductDetail (Phase 9F D6)', () => {
     expect(sidebar?.textContent).toMatch(/product_view/);
   });
 
-  // UAT r1 item 6 — the staging-layer sidebar was advertised as live but
+  // UAT r1 item 6, the staging-layer sidebar was advertised as live but
   // rendered hardcoded session_id / event_timestamp / event count. With
   // live session context present, those fields must substitute.
-  describe('UAT r1 item 6 — live staging-layer readout', () => {
+  describe('UAT r1 item 6, live staging-layer readout', () => {
     it("substitutes the visitor's real session_id into the session_id row", () => {
       mockSession.mockReturnValue({
         ...DEFAULT_SESSION,
@@ -222,8 +222,8 @@ describe('ProductDetail (Phase 9F D6)', () => {
     });
   });
 
-  // UAT r2 item 12 — walkthrough blurb with mobile scroll-to-sidebar chip.
-  describe('UAT r2 item 12 — walkthrough blurb', () => {
+  // UAT r2 item 12, walkthrough blurb with mobile scroll-to-sidebar chip.
+  describe('UAT r2 item 12, walkthrough blurb', () => {
     it('renders a WalkthroughBlurb with product-scoped route', () => {
       renderDetail();
       const blurb = document.querySelector('[data-walkthrough-blurb]');
@@ -238,12 +238,12 @@ describe('ProductDetail (Phase 9F D6)', () => {
     });
   });
 
-  // UAT r2 item 13 — staging-layer readout's raw → typed table used to
+  // UAT r2 item 13, staging-layer readout's raw → typed table used to
   // overflow on narrow viewports (long raw/typed strings with no wrap
   // point pushed the table wider than the sidebar). Fix: table-fixed +
   // break-words on every cell, and the stitch-op detail line carries
   // min-w-0 + break-words.
-  describe('UAT r2 item 13 — staging-layer readout fits narrow viewports', () => {
+  describe('UAT r2 item 13, staging-layer readout fits narrow viewports', () => {
     it('raw → typed table is table-fixed so column widths stay bounded', () => {
       renderDetail();
       const table = document.querySelector('aside[data-live-sidebar] table');
@@ -271,14 +271,14 @@ describe('ProductDetail (Phase 9F D6)', () => {
     });
   });
 
-  // UAT r1 item 7 — the palette swatch row under the product blurb
+  // UAT r1 item 7, the palette swatch row under the product blurb
   // was a design reference in the hi-fi prototype, not intended as
   // shipped UI. Remove it.
   it('does NOT render a "palette" swatch row under the blurb (UAT r1 item 7)', () => {
     renderDetail();
     // Kill the specific mono-uppercase "palette" label inside the
     // info panel. The product's colored hero tile (which also uses
-    // palette colors) is the intended imagery — that stays.
+    // palette colors) is the intended imagery, that stays.
     const paletteLabels = Array.from(document.querySelectorAll('span')).filter(
       (el) => el.textContent?.trim().toLowerCase() === 'palette',
     );

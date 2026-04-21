@@ -73,7 +73,7 @@ afterEach(() => {
   jest.useRealTimers();
 });
 
-describe('OverlayView — editorial / CRT redesign', () => {
+describe('OverlayView, editorial / CRT redesign', () => {
   it('renders as a full-page overlay when isOpen is true', () => {
     render(<OverlayView />);
     const view = screen.getByTestId('overlay-view');
@@ -91,7 +91,7 @@ describe('OverlayView — editorial / CRT redesign', () => {
     // Pre-F3 shipped an `absolute inset-0 -z-10` "backdrop close" button that
     // was permanently occluded by the flex-column header/tabs/content children,
     // so it never received a click. UAT S8 reported "backdrop click does not
-    // close overlay" — the button is gone; Escape is the close affordance.
+    // close overlay", the button is gone; Escape is the close affordance.
     render(<OverlayView />);
     expect(screen.queryByRole('button', { name: /close overlay/i })).not.toBeInTheDocument();
   });
@@ -115,7 +115,7 @@ describe('OverlayView — editorial / CRT redesign', () => {
   it('calls close when the outer overlay backdrop itself is clicked (F8 user feedback)', () => {
     // Background-click-closes gesture: the listener uses the bubble-phase
     // `e.target === e.currentTarget` check, so only direct clicks on the
-    // outer fixed container close — descendant clicks bubble through
+    // outer fixed container close, descendant clicks bubble through
     // normally without triggering close.
     render(<OverlayView />);
     const view = screen.getByTestId('overlay-view');
@@ -156,7 +156,7 @@ describe('OverlayView — editorial / CRT redesign', () => {
 
   it('renders only Overview / Timeline / Consent tabs in that order (post-9E-D2)', () => {
     render(<OverlayView />);
-    // Overview + Timeline + Consent — the three-tab set after D2.
+    // Overview + Timeline + Consent, the three-tab set after D2.
     expect(screen.getByRole('button', { name: /^Overview$/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^Timeline/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^Consent$/i })).toBeInTheDocument();
@@ -189,8 +189,8 @@ describe('OverlayView — editorial / CRT redesign', () => {
     expect(inactiveTab.textContent).not.toContain('[');
   });
 
-  it('renders ALL three tab labels in the accent-current color (F2 UAT — not only the active one)', () => {
-    // Pre-F2 inactive tabs used text-u-ink-3 (grey) — visually they read
+  it('renders ALL three tab labels in the accent-current color (F2 UAT, not only the active one)', () => {
+    // Pre-F2 inactive tabs used text-u-ink-3 (grey), visually they read
     // as low-priority chrome. Post-F2 all three are amber; the bracket
     // framing + border signal active. UAT feedback: "The three tab labels
     // should be amber, not just the active tab label."
@@ -334,7 +334,7 @@ describe('OverlayView — editorial / CRT redesign', () => {
   });
 
   it('sets the boot-once flag even on the reduced-motion path', () => {
-    // D9 says "once per session, period" — a visitor who opens the overlay
+    // D9 says "once per session, period", a visitor who opens the overlay
     // with reduced-motion on, then later disables reduced-motion and reopens,
     // should NOT see the boot sequence again. Setting the flag on both
     // branches preserves the once-per-session guarantee.
@@ -346,7 +346,7 @@ describe('OverlayView — editorial / CRT redesign', () => {
   it('marks the header and tabs wrapper with an overlay-chrome class for boot-phase hiding', () => {
     // During boot, a `[data-phase='boot'] .overlay-chrome { opacity: 0 }` rule
     // hides the header and tabs so they don't paint under the curtain. Verify
-    // the contract classes are on both elements — the CSS rule keys off them.
+    // the contract classes are on both elements, the CSS rule keys off them.
     const { container } = render(<OverlayView />);
     const header = container.querySelector('header');
     expect(header).not.toBeNull();

@@ -24,7 +24,7 @@ function renderSlot() {
   );
 }
 
-describe('FooterSlot — ecommerce suppression', () => {
+describe('FooterSlot, ecommerce suppression', () => {
   afterEach(() => {
     mockPathname.mockReset();
   });

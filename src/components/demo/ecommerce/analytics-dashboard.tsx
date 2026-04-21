@@ -57,7 +57,7 @@ const channelColumns = [
     key: 'roas',
     label: 'ROAS',
     align: 'right' as const,
-    render: (r: ChannelBreakdown) => (r.roas > 0 ? `${r.roas.toFixed(2)}x` : '—'),
+    render: (r: ChannelBreakdown) => (r.roas > 0 ? `${r.roas.toFixed(2)}x` : ', '),
   },
 ];
 

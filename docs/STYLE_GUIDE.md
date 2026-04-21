@@ -1,10 +1,10 @@
-# Patterson Consulting — Style Guide
+# Patterson Consulting, Style Guide
 
 > **Status: CLEAN SLATE (as of session 018).** The color palette sections below were tried and rejected during design iteration. The site currently uses white backgrounds, black text, and no accent color. Fonts (Lora, Plus Jakarta Sans, JetBrains Mono) are finalized. The next step is choosing a single accent color. The Voice & Tone, Typography, Spacing, and Component Patterns sections remain valid. Color sections are preserved as historical context for what was tried.
 
 ## Design Intent
 
-This is the portfolio site for Patterson Consulting — a MarTech consulting practice that also runs a 2.5M-follower pet brand and produced AI-generated calendars that made $45k. The site itself is proof of craft: the measurement infrastructure running underneath it is the product, and the visual layer should signal that the person who built that backend also cares about the frontend.
+This is the portfolio site for Patterson Consulting, a MarTech consulting practice that also runs a 2.5M-follower pet brand and produced AI-generated calendars that made $45k. The site itself is proof of craft: the measurement infrastructure running underneath it is the product, and the visual layer should signal that the person who built that backend also cares about the frontend.
 
 The aesthetic communicates: technically deep, creatively fluent, has great taste. The tone is **editorial confidence meets technical precision**. Not cold, not corporate, not startup-playful. Warm, assured, considered.
 
@@ -12,15 +12,15 @@ The aesthetic communicates: technically deep, creatively fluent, has great taste
 
 ## Voice & Tone
 
-The site's name is **iampatterson.com**. It's a bold statement, but delivered with a smirk — confident because the work backs it up, not because it's trying to impress you. The voice throughout the site should reflect this: direct, knowledgeable, occasionally irreverent, never pompous.
+The site's name is **iampatterson.com**. It's a bold statement, but delivered with a smirk, confident because the work backs it up, not because it's trying to impress you. The voice throughout the site should reflect this: direct, knowledgeable, occasionally irreverent, never pompous.
 
 ### Key characteristics:
 
-**Confident but not self-important.** State what you do and what it delivers. Don't hedge, don't qualify, don't soften with "I believe" or "I think." But also don't puff — no "world-class" or "cutting-edge" or "best-in-class." The work is the claim. The infrastructure running underneath this page is the proof.
+**Confident but not self-important.** State what you do and what it delivers. Don't hedge, don't qualify, don't soften with "I believe" or "I think." But also don't puff, no "world-class" or "cutting-edge" or "best-in-class." The work is the claim. The infrastructure running underneath this page is the proof.
 
-**Technical precision without jargon walls.** Explain sGTM, Dataform, Shapley value attribution — but explain them in terms of what they *do for the client*, not what they *are* technically. A CMO should be able to read every page and understand the value. A data engineer should be able to read every page and verify the depth.
+**Technical precision without jargon walls.** Explain sGTM, Dataform, Shapley value attribution, but explain them in terms of what they *do for the client*, not what they *are* technically. A CMO should be able to read every page and understand the value. A data engineer should be able to read every page and verify the depth.
 
-**Irreverent where it earns it.** The Tuna Melts My Heart brand is playful by nature — an overbite Chiweenie with 2.5M followers is inherently funny. Lean into that contrast: serious infrastructure, applied to a dog brand. The demo products ("Start every morning with Tuna staring at you. As nature intended.") can be warm and self-aware. The consulting copy stays sharp and direct.
+**Irreverent where it earns it.** The Tuna Melts My Heart brand is playful by nature, an overbite Chiweenie with 2.5M followers is inherently funny. Lean into that contrast: serious infrastructure, applied to a dog brand. The demo products ("Start every morning with Tuna staring at you. As nature intended.") can be warm and self-aware. The consulting copy stays sharp and direct.
 
 **Self-deprecating in small doses, never self-undermining.** The non-linear career path (hospitality → influencer marketing → engineering → VP of Data → independent consultant) is a strength, not something to apologize for. Acknowledge it matter-of-factly. "I've sat in the creative meetings and the engineering standups" is the right register. Never defensive, never over-explaining why the path matters.
 
@@ -30,9 +30,9 @@ The site's name is **iampatterson.com**. It's a bold statement, but delivered wi
 
 ## Color Palette
 
-### Primary — Sage Green
+### Primary, Sage Green
 
-The brand's dominant color. Used for CTAs, active states, key accents, and the primary brand signal. Earthy, mature, distinctive — immediately sets this site apart from the blue/navy/black palette every other consultant uses.
+The brand's dominant color. Used for CTAs, active states, key accents, and the primary brand signal. Earthy, mature, distinctive, immediately sets this site apart from the blue/navy/black palette every other consultant uses.
 
 | Token | Hex | Usage |
 |---|---|---|
@@ -43,7 +43,7 @@ The brand's dominant color. Used for CTAs, active states, key accents, and the p
 | `sage-200` | `#C8D5C0` | Subtle background fills, card borders |
 | `sage-100` | `#E8EFE4` | Light section backgrounds, wash |
 
-### Secondary — Dusty Plum
+### Secondary, Dusty Plum
 
 The complementary color. Used for depth, visual rhythm, hover states, and secondary UI elements. Dusty and desaturated, not bright or saturated purple.
 
@@ -56,18 +56,18 @@ The complementary color. Used for depth, visual rhythm, hover states, and second
 | `plum-200` | `#D0C3D8` | Subtle borders, light accents |
 | `plum-100` | `#EDE7F1` | Light wash backgrounds |
 
-### Neutral — Warm
+### Neutral, Warm
 
 All text and structural elements use warm neutrals. Never pure black (`#000`), never cool grey. The warm undertone keeps text feeling approachable rather than stark.
 
 | Token | Hex | Usage |
 |---|---|---|
-| `neutral-900` | `#2B2424` | Body text, primary headings — the "near-black" |
+| `neutral-900` | `#2B2424` | Body text, primary headings, the "near-black" |
 | `neutral-700` | `#5C4A3D` | Warm dark accent, strong secondary text |
 | `neutral-500` | `#8C7B6B` | Secondary body text, captions, timestamps |
 | `neutral-400` | `#B5A899` | Placeholder text, disabled states |
 | `neutral-200` | `#DDD6CC` | Borders, dividers, subtle UI lines |
-| `neutral-100` | `#F5F2EE` | Page background — cream, not white |
+| `neutral-100` | `#F5F2EE` | Page background, cream, not white |
 
 ### Demo Accent Colors
 
@@ -83,10 +83,10 @@ Each demo gets a distinct accent color that carries through its spotlight card o
 
 - **Page background** is always `neutral-100` (`#F5F2EE`), not white. This single change removes the template feel immediately.
 - **Text** is always from the warm neutral scale. `neutral-900` for body, `neutral-500` for secondary, `neutral-400` for muted/disabled.
-- **Sage green** is the primary action color — buttons, links, active nav states, focus rings.
-- **Plum** is never used for primary actions. It's for depth, rhythm, and visual contrast — section backgrounds, hover reveals, badges, secondary elements.
+- **Sage green** is the primary action color, buttons, links, active nav states, focus rings.
+- **Plum** is never used for primary actions. It's for depth, rhythm, and visual contrast, section backgrounds, hover reveals, badges, secondary elements.
 - **Never use** the Tailwind default `neutral-*` (cool grey), `gray-*`, or `slate-*` scales. Replace all instances with the warm neutral scale above.
-- Ensure sufficient contrast ratios for accessibility (WCAG AA minimum). `neutral-900` on `neutral-100` passes easily. `sage-700` on `neutral-100` passes. Test `neutral-500` on `neutral-100` — it may need to go to `neutral-700` for small text.
+- Ensure sufficient contrast ratios for accessibility (WCAG AA minimum). `neutral-900` on `neutral-100` passes easily. `sage-700` on `neutral-100` passes. Test `neutral-500` on `neutral-100`, it may need to go to `neutral-700` for small text.
 
 ---
 
@@ -104,9 +104,9 @@ Load via `next/font/google` for automatic optimization and no layout shift.
 
 ### Why These Fonts
 
-**Instrument Serif** is the taste signal. Every other MarTech consultant's site uses a geometric sans for everything. A serif display font immediately says "this person thinks about design." It's editorial, warm, confident — the typographic equivalent of a well-cut suit at a technical meeting. Use it for hero text, section headings, and anywhere you want the visitor to slow down and read.
+**Instrument Serif** is the taste signal. Every other MarTech consultant's site uses a geometric sans for everything. A serif display font immediately says "this person thinks about design." It's editorial, warm, confident, the typographic equivalent of a well-cut suit at a technical meeting. Use it for hero text, section headings, and anywhere you want the visitor to slow down and read.
 
-**Plus Jakarta Sans** is the clarity signal. It's a clean geometric sans with slightly rounded terminals that give it warmth Inter and DM Sans lack. Readable at every size, professional without being sterile. It does the work of body text without drawing attention to itself — which is exactly what body text should do.
+**Plus Jakarta Sans** is the clarity signal. It's a clean geometric sans with slightly rounded terminals that give it warmth Inter and DM Sans lack. Readable at every size, professional without being sterile. It does the work of body text without drawing attention to itself, which is exactly what body text should do.
 
 **JetBrains Mono** is the credibility signal. It says "I write code" every time it appears. Use it for event names in the pipeline overlay, data layer parameters, technical annotations, and anywhere raw data appears. It grounds the editorial confidence of the serif in technical reality.
 
@@ -129,7 +129,7 @@ Use a scale that breathes. The current site crams too much text into too-similar
 
 - **Headings** are Instrument Serif, always. Even small section headings. The consistency of the serif for all headings creates a strong rhythm.
 - **Body text** never exceeds `max-w-2xl` (~42em). Long lines kill readability.
-- **Don't mix** serif and sans in the same line. Instrument Serif is for headings. Plus Jakarta Sans is for everything else. The contrast between them is the point — don't dilute it.
+- **Don't mix** serif and sans in the same line. Instrument Serif is for headings. Plus Jakarta Sans is for everything else. The contrast between them is the point, don't dilute it.
 - **Monospace** appears only in technical contexts: event names, parameter keys, pipeline IDs, code snippets, dashboard metrics. Never for body text, never for headings.
 - **Italic** Instrument Serif is available for pull quotes and emphasis in editorial contexts (About page, "What I Believe" principles).
 
@@ -139,7 +139,7 @@ Use a scale that breathes. The current site crams too much text into too-similar
 
 ### Base Rhythm
 
-Use `4px` increments (Tailwind's default `p-1` = `4px`). Generous whitespace is essential — the current site feels cramped because sections run into each other.
+Use `4px` increments (Tailwind's default `p-1` = `4px`). Generous whitespace is essential, the current site feels cramped because sections run into each other.
 
 - **Section padding**: `py-24` minimum on desktop, `py-16` on mobile. Each section should feel like its own room.
 - **Content max-width**: `max-w-5xl` for full-width sections, `max-w-2xl` for prose-heavy content.
@@ -164,10 +164,10 @@ Use `4px` increments (Tailwind's default `p-1` = `4px`). Generous whitespace is 
 
 ### Cards
 
-- Background: `white` (a step up from the `neutral-100` page background — this creates a subtle lift effect).
+- Background: `white` (a step up from the `neutral-100` page background, this creates a subtle lift effect).
 - Border: `neutral-200`, `rounded-xl`.
 - Shadow: subtle (`shadow-sm`), not dramatic. On hover: `shadow-md` + `border-neutral-300`. The lift should feel physical, not glowy.
-- Demo spotlight cards break this pattern — they get their demo accent color as a background or gradient, full-width treatment, and more dramatic hover.
+- Demo spotlight cards break this pattern, they get their demo accent color as a background or gradient, full-width treatment, and more dramatic hover.
 
 ### Overline Labels
 
@@ -182,7 +182,7 @@ Used above section headings to categorize content (e.g., "Tier 1", "E-Commerce D
 - All interactive elements: `transition-all duration-200 ease-out`
 - Page transitions: fade or slide (implement with Framer Motion's `AnimatePresence`)
 - Scroll reveals: fade-up with stagger for multi-element sections
-- `prefers-reduced-motion: reduce` — disable all animation, show all content immediately
+- `prefers-reduced-motion: reduce`, disable all animation, show all content immediately
 
 ---
 

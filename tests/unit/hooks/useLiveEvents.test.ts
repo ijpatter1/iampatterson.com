@@ -93,7 +93,7 @@ describe('useLiveEvents', () => {
     mockSseEvents = [];
     rerender();
 
-    // Source stays on 'sse' — the sticky flag prevents a visible flip.
+    // Source stays on 'sse', the sticky flag prevents a visible flip.
     // `events` returns the empty SSE buffer, NOT the dataLayer fallback
     // (a silent swap would be worse UX than a momentarily-empty feed).
     expect(result.current.source).toBe('sse');

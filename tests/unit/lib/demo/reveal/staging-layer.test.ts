@@ -5,7 +5,7 @@ import {
   stitchOpsForSession,
 } from '@/lib/demo/reveal/staging-layer';
 
-describe('staging-layer — field casts and stitch ops', () => {
+describe('staging-layer, field casts and stitch ops', () => {
   it('includes core event fields with types and example values', () => {
     const keys = STAGING_FIELD_CASTS.map((f) => f.k);
     expect(keys).toEqual([
@@ -59,7 +59,7 @@ describe('stagingRowsForProduct', () => {
     expect(nonProductKeys).toEqual(originalNonProductRows);
   });
 
-  // UAT r1 item 6 — the sidebar was advertised as live but session_id +
+  // UAT r1 item 6, the sidebar was advertised as live but session_id +
   // event_timestamp were hardcoded seeds. When live context is supplied,
   // those fields must substitute with the visitor's real values.
   it('substitutes session_id with the live value (truncated to 8 chars + ellipsis)', () => {
@@ -120,9 +120,9 @@ describe('stitchOpsForSession', () => {
     }
   });
 
-  // Pass-1 eval fix — session_stitch.detail must NOT emit
+  // Pass-1 eval fix, session_stitch.detail must NOT emit
   // "linked to abc12345… (0 events)" during the pre-first-event window
-  // when cookie is loaded but no events have flowed. It's a lie — there
+  // when cookie is loaded but no events have flowed. It's a lie, there
   // are no events yet.
   it('leaves session_stitch as seed when session_id is set but events_in_session=0', () => {
     const ops = stitchOpsForSession({

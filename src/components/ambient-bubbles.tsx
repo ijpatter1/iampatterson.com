@@ -18,7 +18,7 @@ interface AmbientBubblesProps {
 }
 
 /**
- * Known iap_source event names derived from `DATA_LAYER_EVENT_NAMES` — the
+ * Known iap_source event names derived from `DATA_LAYER_EVENT_NAMES`, the
  * same single source of truth `useDataLayerEvents` uses. Adding an event to
  * the schema automatically surfaces it here as a bubble-eligible name.
  */
@@ -38,7 +38,7 @@ export function AmbientBubbles({ maxBubbles = 3, duration = 3000 }: AmbientBubbl
       const id = nextId++;
       setBubbles((prev) => {
         const next = [...prev, { id, eventName, createdAt: Date.now() }];
-        // Cap at maxBubbles — drop oldest
+        // Cap at maxBubbles, drop oldest
         return next.slice(-maxBubbles);
       });
       // Schedule removal

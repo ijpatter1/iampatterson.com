@@ -1,15 +1,15 @@
 /**
- * Session State — visible to the visitor in the overlay's Session State tab,
+ * Session State, visible to the visitor in the overlay's Session State tab,
  * drives the contextual contact-form CTA, and (optionally, per deliverable 8)
  * rides along on contact form submissions.
  *
  * Canonical shape: `docs/UX_PIVOT_SPEC.md` §3.6. Storage: tab-scoped
  * sessionStorage under `iampatterson.session_state`. A returning visitor
- * starts fresh — aligned with the `_iap_sid` cookie lifecycle.
+ * starts fresh, aligned with the `_iap_sid` cookie lifecycle.
  */
 import type { DataLayerEventName } from '@/lib/events/schema';
 
-/** Ecommerce demo funnel stages — monotonic set, ordered by first-reached. */
+/** Ecommerce demo funnel stages, monotonic set, ordered by first-reached. */
 export type EcommerceStage = 'product_view' | 'add_to_cart' | 'begin_checkout' | 'purchase';
 
 /**
@@ -51,7 +51,7 @@ export interface SessionState {
    * partial record over the `DataLayerEventName` union so a typo in a key name
    * fails at compile time inside the reducer. On rehydration, entries whose
    * keys are no longer present in the live schema are dropped via
-   * `reconcileRehydrated` — keep in lockstep with `event_type_coverage.fired`.
+   * `reconcileRehydrated`, keep in lockstep with `event_type_coverage.fired`.
    */
   events_fired: Partial<Record<DataLayerEventName, number>>;
   event_type_coverage: {
@@ -84,11 +84,11 @@ export interface SessionState {
   /**
    * Thresholds (subset of COVERAGE_MILESTONE_THRESHOLDS) the visitor has
    * crossed this session. Memoized in the persisted blob so a reload mid-
-   * session doesn't re-fire an already-crossed threshold. Monotonic — entries
+   * session doesn't re-fire an already-crossed threshold. Monotonic, entries
    * are never removed. The provider watches this array for new entries and
    * emits `coverage_milestone` events.
    */
   coverage_milestones_fired: CoverageMilestoneThreshold[];
-  /** ISO 8601 timestamp — updated on every applied event. */
+  /** ISO 8601 timestamp, updated on every applied event. */
   updated_at: string;
 }

@@ -60,7 +60,7 @@ describe('LiveStrip', () => {
 
   it('includes the short session ID suffix in the SESSION field', () => {
     render(<LiveStrip />);
-    // 6-char suffix to match SessionPulse — test mock returns 'aaaaaaaa-12345678'
+    // 6-char suffix to match SessionPulse, test mock returns 'aaaaaaaa-12345678'
     expect(screen.getAllByText(/345678/).length).toBeGreaterThan(0);
   });
 

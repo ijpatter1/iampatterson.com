@@ -66,10 +66,10 @@ describe('SessionPulse', () => {
     expect(screen.getByText(/123456/)).toBeInTheDocument();
   });
 
-  // Phase 9E D1 — hover affordance (tooltip removed in the F1 language
+  // Phase 9E D1, hover affordance (tooltip removed in the F1 language
   // consolidation; the instrument-as-nav conceit stands on its own)
 
-  it('does NOT render a verbal tooltip on hover (F1 rename — instrument-as-nav)', async () => {
+  it('does NOT render a verbal tooltip on hover (F1 rename, instrument-as-nav)', async () => {
     // The "NAV · UNDER THE HOOD" tooltip was removed in the F1 language
     // sweep. The button's aria-label carries the semantics for AT users;
     // visible chrome stays clean to avoid re-introducing the fragmentation

@@ -28,16 +28,16 @@ function writePersisted(route: string, collapsed: boolean) {
 }
 
 /**
- * Pattern 2 — Live sidebar (Phase 9F deliverable 2).
+ * Pattern 2, Live sidebar (Phase 9F deliverable 2).
  *
  * Collapsible Tier 2 readout panel. Right-rail on ≥1024px, top accordion
- * below. Position-relative / sticky (NOT fixed) — scrolls with page content
+ * below. Position-relative / sticky (NOT fixed), scrolls with page content
  * so it doesn't permanently occlude.
  *
  * Collapse state persists within-route via sessionStorage, never across routes
  * (each demo page re-presents its Tier 2 content open-by-default).
  *
- * UAT r2 items 14 + 17 — on mobile the sidebar stacks below the main
+ * UAT r2 items 14 + 17, on mobile the sidebar stacks below the main
  * content, so a visitor scrolling to read it ends up at the bottom of
  * the page. The header carries a `↑ back to top` chip (mobile-only;
  * `md:hidden`) that smooth-scrolls back to the page's walkthrough
@@ -82,10 +82,10 @@ export function LiveSidebar({
     });
   }, [route]);
 
-  // UAT r2 items 14 + 17 — mobile round-trip. The walkthrough blurb's
+  // UAT r2 items 14 + 17, mobile round-trip. The walkthrough blurb's
   // "see the stack ↓" chip brings the visitor down to the sidebar; this
   // handler scrolls back to the walkthrough blurb (not the absolute top
-  // of the page — the demo banner + sub-nav are less useful landing
+  // of the page, the demo banner + sub-nav are less useful landing
   // targets than the blurb itself).
   const handleBackToTop = useCallback(() => {
     if (typeof document === 'undefined') return;
@@ -147,7 +147,7 @@ export function LiveSidebar({
           <header className="flex items-start justify-between gap-2">
             <div className="text-[10px] uppercase tracking-[0.18em] text-[#F3C769]">{tag}</div>
             <div className="flex items-center gap-3">
-              {/* UAT r2 items 14, 17 — mobile-only back-to-top chip so a
+              {/* UAT r2 items 14, 17, mobile-only back-to-top chip so a
                   visitor who reached the sidebar via the walkthrough's
                   "see the stack ↓" link has a round-trip path. Desktop
                   renders the sidebar in-view so the chip is hidden. */}

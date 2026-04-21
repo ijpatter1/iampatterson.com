@@ -31,7 +31,7 @@ function consentLabel(
 
 /**
  * Horizontal ticker strip mounted below the site header. Surfaces the stack
- * the visitor is flowing through right now — session ID, pipeline path,
+ * the visitor is flowing through right now, session ID, pipeline path,
  * consent state, BI layer, attribution approach. Loops via CSS keyframe.
  */
 export function LiveStrip() {

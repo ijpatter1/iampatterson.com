@@ -16,12 +16,12 @@ export interface DiagnosticLine {
   text: string;
   /** Status tag rendered as `[OK]` / `[SKIP]` / `[LIVE]` etc. */
   tag?: string;
-  /** Emphasises the line visually — used for the final payoff line. */
+  /** Emphasises the line visually, used for the final payoff line. */
   emph?: boolean;
 }
 
 /**
- * Pattern 4 — Full-page diagnostic moment (Phase 9F deliverable 4).
+ * Pattern 4, Full-page diagnostic moment (Phase 9F deliverable 4).
  *
  * The one full-bleed transitional moment in the ecommerce demo. Renders a
  * full-bleed near-black overlay with amber typed-sequence text; auto-advances
@@ -29,7 +29,7 @@ export interface DiagnosticLine {
  * OR on any `keydown` (skip). Reserved for exactly one usage site (checkout
  * submit → confirmation navigation) per UX_PIVOT_SPEC §3.5.
  *
- * Under prefers-reduced-motion the moment is skipped entirely — onComplete
+ * Under prefers-reduced-motion the moment is skipped entirely, onComplete
  * fires immediately on mount and no dialog renders.
  */
 export function FullPageDiagnostic({
@@ -96,7 +96,7 @@ export function FullPageDiagnostic({
   }, [duration, lines, reduced, complete]);
 
   // Skippable via any keydown; also keeps Tab focus trapped on the dialog
-  // container (no interactive children, so Tab has nowhere valid to go —
+  // container (no interactive children, so Tab has nowhere valid to go, 
   // preventDefault keeps focus on the dialog).
   useEffect(() => {
     if (reduced) return;

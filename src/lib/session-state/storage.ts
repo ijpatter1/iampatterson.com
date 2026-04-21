@@ -2,7 +2,7 @@
  * sessionStorage persistence for SessionState.
  *
  * Tab-scoped lifetime (returning visitors start fresh). Load tolerates
- * missing keys and malformed payloads — the provider falls back to a
+ * missing keys and malformed payloads, the provider falls back to a
  * freshly-initialized state. Save swallows quota / security errors; a
  * dropped save is preferable to an uncaught exception in the render path.
  */
@@ -20,7 +20,7 @@ function isConsentValue(v: unknown): v is 'granted' | 'denied' {
  * Intentionally loose on event-name membership: the blob may contain event
  * names that predate a deploy's schema shape (or postdate one, if a rollback
  * happened). The authoritative repair is `reconcileRehydrated` in `derive.ts`
- * — this guard only rejects blobs that would crash the reducer outright.
+ *, this guard only rejects blobs that would crash the reducer outright.
  * It DOES enforce the invariant that every name in `fired` also appears in
  * `total`, so reconciliation never has to repair that particular breakage.
  */
@@ -99,6 +99,6 @@ export function saveSessionState(state: SessionState): void {
   try {
     window.sessionStorage.setItem(SESSION_STATE_STORAGE_KEY, JSON.stringify(state));
   } catch {
-    // Quota or SecurityError — drop the write silently.
+    // Quota or SecurityError, drop the write silently.
   }
 }

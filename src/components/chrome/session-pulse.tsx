@@ -14,12 +14,12 @@ interface SessionPulseProps {
 
 // Phase 9E D1: when the clickable variant is rendered, hovering it fires
 // `session_pulse_hover` at most once per 60 seconds per session. Desktop
-// only — coarse-pointer devices (phones, tablets) synthesize hover on tap,
+// only, coarse-pointer devices (phones, tablets) synthesize hover on tap,
 // which would produce confounded "hovered but didn't click" signal.
 const HOVER_DEBOUNCE_MS = 60_000;
 
 /**
- * Live session indicator — pulsing dot + short session ID + event count.
+ * Live session indicator, pulsing dot + short session ID + event count.
  *
  * Clickable variant (header) opens the overlay and carries the Phase 9E
  * D1 hover affordances: ↗ glow on hover, min 44×44px touch target,
@@ -27,7 +27,7 @@ const HOVER_DEBOUNCE_MS = 60_000;
  * on its own without a verbal tooltip; the aria-label carries the
  * assistive-tech semantics.
  * Display-only variant (footer, formerly mobile sheet) is a passive
- * status indicator — no hover affordance, no emission.
+ * status indicator, no hover affordance, no emission.
  *
  * Exported as forwardRef so the NavHint component can classify clicks
  * on this surface vs. elsewhere on the page.
@@ -68,7 +68,7 @@ export const SessionPulse = forwardRef<HTMLElement, SessionPulseProps>(function 
       >
         {/* Mobile: base `animate-session-pulse` (2.4s, scale→2.2).
             Desktop (md+): `animate-session-pulse-strong` (1.9s, scale→
-            2.6, higher opacity floor) per UX_PIVOT_SPEC §3.1 — desktop
+            2.6, higher opacity floor) per UX_PIVOT_SPEC §3.1, desktop
             visitors linger and the affordance needs more presence
             than mobile. `md:animate-session-pulse-strong` overrides
             the default at the md breakpoint. */}
@@ -105,7 +105,7 @@ export const SessionPulse = forwardRef<HTMLElement, SessionPulseProps>(function 
           onBlur={() => setIsHovered(false)}
           aria-label="Open your session"
           // min 44×44 touch/click target per UX_PIVOT_SPEC §3.1 desktop
-          // treatment — `min-h-[44px]` + padding produces a rectangular
+          // treatment, `min-h-[44px]` + padding produces a rectangular
           // hitbox that satisfies WCAG 2.5.5 without forcing a visible
           // background on the affordance.
           className={`group inline-flex min-h-[44px] items-center gap-2 rounded-sm px-2 py-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-current focus-visible:ring-offset-2 ${

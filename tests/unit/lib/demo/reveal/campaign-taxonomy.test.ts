@@ -7,7 +7,7 @@ import {
   randomUtmSeedParams,
 } from '@/lib/demo/reveal/campaign-taxonomy';
 
-describe('reveal/campaign-taxonomy — UTM_TAXONOMY seed map', () => {
+describe('reveal/campaign-taxonomy, UTM_TAXONOMY seed map', () => {
   it('mirrors the prototype seed entries', () => {
     expect(Object.keys(UTM_TAXONOMY)).toEqual([
       'meta_prospecting_lal_tuna_q1',
@@ -71,7 +71,7 @@ describe('classifyUtm', () => {
   });
 });
 
-// UAT r2 item 6 — random-seed UTM helpers stamp the Enter-the-demo CTA
+// UAT r2 item 6, random-seed UTM helpers stamp the Enter-the-demo CTA
 // with a realistic utm_* triple on every click. Correctness requires the
 // source + medium to match the taxonomy entry for the returned campaign,
 // otherwise the listing hero would show a campaign classified by

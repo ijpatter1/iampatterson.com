@@ -7,7 +7,7 @@
  * `classified-as` panel below the editorial copy.
  *
  * Distinct from the generic `src/lib/demo/campaign-taxonomy.ts` regex
- * classifier (which mirrors the Phase 5 BigQuery AI.CLASSIFY logic) — this
+ * classifier (which mirrors the Phase 5 BigQuery AI.CLASSIFY logic), this
  * module is a lookup over real Tuna Shop demo seeds, deterministic for
  * screenshots and tests, and falls back to "Unclassified" rather than
  * pattern-matching on arbitrary inputs. Pre-9E `CampaignTaxonomyUnderside`
@@ -60,7 +60,7 @@ export const UTM_TAXONOMY: Record<string, CampaignClassification> = {
 
 /**
  * Default UTM campaign seed used when no `utm_campaign` is present in
- * `searchParams`. Deterministic — picked once and pinned so tests and
+ * `searchParams`. Deterministic, picked once and pinned so tests and
  * screenshots are reproducible. Do NOT change to a randomised pick.
  */
 export const DEFAULT_UTM = 'meta_prospecting_lal_tuna_q1';
@@ -68,7 +68,7 @@ export const DEFAULT_UTM = 'meta_prospecting_lal_tuna_q1';
 /**
  * Resolve the visitor's effective `utm_campaign` from a search-params-like
  * input. Returns the explicit value when present (even if unknown to the
- * taxonomy — the caller decides whether to display "unclassified" or fall
+ * taxonomy, the caller decides whether to display "unclassified" or fall
  * back); otherwise the deterministic default seed.
  */
 export function resolveUtm(params: { utm_campaign?: string | null }): string {
@@ -82,7 +82,7 @@ export function resolveUtm(params: { utm_campaign?: string | null }): string {
  * from the URL (`isLive: true`) or fell back to the seed (`isLive: false`).
  * Added for UAT r1 item 3: surfaces MUST label a seed value as an example,
  * not as the visitor's own utm_campaign. The listing-hero panel is the
- * primary caller — toasts happily use the raw `resolveUtm` value either way.
+ * primary caller, toasts happily use the raw `resolveUtm` value either way.
  */
 export function resolveUtmMeta(params: { utm_campaign?: string | null }): {
   value: string;
@@ -97,7 +97,7 @@ export function resolveUtmMeta(params: { utm_campaign?: string | null }): {
 
 /**
  * Classify a campaign id against the seed taxonomy. Returns an
- * `Unclassified` placeholder when the id isn't in the seed map — preserves
+ * `Unclassified` placeholder when the id isn't in the seed map, preserves
  * the visitor-facing "we don't pretend to recognise everything" honesty.
  */
 export function classifyUtm(campaignId: string): CampaignClassification {
@@ -109,7 +109,7 @@ export function classifyUtm(campaignId: string): CampaignClassification {
 /**
  * Pick a random seed campaign id from the taxonomy. Used by the homepage
  * "Enter the demo" CTA (UAT r2 item 6) to stamp the deep-link with a
- * realistic utm_campaign on every click — the listing page then runs the
+ * realistic utm_campaign on every click, the listing page then runs the
  * value through `classifyUtm` and the visitor sees a different classified
  * bucket each visit. `rng` is injectable so tests can pin the pick.
  */
@@ -122,7 +122,7 @@ export function pickRandomSeedCampaign(rng: () => number = Math.random): string 
  * Build a randomised `{ utm_campaign, utm_source, utm_medium }` triple
  * suitable for URL-encoding onto the "Enter the demo" CTA. Consistent
  * with the taxonomy's classification so the three params agree. Source
- * is lowercased (matches prototype seed conventions — "Meta" → "meta"
+ * is lowercased (matches prototype seed conventions, "Meta" → "meta"
  * on the URL, the display stays proper-cased in the readout).
  */
 export function randomUtmSeedParams(rng: () => number = Math.random): {

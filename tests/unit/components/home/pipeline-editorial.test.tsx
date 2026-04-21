@@ -108,7 +108,7 @@ describe('PipelineEditorial', () => {
     act(() => {
       jest.advanceTimersByTime(1800 * 3);
     });
-    // Stage 01 stays active — no interval scheduled.
+    // Stage 01 stays active, no interval scheduled.
     expect(screen.getByTestId('pipeline-stage-01').dataset.active).toBe('true');
     expect(screen.getByTestId('pipeline-stage-02').dataset.active).toBe('false');
   });
@@ -145,7 +145,7 @@ describe('PipelineEditorial', () => {
   it('shows the NEWEST live events in the visible window when the buffer overflows', () => {
     // useLiveEvents returns events newest-first in production
     // (useDataLayerEvents.ts:146 prepends; useEventStream.ts:101 prepends).
-    // The fixture MUST match that contract — otherwise the test passes
+    // The fixture MUST match that contract, otherwise the test passes
     // for the wrong reason. Build the array newest-first: evt_11 (latest
     // timestamp) at index 0, evt_0 (earliest) at index 11.
     //
@@ -179,7 +179,7 @@ describe('PipelineEditorial', () => {
     //
     // CRITICAL: Both `Date.now()` (used by startedAtRef inside the
     // component) AND the fixture timestamps must be controlled. Without
-    // mocking Date.now, this test is wall-clock flaky — once real time
+    // mocking Date.now, this test is wall-clock flaky, once real time
     // passes the fixture timestamps, both deltas become negative,
     // `fmtRelTime` clamps via `Math.max(0, ...)`, and both rows render
     // as `00:00.00` → the Set collapses to size 1 → false-fail. Lock
@@ -194,7 +194,7 @@ describe('PipelineEditorial', () => {
       const feed = screen.getByTestId('pipeline-log-feed');
       const items = Array.from(feed.querySelectorAll('li'));
       const tsCells = items.map((li) => li.querySelector('.t')?.textContent ?? '');
-      // Two visible live rows (after seeds slide out) — their timestamps
+      // Two visible live rows (after seeds slide out), their timestamps
       // must not all be the same value. Use Set size as the witness.
       const liveTsCells = tsCells.slice(-2);
       expect(new Set(liveTsCells).size).toBe(2);
@@ -250,7 +250,7 @@ describe('PipelineEditorial', () => {
   it('hides the footnote feed on mobile via `hidden md:block` (F6 follow-up compression)', () => {
     // Pin the mobile-hide class composition on the footnote wrapper.
     // Without this pin a regression that removes the class would pass
-    // existing tests (jsdom doesn't resolve Tailwind breakpoints — all
+    // existing tests (jsdom doesn't resolve Tailwind breakpoints, all
     // existing queries still find the element in the DOM). This test
     // asserts the className contract directly.
     const { container } = render(<PipelineEditorial />);

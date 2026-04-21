@@ -50,11 +50,11 @@ const VOLUME_ANOMALY_THRESHOLD = 10;
 export interface LiveCartContext {
   /** Current cart item count. */
   itemCount: number;
-  /** Real add_to_cart event count in the last 30s — feeds volume_anomaly. */
+  /** Real add_to_cart event count in the last 30s, feeds volume_anomaly. */
   addToCartInLast30s?: number;
-  /** Real session_id — feeds session_join_integrity. */
+  /** Real session_id, feeds session_join_integrity. */
   sessionId?: string;
-  /** Seconds since the latest event landed — feeds freshness. */
+  /** Seconds since the latest event landed, feeds freshness. */
   secondsSinceLastEvent?: number;
   /** Most recent event name (any event). Blank when no events have flowed yet. */
   lastEventName?: string;
@@ -74,7 +74,7 @@ export interface LiveCartContext {
  *   "no events yet" when the stream is empty.
  *
  * schema_validation / null_check / referential_integrity stay as seed
- * copy — they describe the assertion itself, not a session value.
+ * copy, they describe the assertion itself, not a session value.
  */
 export function assertionsForCart(params: LiveCartContext): Assertion[] {
   const liveCount = params.addToCartInLast30s;
@@ -104,7 +104,7 @@ export function assertionsForCart(params: LiveCartContext): Assertion[] {
         return {
           ...a,
           status: 'FAIL' as const,
-          detail: `cart holds ${params.itemCount} items — anomaly threshold tripped`,
+          detail: `cart holds ${params.itemCount} items, anomaly threshold tripped`,
         };
       }
       return a;

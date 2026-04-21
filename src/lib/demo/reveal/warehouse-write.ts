@@ -1,7 +1,7 @@
 /**
  * BigQuery row preview for Phase 9F checkout `LiveSidebar` (D8).
  *
- * Mirrors the prototype's BQ_ROW_COLUMNS list — 21 representative columns
+ * Mirrors the prototype's BQ_ROW_COLUMNS list, 21 representative columns
  * from the full ~51-column `iampatterson_raw.events_raw` schema (the subset
  * most relevant to checkout). Pre-9E `WarehouseWriteUnderside` salvage
  * destination.
@@ -48,17 +48,17 @@ export interface LiveCheckoutContext {
   consentMarketing?: boolean;
   /** The visitor's actual page URL (window.location.href). */
   pageLocation?: string;
-  /** document.referrer — honest about where the visitor came from. */
+  /** document.referrer, honest about where the visitor came from. */
   pageReferrer?: string;
   /** Resolved utm_campaign (either URL param or "" when absent). */
   utmCampaign?: string;
   /** Whether utmCampaign came from the visitor's URL (vs fallback seed). */
   utmIsLive?: boolean;
-  /** Classified UTM source — Meta / Google / TikTok / Email / Unknown. */
+  /** Classified UTM source, Meta / Google / TikTok / Email / Unknown. */
   utmSource?: string;
-  /** Classified channel bucket — Prospecting · Lookalike / Brand · Search / … */
+  /** Classified channel bucket, Prospecting · Lookalike / Brand · Search / … */
   channelClassified?: string;
-  /** Derived device category — "mobile" / "tablet" / "desktop". */
+  /** Derived device category, "mobile" / "tablet" / "desktop". */
   deviceCategory?: string;
 }
 
@@ -134,10 +134,10 @@ export function bqRowForCart(params: {
 
 /** 7-line pipeline-journey sequence for the full-page diagnostic moment.
  *
- * The static default assumes analytics=granted, marketing=denied — the
+ * The static default assumes analytics=granted, marketing=denied, the
  * most common state for a visitor who accepts only strictly necessary
  * cookies via Cookiebot. Call `diagnosticLinesForConsent` to branch on
- * the visitor's real consent flags (UAT r1 item 14 — honest data).
+ * the visitor's real consent flags (UAT r1 item 14, honest data).
  */
 export const FULL_PAGE_DIAGNOSTIC_LINES: Array<{
   text: string;
@@ -158,7 +158,7 @@ export const FULL_PAGE_DIAGNOSTIC_LINES: Array<{
  * consent state so the diagnostic text matches what would actually
  * happen. When analytics is denied, the consent check line reflects that;
  * when marketing is granted, the Meta CAPI line flips from SKIP to OK
- * ("routed → Meta CAPI · event sent"). Other lines are unconditional —
+ * ("routed → Meta CAPI · event sent"). Other lines are unconditional, 
  * the purchase fires, sGTM receives it, BigQuery inserts the row, the
  * attribution engine and dashboards downstream of BQ both run.
  */

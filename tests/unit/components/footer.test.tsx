@@ -26,7 +26,7 @@ function renderFooter() {
   );
 }
 
-describe('Footer — editorial', () => {
+describe('Footer, editorial', () => {
   it('renders the Patterson wordmark', () => {
     renderFooter();
     expect(screen.getByRole('heading', { level: 4 })).toHaveTextContent(/patterson/i);

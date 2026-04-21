@@ -6,13 +6,13 @@ import type { ComponentPropsWithoutRef, ReactNode } from 'react';
 type Variant = 'accent' | 'solid' | 'ghost';
 
 const variantClasses: Record<Variant, string> = {
-  // Accent — dynamic persimmon/phosphor fill from --accent
+  // Accent, dynamic persimmon/phosphor fill from --accent
   accent:
     'border border-accent-current bg-accent-current text-paper hover:brightness-110 focus-visible:ring-2 focus-visible:ring-accent-current focus-visible:ring-offset-2',
-  // Solid ink — default dark button from the prototype's .btn
+  // Solid ink, default dark button from the prototype's .btn
   solid:
     'border border-ink bg-ink text-paper hover:bg-ink-2 focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2',
-  // Ghost — transparent outline
+  // Ghost, transparent outline
   ghost:
     'border border-rule-soft bg-transparent text-ink hover:border-ink hover:bg-paper-alt focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2',
 };

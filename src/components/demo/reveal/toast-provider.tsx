@@ -100,7 +100,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   // Cancel all in-flight timers on unmount so we don't update state after
   // teardown. Accessing `timersRef.current` at cleanup time is the correct
-  // pattern here — `timersRef` holds a stable Map instance whose identity
+  // pattern here, `timersRef` holds a stable Map instance whose identity
   // never changes; we mutate it in place. react-hooks/exhaustive-deps flags
   // this as a ref-stale-at-cleanup risk, but that rule is written for refs
   // pointing at DOM nodes whose identity can swap between render and unmount.

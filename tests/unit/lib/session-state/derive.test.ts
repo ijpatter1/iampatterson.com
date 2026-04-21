@@ -1,5 +1,5 @@
 /**
- * SessionState reducer — pure event-to-state derivation.
+ * SessionState reducer, pure event-to-state derivation.
  *
  * Contract (Phase 9E deliverable 4, UX_PIVOT_SPEC §3.6):
  * - events_fired counts every applied event by name.
@@ -26,7 +26,7 @@ function makeEvent(overrides: Partial<SessionStateEventInput> = {}): SessionStat
   };
 }
 
-describe('deriveNext — event counts and coverage', () => {
+describe('deriveNext, event counts and coverage', () => {
   it('increments events_fired on each event', () => {
     let state = createInitialSessionState('sid', INIT_NOW);
     state = deriveNext(state, makeEvent({ event: 'click_cta' }));
@@ -43,7 +43,7 @@ describe('deriveNext — event counts and coverage', () => {
     expect(state.event_type_coverage.fired).toEqual(['click_cta', 'add_to_cart']);
   });
 
-  it('ignores unknown event names (defensive — provider filters, but reducer is safe)', () => {
+  it('ignores unknown event names (defensive, provider filters, but reducer is safe)', () => {
     const initial = createInitialSessionState('sid', INIT_NOW);
     const next = deriveNext(
       initial,
@@ -60,7 +60,7 @@ describe('deriveNext — event counts and coverage', () => {
   });
 });
 
-describe('deriveNext — page_count (unique paths)', () => {
+describe('deriveNext, page_count (unique paths)', () => {
   it('increments page_count on the first page_view of a path', () => {
     let state = createInitialSessionState('sid', INIT_NOW);
     state = deriveNext(state, makeEvent({ event: 'page_view', page_path: '/' }));
@@ -93,7 +93,7 @@ describe('deriveNext — page_count (unique paths)', () => {
   });
 });
 
-describe('deriveNext — ecommerce demo progress (monotonic)', () => {
+describe('deriveNext, ecommerce demo progress (monotonic)', () => {
   it('adds a stage when its trigger event fires', () => {
     let state = createInitialSessionState('sid', INIT_NOW);
     state = deriveNext(state, makeEvent({ event: 'product_view' }));
@@ -124,7 +124,7 @@ describe('deriveNext — ecommerce demo progress (monotonic)', () => {
     expect(state.demo_progress.ecommerce.percentage).toBe(25);
   });
 
-  it('is monotonic — an earlier stage firing after a later one does not reorder or shrink', () => {
+  it('is monotonic, an earlier stage firing after a later one does not reorder or shrink', () => {
     let state = createInitialSessionState('sid', INIT_NOW);
     state = deriveNext(state, makeEvent({ event: 'purchase' }));
     state = deriveNext(state, makeEvent({ event: 'product_view' }));
@@ -142,7 +142,7 @@ describe('deriveNext — ecommerce demo progress (monotonic)', () => {
   });
 });
 
-describe('deriveNext — consent_snapshot', () => {
+describe('deriveNext, consent_snapshot', () => {
   it('updates consent snapshot from every event (not only consent_update)', () => {
     let state = createInitialSessionState('sid', INIT_NOW);
     state = deriveNext(

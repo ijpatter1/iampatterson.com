@@ -14,19 +14,19 @@
     --u-paper: #0d0b0a;
   }
 
-  /* Tuna Shop brand palette — Phase 9F deliverable 12. Scoped to the
+  /* Tuna Shop brand palette, Phase 9F deliverable 12. Scoped to the
      ecommerce demo subtree via `data-demo="ecommerce"` on the layout wrapper.
      Inside this scope:
      - `--accent` flips from site-wide persimmon (#EA5F2A) to Tuna Shop
        terracotta (#C4703A). Preserves the UX_PIVOT_SPEC §1.4 invariant that
-       no editorial surface adopts amber as its primary accent — the shop's
+       no editorial surface adopts amber as its primary accent, the shop's
        primary is terracotta, not amber.
      - Editorial surfaces warm to a cream page (#FBF6EA) with warm-brown
-       depth (#5C4A3D) — the Tuna Shop's authored palette mirroring
+       depth (#5C4A3D), the Tuna Shop's authored palette mirroring
        `docs/input_artifacts/design_handoff_ecommerce/styles/ecommerce.css`.
      - Terminal reveal-pattern surfaces (Pattern 1 toast, Pattern 2 sidebar,
        Pattern 3 inline diagnostic, Pattern 4 full-page diagnostic) use the
-       warm amber #F3C769 rather than the site-wide phosphor amber #FFA400 —
+       warm amber #F3C769 rather than the site-wide phosphor amber #FFA400, 
        the prototype frames terminal surfaces as "the inverse of the shop,
        not a separate environment." The palette-family continuity is the
        point; the components themselves hardcode these hex values because
@@ -89,23 +89,23 @@
 }
 
 @layer components {
-  /* Section container — full-viewport sections for scroll-driven layout */
+  /* Section container, full-viewport sections for scroll-driven layout */
   .section-container {
     @apply mx-auto w-full max-w-content px-6;
   }
 
-  /* Prose container — narrower for text-heavy content */
+  /* Prose container, narrower for text-heavy content */
   .prose-container {
     @apply mx-auto w-full max-w-prose px-6;
   }
 
-  /* Session overlay — CRT field layers.
+  /* Session overlay, CRT field layers.
      The CRT field is absolute-positioned *on top* of in-flow header/tabs/body
      (positioned z:auto outranks in-flow block children in its stacking context),
      so mix-blend-mode: screen on these layers reads across the whole surface
      including the header. Respect reduced-motion. */
 
-  /* Persistent ambient glow — warm radial from top-center. Visible whenever
+  /* Persistent ambient glow, warm radial from top-center. Visible whenever
      the CRT field is mounted (boot + on). This is the "screen is warm" feel. */
   .crt-ambient {
     position: absolute;
@@ -120,7 +120,7 @@
     mix-blend-mode: screen;
   }
 
-  /* Black curtain that paints down during boot — the terminal "filling in".
+  /* Black curtain that paints down during boot, the terminal "filling in".
      Opaque (no blend mode) so it actually masks content. At phase-on the
      curtain snaps to fully-painted and fades opacity to 0 over 200ms (with
      an 80ms delay that overlaps the tab-flash reveal), porting the
@@ -153,7 +153,7 @@
     }
   }
 
-  /* One-shot warm pulse during boot — "power coming on". No persistent loop. */
+  /* One-shot warm pulse during boot, "power coming on". No persistent loop. */
   .crt-flicker {
     position: absolute;
     inset: 0;
@@ -179,7 +179,7 @@
     }
   }
 
-  /* Subtle repeating scanlines — fade in after boot settles. */
+  /* Subtle repeating scanlines, fade in after boot settles. */
   .crt-scanlines {
     position: absolute;
     inset: 0;
@@ -210,7 +210,7 @@
   }
 
   /* ═══════════════════════════════════════════════════════════════════
-     Phase 9E D5 — Pipeline section progressive bleed-through reveal.
+     Phase 9E D5, Pipeline section progressive bleed-through reveal.
      The four `.bleed-*` siblings sit above paper, under content, all
      pointer-transparent. JS writes `--bleed` (0..1) to the section
      element each rAF tick; these rules read it via `color-mix` and
@@ -251,7 +251,7 @@
     color: color-mix(in oklab, #ffa400 calc(var(--bleed, 0) * 100%), var(--accent));
   }
 
-  /* Active-stage background highlight — base persimmon wash on the active
+  /* Active-stage background highlight, base persimmon wash on the active
      row at every tier, escalating to an amber wash bound to --bleed at
      the hot+ tiers. The highlight is the schematic's primary signal of
      "this stage is the active one"; without it the rotation reads as
@@ -271,7 +271,7 @@
     );
   }
 
-  /* All four bleed layers — pointer-transparent, stacked above paper but
+  /* All four bleed layers, pointer-transparent, stacked above paper but
      below the .pipeline-shell content. */
   .pipeline-section .bleed-scanlines,
   .pipeline-section .bleed-phosphor,
@@ -435,7 +435,7 @@
     transition: opacity 200ms ease;
   }
 
-  /* --- "Watch it live" CTA — escapes the bleed.
+  /* --- "Watch it live" CTA, escapes the bleed.
        Border, halo, and flip-icon rotation all couple to --bleed. At hot
        it warms; at peak it flips solid amber and gets a sub-pixel jitter. --- */
   .pipeline-section .flip-cta-wrap::before {
@@ -550,7 +550,7 @@
        collapses readouts for stages 02-05 (`max-h-0 opacity-0`), giving a
        reduced-motion mobile visitor only 1/5 of the substantive readout
        content. Desktop already renders readouts inline so this is a no-op
-       there — applying the rule to all viewports under reduced-motion
+       there, applying the rule to all viewports under reduced-motion
        keeps the cascade simple, has no visual side-effect on desktop, and
        preserves the section's editorial value on mobile per spec §3.4. */
     .pipeline-section .pv-edit__stage .pv-edit__reads {
@@ -594,7 +594,7 @@
     }
   }
 
-  /* Overlay chrome — header + tabs wrapper. Hidden during phase-boot so they
+  /* Overlay chrome, header + tabs wrapper. Hidden during phase-boot so they
      don't paint under the curtain if the curtain misses a frame (low-end
      device, reconciliation jank). Matches the prototype's `.overlay-panel > *`
      opacity:0 behavior, just scoped to the structural chrome rather than

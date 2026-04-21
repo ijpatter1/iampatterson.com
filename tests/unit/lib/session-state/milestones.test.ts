@@ -1,12 +1,12 @@
 /**
- * Coverage milestone detection — Phase 9E deliverable 3.
+ * Coverage milestone detection, Phase 9E deliverable 3.
  *
  * The reducer monotonically memoizes thresholds the visitor has crossed
  * (25/50/75/100 of `fired.length / total.length`). The memoization lives
  * in `SessionState.coverage_milestones_fired` so a tab reload mid-session
  * doesn't cause 50% to re-fire when the visitor re-crosses it. The
  * provider is responsible for emitting the dataLayer event when new
- * entries appear — this file tests the pure detection logic only.
+ * entries appear, this file tests the pure detection logic only.
  */
 import { createInitialSessionState, deriveNext } from '@/lib/session-state/derive';
 import type { SessionStateEventInput } from '@/lib/session-state/derive';
@@ -42,7 +42,7 @@ function fireDistinctEvents(
   return state;
 }
 
-describe('coverage_milestones_fired — reducer detection', () => {
+describe('coverage_milestones_fired, reducer detection', () => {
   it('starts empty on a fresh session', () => {
     const state = createInitialSessionState('sid', INIT_NOW);
     expect(state.coverage_milestones_fired).toEqual([]);
@@ -85,7 +85,7 @@ describe('coverage_milestones_fired — reducer detection', () => {
   it('does not duplicate a threshold when more events fire within the same band', () => {
     const initial = createInitialSessionState('sid', INIT_NOW);
     const past25 = fireDistinctEvents(initial, Math.ceil(0.25 * TOTAL));
-    // Fire a same-name event again — coverage doesn't change, milestone array stable.
+    // Fire a same-name event again, coverage doesn't change, milestone array stable.
     const repeat = deriveNext(past25, makeEvent(DATA_LAYER_EVENT_NAMES[0]));
     expect(repeat.coverage_milestones_fired).toEqual(past25.coverage_milestones_fired);
   });

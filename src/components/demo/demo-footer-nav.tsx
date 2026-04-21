@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { trackClickNav } from '@/lib/events/track';
 
 /**
- * Cross-demo "Also explore" navigation is removed in Phase 9E — with only
+ * Cross-demo "Also explore" navigation is removed in Phase 9E, with only
  * the ecommerce demo on the site, there is nothing to cross-link to. Per
  * UX_PIVOT_SPEC §3.7 this simplifies to a single "back to homepage"
  * affordance; the component is retained (not deleted) so the demo layout

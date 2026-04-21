@@ -3,13 +3,13 @@
 import { InlineDiagnostic } from '@/components/demo/reveal/inline-diagnostic';
 import { METABASE_BASE_URL } from '@/lib/metabase/embed';
 
-/** Fallback dashboard id — mirrors `METABASE_EMBED_CONFIG.dashboardId` when
+/** Fallback dashboard id, mirrors `METABASE_EMBED_CONFIG.dashboardId` when
  * the env isn't wired. Update here + in 9B-infra `metabase-embed-config`
  * Secret Manager entry if the canonical dashboard moves. */
 const FALLBACK_DASHBOARD_ID = 2;
 
 /**
- * Phase 9F D9 — Tier 3 dashboard payoff surface.
+ * Phase 9F D9, Tier 3 dashboard payoff surface.
  *
  * Wraps a single full-dashboard Metabase embed in `InlineDiagnostic` so
  * the Tier 3 payoff reads visually continuous with the rest of the demo's
@@ -17,7 +17,7 @@ const FALLBACK_DASHBOARD_ID = 2;
  * visible IAP-gated deep-link on mobile as an honest "here's where this
  * lives in production" affordance.
  *
- * The lead paragraph lives OUTSIDE this component — `ConfirmationView`
+ * The lead paragraph lives OUTSIDE this component, `ConfirmationView`
  * owns the editorial prose so the $total interpolation is one concern,
  * and this component is purely the embed chrome.
  */

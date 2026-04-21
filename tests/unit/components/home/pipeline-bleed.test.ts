@@ -12,7 +12,7 @@
  *   const bleed = p * p;             // ease-in
  *
  * Anchoring the ramp to the section's *own* height (not a viewport
- * fraction) is load-bearing — if it tracks viewport scroll, the amber
+ * fraction) is load-bearing, if it tracks viewport scroll, the amber
  * peaks before the reader's finished and the entire reveal dies.
  */
 
@@ -68,7 +68,7 @@ describe('computeBleed (pure ramp math)', () => {
     // so the ramp window collapses. Math.max(1, enter - peak) guards against
     // divide-by-zero. The honest behavior here is "always at peak" (the
     // section's bottom is already past the peak threshold the moment its
-    // top enters) — the homepage pipeline section is substantial enough
+    // top enters), the homepage pipeline section is substantial enough
     // that this never happens in practice, but we confirm the function
     // doesn't crash and stays in [0, 1].
     const shortH = 400;

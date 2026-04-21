@@ -1,5 +1,5 @@
 /**
- * Rehydration reconciliation — the derive-from-schema rule applies at every
+ * Rehydration reconciliation, the derive-from-schema rule applies at every
  * boundary. A persisted blob whose `event_type_coverage.total` predates a
  * schema extension must be swapped for the live schema on load, not left
  * stale. A stale `session_id` (sessionStorage survives the tab; the
@@ -144,7 +144,7 @@ describe('reconcileRehydrated', () => {
           percentage: 50,
         },
       },
-      // stale total — fired is a subset so the hasValidShape invariant holds.
+      // stale total, fired is a subset so the hasValidShape invariant holds.
       event_type_coverage: {
         fired: ['page_view'] as unknown as SessionState['event_type_coverage']['fired'],
         total: ['page_view'] as unknown as SessionState['event_type_coverage']['total'],

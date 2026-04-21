@@ -81,7 +81,7 @@ describe('EcommerceDashboard', () => {
 
   it('renders campaign performance table', () => {
     expect(screen.getByText('Campaign Performance')).toBeInTheDocument();
-    expect(screen.getByText('Brand — Tuna Shop')).toBeInTheDocument();
+    expect(screen.getByText('Brand, Tuna Shop')).toBeInTheDocument();
   });
 
   it('shows positive change indicators as green', () => {

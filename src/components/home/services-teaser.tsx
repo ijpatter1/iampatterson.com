@@ -54,7 +54,7 @@ export function ServicesTeaser() {
                     {t.title}
                   </span>
                   <span className="col-span-3 text-sm leading-[1.6] text-ink-2 md:col-span-1">
-                    <span className="italic text-ink">{t.subtitle}</span> — {firstSentence}
+                    <span className="italic text-ink">{t.subtitle}</span>, {firstSentence}
                   </span>
                   <span className="col-span-3 justify-self-start font-mono text-[10px] uppercase tracking-widest text-ink-3 transition-colors group-hover:text-accent-current md:col-span-1 md:justify-self-end">
                     See scope →

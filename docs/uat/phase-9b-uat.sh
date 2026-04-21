@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Phase 9B — User Acceptance Testing
+# Phase 9B, User Acceptance Testing
 #
 # Runs end-to-end scenarios that exercise deliverables 6a + 6b + 7 together.
 # Uses `verify` for automated HTTP/grep checks and `confirm` for visual/
@@ -38,7 +38,7 @@ fi
 scenario() {
   echo ""
   echo "════════════════════════════════════════════════════════════════════"
-  echo "  Scenario $1 — $2"
+  echo "  Scenario $1, $2"
   echo "════════════════════════════════════════════════════════════════════"
 }
 
@@ -99,7 +99,7 @@ decode_jwt_payload() {
   echo -n "$payload" | tr '_-' '/+' | base64 -d 2>/dev/null
 }
 
-echo "Phase 9B UAT — mode: $MODE"
+echo "Phase 9B UAT, mode: $MODE"
 echo "Base URL:      $BASE_URL"
 echo "Metabase URL:  $METABASE_URL"
 
@@ -123,7 +123,7 @@ if [[ "$MODE" == "missing-env" ]]; then
 fi
 
 # -----------------------------------------------------------------------------
-# Scenario 1 — Organic E-Commerce Funnel Ends in Live BI
+# Scenario 1, Organic E-Commerce Funnel Ends in Live BI
 # -----------------------------------------------------------------------------
 
 if [[ "$MODE" == "full" ]]; then
@@ -147,7 +147,7 @@ if [[ "$MODE" == "full" ]]; then
 fi
 
 # -----------------------------------------------------------------------------
-# Scenario 2 — Services Cross-Link to Tier 3 Confirmation
+# Scenario 2, Services Cross-Link to Tier 3 Confirmation
 # -----------------------------------------------------------------------------
 
 if [[ "$MODE" == "full" ]]; then
@@ -166,12 +166,12 @@ if [[ "$MODE" == "full" ]]; then
     "Seeded order details display"
   confirm "AOV caption interpolates specifically '\$44.98' (visible in caption text)" \
     "AOV caption names \$44.98"
-  confirm "Copy does NOT claim 'a purchase event just fired' — hedged wording holds for Services arrivals" \
+  confirm "Copy does NOT claim 'a purchase event just fired', hedged wording holds for Services arrivals" \
     "Services-path copy doesn't overclaim"
 fi
 
 # -----------------------------------------------------------------------------
-# Scenario 3 — Overlay Dashboards Tab Deep-Links to IAP-Gated Questions
+# Scenario 3, Overlay Dashboards Tab Deep-Links to IAP-Gated Questions
 # -----------------------------------------------------------------------------
 
 if [[ "$MODE" == "full" ]]; then
@@ -190,14 +190,14 @@ if [[ "$MODE" == "full" ]]; then
     "Three non-embeddable cards labeled with IAP affordance"
   confirm "Section copy explicitly warns about the Google SSO gate BEFORE the click ('Google SSO wall', 'reach out for a walkthrough')" \
     "IAP warning copy present pre-click"
-  confirm "Click one deep-link — new tab opens, redirects to accounts.google.com SSO challenge (as expected)" \
+  confirm "Click one deep-link, new tab opens, redirects to accounts.google.com SSO challenge (as expected)" \
     "Deep-link routes through IAP"
   confirm "Open the overlay on /demo/ecommerce (NOT confirmation); the 'Three more reports' section does NOT appear" \
     "Section is route-gated to confirmation only"
 fi
 
 # -----------------------------------------------------------------------------
-# Scenario 4 — Live Metabase Dashboard Reflects Applied Spec
+# Scenario 4, Live Metabase Dashboard Reflects Applied Spec
 # -----------------------------------------------------------------------------
 
 if [[ "$MODE" == "full" ]]; then
@@ -211,12 +211,12 @@ if [[ "$MODE" == "full" ]]; then
     "All six cards present"
   confirm "Every card renders real data (charts populated, no 'ask filter' prompts blocking the view)" \
     "Cards render with live mart data"
-  confirm "In Metabase admin: cards 40 (funnel), 41 (AOV), 45 (daily revenue) show 'Enabled' under Public embed — the other three do not" \
+  confirm "In Metabase admin: cards 40 (funnel), 41 (AOV), 45 (daily revenue) show 'Enabled' under Public embed, the other three do not" \
     "Embedding flags match spec"
 fi
 
 # -----------------------------------------------------------------------------
-# Scenario 5 — Missing Env Vars Trigger Fallback Block
+# Scenario 5, Missing Env Vars Trigger Fallback Block
 # -----------------------------------------------------------------------------
 
 if [[ "$MODE" == "missing-env" ]]; then
@@ -238,7 +238,7 @@ if [[ "$MODE" == "missing-env" ]]; then
 fi
 
 # -----------------------------------------------------------------------------
-# Scenario 6 — Signed JWT Rotates Per Request, 10-Minute Expiry
+# Scenario 6, Signed JWT Rotates Per Request, 10-Minute Expiry
 # -----------------------------------------------------------------------------
 
 if [[ "$MODE" == "full" ]]; then
@@ -274,7 +274,7 @@ if [[ "$MODE" == "full" ]]; then
 fi
 
 # -----------------------------------------------------------------------------
-# Scenario 7 — Iframe Security + Accessibility Attributes
+# Scenario 7, Iframe Security + Accessibility Attributes
 # -----------------------------------------------------------------------------
 
 if [[ "$MODE" == "full" ]]; then
@@ -301,14 +301,14 @@ if [[ "$MODE" == "full" ]]; then
   verify "Iframes rendered with tabindex=\"-1\" (out of tab order while loading)" \
     "[[ '$TABINDEX_NEG' == '3' ]]"
 
-  confirm "Browser: load confirmation, immediately Tab repeatedly from top — focus does not jump into an invisible iframe before placeholders fade" \
+  confirm "Browser: load confirmation, immediately Tab repeatedly from top, focus does not jump into an invisible iframe before placeholders fade" \
     "Keyboard tab order skips invisible iframes"
   confirm "After charts load, iframe content is reachable via normal Tab navigation (no focus trap)" \
     "Loaded iframes rejoin tab order"
 fi
 
 # -----------------------------------------------------------------------------
-# Scenario 8 — Seeded Order-Total Interpolation is Dynamic + Defensive
+# Scenario 8, Seeded Order-Total Interpolation is Dynamic + Defensive
 # -----------------------------------------------------------------------------
 
 if [[ "$MODE" == "full" ]]; then
@@ -343,7 +343,7 @@ if [[ "$MODE" == "full" ]]; then
     "curl -sS -o /dev/null -w '%{http_code}' $BASE_URL/services | grep -q 200"
   verify "GET /demo/ecommerce returns 200" \
     "curl -sS -o /dev/null -w '%{http_code}' $BASE_URL/demo/ecommerce | grep -q 200"
-  confirm "Open overlay for the first time in a fresh browser session on the confirmation page — phosphor amber CRT boot plays once" \
+  confirm "Open overlay for the first time in a fresh browser session on the confirmation page, phosphor amber CRT boot plays once" \
     "Once-per-session CRT boot still works"
 fi
 

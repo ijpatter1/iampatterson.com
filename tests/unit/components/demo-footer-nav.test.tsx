@@ -9,7 +9,7 @@ jest.mock('@/lib/events/track', () => ({
 
 import { DemoFooterNav } from '@/components/demo/demo-footer-nav';
 
-describe('DemoFooterNav — post-9E simplified', () => {
+describe('DemoFooterNav, post-9E simplified', () => {
   it('renders a single "Back to demos" affordance linking to homepage #demos', () => {
     // Phase 9E deliverable 7: subscription and lead gen removed from the
     // site. With only the ecommerce demo remaining, the cross-demo

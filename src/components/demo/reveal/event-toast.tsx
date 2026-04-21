@@ -3,7 +3,7 @@
 import type { ActiveToast } from './toast-provider';
 
 /**
- * Single toast card. Presentational only — lifecycle is owned by ToastProvider.
+ * Single toast card. Presentational only, lifecycle is owned by ToastProvider.
  *
  * Visual treatment per `docs/REQUIREMENTS.md` Phase 9F deliverable 1:
  * warm amber mono on near-black pill, `>` prompt, event name, optional one-line

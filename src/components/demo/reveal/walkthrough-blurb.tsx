@@ -27,10 +27,10 @@ function writePersisted(route: string, collapsed: boolean) {
 }
 
 /**
- * Walkthrough blurb — per-screen demo guide (UAT r2 item 12).
+ * Walkthrough blurb, per-screen demo guide (UAT r2 item 12).
  *
  * Renders a short "what you're looking at" introduction above the main
- * page content, with a collapse/expand toggle and — on mobile — a
+ * page content, with a collapse/expand toggle and, on mobile, a
  * `see the stack ↓` chip that smooth-scrolls to the first
  * `[data-live-sidebar]` on the page. Desktop already renders the
  * sidebar in-view to the right, so the scroll chip is hidden there.
@@ -55,9 +55,9 @@ export function WalkthroughBlurb({
   children: ReactNode;
   hasLiveSidebar?: boolean;
 }) {
-  // SSR-safe default — initial paint is expanded, effect reconciles to
+  // SSR-safe default, initial paint is expanded, effect reconciles to
   // persisted state post-mount. Same pattern as LiveSidebar (never read
-  // sessionStorage in a useState initializer — hydration mismatch).
+  // sessionStorage in a useState initializer, hydration mismatch).
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {

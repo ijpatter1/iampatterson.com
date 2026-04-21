@@ -1,5 +1,5 @@
 /**
- * Parallel to overview-tab-emission — pins manual_select + default_landing
+ * Parallel to overview-tab-emission, pins manual_select + default_landing
  * semantics for the `timeline_tab_view` and `consent_tab_view` events added
  * in the F2 UAT close-out. Each tab gets its own event (not a single
  * `tab_view` event with a discriminator) so the Overview tab's coverage
@@ -109,7 +109,7 @@ describe('timeline_tab_view emission', () => {
     await user.click(screen.getByText('open-with-pending-timeline'));
     expect(dataLayerEventsNamed('timeline_tab_view')).toHaveLength(1);
 
-    // Click to Overview + back to Timeline — the Timeline return is
+    // Click to Overview + back to Timeline, the Timeline return is
     // manual_select, not default_landing (orthogonality preserved).
     await user.click(screen.getByRole('button', { name: /^Overview$/i }));
     await user.click(screen.getByRole('button', { name: /^Timeline/i }));

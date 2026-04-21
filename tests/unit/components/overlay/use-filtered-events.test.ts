@@ -70,7 +70,7 @@ describe('useFilteredEvents', () => {
     expect(result.current.currentPath).toBe('/about');
   });
 
-  it('handles demo route namespaces — includes child routes', () => {
+  it('handles demo route namespaces, includes child routes', () => {
     mockUsePathname.mockReturnValue('/demo/ecommerce');
     const events = [
       makeEvent({ page_path: '/demo/ecommerce' }),

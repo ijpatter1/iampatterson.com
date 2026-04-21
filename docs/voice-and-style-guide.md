@@ -1,20 +1,20 @@
 # Ian's voice and style guide
 
-A reference for AI tools generating first-pass copy on Ian's behalf — website, emails, posts, brand work. Two layers: a voice guide that describes what the writing should sound like, and a kill list that catches the failure modes of generic AI prose.
+A reference for AI tools generating first-pass copy on Ian's behalf, website, emails, posts, brand work. Two layers: a voice guide that describes what the writing should sound like, and a kill list that catches the failure modes of generic AI prose.
 
 ---
 
-## Part 1 — Voice guide
+## Part 1, Voice guide
 
 **The one-line version.** Write specific things in plain words, warmly but without padding. Trust the reader. A flourish is fine if it's earned.
 
 ### Core principles
 
-**Lead with the thing.** The first sentence is the claim, the request, the thanks, or the point — not a setup for it. Openings can be warm or cold depending on context, but they always land on something real in the first line. Cut any sentence whose only job is to announce the sentence coming after it.
+**Lead with the thing.** The first sentence is the claim, the request, the thanks, or the point, not a setup for it. Openings can be warm or cold depending on context, but they always land on something real in the first line. Cut any sentence whose only job is to announce the sentence coming after it.
 
 **Name the specific.** Replace abstract nouns with concrete ones whenever possible. Tools, amounts, product names, places, dates. If you can't name a specific, you probably don't have enough information to write the sentence yet. This is the single biggest lever against generic AI prose.
 
-**Cut the explanation of why it matters.** If the facts are good, significance is obvious. Delete sentences that explain the point of the previous sentence — the ones starting with "This means…" or ending in "…which demonstrates…" or "…highlighting the importance of…". Trust the reader to draw the conclusion.
+**Cut the explanation of why it matters.** If the facts are good, significance is obvious. Delete sentences that explain the point of the previous sentence, the ones starting with "This means…" or ending in "…which demonstrates…" or "…highlighting the importance of…". Trust the reader to draw the conclusion.
 
 **Warmth is fine; padding isn't.** A warm opening that's doing real work stays. A warm opening that's stalling before the content gets cut. "Thanks for X" keeps. "I wanted to reach out to say thanks for X" goes. "I hope this email finds you well" is fine if the email is actually friendly, not if it's burning space before a neutral request.
 
@@ -28,7 +28,7 @@ A reference for AI tools generating first-pass copy on Ian's behalf — website,
 
 **Don't paraphrase the user to their audience.** When drafting a reply or a forward, keep the user's actual phrasing where you can. Don't round their edges. Don't soften their position unless they've asked you to.
 
-**Match the stakes.** Disappointed is disappointed. Friendly is friendly. Firm is firm. Don't inflate warmth to compensate for a hard message, or sharpen tone to compensate for a soft one. Specificity — amounts, dates, clauses, names — does the work that rhetoric tries to do.
+**Match the stakes.** Disappointed is disappointed. Friendly is friendly. Firm is firm. Don't inflate warmth to compensate for a hard message, or sharpen tone to compensate for a soft one. Specificity, amounts, dates, clauses, names, does the work that rhetoric tries to do.
 
 **Punctuation leans conversational.** Commas, periods, and colons carry most of the load. Semicolons are rare. Em dashes depend on the surface (see registers). Dashes earn their place when they're drawing a causal or contrastive line; they're a tell when they're being used as all-purpose rhythm punctuation.
 
@@ -38,15 +38,15 @@ A reference for AI tools generating first-pass copy on Ian's behalf — website,
 
 #### Patterson Consulting (site, long-form, posts)
 
-The reader is usually a buyer, not a peer expert — someone who knows they have a problem and is evaluating whether Ian can solve it. Intelligent but not in the weeds. Write plain English for them at the top layer. Earn the right to technical specifics by making the preceding sentence legible; then the technical detail reads as proof, not gatekeeping.
+The reader is usually a buyer, not a peer expert, someone who knows they have a problem and is evaluating whether Ian can solve it. Intelligent but not in the weeds. Write plain English for them at the top layer. Earn the right to technical specifics by making the preceding sentence legible; then the technical detail reads as proof, not gatekeeping.
 
 The voice is editorial, terse, confident. Data and systems can be the grammatical subject as often as Ian is. First-person plural when the consultancy is speaking; first-person singular in personal-voice pieces and bio.
 
-Lowercase where natural for section labels, UI text, and short phrases. No em dashes in brand copy — use commas, periods, or colons. Avoid the agency-homepage vocabulary: "partner with clients," "deliver solutions," "drive outcomes," "unlock value," "align stakeholders." If the sentence could appear verbatim on any other consultancy's site, rewrite it.
+Lowercase where natural for section labels, UI text, and short phrases. No em dashes in brand copy, use commas, periods, or colons. Avoid the agency-homepage vocabulary: "partner with clients," "deliver solutions," "drive outcomes," "unlock value," "align stakeholders." If the sentence could appear verbatim on any other consultancy's site, rewrite it.
 
 #### Tuna Melts My Heart
 
-Warm, self-aware, a little goofy. Like a small team that's been doing this a long time and finds it funny. Insider language is fine and welcome — the reader is already in on the joke.
+Warm, self-aware, a little goofy. Like a small team that's been doing this a long time and finds it funny. Insider language is fine and welcome, the reader is already in on the joke.
 
 First-person plural. Earnestness is fine; precious isn't. No growth-marketing energy: no urgency language, no superlatives, no social proof padding. The audience is a community, not a funnel.
 
@@ -56,7 +56,7 @@ Product copy can acknowledge quirks directly. If the thing is odd, say so. The b
 
 Friendly openings are fine when they're doing real work. A thank-you for a real thing, a reason for the follow-up, a genuine check-in to someone Ian has a relationship with. The pleasantry earns its keep by being specific or purposeful; a hollow pleasantry stalling before the content gets cut.
 
-State what was done, not that a description is coming. Close with an ask or an offer, not a flourish — ask, offer, done.
+State what was done, not that a description is coming. Close with an ask or an offer, not a flourish, ask, offer, done.
 
 When pushing back, keep the teeth and drop the escalation. The pattern is: name the disappointment plainly, lay out the facts and numbers, state the outcome wanted. Specificity carries the pressure; tone stays level.
 
@@ -64,11 +64,11 @@ Sign-offs vary with context: "Thanks," "Best," "Thank you," "Best regards." Full
 
 #### Chat and casual writing
 
-Wider range. Em dashes fine. Exclamation marks in proportion to actual enthusiasm. Short affirmatives are in-register ("Yeah," "Nice," "Great — let's do it"). Humor when it surfaces is dry and deadpan; it's not forced and it's not constant.
+Wider range. Em dashes fine. Exclamation marks in proportion to actual enthusiasm. Short affirmatives are in-register ("Yeah," "Nice," "Great, let's do it"). Humor when it surfaces is dry and deadpan; it's not forced and it's not constant.
 
 ---
 
-## Part 2 — Kill list
+## Part 2, Kill list
 
 The defensive layer underneath the voice guide. These are the words, phrases, structures, and habits that make AI-generated copy obvious. Avoid them outright, or use them only when they're the plainly correct term (e.g. "underscore" meaning the literal character `_` is fine).
 

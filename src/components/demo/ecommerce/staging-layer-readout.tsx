@@ -3,7 +3,7 @@
 import { stagingRowsForProduct, stitchOpsForSession } from '@/lib/demo/reveal/staging-layer';
 
 /**
- * Staging-layer Tier 2 readout — rendered as children of `LiveSidebar` on
+ * Staging-layer Tier 2 readout, rendered as children of `LiveSidebar` on
  * the product-detail page. Shows the raw → typed cast table with the
  * visitor's current product + real session_id + real event timestamp
  * substituted. The stitch-and-enrich ops reflect the visitor's real

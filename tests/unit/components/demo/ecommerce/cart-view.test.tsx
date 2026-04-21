@@ -168,7 +168,7 @@ describe('CartView (Phase 9F D7)', () => {
     ]);
     const plusButton = screen.getByLabelText(/increase quantity for tuna plush/i);
     await user.click(plusButton);
-    // Line total updates to $52.00 (2 × $26.00) — appears as line + subtotal + total
+    // Line total updates to $52.00 (2 × $26.00), appears as line + subtotal + total
     expect(screen.getAllByText('$52.00').length).toBeGreaterThanOrEqual(1);
   });
 
@@ -216,8 +216,8 @@ describe('CartView (Phase 9F D7)', () => {
     expect(screen.getByText(/no-kill rescues/i)).toBeInTheDocument();
   });
 
-  // UAT r2 item 12 — walkthrough blurb with mobile scroll-to-sidebar chip.
-  describe('UAT r2 item 12 — walkthrough blurb', () => {
+  // UAT r2 item 12, walkthrough blurb with mobile scroll-to-sidebar chip.
+  describe('UAT r2 item 12, walkthrough blurb', () => {
     it('renders a WalkthroughBlurb with route="cart"', () => {
       renderWithCart([
         {
@@ -246,7 +246,7 @@ describe('CartView (Phase 9F D7)', () => {
   });
 });
 
-describe('CartProvider — localStorage persistence (Phase 9F D7)', () => {
+describe('CartProvider, localStorage persistence (Phase 9F D7)', () => {
   beforeEach(() => {
     localStorage.clear();
   });
@@ -346,8 +346,8 @@ describe('CartProvider — localStorage persistence (Phase 9F D7)', () => {
     expect(screen.getByText(/\[ cart · empty \]/i)).toBeInTheDocument();
   });
 
-  // UAT r1 item 8 — data-quality sidebar reflects live session facts.
-  describe('UAT r1 item 8 — live data-quality sidebar', () => {
+  // UAT r1 item 8, data-quality sidebar reflects live session facts.
+  describe('UAT r1 item 8, live data-quality sidebar', () => {
     it('surfaces live add_to_cart count into volume_anomaly detail', () => {
       mockSession.mockReturnValue({
         ...DEFAULT_SESSION,

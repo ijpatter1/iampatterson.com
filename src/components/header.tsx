@@ -44,16 +44,16 @@ export function Header() {
         }`}
       >
         {/* Mobile: SessionPulse right-aligned (hamburger position per
-            UX_PIVOT_SPEC §3.1 mobile treatment + UAT S11.1 — "SessionPulse
+            UX_PIVOT_SPEC §3.1 mobile treatment + UAT S11.1, "SessionPulse
             is top-right on mobile"). Desktop: left-aligned per §3.1 desktop
-            treatment — "roughly where a primary nav's first link would sit
-            — left of center or adjacent to the brand wordmark, not tucked
+            treatment, "roughly where a primary nav's first link would sit
+          , left of center or adjacent to the brand wordmark, not tucked
             in a corner." */}
         <div className="mx-auto flex max-w-content items-center justify-end gap-4 px-5 py-4 md:justify-start md:px-10">
           <span className="relative flex-shrink-0">
             <SessionPulse ref={sessionPulseRef} onClick={handleOpenOverlay} />
             <Link href="/" className="sr-only">
-              Patterson Consulting — home
+              Patterson Consulting, home
             </Link>
             {isHomepage && <NavHint sessionPulseRef={sessionPulseRef} />}
           </span>
@@ -78,7 +78,7 @@ function showHomeBar(pathname: string): boolean {
 }
 
 /**
- * Slim "Back to homepage" bar (F5 UAT fix for S2 — "each non-homepage
+ * Slim "Back to homepage" bar (F5 UAT fix for S2, "each non-homepage
  * page needs a back-to-homepage CTA; navigating via footer is too much
  * friction"). Rendered directly below the LiveStrip on services / about
  * / contact / contact-thanks. F8 polish: text-ink-2 (was text-ink-3)

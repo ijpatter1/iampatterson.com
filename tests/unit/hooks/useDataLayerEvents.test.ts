@@ -1,5 +1,5 @@
 /**
- * Tests for useDataLayerEvents — converts window.dataLayer pushes
+ * Tests for useDataLayerEvents, converts window.dataLayer pushes
  * into PipelineEvent objects for the timeline.
  */
 import { renderHook, act } from '@testing-library/react';
@@ -43,7 +43,7 @@ describe('useDataLayerEvents', () => {
     expect(result.current.events).toEqual([]);
   });
 
-  it('hydrates the persisted timeline buffer via post-mount effect (F8 refresh fix — hydration-safe)', () => {
+  it('hydrates the persisted timeline buffer via post-mount effect (F8 refresh fix, hydration-safe)', () => {
     // Seed the sessionStorage ring buffer as if a prior page-load had
     // captured these events. Initial state is []; the post-mount useEffect
     // reads the persisted buffer and re-renders with it. Testing-library's
@@ -174,7 +174,7 @@ describe('useDataLayerEvents', () => {
     jest.useFakeTimers();
     const { result } = renderHook(() => useDataLayerEvents());
 
-    // Marketing denied — Meta CAPI and Google Ads should be blocked
+    // Marketing denied, Meta CAPI and Google Ads should be blocked
     act(() => {
       window.dataLayer.push(makeDataLayerEntry({ consent_marketing: false }));
       jest.advanceTimersByTime(500);

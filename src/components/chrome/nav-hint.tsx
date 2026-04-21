@@ -39,7 +39,7 @@ function markShownThisSession(): void {
   try {
     window.sessionStorage.setItem(NAV_HINT_STORAGE_KEY, '1');
   } catch {
-    // Strict-privacy sessionStorage can throw — fall back to letting
+    // Strict-privacy sessionStorage can throw, fall back to letting
     // the hint re-trigger on a later homepage visit in this session.
   }
 }
@@ -51,7 +51,7 @@ interface NavHintProps {
    * conversion tracked via click_cta; any other click → fire
    * `click_outside` dismissal). Three dismissal modes post-UAT per
    * `NavHintDismissedEvent.dismissal_mode` in the schema
-   * (click_session_pulse removed — it was a conversion misclassified
+   * (click_session_pulse removed, it was a conversion misclassified
    * as a dismissal mode).
    */
   sessionPulseRef: React.RefObject<HTMLElement | null>;
@@ -60,8 +60,8 @@ interface NavHintProps {
 export function NavHint({ sessionPulseRef }: NavHintProps) {
   const pathname = usePathname();
   const [state, setState] = useState<HintState>('idle');
-  // Mirror `state` into a ref so listeners added via useEffect — which
-  // close over the initial state value — always see the current phase
+  // Mirror `state` into a ref so listeners added via useEffect, which
+  // close over the initial state value, always see the current phase
   // without the effect having to re-register on every transition.
   const stateRef = useRef<HintState>('idle');
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
@@ -111,7 +111,7 @@ export function NavHint({ sessionPulseRef }: NavHintProps) {
       // Use a stable-at-capture-time reduced-motion read so the fade
       // timer matches the surface the visitor actually sees on this
       // transition. A reduced-motion toggle mid-display is a rare
-      // edge case — fade duration stays committed for this hint
+      // edge case, fade duration stays committed for this hint
       // instance.
       const fadeMs =
         typeof window !== 'undefined' &&
@@ -143,7 +143,7 @@ export function NavHint({ sessionPulseRef }: NavHintProps) {
         );
         if (insidePulse) {
           // Conversion, not a dismissal. Hide the hint visually but
-          // don't fire nav_hint_dismissed — the click_cta(session_pulse)
+          // don't fire nav_hint_dismissed, the click_cta(session_pulse)
           // emission already captures the outcome. Firing a "dismissal"
           // event for the intended call-to-action would conflate
           // conversions and abandonments in BI, making the dismissal

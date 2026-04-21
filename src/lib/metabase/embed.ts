@@ -24,14 +24,14 @@ export function parseEmbedConfig(raw: string | undefined): EmbedConfig {
   }
   if (!isEmbedConfig(parsed)) {
     throw new Error(
-      'METABASE_EMBED_CONFIG shape invalid — expected { dashboardId, cardIds: { funnel, aov, dailyRevenue } }',
+      'METABASE_EMBED_CONFIG shape invalid, expected { dashboardId, cardIds: { funnel, aov, dailyRevenue } }',
     );
   }
   return parsed;
 }
 
 /**
- * Sign a Metabase static-embed URL for an entire dashboard — Phase 9F D9.
+ * Sign a Metabase static-embed URL for an entire dashboard, Phase 9F D9.
  *
  * payload: { resource: { dashboard: dashboardId }, params: {}, exp }
  * URL:     `${METABASE_BASE_URL}/embed/dashboard/${jwt}#bordered=true&titled=false`
@@ -69,7 +69,7 @@ export function signDashboardEmbedUrl({
  * Glue helper for the Phase 9F confirmation page Server Component: read
  * raw env inputs, mint the single full-dashboard URL, or return null if
  * inputs are missing / malformed. Replaces `mintConfirmationEmbedUrls`
- * (three question-level URLs) — the 9F embed-shape decision is one
+ * (three question-level URLs), the 9F embed-shape decision is one
  * full-dashboard embed per `docs/REQUIREMENTS.md` D9.
  */
 export function mintConfirmationDashboardUrl(env: {
@@ -88,7 +88,7 @@ export function mintConfirmationDashboardUrl(env: {
 }
 
 /**
- * Read the dashboardId from the env config without signing — useful for
+ * Read the dashboardId from the env config without signing, useful for
  * downstream components (mobile deep-link, fallback text) that need to
  * reference the dashboard's canonical URL without a JWT. Returns null on
  * missing / malformed input, same failure mode as

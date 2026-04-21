@@ -18,7 +18,7 @@ interface ProductDetailProps {
 }
 
 /**
- * Phase 9F D6 — product detail page content.
+ * Phase 9F D6, product detail page content.
  *
  * Fires `trackProductView` + a `product_view` `near-product` toast on mount;
  * renders the 2-column editorial layout (palette-tile image + info panel
@@ -94,7 +94,7 @@ export function ProductDetail({ product }: ProductDetailProps) {
       <WalkthroughBlurb route={`product-${product.id}`}>
         The product detail. A <span className="font-mono">product_view</span> event already fired
         through sGTM into BigQuery. On mobile, tap <em className="not-italic">see the stack ↓</em>{' '}
-        to jump to the staging-layer sidebar — it shows the raw-to-typed cast Dataform runs on each
+        to jump to the staging-layer sidebar: it shows the raw-to-typed cast Dataform runs on each
         row before it reaches the marts.
       </WalkthroughBlurb>
 

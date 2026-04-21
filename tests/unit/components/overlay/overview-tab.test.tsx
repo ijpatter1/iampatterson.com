@@ -1,5 +1,5 @@
 /**
- * OverviewTab — Phase 9E deliverable 3.
+ * OverviewTab, Phase 9E deliverable 3.
  *
  * Renders the Session State blob produced by deliverable 4 as the overlay's
  * primary surface: session header, coverage bar + chip grid, ecommerce funnel,
@@ -18,7 +18,7 @@ jest.mock('@/components/session-state-provider', () => ({
   useSessionState: jest.fn(),
 }));
 
-// Mock usePathname — jsdom has no App Router context.
+// Mock usePathname, jsdom has no App Router context.
 jest.mock('next/navigation', () => ({
   usePathname: () => '/services',
 }));
@@ -78,7 +78,7 @@ describe('OverviewTab', () => {
         <OverviewTab />
       </Wrapper>,
     );
-    // Short-form session ID (last 6 chars of the UUID) — matches SessionPulse + LiveStrip.
+    // Short-form session ID (last 6 chars of the UUID), matches SessionPulse + LiveStrip.
     expect(screen.getByText('def456')).toBeInTheDocument();
     expect(screen.getByText('/services')).toBeInTheDocument();
   });
@@ -130,7 +130,7 @@ describe('OverviewTab', () => {
       jest.advanceTimersByTime(1000);
     });
     const readout = screen.getByTestId('coverage-readout');
-    // makeState fires page_view + click_cta — both renderable. Denominator
+    // makeState fires page_view + click_cta, both renderable. Denominator
     // is RENDERABLE_EVENT_NAMES.length (schema minus sub/leadgen).
     const denom = RENDERABLE_EVENT_NAMES.length;
     expect(readout.textContent).toBe(`> 2/${denom} event types`);
@@ -238,7 +238,7 @@ describe('OverviewTab', () => {
 
   it('renders [SKIPPED] for unreached stages when a later stage has been reached (Pass 1 P2)', () => {
     // Deep-linked visitor who fires purchase without first firing product_view /
-    // add_to_cart / begin_checkout — the middle stages are bypassed, not pending.
+    // add_to_cart / begin_checkout, the middle stages are bypassed, not pending.
     useSessionState.mockReturnValue(
       makeState({
         demo_progress: {

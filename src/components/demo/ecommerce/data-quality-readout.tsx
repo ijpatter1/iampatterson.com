@@ -3,7 +3,7 @@
 import { assertionsForCart, type LiveCartContext } from '@/lib/demo/reveal/data-quality';
 
 /**
- * Data-quality Tier 2 readout — children of `LiveSidebar` on the cart page.
+ * Data-quality Tier 2 readout, children of `LiveSidebar` on the cart page.
  * Renders the 6 Dataform assertions as an `[OK]` / `[FAIL]` checklist with
  * one-line detail per row, preceded by a `source: raw.events · streaming`
  * header and a 6-cell pipeline-health meter. volume_anomaly / freshness /

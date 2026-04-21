@@ -1,5 +1,5 @@
 /**
- * Phase 9F D11 — Playwright E2E scaffold.
+ * Phase 9F D11, Playwright E2E scaffold.
  *
  * Verifies the SessionPulse + Overview tab + `demo_progress.ecommerce`
  * reachability invariants across all 5 demo pages. Running this spec
@@ -26,7 +26,7 @@ import { test, expect } from '@playwright/test';
 const E2E_ENABLED = process.env.E2E_ENABLED === '1';
 
 test.describe('Ecommerce SessionPulse reachability (D11)', () => {
-  test.skip(!E2E_ENABLED, 'E2E_ENABLED=1 not set — Playwright spec gated for ready environments');
+  test.skip(!E2E_ENABLED, 'E2E_ENABLED=1 not set, Playwright spec gated for ready environments');
 
   test('SessionPulse is present on every /demo/ecommerce/* page', async ({ page }) => {
     const routes = [

@@ -12,7 +12,7 @@ import { DataQualityReadout } from './data-quality-readout';
 import { products as allProducts } from '@/lib/demo/products';
 
 /**
- * Phase 9F D7 — cart page content.
+ * Phase 9F D7, cart page content.
  *
  * Fires a `view_cart` toast on mount; renders the prototype's editorial
  * cart-row layout with a summary column and a Pattern 2 `LiveSidebar`
@@ -59,9 +59,9 @@ export function CartView() {
         Your cart. Every add or remove already fired an{' '}
         <span className="font-mono">add_to_cart</span> or{' '}
         <span className="font-mono">remove_from_cart</span> event. Tap{' '}
-        <em className="not-italic">see the stack ↓</em> to jump to the data-quality sidebar — it
-        runs six Dataform assertions (schema, volume, session-join, freshness, null-checks,
-        referential integrity) against the events as they flow through.
+        <em className="not-italic">see the stack ↓</em> to jump to the data-quality sidebar: it runs
+        six Dataform assertions (schema, volume, session-join, freshness, null-checks, referential
+        integrity) against the events as they flow through.
       </WalkthroughBlurb>
 
       <div className="grid gap-8 lg:grid-cols-[1fr_320px] lg:gap-10">
@@ -72,7 +72,7 @@ export function CartView() {
                 [ cart · empty ]
               </div>
               <p className="text-[15px] text-[var(--shop-warm-brown,#5C4A3D)]/80">
-                Nothing in here yet. The demo is more fun with a plush in it — add one, and the
+                Nothing in here yet. The demo is more fun with a plush in it. Add one, and the
                 add_to_cart event lands in BigQuery before you get here.
               </p>
               <Link

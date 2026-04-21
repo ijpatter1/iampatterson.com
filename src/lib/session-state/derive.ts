@@ -7,7 +7,7 @@
  * invariants without renderer or sessionStorage wiring.
  *
  * Derive-from-schema rule (Phase 9E deliverable 4): `event_type_coverage.total`
- * reads `DATA_LAYER_EVENT_NAMES` once at module init — no hardcoded `16` or
+ * reads `DATA_LAYER_EVENT_NAMES` once at module init, no hardcoded `16` or
  * `22` magic number anywhere in this file.
  */
 import { DATA_LAYER_EVENT_NAMES, type DataLayerEventName } from '@/lib/events/schema';
@@ -120,7 +120,7 @@ export function newlyCrossedMilestones(
  * Reconcile a rehydrated state blob against the current runtime schema.
  *
  * `event_type_coverage.total` is derived from `DATA_LAYER_EVENT_NAMES` at
- * module init — the derive-from-schema rule applies at every boundary, not
+ * module init, the derive-from-schema rule applies at every boundary, not
  * just fresh-session init. If a tab was open when a deploy extended the
  * schema, the persisted `total` is stale; reconciliation replaces it with
  * the live schema. `session_id` is reconciled against the current

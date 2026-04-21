@@ -34,7 +34,7 @@ describe('assertionsForCart', () => {
   it('flags volume_anomaly as FAIL when cart itemCount exceeds the threshold (no live stream)', () => {
     // Fallback path: no live stream data → volume_anomaly branches on
     // cart itemCount. Detail text honestly names the cart (not the event
-    // stream) as the signal source — pre-evaluation-fix text read
+    // stream) as the signal source, pre-evaluation-fix text read
     // "N add_to_cart events in 30s" which was a lie when the count came
     // from the cart.
     const out = assertionsForCart({ itemCount: 20 });
@@ -50,10 +50,10 @@ describe('assertionsForCart', () => {
     expect(schema?.detail).toMatch(/required fields/i);
   });
 
-  // UAT r1 item 8 — the cart sidebar was advertised as live but showed
+  // UAT r1 item 8, the cart sidebar was advertised as live but showed
   // hardcoded numbers. When live session context is supplied, the three
   // variable-by-session assertions must substitute.
-  describe('UAT r1 item 8 — live substitutions', () => {
+  describe('UAT r1 item 8, live substitutions', () => {
     it('volume_anomaly counts live add_to_cart events when provided', () => {
       const out = assertionsForCart({ itemCount: 3, addToCartInLast30s: 4 });
       const va = out.find((a) => a.k === 'volume_anomaly');
@@ -63,7 +63,7 @@ describe('assertionsForCart', () => {
 
     it('volume_anomaly FAILs on live count > threshold (not cart itemCount)', () => {
       // Cart has 3 items but 15 add_to_cart events fired in the last
-      // 30s (the visitor was thrashing) — volume_anomaly should FAIL
+      // 30s (the visitor was thrashing), volume_anomaly should FAIL
       // on the event count, not the cart count.
       const out = assertionsForCart({ itemCount: 3, addToCartInLast30s: 15 });
       const va = out.find((a) => a.k === 'volume_anomaly');
@@ -75,7 +75,7 @@ describe('assertionsForCart', () => {
       // Pass-2 Minor: `if (liveCount)` would silently drop 0 to the
       // fallback; `typeof === 'number'` must keep 0 in the live branch.
       // Cart itemCount is 3 (below threshold) so FAIL wouldn't fire
-      // either way — the test pins that the EMITTED DETAIL uses the
+      // either way, the test pins that the EMITTED DETAIL uses the
       // live "0 add_to_cart in 30s" phrasing, not the cart-fallback
       // "cart holds N items" phrasing.
       const out = assertionsForCart({ itemCount: 3, addToCartInLast30s: 0 });

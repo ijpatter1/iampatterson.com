@@ -13,12 +13,12 @@ interface OrderConfirmationProps {
 }
 
 /**
- * Phase 9F D9 — confirmation page editorial head + Pattern 3 inline diagnostic.
+ * Phase 9F D9, confirmation page editorial head + Pattern 3 inline diagnostic.
  *
  * Fires a `purchase` toast on mount and renders:
  *   (a) the editorial order-confirmed block with $total-interpolated
  *       lead paragraph (with zombie-state fallback for missing / zero /
- *       non-finite totals — closes 9B follow-up #5);
+ *       non-finite totals, closes 9B follow-up #5);
  *   (b) the Pattern 3 InlineDiagnostic-wrapped timestamped 6-step
  *       pipeline-journey list (+0ms → +840ms). Per-step timings are
  *       representative; a muted footer inside the diagnostic surfaces
@@ -43,7 +43,7 @@ export function OrderConfirmation({ orderId, orderTotal, itemCount }: OrderConfi
   // the 500ms delay elapses. `[orderId, push]` are listed in the dep
   // array for exhaustive-deps compliance, but the parent page reads
   // `orderId` once from Server-Component searchParams and never
-  // re-renders with a changed value in practice — the ref-guard is
+  // re-renders with a changed value in practice, the ref-guard is
   // belt-and-braces against a future client-side re-render, not the
   // primary correctness mechanism.
   useEffect(() => {
@@ -131,7 +131,7 @@ export function OrderConfirmation({ orderId, orderTotal, itemCount }: OrderConfi
 }
 
 /**
- * Confirmation-page closing beat — "Dashboards are not the payoff"
+ * Confirmation-page closing beat, "Dashboards are not the payoff"
  * paragraph + services link + back-nav. Split out of `OrderConfirmation`
  * in UAT r2 item 20 so the page-level composition can render it AFTER
  * the `DashboardPayoff` Metabase embed (pre-r2 it rendered above,

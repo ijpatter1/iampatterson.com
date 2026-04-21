@@ -32,7 +32,7 @@ function renderView() {
   );
 }
 
-describe('ListingView (Phase 9F D5 — product listing)', () => {
+describe('ListingView (Phase 9F D5, product listing)', () => {
   beforeEach(() => {
     jest.useFakeTimers();
     mockSearchParams = new URLSearchParams();
@@ -49,7 +49,7 @@ describe('ListingView (Phase 9F D5 — product listing)', () => {
     renderView();
     // Eyebrow in mono uppercase
     expect(screen.getByText(/the tuna shop · 6 things/i)).toBeInTheDocument();
-    // Headline fragment: "the underdog with the overbite." — correcting
+    // Headline fragment: "the underdog with the overbite.", correcting
     // the hi-fi prototype, which got this wrong. Chiweenies have
     // overbites (upper jaw past the lower); the about page and
     // proof-section already render the correct phrase.
@@ -74,9 +74,9 @@ describe('ListingView (Phase 9F D5 — product listing)', () => {
     expect(screen.getByText(/prospecting · lookalike/i)).toBeInTheDocument();
   });
 
-  // UAT r2 item 11 — mobile: products swipe horizontally instead of
+  // UAT r2 item 11, mobile: products swipe horizontally instead of
   // stacking vertically. Pure CSS scroll-snap; no JS carousel lib.
-  describe('UAT r2 item 11 — mobile swipeable product carousel', () => {
+  describe('UAT r2 item 11, mobile swipeable product carousel', () => {
     it('product-listing container carries scroll-snap classes (mobile) and grid classes (sm+)', () => {
       renderView();
       const listing = document.querySelector('[data-product-listing]') as HTMLElement;
@@ -106,9 +106,9 @@ describe('ListingView (Phase 9F D5 — product listing)', () => {
     });
   });
 
-  // UAT r2 item 12 — every demo screen needs a "what am I looking at"
+  // UAT r2 item 12, every demo screen needs a "what am I looking at"
   // walkthrough blurb so visitors don't bounce off the data surfaces.
-  describe('UAT r2 item 12 — walkthrough blurb', () => {
+  describe('UAT r2 item 12, walkthrough blurb', () => {
     it('renders a WalkthroughBlurb on the listing page', () => {
       renderView();
       const blurb = document.querySelector('[data-walkthrough-blurb]');
@@ -118,17 +118,17 @@ describe('ListingView (Phase 9F D5 — product listing)', () => {
 
     it('listing blurb omits the "see the stack" chip (no LiveSidebar on this page)', () => {
       renderView();
-      // The listing page has no Pattern 2 sidebar — the classification
+      // The listing page has no Pattern 2 sidebar, the classification
       // story is carried by the inline UTM panel, so the scroll chip
       // would have nothing to target.
       expect(document.querySelector('[data-walkthrough-stack-link]')).toBeNull();
     });
   });
 
-  // UAT r2 item 8 — the UTM capture panel previously used the cream +
+  // UAT r2 item 8, the UTM capture panel previously used the cream +
   // warm-brown shop palette; per the user, it should match the under-the-
   // hood reveal overlay (amber on near-black terminal).
-  describe('UAT r2 item 8 — UTM capture panel adopts the terminal palette', () => {
+  describe('UAT r2 item 8, UTM capture panel adopts the terminal palette', () => {
     it('uses the near-black terminal background + amber accent border', () => {
       renderView();
       const panel = document.querySelector('[data-utm-capture]') as HTMLElement;
@@ -147,10 +147,10 @@ describe('ListingView (Phase 9F D5 — product listing)', () => {
     });
   });
 
-  // UAT r2 item 9 — the shop homepage body copy was `text-[15px]`, which
+  // UAT r2 item 9, the shop homepage body copy was `text-[15px]`, which
   // read smaller than the site homepage's 17px. Match the homepage body
   // size so the shop doesn't feel like a downgrade.
-  describe('UAT r2 item 9 — shop body copy matches homepage body size', () => {
+  describe('UAT r2 item 9, shop body copy matches homepage body size', () => {
     it('listing hero paragraph is 17px (matches site homepage demos-section body)', () => {
       renderView();
       const paragraphs = document.querySelectorAll('section p');
@@ -162,13 +162,13 @@ describe('ListingView (Phase 9F D5 — product listing)', () => {
     });
   });
 
-  // UAT r1 item 3 — the `dl` previously labelled the default UTM seed
+  // UAT r1 item 3, the `dl` previously labelled the default UTM seed
   // as "your utm_campaign" even when the visitor's URL carried no
-  // utm_campaign. That's dishonest — it's an example, not theirs.
+  // utm_campaign. That's dishonest, it's an example, not theirs.
   // When no utm_campaign is in the URL, the panel must flag the
   // value as a representative example; when one IS present, the flag
   // must not appear.
-  describe('UAT r1 item 3 — honest UTM labelling', () => {
+  describe('UAT r1 item 3, honest UTM labelling', () => {
     it('flags the seed as an example when no utm_campaign is in the URL', () => {
       renderView();
       const panel = document.querySelector('dl');
@@ -211,7 +211,7 @@ describe('ListingView (Phase 9F D5 — product listing)', () => {
 
   it('renders optional tag badges (bestseller / new / one of one / bundle)', () => {
     renderView();
-    // Tag badges have a distinctive class — query by class to disambiguate
+    // Tag badges have a distinctive class, query by class to disambiguate
     // from category labels (the combo SKU has both `tag: 'bundle'` and
     // `category: 'bundle'`).
     const tagBadges = Array.from(document.querySelectorAll('article .absolute')).filter((el) =>
@@ -299,7 +299,7 @@ describe('ListingView (Phase 9F D5 — product listing)', () => {
     expect(listCard.textContent).toContain('count=6');
   });
 
-  // UAT r1 item 4 — the `all · plush · calendar · cameo · bundles`
+  // UAT r1 item 4, the `all · plush · calendar · cameo · bundles`
   // row read as a filter control but filtering 6 products has no value.
   // Remove it to stop drawing attention to pointless UI.
   it('does NOT render the pointless filter-chip row (UAT r1 item 4)', () => {

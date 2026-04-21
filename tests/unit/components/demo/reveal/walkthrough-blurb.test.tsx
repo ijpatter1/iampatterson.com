@@ -54,7 +54,7 @@ describe('WalkthroughBlurb (UAT r2 item 12)', () => {
     await user.click(screen.getByRole('button', { name: /collapse walkthrough/i }));
     unmount();
 
-    // Re-mount — should hydrate to collapsed.
+    // Re-mount, should hydrate to collapsed.
     render(
       <WalkthroughBlurb route="checkout">
         <p>the body copy</p>

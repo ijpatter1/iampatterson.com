@@ -15,11 +15,11 @@ export default function EcommerceLayout({ children }: { children: React.ReactNod
   // "Brand treatment".
   //
   // Stacking order inside the demo surface (top → bottom):
-  //   1. EcomDemoBanner — terminal-styled "this is a demo" top strip
-  //      (UAT r2 item 7 — previously only lived in the footer).
-  //   2. EcomSubNav — Tuna Shop wordmark + `shop · cart` wayfinding.
+  //   1. EcomDemoBanner, terminal-styled "this is a demo" top strip
+  //      (UAT r2 item 7, previously only lived in the footer).
+  //   2. EcomSubNav, Tuna Shop wordmark + `shop · cart` wayfinding.
   //   3. Page content.
-  //   4. EcomFooter — mission paragraph + back-to-site links.
+  //   4. EcomFooter, mission paragraph + back-to-site links.
   //
   // All four are distinct from the session-scoped site chrome
   // (SessionPulse + LiveStrip + HomeBar) which renders above them.

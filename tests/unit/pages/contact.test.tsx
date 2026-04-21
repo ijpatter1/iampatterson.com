@@ -123,7 +123,7 @@ describe('ContactPage', () => {
     expect(mockPush).toHaveBeenCalledWith('/contact/thanks');
   });
 
-  describe('Phase 9E D8 — session-state ride-along integration', () => {
+  describe('Phase 9E D8, session-state ride-along integration', () => {
     function stateFixture(marketing: 'granted' | 'denied'): SessionState {
       return {
         session_id: 'sid-contact-test',
@@ -175,7 +175,7 @@ describe('ContactPage', () => {
         consent: { analytics: 'granted', marketing: 'granted', preferences: 'granted' },
       });
       expect(parsed.event_types_total).toBe(RENDERABLE_EVENT_NAMES.length);
-      // Fill and submit — form still navigates to /thanks (transport is a
+      // Fill and submit, form still navigates to /thanks (transport is a
       // pre-existing Phase 10 stub); the hidden field would ride along with
       // the form body if/when a real submit endpoint is wired up. Anchor
       // the label regex so "Share my session state with this message"

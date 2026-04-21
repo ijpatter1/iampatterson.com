@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 
 /**
- * Pattern 3 — Inline diagnostic (Phase 9F deliverable 3).
+ * Pattern 3, Inline diagnostic (Phase 9F deliverable 3).
  *
  * A styled wrapper that applies the terminal token set (dark background,
  * amber headers, warm cream body, scanline texture) and composes arbitrary

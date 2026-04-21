@@ -9,7 +9,7 @@ jest.mock('next/navigation', () => ({
   usePathname: () => '/demo/ecommerce',
 }));
 
-describe('EcommerceLayout — Tuna Shop brand scope', () => {
+describe('EcommerceLayout, Tuna Shop brand scope', () => {
   it('renders a wrapper with data-demo="ecommerce" so the palette override applies', () => {
     const { container } = render(
       <EcommerceLayout>
@@ -35,9 +35,9 @@ describe('EcommerceLayout — Tuna Shop brand scope', () => {
     expect(outer?.getAttribute('data-demo')).toBe('ecommerce');
   });
 
-  // UAT r2 item 7 — "this is a demo" used to live only in the footer;
+  // UAT r2 item 7, "this is a demo" used to live only in the footer;
   // visitors who didn't scroll missed it. Moved to a persistent top banner.
-  describe('UAT r2 item 7 — persistent top demo banner', () => {
+  describe('UAT r2 item 7, persistent top demo banner', () => {
     it('renders the EcomDemoBanner above the sub-nav', () => {
       const { container } = render(
         <EcommerceLayout>

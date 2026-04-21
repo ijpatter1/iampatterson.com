@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  *
- * Phase 9F D11 — funnel integration test.
+ * Phase 9F D11, funnel integration test.
  *
  * Verifies that the SessionState `demo_progress.ecommerce.stages_reached`
  * + percentage invariants hold when the visitor progresses through the
@@ -12,7 +12,7 @@
  *
  * The full browser-level reachability test (SessionPulse click → overlay
  * opens → Overview default tab) is in `tests/e2e/ecommerce-sessionpulse.spec.ts`
- * as a Playwright spec — requires a running dev server + installed
+ * as a Playwright spec, requires a running dev server + installed
  * browsers, so it's not run as part of the Jest suite.
  */
 import { act, renderHook } from '@testing-library/react';
@@ -43,7 +43,7 @@ function pushEvent(eventName: string) {
   });
 }
 
-describe('Phase 9F funnel integration — SessionState.demo_progress', () => {
+describe('Phase 9F funnel integration, SessionState.demo_progress', () => {
   beforeEach(() => {
     jest.useFakeTimers();
     window.sessionStorage.clear();
@@ -85,7 +85,7 @@ describe('Phase 9F funnel integration — SessionState.demo_progress', () => {
     expect(progress.percentage).toBe(100);
   });
 
-  it('progression is monotonic — duplicate events do not re-add stages', () => {
+  it('progression is monotonic, duplicate events do not re-add stages', () => {
     const { result } = renderHook(() => useSessionState(), { wrapper });
     pushEvent('product_view');
     pushEvent('product_view');

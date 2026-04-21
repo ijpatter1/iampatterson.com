@@ -2,9 +2,9 @@
  * `overview_tab_view` `manual_select` emission semantics.
  *
  * Fires ONLY when the visitor actively clicks the Overview tab
- * from the tabs bar. Programmatic transitions — a sticky-tab reopen,
+ * from the tabs bar. Programmatic transitions, a sticky-tab reopen,
  * `open('overview')` via pendingTab, the default landing on fresh
- * open — are the `default_landing` case covered in
+ * open, are the `default_landing` case covered in
  * `default-landing-emission.test.tsx`; this file pins the click-bound
  * manual_select invariant.
  *
@@ -94,7 +94,7 @@ describe('overview_tab_view emission', () => {
   it('fires manual_select when the visitor clicks the Overview tab from another tab', async () => {
     const user = userEvent.setup();
     render(<Harness />);
-    // Open — Overview is the default landing tab post-D2. Navigate
+    // Open, Overview is the default landing tab post-D2. Navigate
     // to Timeline first so the click back to Overview is observable
     // as a tab-bar click (the manual_select case).
     await user.click(screen.getByText('open-overlay'));
@@ -103,7 +103,7 @@ describe('overview_tab_view emission', () => {
     const events = manualSelectEvents();
     expect(events).toHaveLength(1);
     expect(events[0].source).toBe('manual_select');
-    // Orthogonality guard — the filtered manual_select check above would
+    // Orthogonality guard, the filtered manual_select check above would
     // pass even if default_landing were dual-firing (Pass 1 eval). Pin
     // the unfiltered total at 2 (one default_landing on fresh open +
     // one manual_select on click back) so any future regression to the
@@ -119,7 +119,7 @@ describe('overview_tab_view emission', () => {
     await user.click(screen.getByRole('button', { name: /^Overview$/i }));
     expect(manualSelectEvents()).toHaveLength(1);
 
-    // Close + reopen — viewMode stays sticky at 'overview' but this
+    // Close + reopen, viewMode stays sticky at 'overview' but this
     // reopen is NOT a manual select; it's a default_landing (covered in
     // its own suite). manual_select count stays at 1.
     await user.click(screen.getByText('close-overlay'));
@@ -151,9 +151,9 @@ describe('overview_tab_view emission', () => {
 
   it('does NOT fire manual_select when viewMode lands on overview via pendingTab (click-bound invariant)', async () => {
     // Pinning the architectural invariant: manual_select emission is
-    // click-bound (via `handleTabChange`), so programmatic tab changes —
+    // click-bound (via `handleTabChange`), so programmatic tab changes, 
     // `open('overview')` via pendingTab, the default landing on
-    // fresh open — never emit manual_select. They emit default_landing
+    // fresh open, never emit manual_select. They emit default_landing
     // instead (asserted in default-landing-emission.test.tsx). A future
     // refactor that reverts to an effect-based manual_select emitter
     // would regress the pendingTab path and fail here.

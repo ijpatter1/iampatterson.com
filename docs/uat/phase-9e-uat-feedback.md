@@ -21,7 +21,7 @@ The metadata on the Pipeline section has the values clipping the keys. Also, I w
 
 ## Scenario 5
 
-I don't like the language "The subscription demo is being rebuilt — **it'll return after the ecommerce rebuild ships.**" we can just say "Returning soon" something.
+I don't like the language "The subscription demo is being rebuilt, **it'll return after the ecommerce rebuild ships.**" we can just say "Returning soon" something.
 Step 5.3 showed an error message:
 ```
 1 of 1 error
@@ -32,7 +32,7 @@ See more info here: https://nextjs.org/docs/messages/react-hydration-error
 Call Stack
 React
 ```
-I don't like the language "The lead gen demo is being rebuilt — **it'll return after the ecommerce rebuild ships.**" we can just say "Returning soon" something.
+I don't like the language "The lead gen demo is being rebuilt, **it'll return after the ecommerce rebuild ships.**" we can just say "Returning soon" something.
 
 ## Scenario 6
 

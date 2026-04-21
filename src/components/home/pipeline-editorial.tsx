@@ -44,7 +44,7 @@ function formatPayload(
 }
 
 /**
- * The editorial schematic — five numbered stages on a hairline rail with
+ * The editorial schematic, five numbered stages on a hairline rail with
  * inline tech callouts and a per-session footnote feed below. The active
  * stage rotates on a 1800ms interval (disabled under prefers-reduced-motion);
  * the footnote feed is seeded with three "already happened" events and then
@@ -82,11 +82,11 @@ export function PipelineEditorial() {
   // returns a fresh array so the in-place reverse is safe), prepend seeds,
   // then take the trailing FEED_VISIBLE_ROWS so newer events push older
   // ones out as the session progresses. Each row carries its OWN
-  // event-time-relative timestamp (Date.parse(e.timestamp) - t0) — using
+  // event-time-relative timestamp (Date.parse(e.timestamp) - t0), using
   // Date.now() here would re-stamp every row to the current render tick,
   // making all live rows display the same value and tick forward in
   // lockstep on every re-render. Corrupt timestamps fall back to delta=0
-  // (rendering as `00:00.00`) rather than being filtered out — the demo's
+  // (rendering as `00:00.00`) rather than being filtered out, the demo's
   // purpose is to show data flowing through the pipeline, so dropping a
   // row silently would be a worse signal than rendering it with a
   // placeholder timestamp.
@@ -107,7 +107,7 @@ export function PipelineEditorial() {
   const visibleRows = allRows.slice(-FEED_VISIBLE_ROWS);
 
   // Match SessionPulse's last-6-char convention so the footer ID matches
-  // what the visitor sees in the header chrome — "your session" reads as
+  // what the visitor sees in the header chrome, "your session" reads as
   // the same session across both surfaces.
   const sessionShort = sessionId ? `ses_${sessionId.slice(-6)}` : 'ses_······';
 
@@ -135,7 +135,7 @@ export function PipelineEditorial() {
         ))}
       </ol>
 
-      {/* F6 follow-up — footnote feed hidden on mobile. The 4-row mono
+      {/* F6 follow-up, footnote feed hidden on mobile. The 4-row mono
           log at text-[11px] reads cramped on 360px and duplicates the
           "live events" signal already surfaced by SessionPulse's event
           counter in the header. Desktop keeps the secondary live
@@ -201,7 +201,7 @@ function PipelineEditorialStage({
       </div>
       {/* F6 UAT close-out: the dense instrument-panel columns (tech id,
           sub-caps line, is-hot-gated readouts) are gone. Each stage is
-          now just role + title + editorial detail — no dl readout block,
+          now just role + title + editorial detail, no dl readout block,
           no max-height animation, no layout shift when the active stage
           rotates. Killing the readout jitter + metadata clipping +
           instrument/editorial clash in one cut (UAT S11 readout-jitter,
@@ -237,7 +237,7 @@ function PipelineEditorialStage({
  * mono fragment inside an inline `<code>` with the editorial mono
  * treatment. Lets the copy write `iampatterson_raw.events_raw` naturally
  * inside prose while the code substring still renders as code. No HTML
- * interpolation — plain React string children only.
+ * interpolation, plain React string children only.
  */
 function renderDetailLine(detail: string): React.ReactNode {
   const parts = detail.split(/(`[^`]+`)/g).filter(Boolean);

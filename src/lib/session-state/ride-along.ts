@@ -3,7 +3,7 @@
  * field (Phase 9E deliverable 8; deferred by default in 9E).
  *
  * This helper is the authoritative contract for what leaves the browser if
- * the visitor opts into ride-along — a **narrow projection** of `SessionState`
+ * the visitor opts into ride-along, a **narrow projection** of `SessionState`
  * that excludes fields like `visited_paths` which would leak in-tab URL
  * history. Any future surface that transmits session state across a
  * network boundary must go through this helper, not `JSON.stringify` the
@@ -38,7 +38,7 @@ export interface RideAlongPayload {
  * which is seeded from `DATA_LAYER_EVENT_NAMES` (24 post-F2), while
  * the Overview tab rendered `N/20` against the renderable subset. A
  * visitor who saw "14 of 20 event types" on screen would have
- * transmitted `{event_types_triggered: 14, event_types_total: 24}` —
+ * transmitted `{event_types_triggered: 14, event_types_total: 24}`, 
  * surface-vs-transmission mismatch flagged by F8 product + tech eval.
  */
 export function toRideAlongPayload(state: SessionState): RideAlongPayload {

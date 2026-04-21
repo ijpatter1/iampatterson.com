@@ -49,7 +49,7 @@ beforeEach(() => {
     })),
   });
 
-  // rAF + cAF — by default route through setTimeout so fake timers can drive it.
+  // rAF + cAF, by default route through setTimeout so fake timers can drive it.
   Object.defineProperty(window, 'requestAnimationFrame', {
     writable: true,
     configurable: true,
@@ -61,7 +61,7 @@ beforeEach(() => {
     value: (id: number) => window.clearTimeout(id),
   });
 
-  // Stub IntersectionObserver — default to in-view; tests that need
+  // Stub IntersectionObserver, default to in-view; tests that need
   // out-of-view override the constructor to capture and invoke the cb.
   class FakeIntersectionObserver {
     callback: IntersectionObserverCallback;
@@ -144,7 +144,7 @@ function stubSectionGeometry(rectTop: number, vh = 800, h = 1600) {
   });
 }
 
-describe('PipelineSection — content', () => {
+describe('PipelineSection, content', () => {
   it('renders the editorial heading with measurement emphasis', () => {
     renderSection();
     const h2 = screen.getByRole('heading', { level: 2 });
@@ -189,7 +189,7 @@ describe('PipelineSection — content', () => {
   });
 });
 
-describe('PipelineSection — bleed reveal', () => {
+describe('PipelineSection, bleed reveal', () => {
   it('writes --bleed=0 and no tier class while the section is below the viewport', () => {
     jest.useFakeTimers();
     stubSectionGeometry(2000); // way below viewport
@@ -334,7 +334,7 @@ describe('PipelineSection — bleed reveal', () => {
     const section = screen.getByTestId('pipeline-section');
     expect(section.style.getPropertyValue('--bleed')).toBe('0');
 
-    // Now flip to in-view — bleed should start writing.
+    // Now flip to in-view, bleed should start writing.
     act(() => {
       observerCallback?.(
         [{ isIntersecting: true } as IntersectionObserverEntry],
@@ -346,7 +346,7 @@ describe('PipelineSection — bleed reveal', () => {
   });
 });
 
-describe('PipelineSection — flicker scheduler', () => {
+describe('PipelineSection, flicker scheduler', () => {
   it('schedules a flicker burst at warm tier and clears it after the burst window', () => {
     // Pin Math.random to a deterministic value so we can compute the
     // exact delay/duration the scheduler will use:
@@ -356,7 +356,7 @@ describe('PipelineSection — flicker scheduler', () => {
     //   delay = 240 + 0.6*2200 + 200 = 240 + 1320 + 200 = 1760ms
     //   duration = 90 + 60 = 150ms
     // The first setTimeout chain inside the scheduler effect is what
-    // we drive — burst toggles on around 1762ms (240+0.601*2200+200),
+    // we drive, burst toggles on around 1762ms (240+0.601*2200+200),
     // off around 1762+150. Use generous brackets to absorb the floating-
     // point fraction in the bleed value and the 60ms warm-up overhead.
     const randSpy = jest.spyOn(Math, 'random').mockReturnValue(0.5);
@@ -411,7 +411,7 @@ describe('PipelineSection — flicker scheduler', () => {
     expect(section.className).toMatch(/\bflick\b/);
     unmount();
 
-    // Second render: peak — bleed = 1 → delay = 240 + 0*2200 + 0 = 240ms,
+    // Second render: peak, bleed = 1 → delay = 240 + 0*2200 + 0 = 240ms,
     // burst duration = 90 + 0 = 90ms (so it clears at ~330ms path-relative).
     // Use a slightly-wider-than-1ms bracket but stay within the 90ms burst
     // window so we land inside the on-state.
@@ -433,9 +433,9 @@ describe('PipelineSection — flicker scheduler', () => {
   });
 });
 
-describe('PipelineSection — cleanup on unmount', () => {
+describe('PipelineSection, cleanup on unmount', () => {
   it('cancels rAF and disconnects IntersectionObserver on unmount', () => {
-    // Fake timers FIRST — modern Jest replaces window.requestAnimationFrame
+    // Fake timers FIRST, modern Jest replaces window.requestAnimationFrame
     // and window.cancelAnimationFrame when fake timers are enabled, so any
     // earlier override would be clobbered. Override our spies AFTER.
     jest.useFakeTimers({ doNotFake: ['requestAnimationFrame', 'cancelAnimationFrame'] });
@@ -460,7 +460,7 @@ describe('PipelineSection — cleanup on unmount', () => {
     });
     const disconnectSpy = jest.fn();
     // Capture the IO callback and fire isIntersecting=true on observe so
-    // the rAF loop actually starts — only then will unmount have a frame
+    // the rAF loop actually starts, only then will unmount have a frame
     // to cancel.
     class CapturingIO {
       callback: IntersectionObserverCallback;
@@ -497,7 +497,7 @@ describe('PipelineSection — cleanup on unmount', () => {
   });
 });
 
-describe('PipelineSection — bleed-once-per-session (F6 UAT)', () => {
+describe('PipelineSection, bleed-once-per-session (F6 UAT)', () => {
   it('starts the rAF bleed loop on a fresh mount (bleed not yet consumed)', () => {
     // Opt out of jest's rAF/cAF faking so the beforeEach overrides
     // (rAF → setTimeout, cAF → clearTimeout) stay in effect.
@@ -536,7 +536,7 @@ describe('PipelineSection — bleed-once-per-session (F6 UAT)', () => {
       jest.advanceTimersByTime(200);
     });
     expect(rafSpy).not.toHaveBeenCalled();
-    // Section still renders — only the animation loop is skipped.
+    // Section still renders, only the animation loop is skipped.
     expect(screen.getByTestId('pipeline-section')).toBeInTheDocument();
   });
 
@@ -549,7 +549,7 @@ describe('PipelineSection — bleed-once-per-session (F6 UAT)', () => {
     expect(window.sessionStorage.getItem('iampatterson.pipeline_bleed.consumed')).toBe('1');
   });
 
-  it('tears down the rAF loop when the overlay opens mid-ramp (UAT follow-up — animation persists after close)', async () => {
+  it('tears down the rAF loop when the overlay opens mid-ramp (UAT follow-up, animation persists after close)', async () => {
     // Pre-fix: rAF + flicker effects had `[]` deps so they never
     // re-checked the consumed flag after mount. Clicking "See your
     // session" → opening overlay → closing overlay left the loop still
@@ -570,14 +570,14 @@ describe('PipelineSection — bleed-once-per-session (F6 UAT)', () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     renderSection();
 
-    // Loop is active — rAF fires repeatedly.
+    // Loop is active, rAF fires repeatedly.
     act(() => {
       jest.advanceTimersByTime(100);
     });
     expect(rafSpy.mock.calls.length).toBeGreaterThan(0);
     const callsBeforeOpen = rafSpy.mock.calls.length;
 
-    // Open the overlay via the CTA — OverlayProvider marks consumed in
+    // Open the overlay via the CTA, OverlayProvider marks consumed in
     // the same tick the isOpen state flips true.
     await user.click(screen.getByRole('button', { name: /see your session/i }));
 
@@ -601,7 +601,7 @@ describe('PipelineSection — bleed-once-per-session (F6 UAT)', () => {
   it('resets --bleed to 0 on the overlay-open edge within the SAME element tree (F6 follow-up)', () => {
     // Pin the visual-reset effect directly. Pre-F8 this test rerendered
     // with a FRESH OverlayProvider, which re-mounted the section with its
-    // inline style default `--bleed: 0` — the test passed even if the
+    // inline style default `--bleed: 0`, the test passed even if the
     // reset effect was removed. This rewrite keeps the SAME element
     // instance across the open edge (same OverlayProvider, same
     // PipelineSection) and asserts that the CSS var on that element
@@ -619,7 +619,7 @@ describe('PipelineSection — bleed-once-per-session (F6 UAT)', () => {
     expect(bleedBefore).not.toBe('0');
     expect(bleedBefore).not.toBe('');
 
-    // Click the CTA on the same element tree — OverlayProvider.open()
+    // Click the CTA on the same element tree, OverlayProvider.open()
     // writes the consumed flag AND flips isOpen=true in the same tick;
     // PipelineSection's visual-reset effect fires on the open edge and
     // zeroes --bleed on the SAME DOM node.
@@ -636,7 +636,7 @@ describe('PipelineSection — bleed-once-per-session (F6 UAT)', () => {
   });
 });
 
-describe('PipelineSection — See your session CTA', () => {
+describe('PipelineSection, See your session CTA', () => {
   it('opens the overlay and fires click_cta with location pipeline_see_your_session', async () => {
     const user = userEvent.setup();
     renderSection();

@@ -1,5 +1,5 @@
 /**
- * Timeline ring-buffer persistence (F8 user fix — "timeline is empty
+ * Timeline ring-buffer persistence (F8 user fix, "timeline is empty
  * upon reset").
  *
  * The `useDataLayerEvents` hook assembles `PipelineEvent` objects from
@@ -9,7 +9,7 @@
  * bounded sliding window of the most recent events to sessionStorage
  * so the Timeline rehydrates across refreshes within the same tab.
  *
- * Scope: tab-lifetime (sessionStorage, not localStorage) — aligned
+ * Scope: tab-lifetime (sessionStorage, not localStorage), aligned
  * with the `SessionState` blob's semantics. A new tab starts fresh.
  *
  * Buffer cap matches the hook's default `maxBufferSize = 100`. Writes
@@ -52,6 +52,6 @@ export function saveTimelineBuffer(events: readonly PipelineEvent[]): void {
     const capped = events.slice(0, MAX_PERSIST_COUNT);
     window.sessionStorage.setItem(TIMELINE_BUFFER_STORAGE_KEY, JSON.stringify(capped));
   } catch {
-    // Quota / SecurityError — drop the write silently.
+    // Quota / SecurityError, drop the write silently.
   }
 }

@@ -153,7 +153,7 @@ export function SessionStateProvider({ children }: { children: ReactNode }) {
  * outside a `SessionStateProvider`, and (2) the provider is mounted but its
  * init effect hasn't resolved yet (SSR, first paint). Consumers must handle
  * `null` anyway because of case (2), so this hook deliberately does NOT throw
- * on a missing provider the way `useOverlay` does — doing so would force
+ * on a missing provider the way `useOverlay` does, doing so would force
  * every consumer to choose between an SSR-safe null-check and a throw-guard.
  */
 export function useSessionState(): SessionState | null {

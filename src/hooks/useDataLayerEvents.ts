@@ -19,7 +19,7 @@ export interface UseDataLayerEventsReturn {
 }
 
 /**
- * Known iap_source event names worth capturing — derived from the
+ * Known iap_source event names worth capturing, derived from the
  * `DataLayerEvent` union's single source of truth in `src/lib/events/schema.ts`.
  * Adding a new event to the schema automatically flows here; no parallel
  * list to maintain. Per Phase 9E deliverable 4's derive-from-schema-day-one rule.
@@ -119,7 +119,7 @@ export function useDataLayerEvents({
   maxBufferSize = 100,
   pollInterval = 400,
 }: UseDataLayerEventsOptions = {}): UseDataLayerEventsReturn {
-  // Initial empty array — matches SSR output and client-first-render so
+  // Initial empty array, matches SSR output and client-first-render so
   // the Timeline / Consent / pipeline-footnote consumers (some SSR'd)
   // don't hydration-mismatch. The persisted ring buffer is loaded in a
   // post-mount useEffect below (client-only, never runs on server).

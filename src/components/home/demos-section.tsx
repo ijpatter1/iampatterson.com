@@ -10,7 +10,7 @@ import { randomUtmSeedParams } from '@/lib/demo/reveal/campaign-taxonomy';
 // Phase 9E D6: the three-card horizontal-scroll track is replaced by a
 // single full-width section dedicated to the ecommerce demo. Subscription
 // and lead gen demos were removed from the site in D7; the one-coherent-
-// demo framing is the point — see UX_PIVOT_SPEC §1 ("one world in two
+// demo framing is the point, see UX_PIVOT_SPEC §1 ("one world in two
 // states") and §3.7 for the Demos-section rebuild target.
 
 // When a visitor is 301-redirected from `/demo/subscription/*` or
@@ -35,7 +35,7 @@ const REBUILD_LABELS: Record<string, string> = Object.assign(Object.create(null)
  * page it's called from. Isolating the read into this leaf and
  * wrapping it in <Suspense> means the outer DemosSection can still
  * be statically generated; only this leaf defers to runtime. The
- * Suspense fallback is null — an absent banner during SSG is the
+ * Suspense fallback is null, an absent banner during SSG is the
  * correct behavior since the visitor's `?rebuild` is only observable
  * post-hydration anyway.
  *
@@ -43,7 +43,7 @@ const REBUILD_LABELS: Record<string, string> = Object.assign(Object.create(null)
  * visitor who dismisses and navigates away doesn't see the banner
  * re-appear on return within the same tab. The key includes the label
  * so a visitor who lands from subscription and dismisses, then later
- * lands from leadgen, still sees the leadgen banner — each removed
+ * lands from leadgen, still sees the leadgen banner, each removed
  * demo's honesty note is an independent dismissal.
  */
 const REBUILD_BANNER_DISMISSED_STORAGE_PREFIX = 'iampatterson.rebuild_banner_dismissed.';
@@ -62,7 +62,7 @@ function markRebuildBannerDismissed(label: string): void {
   try {
     window.sessionStorage.setItem(REBUILD_BANNER_DISMISSED_STORAGE_PREFIX + label, '1');
   } catch {
-    // Strict-privacy sessionStorage can throw — fall back to
+    // Strict-privacy sessionStorage can throw, fall back to
     // component-local dismissal only (banner re-appears on
     // navigation, which is the pre-fix behavior).
   }
@@ -78,7 +78,7 @@ function RebuildBanner() {
 
   // Two-pass SSR-safe dismissal state (F4 UAT fix). Pre-F4 the initializer
   // called `isRebuildBannerDismissed()` synchronously, which reads
-  // sessionStorage — that read returns different values between server
+  // sessionStorage, that read returns different values between server
   // (no window, falls through to false) and client hydration (real
   // storage), producing a hydration mismatch inside the Suspense boundary
   // on deep-link redirects (UAT S5.3: /demo/subscription/account/settings
@@ -128,7 +128,7 @@ function RebuildBanner() {
 export function DemosSection() {
   const router = useRouter();
 
-  // UAT r2 item 6 — stamp the "Enter the demo" deep-link with a random
+  // UAT r2 item 6, stamp the "Enter the demo" deep-link with a random
   // seed utm_campaign + matching source/medium on every click. The
   // listing page already runs the URL-provided campaign through
   // `classifyUtm` and surfaces the classified source / medium / bucket
@@ -137,7 +137,7 @@ export function DemosSection() {
   // which demonstrates the pipeline step honestly.
   //
   // Middle-click / ctrl-click (open-in-new-tab) bypasses onClick in most
-  // browsers, so the `href="/demo/ecommerce"` is the fallback — visitors
+  // browsers, so the `href="/demo/ecommerce"` is the fallback, visitors
   // who open in a new tab land on the plain URL and see the default seed
   // with the "example · no utm in your url" honesty badge. That's the
   // correct behavior: the randomiser only fires for an intentional
@@ -161,7 +161,7 @@ export function DemosSection() {
           <RebuildBanner />
         </Suspense>
 
-        {/* F5 UAT S11 — hide the second-line tagline on mobile. The
+        {/* F5 UAT S11, hide the second-line tagline on mobile. The
             `uppercase tracking-widest` treatment + 32ch max-width pushed
             the eyebrow block to 7–8 lines on 360px. Desktop keeps the
             two-part editorial framing. */}
@@ -210,7 +210,7 @@ export function DemosSection() {
             </div>
           </div>
 
-          {/* Preview column — desktop only (UAT r2 item 5).
+          {/* Preview column, desktop only (UAT r2 item 5).
               Pre-r2 this was a terminal-styled sample-event pre-block.
               Two problems the user flagged: the box read as pointless
               filler ("preview sample event"), and stacked on mobile it
@@ -222,7 +222,7 @@ export function DemosSection() {
               hero treatment so the homepage preview matches what the
               visitor will see when they enter the demo.
 
-              No real product photography exists yet — when it does, the
+              No real product photography exists yet, when it does, the
               palette-tile composition becomes the one place to swap in
               a photography-on-cream asset. */}
           <div

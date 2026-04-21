@@ -2,7 +2,7 @@
  * sessionStorage persistence for SessionState.
  *
  * Storage key: `iampatterson.session_state` (UX_PIVOT_SPEC §3.6).
- * Tab-scoped by design — returning visitors start fresh, mirroring the
+ * Tab-scoped by design, returning visitors start fresh, mirroring the
  * `_iap_sid` cookie's session semantics.
  */
 import { createInitialSessionState } from '@/lib/session-state/derive';

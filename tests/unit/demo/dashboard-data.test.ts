@@ -9,7 +9,7 @@ import type { KpiMetric } from '@/lib/demo/dashboard-types';
 // with the demos themselves. Their prior tests lived in this file and
 // have been deleted; the ecommerce dashboard block persists verbatim.
 
-describe('Dashboard mock data — ecommerce (post-9E-D7)', () => {
+describe('Dashboard mock data, ecommerce (post-9E-D7)', () => {
   describe('E-commerce data', () => {
     it('has 4 KPI metrics', () => {
       expect(ecommerceDashboardData.kpis).toHaveLength(4);

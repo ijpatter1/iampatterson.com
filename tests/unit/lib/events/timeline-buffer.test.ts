@@ -1,5 +1,5 @@
 /**
- * Timeline ring-buffer persistence — ensures Timeline survives page
+ * Timeline ring-buffer persistence, ensures Timeline survives page
  * refresh (F8 user-reported regression pin).
  */
 import {

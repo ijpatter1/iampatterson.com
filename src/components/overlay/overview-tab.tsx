@@ -17,7 +17,7 @@ import {
 const BAR_WIDTH = 16;
 // Restored to the spec's original 10 after user reported > 5 surfaced
 // the CTA too aggressively (triggered at ~6-7 events fired during
-// basic homepage exploration — consent_update + nav_hint_shown +
+// basic homepage exploration, consent_update + nav_hint_shown +
 // session_pulse_hover + click_cta + overview_tab_view + a couple
 // more). The earlier "CTA never shows" complaint was under > 10; the
 // right balance per spec intent is visitor engaged with >10 distinct
@@ -63,17 +63,17 @@ const STAGE_LABELS: Record<EcommerceStage, string> = {
   purchase: 'PURCHASE',
 };
 
-/** Last 6 hex chars of the UUID — matches SessionPulse and LiveStrip. */
+/** Last 6 hex chars of the UUID, matches SessionPulse and LiveStrip. */
 function shortSessionId(sid: string): string {
   return sid ? sid.slice(-6) : '······';
 }
 
 /**
  * Classify a stage's status for funnel rendering:
- * - `reached` — the stage's trigger event fired this session.
- * - `skipped` — unreached, but a later stage in canonical order was reached
+ * - `reached`, the stage's trigger event fired this session.
+ * - `skipped`, unreached, but a later stage in canonical order was reached
  *   (deep-linked visitor bypassed this stage by design).
- * - `pending` — unreached, and no later stage reached either.
+ * - `pending`, unreached, and no later stage reached either.
  */
 function getStageStatus(stage: EcommerceStage, reached: readonly EcommerceStage[]): StageStatus {
   if (reached.includes(stage)) return 'reached';
@@ -98,7 +98,7 @@ function useTypedCoverage(text: string): string {
   const hasAnimated = useRef(false);
 
   useEffect(() => {
-    // Don't consume the one-shot on an empty placeholder — SessionState
+    // Don't consume the one-shot on an empty placeholder, SessionState
     // hydrates asynchronously, so the first render has `text === ''`.
     if (!text) return;
     if (hasAnimated.current) {
@@ -290,7 +290,7 @@ export function OverviewTab() {
             {typedCoverage}
           </span>
         </div>
-        {/* F5 UAT S11 — explicit min-w-0 + truncate + whitespace-nowrap
+        {/* F5 UAT S11, explicit min-w-0 + truncate + whitespace-nowrap
             keep each chip on a single line at 360px. Without min-w-0
             the grid cell's intrinsic width wins and the long chip names
             (e.g. `> session_pulse_hover`) overflow or wrap the leading

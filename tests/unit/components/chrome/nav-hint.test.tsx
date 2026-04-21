@@ -4,7 +4,7 @@
  * Phase 9E D1 first-session pulse-ring hint. Pinning:
  *  - 3s idle trigger / 10s auto-clear (animated) / 6s fade (reduced-motion)
  *  - Idle definition: scroll/click/keydown/pointermove on document
- *  - Dismissal modes: scroll, click_outside, timeout — three values post-
+ *  - Dismissal modes: scroll, click_outside, timeout, three values post-
  *    UAT (click_session_pulse removed: SessionPulse click is a
  *    conversion tracked via click_cta(session_pulse), not a dismissal)
  *  - Once-per-session via sessionStorage gate (set on render, not mount)
@@ -75,7 +75,7 @@ afterEach(() => {
   jest.useRealTimers();
 });
 
-describe('NavHint — first-session pulse ring', () => {
+describe('NavHint, first-session pulse ring', () => {
   it('does NOT render on initial mount (waits for the 3s idle window)', () => {
     render(<Harness />);
     expect(screen.queryByTestId('nav-hint')).not.toBeInTheDocument();
@@ -129,7 +129,7 @@ describe('NavHint — first-session pulse ring', () => {
         jest.advanceTimersByTime(2500);
       });
       // Total elapsed = 5s, but only 2.5s has passed since the last
-      // idle-breaking event — hint must not have shown yet.
+      // idle-breaking event, hint must not have shown yet.
       expect(screen.queryByTestId('nav-hint')).not.toBeInTheDocument();
       act(() => {
         jest.advanceTimersByTime(500);
@@ -193,7 +193,7 @@ describe('NavHint — first-session pulse ring', () => {
       // with cta_location='session_pulse'. Firing a dismissal event for
       // the conversion path would conflate engagement with abandonment
       // in BI, making the dismissal metric useless. The hint still
-      // disappears visually — this test pins that DOM behavior while
+      // disappears visually, this test pins that DOM behavior while
       // confirming zero dismissal-event emission.
       render(<Harness />);
       showHint();
@@ -209,7 +209,7 @@ describe('NavHint — first-session pulse ring', () => {
     it('dismisses with `click_outside` on a click whose target is anywhere else', () => {
       render(<Harness />);
       showHint();
-      // Dispatch a click on document body — target is body, not the
+      // Dispatch a click on document body, target is body, not the
       // pulse element or any descendant of it.
       act(() => {
         document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -257,7 +257,7 @@ describe('NavHint — first-session pulse ring', () => {
     it('still renders + emits nav_hint_shown when sessionStorage.setItem throws (strict-privacy fallback)', () => {
       // `markShownThisSession` is wrapped in try/catch specifically to
       // survive privacy settings that throw on setItem. The hint must
-      // still render + emit in that case — the gate just won't persist
+      // still render + emit in that case, the gate just won't persist
       // (re-fires on next homepage visit). Pass 1 flagged this path
       // as documented-but-untested.
       const originalSetItem = Storage.prototype.setItem;
@@ -296,7 +296,7 @@ describe('NavHint — first-session pulse ring', () => {
       expect(screen.getByTestId('nav-hint')).toBeInTheDocument();
       expect(mockShown).toHaveBeenCalledTimes(1);
 
-      // Navigate away and back — gate is set; hint must not re-fire.
+      // Navigate away and back, gate is set; hint must not re-fire.
       mockPathname = '/services';
       rerender(<Harness />);
       mockPathname = '/';
@@ -328,7 +328,7 @@ describe('NavHint — first-session pulse ring', () => {
       });
       expect(screen.getByTestId('nav-hint')).toBeInTheDocument();
 
-      // 6s is the reduced-motion fade duration; advance to 5.9s — still showing.
+      // 6s is the reduced-motion fade duration; advance to 5.9s, still showing.
       act(() => {
         jest.advanceTimersByTime(5900);
       });

@@ -31,7 +31,7 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
   const toggle = useCallback(() => {
     setIsOpen((prev) => {
       // Entering open state counts as "overlay has been seen this
-      // session" — F6 UAT close-out pipeline-bleed-consumed flag.
+      // session", F6 UAT close-out pipeline-bleed-consumed flag.
       if (!prev) markPipelineBleedConsumed();
       return !prev;
     });
@@ -40,7 +40,7 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
     if (tab) setPendingTab(tab);
     setIsOpen(true);
     // F6 UAT close-out: mark the pipeline-section's bleed reveal as
-    // consumed. Pipeline bleed is a one-shot priming gesture — once
+    // consumed. Pipeline bleed is a one-shot priming gesture, once
     // the visitor has opened the overlay, the homepage pipeline can
     // render in its calm editorial baseline on subsequent scroll.
     markPipelineBleedConsumed();

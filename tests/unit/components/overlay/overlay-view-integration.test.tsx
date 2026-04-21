@@ -92,7 +92,7 @@ afterEach(() => {
   jest.useRealTimers();
 });
 
-describe('OverlayView — integration with OverlayProvider', () => {
+describe('OverlayView, integration with OverlayProvider', () => {
   it('is hidden until first open (no test-id rendered)', () => {
     mockReducedMotion(true);
     render(
@@ -133,7 +133,7 @@ describe('OverlayView — integration with OverlayProvider', () => {
     );
 
     await user.click(screen.getByText('close'));
-    // Reopen WITHOUT a tab hint — viewMode is sticky. D2 removed the
+    // Reopen WITHOUT a tab hint, viewMode is sticky. D2 removed the
     // pathname-based tab reset (HomepageUnderside/EcommerceUnderside
     // routing is gone), so Overview is always available and viewMode
     // never needs to be "corrected" on reopen.
@@ -161,12 +161,12 @@ describe('OverlayView — integration with OverlayProvider', () => {
     expect(screen.getByTestId('overlay-view').dataset.phase).toBe('idle');
 
     // Second open within the same session skips boot and lands on 'on'
-    // directly — the boot gesture is a one-time reveal, not a repeated effect.
+    // directly, the boot gesture is a one-time reveal, not a repeated effect.
     await user.click(screen.getByText('open'));
     expect(screen.getByTestId('overlay-view').dataset.phase).toBe('on');
   });
 
-  it('tab set is pathname-independent — Overview default persists across routes', async () => {
+  it('tab set is pathname-independent, Overview default persists across routes', async () => {
     const user = userEvent.setup();
     mockPathname = '/';
     const { rerender } = renderHost();
@@ -179,7 +179,7 @@ describe('OverlayView — integration with OverlayProvider', () => {
     expect(screen.queryByRole('button', { name: /^Session State$/i })).not.toBeInTheDocument();
 
     await user.click(screen.getByText('close'));
-    // Navigate to a demo route — D2 removed pathname-specific routing.
+    // Navigate to a demo route, D2 removed pathname-specific routing.
     // The tab set is identical on every route.
     mockPathname = '/demo/ecommerce';
     rerender(
@@ -195,7 +195,7 @@ describe('OverlayView — integration with OverlayProvider', () => {
     expect(screen.queryByRole('button', { name: /^Session State$/i })).not.toBeInTheDocument();
   });
 
-  it('exports OverlayTab type for consumers — narrowed to three values post-D2', () => {
+  it('exports OverlayTab type for consumers, narrowed to three values post-D2', () => {
     // Type-only: if the export broke, TS would fail compilation. Array
     // matches the post-D2 union (overview | timeline | consent).
     const tab: OverlayTab = 'timeline';

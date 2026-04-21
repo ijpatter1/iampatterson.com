@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useReducer 
 import type { ReactNode } from 'react';
 
 /**
- * Phase 9F D7 — cart-context with localStorage persistence.
+ * Phase 9F D7, cart-context with localStorage persistence.
  *
  * Storage shape matches the prototype's contract:
  * - key: `iampatterson.tunashop.cart.v1`
@@ -14,7 +14,7 @@ import type { ReactNode } from 'react';
  *
  * The internal `CartItem` shape keeps the `product_id` / `product_name` /
  * `product_price` / `quantity` field names established pre-9F rather than
- * switching to the prototype's `{ id, qty, price, name }` — this preserves
+ * switching to the prototype's `{ id, qty, price, name }`, this preserves
  * the existing `CartItem` type contract across the many consumers (listing
  * view, product detail, tracking helpers, tests). The persisted LOCAL
  * storage payload uses the internal shape; visitors migrating from a
@@ -120,7 +120,7 @@ const CartContext = createContext<CartContextValue | null>(null);
 export function CartProvider({ children }: { children: ReactNode }) {
   // Initial state is always empty; post-mount effect reconciles against
   // localStorage. Reading in the useReducer initialiser would produce SSR/CSR
-  // hydration mismatches — 9E UAT F4 pattern.
+  // hydration mismatches, 9E UAT F4 pattern.
   const [state, dispatch] = useReducer(cartReducer, { items: [] });
 
   // Hydrate from localStorage on mount.

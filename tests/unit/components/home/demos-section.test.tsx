@@ -9,7 +9,7 @@ import { DemosSection } from '@/components/home/demos-section';
 // Phase 9E D6 rewrite: the three-card track is replaced by a single
 // full-width ecommerce section. The `rebuild` query param drives the
 // honesty banner that shows when a visitor is bounced here from a 301
-// redirect (`/demo/subscription/*` or `/demo/leadgen/*` — wired in D7's
+// redirect (`/demo/subscription/*` or `/demo/leadgen/*`, wired in D7's
 // next.config.mjs).
 
 jest.mock('@/lib/events/track', () => ({
@@ -31,7 +31,7 @@ beforeEach(() => {
   mockRouterPush.mockClear();
 });
 
-describe('DemosSection — post-9E-D6 single ecommerce section', () => {
+describe('DemosSection, post-9E-D6 single ecommerce section', () => {
   it('keeps the anchor id "demos" to match the /#demos hash target', () => {
     render(<DemosSection />);
     expect(screen.getByTestId('demos-section').id).toBe('demos');
@@ -82,11 +82,11 @@ describe('DemosSection — post-9E-D6 single ecommerce section', () => {
     expect(screen.queryByTestId('swipe-bar-0')).not.toBeInTheDocument();
   });
 
-  // UAT r1 item 1 — the pre-rework headline + body fought non-existent
+  // UAT r1 item 1, the pre-rework headline + body fought non-existent
   // friction ("Instead of toggling an overlay…") and puffed significance
   // ("Watch a purchase become a KPI"). These regression pins make sure
   // the reverted phrasing does not come back.
-  describe('UAT r1 item 1 — headline + body voice rework', () => {
+  describe('UAT r1 item 1, headline + body voice rework', () => {
     it('does NOT use the pre-rework headline "Watch a purchase become a KPI"', () => {
       render(<DemosSection />);
       const section = screen.getByTestId('demos-section');
@@ -120,14 +120,14 @@ describe('DemosSection — post-9E-D6 single ecommerce section', () => {
     });
   });
 
-  // UAT r2 item 6 — the "Enter the demo" CTA previously navigated to a
+  // UAT r2 item 6, the "Enter the demo" CTA previously navigated to a
   // bare `/demo/ecommerce` URL. Without a utm_campaign in the URL, the
   // listing hero panel showed the default seed flagged as "example · no
-  // utm in your url" — the visitor never saw the classification step
+  // utm in your url", the visitor never saw the classification step
   // with THEIR own data. Fix: stamp the CTA with a random seed
   // utm_campaign + matching source/medium on every click, so the
   // listing hero classifies a different campaign each visit.
-  describe('UAT r2 item 6 — random UTM seed on Enter-the-demo CTA', () => {
+  describe('UAT r2 item 6, random UTM seed on Enter-the-demo CTA', () => {
     it('click navigates to /demo/ecommerce with utm_campaign / utm_source / utm_medium', async () => {
       const user = userEvent.setup();
       render(<DemosSection />);
@@ -174,11 +174,11 @@ describe('DemosSection — post-9E-D6 single ecommerce section', () => {
     });
   });
 
-  // UAT r2 item 5 — the pre-r2 "Preview · sample event" box was
+  // UAT r2 item 5, the pre-r2 "Preview · sample event" box was
   // flagged as pointless fluff + pushed the section too long on mobile.
   // Decision: drop on mobile (hide via `hidden md:block`), keep on
   // desktop as a palette-tile product hero (Tuna Plush Classic palette).
-  describe('UAT r2 item 5 — demos-section hero visual', () => {
+  describe('UAT r2 item 5, demos-section hero visual', () => {
     it('does NOT render the old "Preview · sample event" pre-block', () => {
       render(<DemosSection />);
       const section = screen.getByTestId('demos-section');
@@ -197,7 +197,7 @@ describe('DemosSection — post-9E-D6 single ecommerce section', () => {
       expect(bg.toLowerCase()).toMatch(/#e8d8bd|rgb\(\s*232,\s*216,\s*189\s*\)/);
     });
 
-    it('hides the hero on mobile via `hidden md:block` (UAT r2 item 5 — mobile-length concern)', () => {
+    it('hides the hero on mobile via `hidden md:block` (UAT r2 item 5, mobile-length concern)', () => {
       render(<DemosSection />);
       const hero = document.querySelector('[data-demos-section-hero]') as HTMLElement;
       expect(hero.className).toMatch(/\bhidden\b/);
@@ -227,7 +227,7 @@ describe('DemosSection — post-9E-D6 single ecommerce section', () => {
     });
 
     it('does NOT render the banner for unknown rebuild values (defensive)', () => {
-      // Guard against future URL tampering or new redirect sources —
+      // Guard against future URL tampering or new redirect sources, 
       // banner only surfaces for the two known-removed demos so typos
       // don't produce a misleading banner.
       mockSearchParams = new URLSearchParams('?rebuild=ecommerce');
@@ -276,13 +276,13 @@ describe('DemosSection — post-9E-D6 single ecommerce section', () => {
       await user.click(screen.getByRole('button', { name: /dismiss/i }));
       expect(screen.queryByTestId('rebuild-banner')).not.toBeInTheDocument();
 
-      // Simulate client-side nav away and back — unmount + remount.
+      // Simulate client-side nav away and back, unmount + remount.
       unmount();
       render(<DemosSection />);
       expect(screen.queryByTestId('rebuild-banner')).not.toBeInTheDocument();
     });
 
-    it('dismissal is per-label — dismissing subscription does NOT suppress leadgen', async () => {
+    it('dismissal is per-label, dismissing subscription does NOT suppress leadgen', async () => {
       mockSearchParams = new URLSearchParams('?rebuild=subscription');
       const user = userEvent.setup();
       const { unmount } = render(<DemosSection />);
@@ -296,7 +296,7 @@ describe('DemosSection — post-9E-D6 single ecommerce section', () => {
       expect(banner.textContent).toMatch(/lead[\s-]?gen/i);
     });
 
-    // F4 UAT S5.3 regression pins — deep-link redirect flow.
+    // F4 UAT S5.3 regression pins, deep-link redirect flow.
     // Scenario: visitor dismisses on /?rebuild=subscription, then
     // navigates to /demo/subscription/account/settings which redirects
     // to /?rebuild=subscription#demos (same label, same storage key).
@@ -309,7 +309,7 @@ describe('DemosSection — post-9E-D6 single ecommerce section', () => {
       expect(screen.queryByTestId('rebuild-banner')).not.toBeInTheDocument();
       unmount();
 
-      // Deep link redirects to the SAME shallow destination URL —
+      // Deep link redirects to the SAME shallow destination URL, 
       // `/demo/subscription/:path*` → `/?rebuild=subscription#demos`.
       // The banner's dismissal state is keyed on the `label`, not the
       // inbound path, so the deep-link remount reads the same storage
@@ -319,19 +319,19 @@ describe('DemosSection — post-9E-D6 single ecommerce section', () => {
       expect(screen.queryByTestId('rebuild-banner')).not.toBeInTheDocument();
     });
 
-    it('end-of-effect DOM matches storage state on both paths (F4 smoke test only — not an SSR proof)', () => {
+    it('end-of-effect DOM matches storage state on both paths (F4 smoke test only, not an SSR proof)', () => {
       // Honest framing (F8 eval re-fix): jsdom runs a single client pass
       // and CANNOT replay SSR/CSR hydration reconciliation. This test
       // asserts only the end-of-effect DOM: banner present when storage
       // is clear, banner absent when storage says dismissed. It passes
       // against BOTH the pre-F4 synchronous `useState(isRebuildBannerDismissed(...))`
-      // initializer AND the post-F4 tri-state — the regression the F4
+      // initializer AND the post-F4 tri-state, the regression the F4
       // fix closes is not observable in jsdom.
       // The fix relies on code review of the tri-state pattern for its
       // SSR-safety guarantee; this test is a regression pin for
       // dismissal PERSISTENCE (cross-mount), not hydration safety.
       // If anyone reintroduces the sync initializer, this test won't
-      // catch it — but the hydration error surfaces in real Next.js
+      // catch it, but the hydration error surfaces in real Next.js
       // builds (the symptom UAT S5.3 originally reported).
       mockSearchParams = new URLSearchParams('?rebuild=subscription');
       window.sessionStorage.setItem('iampatterson.rebuild_banner_dismissed.subscription', '1');

@@ -1,5 +1,5 @@
 /**
- * Initial SessionState shape — derive-from-schema invariant.
+ * Initial SessionState shape, derive-from-schema invariant.
  *
  * The `event_type_coverage.total` denominator is the single source of
  * truth for Session State gamification. It must derive at module init

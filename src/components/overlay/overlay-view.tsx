@@ -36,8 +36,8 @@ const BOOT_DURATION_MS = 260;
 // sessionStorage key recording that the boot sequence has already played this
 // browser session. First open of the session fires boot and sets the flag;
 // every subsequent open within the same tab lifetime goes straight to phase-on.
-// Scoped to sessionStorage (not localStorage) so a new browsing session — new
-// tab, new window — gets the boot gesture again. Exported so tests assert
+// Scoped to sessionStorage (not localStorage) so a new browsing session, new
+// tab, new window, gets the boot gesture again. Exported so tests assert
 // against the same constant rather than a duplicated string literal.
 export const BOOT_SESSION_KEY = 'iampatterson.overlay.booted';
 
@@ -46,7 +46,7 @@ function hasBootedThisSession(): boolean {
   try {
     return window.sessionStorage.getItem(BOOT_SESSION_KEY) === '1';
   } catch {
-    // sessionStorage can throw under strict privacy settings — fail open so
+    // sessionStorage can throw under strict privacy settings, fail open so
     // the overlay still works, accepting that boot will replay in that case.
     return false;
   }
@@ -57,7 +57,7 @@ function markBootedThisSession(): void {
   try {
     window.sessionStorage.setItem(BOOT_SESSION_KEY, '1');
   } catch {
-    // See hasBootedThisSession — we silently fall back to "boot every open".
+    // See hasBootedThisSession, we silently fall back to "boot every open".
   }
 }
 
@@ -89,7 +89,7 @@ function Tabs({
         // Terminal-style bracket framing on the active tab label is the
         // primary cue that the tab is selected (UX_PIVOT_SPEC §3.2 +
         // F1 UAT feedback). All three labels render in the amber accent
-        // — the bracket pair + border distinguish active from inactive.
+        //, the bracket pair + border distinguish active from inactive.
         // Inactive tabs render the label plain (no brackets, no border
         // indicator) with a subtle opacity dip so they still feel like
         // navigation targets, not disabled chrome.
@@ -132,8 +132,8 @@ export function OverlayView() {
   const hasBooted = useRef(false);
   // Tracks whether the landing phase for the current overlay-open has been
   // resolved (i.e. the first post-pendingTab render has committed). Closing
-  // this gate unconditionally on resolution — not only when default_landing
-  // emits — is the key invariant: a later manual_select click that re-enters
+  // this gate unconditionally on resolution, not only when default_landing
+  // emits, is the key invariant: a later manual_select click that re-enters
   // session_state from Timeline/Consent must not re-trip the default_landing
   // emitter. Reset on close so each overlay-open restarts the landing phase.
   const landingResolvedRef = useRef(false);
@@ -141,7 +141,7 @@ export function OverlayView() {
   // Tab-change handler that the tabs-bar calls. `manual_select` emits on
   // every active click in the tabs bar, for whichever tab was clicked.
   // Programmatic opens (overlay `open('overview')`, pendingTab consumption)
-  // go through `setViewMode` directly and do NOT emit — they are not
+  // go through `setViewMode` directly and do NOT emit, they are not
   // visitor-initiated choices from within the tabs bar. The
   // `default_landing` emitter below handles the non-click paths.
   const handleTabChange = useCallback((mode: ViewMode) => {
@@ -166,11 +166,11 @@ export function OverlayView() {
   // The pendingTab check defers resolution until the pendingTab consumption
   // effect has run. On an `open('timeline')` call the initial render has
   // isOpen=true, viewMode='overview' (default), pendingTab='timeline'
-  // — resolving here would classify the landing as overview when the
+  //, resolving here would classify the landing as overview when the
   // visitor actually ends up on timeline. Waiting for pendingTab=null means
   // we always see the post-transition viewMode.
   //
-  // Once resolution completes, the gate closes UNCONDITIONALLY — whether
+  // Once resolution completes, the gate closes UNCONDITIONALLY, whether
   // or not we emitted. This is load-bearing: if the visitor later clicks
   // a different tab, that click already emits `manual_select` via
   // handleTabChange. Without this invariant, the viewMode re-render would
@@ -220,7 +220,7 @@ export function OverlayView() {
 
   // Escape-key close (F3 UAT S8 fix). The pre-F3 overlay had a -z-10
   // "backdrop button" at absolute inset-0 but it was permanently occluded
-  // by the flex-column header/tabs/content children — never received a
+  // by the flex-column header/tabs/content children, never received a
   // click in practice. Escape is the standard modal escape hatch.
   useEffect(() => {
     if (!isOpen) return;
@@ -235,7 +235,7 @@ export function OverlayView() {
   // interactive regions closes the overlay: the empty desktop gutters
   // alongside the `max-w-content` content wrapper, and the vertical
   // space below the content inside the scroll region. We rely on the
-  // bubble-phase `e.target === e.currentTarget` check — it only fires
+  // bubble-phase `e.target === e.currentTarget` check, it only fires
   // when the click landed directly on the listener's element, not on
   // any descendant. So clicks on text, links, buttons, tabs, or the
   // header still behave normally; only clicks in truly empty regions
@@ -264,17 +264,17 @@ export function OverlayView() {
         isOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
       }`}
     >
-      {/* Ambient amber glow — rendered as a sibling of the CRT field, with
+      {/* Ambient amber glow, rendered as a sibling of the CRT field, with
           no explicit z-index. Paints in step 6 of the stacking context
           (positioned, z:auto), ahead of the in-flow header (step 3) but
           BEHIND the positioned tabs/body (step 6, later DOM order). Result:
-          the amber blend is scoped to the header surface — the specific
+          the amber blend is scoped to the header surface, the specific
           effect the user asked to preserve. */}
       {(phase === 'boot' || phase === 'on') && (
         <div aria-hidden="true" data-testid="crt-ambient" className="crt-ambient" />
       )}
 
-      {/* Boot sequence + scanlines — z-index: 3 so the opaque paint-down
+      {/* Boot sequence + scanlines, z-index: 3 so the opaque paint-down
           curtain, warm flicker, and persistent scanlines cover ALL overlay
           content (including positioned tabs/body). Mirrors the prototype's
           explicit `z-index: 3` on `.crt-field`. DOM order follows the
@@ -293,7 +293,7 @@ export function OverlayView() {
         </div>
       )}
 
-      {/* Header — F5 UAT S11 declutter: on mobile, hide the 32px icon +
+      {/* Header, F5 UAT S11 declutter: on mobile, hide the 32px icon +
           "Live · yours, right now" subtitle so only the "Session" title
           + close button remain. The icon + subtitle add visual weight
           to a narrow row that already fights the tab bar below for

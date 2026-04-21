@@ -4,7 +4,7 @@
  *
  * The BQ raw table stores what sGTM produces. Field names match sGTM's Common
  * Event Data model and event parameters. The TypeScript schema (data layer
- * contract) uses slightly different names — Dataform staging normalizes this.
+ * contract) uses slightly different names, Dataform staging normalizes this.
  */
 import * as fs from 'fs';
 import * as path from 'path';

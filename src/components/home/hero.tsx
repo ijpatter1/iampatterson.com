@@ -18,7 +18,7 @@ export function HeroEditorial() {
         <h1
           className="font-display font-normal text-ink"
           style={{
-            // F5 UAT S11 — shrink mobile floor 56px → 44px so the headline
+            // F5 UAT S11, shrink mobile floor 56px → 44px so the headline
             // takes ~33px less vertical space on 360px, putting CTAs
             // within the 667px iPhone SE fold.
             fontSize: 'clamp(44px, 13vw, 200px)',
@@ -43,14 +43,14 @@ export function HeroEditorial() {
               lineHeight: '1.25',
             }}
           >
-            This site runs on the same stack I sell — consent, sGTM, BigQuery, Dataform, live
+            This site runs on the same stack I sell, consent, sGTM, BigQuery, Dataform, live
             dashboards. Instead of describing it, I built on it.
           </p>
           <div>
             <p className="max-w-[52ch] text-[15px] leading-[1.65] text-ink-2 md:text-base md:leading-[1.7]">
               Most consultants describe what they build. I&apos;d rather you watch it run. Every
               scroll, every click on this page flows through a real server-side tag manager, into a
-              real warehouse, through a real transformation pipeline — live on your session, right
+              real warehouse, through a real transformation pipeline, live on your session, right
               now. The instrumentation is the portfolio.
             </p>
             <div className="mt-5 flex flex-wrap gap-3 md:mt-7">

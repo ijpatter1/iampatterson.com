@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  *
- * Deliverable 2 — `overview_tab_view` `default_landing` emission.
+ * Deliverable 2, `overview_tab_view` `default_landing` emission.
  *
  * Complements the `manual_select` semantics pinned in
  * `overview-tab-emission.test.tsx`. Covers the case where a visitor
@@ -12,7 +12,7 @@
  *
  * Architectural invariant: emission fires once per overlay-open that
  * lands on Overview. A `manual_select` tab-bar click INSIDE the
- * same open DOES NOT re-fire `default_landing` — the landing event
+ * same open DOES NOT re-fire `default_landing`, the landing event
  * describes how the visitor arrived, not transitions within a session.
  */
 import { render, screen } from '@testing-library/react';
@@ -100,7 +100,7 @@ afterEach(() => {
 });
 
 describe('overview_tab_view default_landing emission (deliverable 2)', () => {
-  it('fires once on the first overlay open — Overview is the default landing tab', async () => {
+  it('fires once on the first overlay open, Overview is the default landing tab', async () => {
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(screen.getByText('open-overlay'));
@@ -113,10 +113,10 @@ describe('overview_tab_view default_landing emission (deliverable 2)', () => {
   it('fires again on each overlay re-open that lands on Overview (sticky reopen)', async () => {
     const user = userEvent.setup();
     render(<Harness />);
-    // First open — default_landing (viewMode = overview by default)
+    // First open, default_landing (viewMode = overview by default)
     await user.click(screen.getByText('open-overlay'));
     await user.click(screen.getByText('close-overlay'));
-    // Second open — viewMode sticky at overview, still a landing event
+    // Second open, viewMode sticky at overview, still a landing event
     await user.click(screen.getByText('open-overlay'));
 
     const events = dataLayerEventsNamed('overview_tab_view');
@@ -130,7 +130,7 @@ describe('overview_tab_view default_landing emission (deliverable 2)', () => {
     // First land on Timeline so the pendingTab transition is observable
     await user.click(screen.getByText('open-with-pending-timeline'));
     await user.click(screen.getByText('close-overlay'));
-    // Reopen with a overview pendingTab — the visitor chose the
+    // Reopen with a overview pendingTab, the visitor chose the
     // destination from outside the tabs bar; this counts as a landing.
     await user.click(screen.getByText('open-with-pending-overview'));
 
@@ -150,7 +150,7 @@ describe('overview_tab_view default_landing emission (deliverable 2)', () => {
     expect(dataLayerEventsNamed('overview_tab_view')).toHaveLength(0);
   });
 
-  it('does NOT fire default_landing on a manual_select click after landing resolved to Timeline (orthogonality regression — Pass 1 evaluator)', async () => {
+  it('does NOT fire default_landing on a manual_select click after landing resolved to Timeline (orthogonality regression, Pass 1 evaluator)', async () => {
     // Pinning the dual-fire bug caught in Pass 1 eval of D2.
     // Scenario:
     //   1. open('timeline') → landing resolves to Timeline, no emission.
@@ -175,7 +175,7 @@ describe('overview_tab_view default_landing emission (deliverable 2)', () => {
     expect(events[0].source).toBe('manual_select');
   });
 
-  it('does NOT fire default_landing on a manual_select click after landing resolved to Consent (orthogonality regression — parallel case)', async () => {
+  it('does NOT fire default_landing on a manual_select click after landing resolved to Consent (orthogonality regression, parallel case)', async () => {
     // Parallel coverage for the `open('consent')` path so any future tab
     // that resolves as a non-Session-State landing is covered by the same
     // invariant. A third tab added later would inherit the same guard
@@ -212,7 +212,7 @@ describe('overview_tab_view default_landing emission (deliverable 2)', () => {
     await user.click(screen.getByText('open-overlay'));
     expect(dataLayerEventsNamed('overview_tab_view')).toHaveLength(1);
 
-    // Click Timeline, then click back to Overview — the latter is
+    // Click Timeline, then click back to Overview, the latter is
     // manual_select (click-bound, pinned by overview-tab-emission).
     // default_landing must NOT re-fire on that return transition.
     await user.click(screen.getByRole('button', { name: /^Timeline/i }));
@@ -237,7 +237,7 @@ describe('overview_tab_view default_landing emission (deliverable 2)', () => {
 
   it('fires default_landing even when the boot-hold is active (matches=false)', async () => {
     // Pinning that the emission effect depends on [isOpen, viewMode,
-    // pendingTab] and NOT on `phase` — emission must fire on the open
+    // pendingTab] and NOT on `phase`, emission must fire on the open
     // edge regardless of whether the CRT boot sequence is mid-animation.
     // A future refactor that accidentally gates the effect on `phase ===
     // 'on'` would regress the normal-motion case without this test.
@@ -260,7 +260,7 @@ describe('overview_tab_view default_landing emission (deliverable 2)', () => {
     // landingResolvedRef was set, not when the overlay closed).
     const user = userEvent.setup();
     render(<Harness />);
-    // First open lands on Overview — default_landing emits.
+    // First open lands on Overview, default_landing emits.
     await user.click(screen.getByText('open-overlay'));
     expect(dataLayerEventsNamed('overview_tab_view')).toHaveLength(1);
 
@@ -268,13 +268,13 @@ describe('overview_tab_view default_landing emission (deliverable 2)', () => {
     await user.click(screen.getByRole('button', { name: /^Timeline/i }));
     expect(dataLayerEventsNamed('overview_tab_view')).toHaveLength(1);
 
-    // Close with Timeline sticky, then reopen — landing resolves to
+    // Close with Timeline sticky, then reopen, landing resolves to
     // Timeline (sticky), no default_landing emission.
     await user.click(screen.getByText('close-overlay'));
     await user.click(screen.getByText('open-overlay'));
     expect(dataLayerEventsNamed('overview_tab_view')).toHaveLength(1);
 
-    // Click Overview tab — emits manual_select ONLY. Dual-fire
+    // Click Overview tab, emits manual_select ONLY. Dual-fire
     // regression would push the count to 3 here.
     await user.click(screen.getByRole('button', { name: /^Overview$/i }));
     const events = dataLayerEventsNamed('overview_tab_view');

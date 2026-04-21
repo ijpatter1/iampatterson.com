@@ -17,7 +17,7 @@ export interface SessionContext {
   seconds_since_last_event: number;
   /** Total iap_source events observed in this session's live stream. */
   events_in_session: number;
-  /** Count of add_to_cart events in the last 30 seconds — feeds volume_anomaly. */
+  /** Count of add_to_cart events in the last 30 seconds, feeds volume_anomaly. */
   add_to_cart_in_last_30s: number;
   /** Consent snapshot from the latest event, defaulted to granted/denied when no events. */
   consent_analytics: boolean;
@@ -48,7 +48,7 @@ const EMPTY_CONTEXT: SessionContext = {
  * seed placeholder instead of an SSR/CSR mismatch).
  */
 /** Re-tick interval for the time-sensitive fields (seconds_since_last_event,
- * add_to_cart_in_last_30s). 5s is a useful cadence — fast enough that a
+ * add_to_cart_in_last_30s). 5s is a useful cadence, fast enough that a
  * visitor watching idle freshness sees it tick up, slow enough that it
  * doesn't churn React reconciliation. 0 tick disables (tests supply their
  * own fakeTimer or don't care). */
@@ -75,7 +75,7 @@ export function useSessionContext(): SessionContext {
     return () => clearInterval(handle);
   }, []);
 
-  // Not memoised on events/sessionId alone — the tick state above forces
+  // Not memoised on events/sessionId alone, the tick state above forces
   // a re-run on each interval, recomputing the time-window values
   // (secondsSince, add_to_cart_in_last_30s) against a fresh Date.now().
   if (events.length === 0) {

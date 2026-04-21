@@ -47,7 +47,7 @@ export interface ClickNavEvent extends BaseEvent {
  * Nav-adjacent CTAs (Phase 9E deliverable 9 closed set) must use one of:
  * `session_pulse`, `portal_services`, `portal_about`, `portal_contact`,
  * `contact_cta_threshold`, `pipeline_see_your_session`, `footer_session`.
- * The "etc." escape hatch is closed — adding a nav-adjacent CTA extends this
+ * The "etc." escape hatch is closed, adding a nav-adjacent CTA extends this
  * union explicitly.
  *
  * Editorial / page-specific CTAs live alongside the nav-adjacent set in the
@@ -72,12 +72,12 @@ export type CtaLocation =
   | 'contact_cta_threshold'
   | 'pipeline_see_your_session'
   | 'footer_session'
-  // Editorial / page-specific CTAs (not nav-adjacent — named by page or region)
+  // Editorial / page-specific CTAs (not nav-adjacent, named by page or region)
   | 'hero'
   | 'services_closer'
   | `services_tier_${'01' | '02' | '03' | '04'}`
   | 'final_cta'
-  // Homepage Demos section — single ecommerce entry after D6's rebuild. Name
+  // Homepage Demos section, single ecommerce entry after D6's rebuild. Name
   // retained across the card→section refactor so the analytics time series
   // stays continuous (no split series from a rename).
   | 'demo_card_ecommerce';
@@ -192,7 +192,7 @@ export interface LeadQualifyEvent extends BaseEvent {
   budget_range: string;
 }
 
-// --- Phase 9E deliverable 9 — nav & Session State analytics ---
+// --- Phase 9E deliverable 9, nav & Session State analytics ---
 
 /**
  * Fired once when the first-session pulse-ring hint renders on the homepage.
@@ -207,13 +207,13 @@ export interface NavHintShownEvent extends BaseEvent {
  * dismissal modes, all of which represent the visitor not engaging with
  * the hint's call-to-action:
  *
- * - `scroll` — any `scroll` event on `document` (visitor scrolled away).
- * - `click_outside` — any `click` whose target is not `SessionPulse` or a
+ * - `scroll`, any `scroll` event on `document` (visitor scrolled away).
+ * - `click_outside`, any `click` whose target is not `SessionPulse` or a
  *   descendant (visitor clicked something unrelated).
- * - `timeout` — the ~10s auto-clear timer elapsed without user interaction.
+ * - `timeout`, the ~10s auto-clear timer elapsed without user interaction.
  *
  * Clicking `SessionPulse` itself is the hint's *conversion*, not a
- * dismissal — it does NOT fire `nav_hint_dismissed`. The conversion is
+ * dismissal, it does NOT fire `nav_hint_dismissed`. The conversion is
  * tracked by the existing `click_cta` emission with
  * `cta_location: 'session_pulse'`. Conflating conversions with dismissals
  * in the same event stream would make the dismissal metric useless for BI
@@ -251,7 +251,7 @@ export interface OverviewTabViewEvent extends BaseEvent {
 
 /**
  * Fired when the overlay opens onto the Timeline tab. Parallel to
- * OverviewTabViewEvent — kept as a distinct event (not a discriminator on a
+ * OverviewTabViewEvent, kept as a distinct event (not a discriminator on a
  * single `tab_view`) so each tab gets its own coverage chip and the meter
  * can signal depth-of-exploration across the three tabs.
  */
@@ -280,7 +280,7 @@ export interface PortalClickEvent extends BaseEvent {
 
 /**
  * Fired once per session when event-type coverage crosses a threshold. Monotonic
- * within a session — each threshold fires at most once even if coverage oscillates.
+ * within a session, each threshold fires at most once even if coverage oscillates.
  */
 export interface CoverageMilestoneEvent extends BaseEvent {
   event: 'coverage_milestone';
@@ -316,7 +316,7 @@ export type DataLayerEvent =
 
 /**
  * Runtime array of every distinct `event` string literal in the `DataLayerEvent`
- * union. The single source of truth for code that needs to iterate event names —
+ * union. The single source of truth for code that needs to iterate event names, 
  * consumers like `useDataLayerEvents` (which filters the window.dataLayer by
  * iap_source event name), the Session State coverage denominator (Phase 9E
  * deliverable 4), and any future introspection tooling derive from this array.
@@ -369,7 +369,7 @@ export const DATA_LAYER_EVENT_NAMES = [
  * compile-time subset guarantee, but `tsc --noEmit` is not in CI (see
  * MEMORY.md) so the runtime backstop is load-bearing. A typo here (e.g.
  * `plan_selekt`) produces a `HIDDEN_FROM_COVERAGE` entry that doesn't
- * match any real event name — without the runtime pin, the
+ * match any real event name, without the runtime pin, the
  * `RENDERABLE_EVENT_NAMES.filter(...)` silently returns the real
  * `plan_select` chip as renderable, and nothing fails until a human
  * inspects the Overview chip grid.
@@ -385,7 +385,7 @@ export const RENDERABLE_EVENT_NAMES: readonly DataLayerEventName[] = DATA_LAYER_
   (n) => !HIDDEN_FROM_COVERAGE.has(n),
 );
 
-/** Union of every event name literal — derived from `DATA_LAYER_EVENT_NAMES`. */
+/** Union of every event name literal, derived from `DATA_LAYER_EVENT_NAMES`. */
 export type DataLayerEventName = (typeof DATA_LAYER_EVENT_NAMES)[number];
 
 /**

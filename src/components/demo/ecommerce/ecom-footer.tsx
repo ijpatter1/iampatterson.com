@@ -12,7 +12,7 @@ import { trackClickNav } from '@/lib/events/track';
  * no-kill rescues brand beat + lowercase back-to-site links.
  *
  * The "this is a demo" eyebrow that used to live here moved to
- * `EcomDemoBanner` at the top of the layout in UAT r2 item 7 — the
+ * `EcomDemoBanner` at the top of the layout in UAT r2 item 7, the
  * reminder needed to be visible on every page load, not buried in the
  * footer where many visitors never scrolled.
  */

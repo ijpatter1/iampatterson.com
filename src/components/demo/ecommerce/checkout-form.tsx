@@ -19,7 +19,7 @@ import {
 import { classifyUtm, resolveUtmMeta } from '@/lib/demo/reveal/campaign-taxonomy';
 
 /**
- * Phase 9F D8 — checkout page content.
+ * Phase 9F D8, checkout page content.
  *
  * Fires `trackBeginCheckout` + a `begin_checkout` toast at `near-cart` on
  * mount; renders a 2-col layout with the editorial form + summary column,
@@ -51,7 +51,7 @@ export function CheckoutForm() {
     if (typeof window !== 'undefined') {
       setPageLocation(window.location.href);
       // Conservative UA-based device classifier. "mobile" / "tablet" /
-      // "desktop" — matches GA4's device_category dimension. Enough for
+      // "desktop", matches GA4's device_category dimension. Enough for
       // the demo's honest "this is what actually lands in the row"
       // reading; avoids a dependency on the heavier UA-parser libs.
       const ua = navigator.userAgent;
@@ -152,7 +152,7 @@ export function CheckoutForm() {
       <WalkthroughBlurb route="checkout">
         The checkout form. A <span className="font-mono">begin_checkout</span> event already fired
         and landed in BigQuery. Tap <em className="not-italic">see the stack ↓</em> to preview the
-        row that will be inserted when you submit — 21 of the 51 real columns, with live values from
+        row that will be inserted when you submit: 21 of the 51 real columns, with live values from
         your session where we have them.
       </WalkthroughBlurb>
 
@@ -163,7 +163,7 @@ export function CheckoutForm() {
           className="flex min-w-0 flex-col gap-6 text-[var(--shop-warm-brown,#5C4A3D)]"
         >
           <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--shop-warm-brown,#5C4A3D)]/55">
-            demo prefill — nothing ships from here, nothing is charged.
+            demo prefill. nothing ships from here, nothing is charged.
           </div>
           <fieldset className="flex flex-col gap-3">
             <legend className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--shop-warm-brown,#5C4A3D)]/70">
@@ -322,7 +322,7 @@ export function CheckoutForm() {
                 sessionId: session.session_id,
                 eventTimestamp: session.last_event_at || undefined,
                 // Consent flags only substitute once at least one event
-                // has landed — before that we don't know the real state.
+                // has landed, before that we don't know the real state.
                 consentAnalytics:
                   session.events_in_session > 0 ? session.consent_analytics : undefined,
                 consentMarketing:

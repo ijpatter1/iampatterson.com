@@ -13,9 +13,9 @@ export function FinalCta() {
         <a
           href="mailto:ian@iampatterson.com"
           className="block font-mono text-[10px] uppercase tracking-widest text-accent-current"
-          onClick={() => trackClickCta('contact — email', 'final_cta')}
+          onClick={() => trackClickCta('contact, email', 'final_cta')}
         >
-          contact — ian@iampatterson.com
+          contact, ian@iampatterson.com
         </a>
         <h2
           className="mt-5 font-display font-normal text-ink"

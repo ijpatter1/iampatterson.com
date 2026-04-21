@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  *
- * Phase 9F D9 — integration test for the confirmation page Server Component.
+ * Phase 9F D9, integration test for the confirmation page Server Component.
  *
  * Guards the env → dashboard-signer → DashboardPayoff wiring so a typo in an
  * env var name, a dropped `&&` guard, or a mis-named prop fails loudly here
@@ -35,7 +35,7 @@ function renderPage(searchParams: Record<string, string | string[] | undefined> 
   return render(node);
 }
 
-describe('ConfirmationPage — env → dashboard-embed wiring', () => {
+describe('ConfirmationPage, env → dashboard-embed wiring', () => {
   it('renders the order confirmation block with the search-param values', () => {
     renderPage({ order_id: 'demo-d9', total: '44.98', items: '2' });
     expect(screen.getByText(/order confirmed/i)).toBeInTheDocument();
@@ -124,9 +124,9 @@ describe('ConfirmationPage — env → dashboard-embed wiring', () => {
     expect(main?.className).toMatch(/max-w-\[1200px\]/);
   });
 
-  // UAT r2 item 20 — the dashboard was rendering AFTER the "Dashboards
+  // UAT r2 item 20, the dashboard was rendering AFTER the "Dashboards
   // are not the payoff" CTA, which fought the payoff framing.
-  describe('UAT r2 item 20 — dashboard lands before the closing beat', () => {
+  describe('UAT r2 item 20, dashboard lands before the closing beat', () => {
     it('dashboard embed (iframe) appears before the closing beat in the DOM', () => {
       process.env.MB_EMBEDDING_SECRET_KEY = VALID_SECRET;
       process.env.METABASE_EMBED_CONFIG = VALID_CONFIG;

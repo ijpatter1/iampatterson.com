@@ -18,7 +18,7 @@ function TestConsumer() {
   );
 }
 
-describe('DemoThemeProvider — post-9E ecommerce-only', () => {
+describe('DemoThemeProvider, post-9E ecommerce-only', () => {
   it('provides ecommerce theme for /demo/ecommerce path', () => {
     render(
       <DemoThemeProvider pathname="/demo/ecommerce/cart">
@@ -33,7 +33,7 @@ describe('DemoThemeProvider — post-9E ecommerce-only', () => {
     // Phase 9E deliverable 7: subscription and leadgen paths are 301-
     // redirected at the Next.js config level. Any request that somehow
     // reaches the DemoThemeProvider on a non-ecommerce path should fall
-    // through to the default (null) theme — the provider's shape stays
+    // through to the default (null) theme, the provider's shape stays
     // permissive so future demos can be added without rework.
     render(
       <DemoThemeProvider pathname="/demo">

@@ -75,7 +75,7 @@ export function NarrativeFlow({ event }: NarrativeFlowProps) {
   return (
     <div>
       <div className="mb-3 font-mono text-[10px] uppercase tracking-widest text-accent-current">
-        Event journey — step by step
+        Event journey, step by step
       </div>
       {/* Stage 1: User Action */}
       <StageCard title="You" description={describeAction(event)} variant="action" />

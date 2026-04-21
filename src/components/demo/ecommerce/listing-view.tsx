@@ -12,7 +12,7 @@ import { trackAddToCart } from '@/lib/events/track';
 import { classifyUtm, resolveUtmMeta } from '@/lib/demo/reveal/campaign-taxonomy';
 
 /**
- * Phase 9F D5 — listing view.
+ * Phase 9F D5, listing view.
  *
  * Composes the editorial listing-hero (eyebrow + serif headline + lede +
  * your-utm/classified-as panel) and the 6-product grid. Fires the
@@ -150,10 +150,10 @@ export function ListingView() {
       </section>
 
       <WalkthroughBlurb route="listing" hasLiveSidebar={false}>
-        The Tuna Shop front. Every click you make fires a real GTM event — watch the toasts up top,
+        The Tuna Shop front. Every click you make fires a real GTM event. Watch the toasts up top:
         they&apos;re the events landing in BigQuery. The amber panel above shows the utm_campaign
         classification step sGTM runs on the way in. On the next pages you&apos;ll see a{' '}
-        <em className="not-italic">see the stack ↓</em> link — that&apos;s how you reach the
+        <em className="not-italic">see the stack ↓</em> link. That&apos;s how you reach the
         instrumentation sidebars on mobile.
       </WalkthroughBlurb>
 

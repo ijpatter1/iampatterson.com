@@ -164,7 +164,7 @@ describe('Event schema types', () => {
     expect(event.consent_preferences).toBe(true);
   });
 
-  // --- Phase 9E deliverable 9 — nav & Session State analytics ---
+  // --- Phase 9E deliverable 9, nav & Session State analytics ---
 
   it('defines NavHintShownEvent with base fields only', () => {
     const event: NavHintShownEvent = {
@@ -174,7 +174,7 @@ describe('Event schema types', () => {
     expect(event.event).toBe('nav_hint_shown');
   });
 
-  it('defines NavHintDismissedEvent with three dismissal_mode values (click_session_pulse removed post-UAT — clicks on SessionPulse are conversions, not dismissals)', () => {
+  it('defines NavHintDismissedEvent with three dismissal_mode values (click_session_pulse removed post-UAT, clicks on SessionPulse are conversions, not dismissals)', () => {
     const byScroll: NavHintDismissedEvent = {
       ...baseFields,
       event: 'nav_hint_dismissed',
@@ -242,7 +242,7 @@ describe('Event schema types', () => {
     // on the same set of event names.
     //
     // DO NOT REPLACE this explicit-literal Record with a DATA_LAYER_EVENT_NAMES-derived
-    // iteration — the type-level exhaustiveness check is the whole point of the hand-list.
+    // iteration, the type-level exhaustiveness check is the whole point of the hand-list.
     // Replace the literal and the drift-catching property of the test disappears silently.
     const allEventNames: Record<DataLayerEvent['event'], true> = {
       page_view: true,
@@ -270,14 +270,14 @@ describe('Event schema types', () => {
       portal_click: true,
       coverage_milestone: true,
     };
-    // Runtime assertion derives the expected count from the schema's own source of truth —
+    // Runtime assertion derives the expected count from the schema's own source of truth, 
     // extending DATA_LAYER_EVENT_NAMES is the single edit needed; this test re-derives.
     expect(Object.keys(allEventNames)).toHaveLength(DATA_LAYER_EVENT_NAMES.length);
     // Sanity: the set of names rendered here matches the schema's runtime array.
     expect(Object.keys(allEventNames).sort()).toEqual([...DATA_LAYER_EVENT_NAMES].sort());
   });
 
-  it('RENDERABLE_EVENT_NAMES excludes sub/leadgen events (F2 — hide un-triggerable chips)', () => {
+  it('RENDERABLE_EVENT_NAMES excludes sub/leadgen events (F2, hide un-triggerable chips)', () => {
     const hidden = ['plan_select', 'trial_signup', 'form_complete', 'lead_qualify'];
     for (const name of hidden) {
       expect(RENDERABLE_EVENT_NAMES).not.toContain(name);
@@ -304,17 +304,17 @@ describe('Event schema types', () => {
     expect(new Set(RENDERABLE_EVENT_NAMES).size).toBe(RENDERABLE_EVENT_NAMES.length);
   });
 
-  it('HIDDEN_FROM_COVERAGE ⊆ DATA_LAYER_EVENT_NAMES — catches typos in the hide list (F8 eval re-fix)', () => {
+  it('HIDDEN_FROM_COVERAGE ⊆ DATA_LAYER_EVENT_NAMES, catches typos in the hide list (F8 eval re-fix)', () => {
     // The previous subset-check-as-written only caught mistakes in the
     // RENDERABLE direction. The actual HIDDEN-typo failure mode is:
     // a bad entry like `plan_selekt` in HIDDEN doesn't match any real
     // event, so `filter(!HIDDEN.has(n))` doesn't strip the real
     // `plan_select`, and RENDERABLE accidentally includes it. That
-    // leaves RENDERABLE ⊆ DATA_LAYER still true — the regression is
+    // leaves RENDERABLE ⊆ DATA_LAYER still true, the regression is
     // visible only as a missing chip-grid hide, with no assertion
     // failure.
     // This test iterates HIDDEN and asserts each entry is in the live
-    // schema — catches the typo at runtime and restores the CI backstop
+    // schema, catches the typo at runtime and restores the CI backstop
     // for the `Set<DataLayerEventName>` compile-time type (which is
     // only enforced by `tsc --noEmit`, not the CI build).
     const dl = new Set<string>(DATA_LAYER_EVENT_NAMES);
