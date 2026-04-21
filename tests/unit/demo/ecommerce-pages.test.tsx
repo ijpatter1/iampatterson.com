@@ -5,13 +5,12 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import { ProductListing } from '@/components/demo/ecommerce/product-listing';
 import { ProductDetail } from '@/components/demo/ecommerce/product-detail';
 import { CartView } from '@/components/demo/ecommerce/cart-view';
 import { CheckoutForm } from '@/components/demo/ecommerce/checkout-form';
 import { OrderConfirmation } from '@/components/demo/ecommerce/order-confirmation';
 import { CartProvider, useCart } from '@/components/demo/ecommerce/cart-context';
-import { products, getProduct } from '@/lib/demo/products';
+import { getProduct } from '@/lib/demo/products';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn() }),
@@ -43,28 +42,11 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-describe('ProductListing', () => {
-  it('renders all 6 products', () => {
-    render(<ProductListing />);
-    for (const p of products) {
-      expect(screen.getByText(p.name)).toBeInTheDocument();
-    }
-  });
-
-  it('renders price for each product', () => {
-    render(<ProductListing />);
-    expect(screen.getByText('$26.00')).toBeInTheDocument();
-    expect(screen.getByText('$14.00')).toBeInTheDocument();
-  });
-
-  it('renders links to product detail pages', () => {
-    render(<ProductListing />);
-    const links = screen.getAllByRole('link');
-    expect(links.some((l) => l.getAttribute('href') === '/demo/ecommerce/tuna-plush-classic')).toBe(
-      true,
-    );
-  });
-});
+// ProductListing's direct-render tests moved to
+// `tests/unit/components/demo/ecommerce/listing-view.test.tsx`. Phase 9F D5
+// rewrote ProductListing to require `products` / `onAddToCart` props and
+// introduced the ListingView client wrapper which composes it with the
+// session-boot toast cascade + hero block + cart wiring.
 
 describe('ProductDetail', () => {
   const product = getProduct('tuna-plush-classic')!;
