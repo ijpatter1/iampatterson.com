@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 
 import { Header } from '@/components/header';
-import { Footer } from '@/components/footer';
+import { FooterSlot } from '@/components/footer-slot';
 import { AmbientBubblesWrapper } from '@/components/ambient-bubbles-wrapper';
 import { OverlayProvider } from '@/components/overlay/overlay-context';
 import { OverlayView } from '@/components/overlay/overlay-view';
@@ -46,7 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <OverlayProvider>
             <Header />
             <div className="flex-1">{children}</div>
-            <Footer />
+            <FooterSlot />
             <AmbientBubblesWrapper />
             <OverlayView />
           </OverlayProvider>
