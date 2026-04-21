@@ -95,7 +95,7 @@ export function assertionsForCart(params: LiveCartContext): Assertion[] {
           return {
             ...a,
             status: 'FAIL' as const,
-            detail: `${liveCount} add_to_cart events in 30s exceeds expected range`,
+            detail: `${liveCount} add_to_cart in 30s exceeds expected range`,
           };
         }
         return { ...a, detail: `${liveCount} add_to_cart in 30s, within expected range` };

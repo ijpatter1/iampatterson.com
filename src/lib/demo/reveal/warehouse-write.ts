@@ -58,6 +58,8 @@ export interface LiveCheckoutContext {
   utmSource?: string;
   /** Classified channel bucket — Prospecting · Lookalike / Brand · Search / … */
   channelClassified?: string;
+  /** Derived device category — "mobile" / "tablet" / "desktop". */
+  deviceCategory?: string;
 }
 
 /**
@@ -122,6 +124,9 @@ export function bqRowForCart(params: {
     }
     if (c.k === 'channel_classified' && utmLive && params.live?.channelClassified) {
       return { ...c, v: `"${params.live.channelClassified}"` };
+    }
+    if (c.k === 'device_category' && params.live?.deviceCategory) {
+      return { ...c, v: `"${params.live.deviceCategory}"` };
     }
     return c;
   });

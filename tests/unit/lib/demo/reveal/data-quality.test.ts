@@ -71,6 +71,20 @@ describe('assertionsForCart', () => {
       expect(va?.detail).toMatch(/15/);
     });
 
+    it('volume_anomaly uses live branch when addToCartInLast30s is 0 (not fallback)', () => {
+      // Pass-2 Minor: `if (liveCount)` would silently drop 0 to the
+      // fallback; `typeof === 'number'` must keep 0 in the live branch.
+      // Cart itemCount is 3 (below threshold) so FAIL wouldn't fire
+      // either way — the test pins that the EMITTED DETAIL uses the
+      // live "0 add_to_cart in 30s" phrasing, not the cart-fallback
+      // "cart holds N items" phrasing.
+      const out = assertionsForCart({ itemCount: 3, addToCartInLast30s: 0 });
+      const va = out.find((a) => a.k === 'volume_anomaly');
+      expect(va?.status).toBe('OK');
+      expect(va?.detail).toMatch(/0 add_to_cart in 30s/);
+      expect(va?.detail).not.toMatch(/cart holds/);
+    });
+
     it('session_join_integrity names the real session_id when provided', () => {
       const out = assertionsForCart({
         itemCount: 1,

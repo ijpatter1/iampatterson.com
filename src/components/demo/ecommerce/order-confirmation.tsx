@@ -82,7 +82,7 @@ export function OrderConfirmation({ orderId, orderTotal, itemCount }: OrderConfi
       </section>
 
       <InlineDiagnostic
-        tag="WHAT JUST HAPPENED · TIER 2 + 3"
+        tag="WHAT JUST HAPPENED"
         title="from click to dashboard · ~840ms end-to-end"
       >
         <ol className="flex flex-col gap-1.5">

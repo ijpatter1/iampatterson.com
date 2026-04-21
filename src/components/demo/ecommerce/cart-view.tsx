@@ -173,7 +173,7 @@ export function CartView() {
         <LiveSidebar
           route="cart"
           title="Data quality · 6 assertions running"
-          tag="UNDER · TIER 2 · DATAFORM"
+          tag="UNDER · DATAFORM ASSERTIONS"
         >
           <DataQualityReadout
             itemCount={itemCount}

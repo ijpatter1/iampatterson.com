@@ -41,11 +41,17 @@ describe('DashboardPayoff (Phase 9F D9)', () => {
     expect(document.querySelector('[data-inline-diagnostic]')).not.toBeNull();
   });
 
-  it('InlineDiagnostic tag reads TIER 3 · DASHBOARDS', () => {
+  it('InlineDiagnostic tag describes what the panel is (no internal "Tier N" jargon)', () => {
+    // Pass-2 product-review Minor #4: renamed from "TIER 3 · DASHBOARDS"
+    // to plain descriptive "DASHBOARDS · LIVE" so the tag doesn't
+    // leak the internal tier taxonomy the UAT r1 item 1 response
+    // specifically rejected.
     render(
       <DashboardPayoff dashboardUrl="https://bi.iampatterson.com/embed/dashboard/x#bordered=true" />,
     );
-    expect(screen.getByText(/TIER 3 · DASHBOARDS/i)).toBeInTheDocument();
+    expect(screen.getByText(/DASHBOARDS · LIVE/i)).toBeInTheDocument();
+    // And the rejected jargon is gone.
+    expect(screen.queryByText(/TIER 3/i)).not.toBeInTheDocument();
   });
 
   it('dashboardId prop threads into the mobile deep-link and fallback text', () => {

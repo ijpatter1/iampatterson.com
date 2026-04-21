@@ -45,8 +45,19 @@ export function CheckoutForm() {
   const utmClassification = useMemo(() => classifyUtm(utmMeta.value), [utmMeta.value]);
   const [pageLocation, setPageLocation] = useState('');
   const [pageReferrer, setPageReferrer] = useState('');
+  const [deviceCategory, setDeviceCategory] = useState('');
   useEffect(() => {
-    if (typeof window !== 'undefined') setPageLocation(window.location.href);
+    if (typeof window !== 'undefined') {
+      setPageLocation(window.location.href);
+      // Conservative UA-based device classifier. "mobile" / "tablet" /
+      // "desktop" — matches GA4's device_category dimension. Enough for
+      // the demo's honest "this is what actually lands in the row"
+      // reading; avoids a dependency on the heavier UA-parser libs.
+      const ua = navigator.userAgent;
+      if (/iPad|Tablet|Android(?!.*Mobile)/i.test(ua)) setDeviceCategory('tablet');
+      else if (/Mobi|Android|iPhone|iPod/i.test(ua)) setDeviceCategory('mobile');
+      else setDeviceCategory('desktop');
+    }
     if (typeof document !== 'undefined') setPageReferrer(document.referrer);
   }, []);
   const toastedRef = useRef(false);
@@ -293,7 +304,7 @@ export function CheckoutForm() {
           <LiveSidebar
             route="checkout"
             title="Warehouse write · begin_checkout"
-            tag="UNDER · TIER 2 · BQ"
+            tag="UNDER · BIGQUERY WRITE"
           >
             <WarehouseWriteReadout
               total={total}
@@ -314,6 +325,7 @@ export function CheckoutForm() {
                 utmIsLive: utmMeta.isLive,
                 utmSource: utmClassification.source,
                 channelClassified: `${utmClassification.source} · ${utmClassification.bucket}`,
+                deviceCategory: deviceCategory || undefined,
               }}
             />
           </LiveSidebar>

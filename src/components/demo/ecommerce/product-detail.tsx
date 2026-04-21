@@ -162,7 +162,7 @@ export function ProductDetail({ product }: ProductDetailProps) {
         <LiveSidebar
           route={`product-${product.id}`}
           title="Staging layer · product_view"
-          tag="UNDER · TIER 2"
+          tag="UNDER · STAGING LAYER"
         >
           <StagingLayerReadout
             product={{ id: product.id, price: product.price }}

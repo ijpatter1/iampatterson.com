@@ -32,15 +32,12 @@ export function WarehouseWriteReadout({
       </header>
       <p className="text-[11px] leading-snug text-[#EAD9BC]/70">
         this is the row that will be <span className="text-[#F3C769]">inserted</span> when the
-        purchase event fires. {cols.length} of 51 columns shown.
-        {utmIsExample ? (
-          <>
-            {' '}
-            <span className="text-[#9E8A6B]">
-              utm_* values are example seeds — no utm_campaign in your url.
-            </span>
-          </>
-        ) : null}
+        purchase event fires. {cols.length} of 51 columns shown.{' '}
+        <span className="text-[#9E8A6B]">
+          {utmIsExample
+            ? 'utm_* / client_id / geo_country are example seeds — no utm_campaign in your url.'
+            : 'client_id / geo_country are example seeds; the remaining visitor-scoped columns reflect your real session.'}
+        </span>
       </p>
 
       <div className="flex flex-col gap-[2px] font-mono text-[10px]">

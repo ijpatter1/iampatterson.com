@@ -35,7 +35,7 @@ export function DashboardPayoff({
   if (!dashboardUrl) {
     return (
       <InlineDiagnostic
-        tag="TIER 3 · DASHBOARDS"
+        tag="DASHBOARDS · LIVE"
         title="dashboard embeds disabled in this environment"
       >
         <p className="text-[13px] leading-relaxed text-[#EAD9BC]/80">
@@ -55,7 +55,7 @@ export function DashboardPayoff({
   }
 
   return (
-    <InlineDiagnostic tag="TIER 3 · DASHBOARDS" title="here's what your team sees, right now.">
+    <InlineDiagnostic tag="DASHBOARDS · LIVE" title="here's what your team sees, right now.">
       <div className="w-full">
         <iframe
           src={dashboardUrl}
