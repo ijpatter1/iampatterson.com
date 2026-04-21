@@ -26,17 +26,9 @@ export interface Product {
   tag: 'bestseller' | 'new' | 'one of one' | 'bundle' | null;
   palette: [string, string, string];
   imageLabel: string;
-  /**
-   * Backwards-compat alias for `blurb`. Pre-9F consumers (`product-listing.tsx`,
-   * `product-detail.tsx`) read `description`; D5/D6 rebuild those components
-   * to use `blurb` directly and this alias can be removed.
-   */
-  description: string;
 }
 
-type ProductSeed = Omit<Product, 'description'>;
-
-const productSeeds: ProductSeed[] = [
+const productSeeds: Product[] = [
   {
     id: 'tuna-plush-classic',
     name: 'Tuna Plush',
@@ -105,7 +97,7 @@ const productSeeds: ProductSeed[] = [
   },
 ];
 
-export const products: Product[] = productSeeds.map((p) => ({ ...p, description: p.blurb }));
+export const products: Product[] = productSeeds;
 
 export function getProduct(id: string): Product | undefined {
   return products.find((p) => p.id === id);

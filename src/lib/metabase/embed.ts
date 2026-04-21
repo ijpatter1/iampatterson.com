@@ -12,36 +12,6 @@ export interface EmbedConfig {
   };
 }
 
-export interface EmbedUrlParams {
-  cardId: number;
-  secret: string;
-  ttlSeconds?: number;
-}
-
-/**
- * Sign a Metabase static-embed URL for a single question (card).
- * payload: { resource: { question: cardId }, params: {}, exp }
- * URL:     `${METABASE_BASE_URL}/embed/question/${jwt}#bordered=true&titled=true`
- * 10-minute default TTL: long enough for a tab-switch, short enough that
- * leaked URLs have a limited shelf life. HS256 per Metabase's spec.
- */
-export function signEmbedUrl({
-  cardId,
-  secret,
-  ttlSeconds = DEFAULT_EMBED_TTL_SECONDS,
-}: EmbedUrlParams): string {
-  if (!secret) {
-    throw new Error('signEmbedUrl: secret is required');
-  }
-  const payload = {
-    resource: { question: cardId },
-    params: {},
-    exp: Math.floor(Date.now() / 1000) + ttlSeconds,
-  };
-  const token = jwt.sign(payload, secret, { algorithm: 'HS256' });
-  return `${METABASE_BASE_URL}/embed/question/${token}#bordered=true&titled=true`;
-}
-
 export function parseEmbedConfig(raw: string | undefined): EmbedConfig {
   if (!raw) {
     throw new Error('METABASE_EMBED_CONFIG env var is missing');
@@ -58,12 +28,6 @@ export function parseEmbedConfig(raw: string | undefined): EmbedConfig {
     );
   }
   return parsed;
-}
-
-export interface ConfirmationEmbedUrls {
-  dailyRevenue: string;
-  funnel: string;
-  aov: string;
 }
 
 /**
@@ -119,32 +83,6 @@ export function mintConfirmationDashboardUrl(env: {
     return signDashboardEmbedUrl({ dashboardId: config.dashboardId, secret });
   } catch (err) {
     console.warn('[metabase/embed] skipping confirmation dashboard embed:', (err as Error).message);
-    return null;
-  }
-}
-
-/**
- * Glue helper for the confirmation page Server Component: read raw env
- * inputs, mint the three embeddable URLs, or return null if anything is
- * missing or malformed. Returning null (not throwing) lets the page
- * render without the Tier 3 section in local dev / preview envs where
- * the secret isn't wired up.
- */
-export function mintConfirmationEmbedUrls(env: {
-  secret?: string;
-  configRaw?: string;
-}): ConfirmationEmbedUrls | null {
-  const { secret, configRaw } = env;
-  if (!secret || !configRaw) return null;
-  try {
-    const config = parseEmbedConfig(configRaw);
-    return {
-      dailyRevenue: signEmbedUrl({ cardId: config.cardIds.dailyRevenue, secret }),
-      funnel: signEmbedUrl({ cardId: config.cardIds.funnel, secret }),
-      aov: signEmbedUrl({ cardId: config.cardIds.aov, secret }),
-    };
-  } catch (err) {
-    console.warn('[metabase/embed] skipping confirmation embeds:', (err as Error).message);
     return null;
   }
 }

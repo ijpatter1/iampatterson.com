@@ -1,6 +1,6 @@
 'use client';
 
-import { bqRowForCart, BQ_ROW_COLUMNS } from '@/lib/demo/reveal/warehouse-write';
+import { bqRowForCart } from '@/lib/demo/reveal/warehouse-write';
 
 /**
  * Warehouse-write Tier 2 readout — children of `LiveSidebar` on the
@@ -49,6 +49,3 @@ export function WarehouseWriteReadout({
     </div>
   );
 }
-
-// Re-export for tests that want to assert column shape without render.
-export { BQ_ROW_COLUMNS };
