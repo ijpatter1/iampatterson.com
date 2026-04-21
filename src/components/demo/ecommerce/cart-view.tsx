@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useCart } from './cart-context';
 import { useToast } from '@/components/demo/reveal/toast-provider';
 import { LiveSidebar } from '@/components/demo/reveal/live-sidebar';
+import { WalkthroughBlurb } from '@/components/demo/reveal/walkthrough-blurb';
 import { useSessionContext } from '@/hooks/useSessionContext';
 import { DataQualityReadout } from './data-quality-readout';
 import { products as allProducts } from '@/lib/demo/products';
@@ -53,6 +54,15 @@ export function CartView() {
       <h1 className="font-display text-[clamp(2.5rem,5vw,4rem)] leading-[1.05] tracking-[-0.015em] text-[var(--shop-warm-brown,#5C4A3D)]">
         your cart
       </h1>
+
+      <WalkthroughBlurb route="cart">
+        Your cart. Every add or remove already fired an{' '}
+        <span className="font-mono">add_to_cart</span> or{' '}
+        <span className="font-mono">remove_from_cart</span> event. Tap{' '}
+        <em className="not-italic">see the stack ↓</em> to jump to the data-quality sidebar — it
+        runs six Dataform assertions (schema, volume, session-join, freshness, null-checks,
+        referential integrity) against the events as they flow through.
+      </WalkthroughBlurb>
 
       <div className="grid gap-8 lg:grid-cols-[1fr_320px] lg:gap-10">
         <article className="flex flex-col gap-4">

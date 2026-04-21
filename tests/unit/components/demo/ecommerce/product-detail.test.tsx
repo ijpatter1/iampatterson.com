@@ -222,6 +222,22 @@ describe('ProductDetail (Phase 9F D6)', () => {
     });
   });
 
+  // UAT r2 item 12 — walkthrough blurb with mobile scroll-to-sidebar chip.
+  describe('UAT r2 item 12 — walkthrough blurb', () => {
+    it('renders a WalkthroughBlurb with product-scoped route', () => {
+      renderDetail();
+      const blurb = document.querySelector('[data-walkthrough-blurb]');
+      expect(blurb).not.toBeNull();
+      // Route is scoped to the product so collapse state is per-product.
+      expect(blurb?.getAttribute('data-route')).toMatch(/^product-/);
+    });
+
+    it('renders the mobile "see the stack ↓" chip (has a LiveSidebar to target)', () => {
+      renderDetail();
+      expect(document.querySelector('[data-walkthrough-stack-link]')).not.toBeNull();
+    });
+  });
+
   // UAT r2 item 13 — staging-layer readout's raw → typed table used to
   // overflow on narrow viewports (long raw/typed strings with no wrap
   // point pushed the table wider than the sidebar). Fix: table-fixed +

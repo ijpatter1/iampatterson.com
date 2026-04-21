@@ -74,6 +74,25 @@ describe('ListingView (Phase 9F D5 — product listing)', () => {
     expect(screen.getByText(/prospecting · lookalike/i)).toBeInTheDocument();
   });
 
+  // UAT r2 item 12 — every demo screen needs a "what am I looking at"
+  // walkthrough blurb so visitors don't bounce off the data surfaces.
+  describe('UAT r2 item 12 — walkthrough blurb', () => {
+    it('renders a WalkthroughBlurb on the listing page', () => {
+      renderView();
+      const blurb = document.querySelector('[data-walkthrough-blurb]');
+      expect(blurb).not.toBeNull();
+      expect(blurb?.getAttribute('data-route')).toBe('listing');
+    });
+
+    it('listing blurb omits the "see the stack" chip (no LiveSidebar on this page)', () => {
+      renderView();
+      // The listing page has no Pattern 2 sidebar — the classification
+      // story is carried by the inline UTM panel, so the scroll chip
+      // would have nothing to target.
+      expect(document.querySelector('[data-walkthrough-stack-link]')).toBeNull();
+    });
+  });
+
   // UAT r2 item 8 — the UTM capture panel previously used the cream +
   // warm-brown shop palette; per the user, it should match the under-the-
   // hood reveal overlay (amber on near-black terminal).

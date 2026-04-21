@@ -9,6 +9,7 @@ import { trackAddToCart, trackProductView } from '@/lib/events/track';
 import { useCart } from './cart-context';
 import { useToast } from '@/components/demo/reveal/toast-provider';
 import { LiveSidebar } from '@/components/demo/reveal/live-sidebar';
+import { WalkthroughBlurb } from '@/components/demo/reveal/walkthrough-blurb';
 import { useSessionContext } from '@/hooks/useSessionContext';
 import { StagingLayerReadout } from './staging-layer-readout';
 
@@ -89,6 +90,13 @@ export function ProductDetail({ product }: ProductDetailProps) {
       >
         ← back to the shop
       </Link>
+
+      <WalkthroughBlurb route={`product-${product.id}`}>
+        A product page. Landing here fired a <span className="font-mono">product_view</span> event
+        through sGTM into BigQuery. On mobile, tap <em className="not-italic">see the stack ↓</em>{' '}
+        to jump to the staging-layer sidebar — it shows the raw-to-typed cast Dataform runs on each
+        row before it reaches the marts.
+      </WalkthroughBlurb>
 
       <div className="grid gap-8 lg:grid-cols-[1fr_480px_auto] lg:gap-10">
         <article className="flex flex-col gap-6">

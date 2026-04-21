@@ -215,6 +215,35 @@ describe('CartView (Phase 9F D7)', () => {
     ]);
     expect(screen.getByText(/no-kill rescues/i)).toBeInTheDocument();
   });
+
+  // UAT r2 item 12 — walkthrough blurb with mobile scroll-to-sidebar chip.
+  describe('UAT r2 item 12 — walkthrough blurb', () => {
+    it('renders a WalkthroughBlurb with route="cart"', () => {
+      renderWithCart([
+        {
+          product_id: 'tuna-plush-classic',
+          product_name: 'Tuna Plush',
+          product_price: 26,
+          quantity: 1,
+        },
+      ]);
+      const blurb = document.querySelector('[data-walkthrough-blurb]');
+      expect(blurb).not.toBeNull();
+      expect(blurb?.getAttribute('data-route')).toBe('cart');
+    });
+
+    it('renders the mobile "see the stack ↓" chip', () => {
+      renderWithCart([
+        {
+          product_id: 'tuna-plush-classic',
+          product_name: 'Tuna Plush',
+          product_price: 26,
+          quantity: 1,
+        },
+      ]);
+      expect(document.querySelector('[data-walkthrough-stack-link]')).not.toBeNull();
+    });
+  });
 });
 
 describe('CartProvider — localStorage persistence (Phase 9F D7)', () => {

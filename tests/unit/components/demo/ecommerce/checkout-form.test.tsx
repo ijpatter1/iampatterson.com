@@ -277,6 +277,21 @@ describe('CheckoutForm (Phase 9F D8)', () => {
     });
   });
 
+  // UAT r2 item 12 — walkthrough blurb with mobile scroll-to-sidebar chip.
+  describe('UAT r2 item 12 — walkthrough blurb', () => {
+    it('renders a WalkthroughBlurb with route="checkout"', () => {
+      renderCheckout();
+      const blurb = document.querySelector('[data-walkthrough-blurb]');
+      expect(blurb).not.toBeNull();
+      expect(blurb?.getAttribute('data-route')).toBe('checkout');
+    });
+
+    it('renders the mobile "see the stack ↓" chip', () => {
+      renderCheckout();
+      expect(document.querySelector('[data-walkthrough-stack-link]')).not.toBeNull();
+    });
+  });
+
   // UAT r2 item 16 — the mobile checkout had flex items spilling past the
   // viewport. The fix is a belt-and-braces set: inputs are all w-full, the
   // form + aside columns both carry min-w-0 so they can shrink inside the

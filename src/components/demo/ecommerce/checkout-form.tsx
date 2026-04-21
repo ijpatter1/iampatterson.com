@@ -9,6 +9,7 @@ import { useCart } from './cart-context';
 import { useToast } from '@/components/demo/reveal/toast-provider';
 import { LiveSidebar } from '@/components/demo/reveal/live-sidebar';
 import { FullPageDiagnostic } from '@/components/demo/reveal/full-page-diagnostic';
+import { WalkthroughBlurb } from '@/components/demo/reveal/walkthrough-blurb';
 import { useSessionContext } from '@/hooks/useSessionContext';
 import { WarehouseWriteReadout } from './warehouse-write-readout';
 import {
@@ -147,6 +148,13 @@ export function CheckoutForm() {
       <h1 className="font-display text-[clamp(2.5rem,5vw,4rem)] leading-[1.05] tracking-[-0.015em] text-[var(--shop-warm-brown,#5C4A3D)]">
         checkout
       </h1>
+
+      <WalkthroughBlurb route="checkout">
+        The checkout form. A <span className="font-mono">begin_checkout</span> event already fired
+        and landed in BigQuery. Tap <em className="not-italic">see the stack ↓</em> to preview the
+        row that will be inserted when you submit — 21 of the 51 real columns, with live values from
+        your session where we have them.
+      </WalkthroughBlurb>
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-10">
         <form

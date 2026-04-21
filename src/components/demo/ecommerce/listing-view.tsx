@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { ProductListing } from './product-listing';
 import { useCart } from './cart-context';
 import { useToast } from '@/components/demo/reveal/toast-provider';
+import { WalkthroughBlurb } from '@/components/demo/reveal/walkthrough-blurb';
 import { products as allProducts, type Product } from '@/lib/demo/products';
 import { trackAddToCart } from '@/lib/events/track';
 import { classifyUtm, resolveUtmMeta } from '@/lib/demo/reveal/campaign-taxonomy';
@@ -147,6 +148,12 @@ export function ListingView() {
           </dd>
         </dl>
       </section>
+
+      <WalkthroughBlurb route="listing" hasLiveSidebar={false}>
+        The Tuna Shop front. Every click you make fires a real GTM event — watch the toasts up top,
+        they&apos;re the events landing in BigQuery. The amber panel above shows the utm_campaign
+        classification step that sGTM runs on the way in.
+      </WalkthroughBlurb>
 
       <section className="flex flex-col gap-5">
         <ProductListing products={allProducts} onAddToCart={handleAddToCart} />
