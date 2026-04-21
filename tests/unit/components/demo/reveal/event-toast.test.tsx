@@ -76,7 +76,10 @@ describe('ToastProvider + useToast', () => {
     expect(screen.getByText('BigQuery')).toBeInTheDocument();
   });
 
-  it('auto-dismisses after the default duration (~2400ms)', async () => {
+  it('auto-dismisses after the default duration (~3200ms)', async () => {
+    // UAT r1 item 9 — default duration bumped 2400 → 3200ms so
+    // readers have a full read + reaction window; pre-rework toasts
+    // felt "abrupt" partly because they vanished too fast.
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     render(
       <ToastProvider>
@@ -86,7 +89,7 @@ describe('ToastProvider + useToast', () => {
     await user.click(screen.getByText('push'));
     expect(screen.getByText('product_view')).toBeInTheDocument();
     act(() => {
-      jest.advanceTimersByTime(2399);
+      jest.advanceTimersByTime(3199);
     });
     expect(screen.queryByText('product_view')).toBeInTheDocument();
     act(() => {
@@ -297,6 +300,42 @@ describe('ToastProvider + useToast', () => {
     );
     const portal = document.querySelector('[data-toast-portal]');
     expect(portal?.getAttribute('data-reduced-motion')).toBe('true');
+  });
+
+  // UAT r1 item 9 — pre-rework toasts appeared abruptly (no entry
+  // motion), which made them feel like the site was bugging out. The
+  // card applies a `motion-safe:animate-toast-enter` class so the
+  // reveal is a deliberate slide+fade for motion-tolerant visitors
+  // and an instant appearance under `prefers-reduced-motion: reduce`.
+  describe('UAT r1 item 9 — intentional toast entry', () => {
+    it('card has motion-safe entry animation class', async () => {
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      render(
+        <ToastProvider>
+          <PushButton toast={{ event_name: 'evt_a' }} />
+        </ToastProvider>,
+      );
+      await user.click(screen.getByText('push'));
+      const card = document.querySelector('[data-toast-card]') as HTMLElement;
+      expect(card.className).toMatch(/motion-safe:animate-toast-enter/);
+    });
+
+    it('portal region repositions to top-right at md breakpoint (desktop inbox pattern)', () => {
+      render(
+        <ToastProvider>
+          <div>child</div>
+        </ToastProvider>,
+      );
+      const portal = document.querySelector('[data-toast-portal]') as HTMLElement;
+      // Mobile keeps centered-at-top (best for narrow viewports);
+      // desktop moves to the top-right corner so the toast does not
+      // dominate the horizontal center of the page.
+      expect(portal.className).toMatch(/inset-x-0/);
+      expect(portal.className).toMatch(/top-4/);
+      expect(portal.className).toMatch(/md:inset-x-auto/);
+      expect(portal.className).toMatch(/md:right-/);
+      expect(portal.className).toMatch(/md:items-end/);
+    });
   });
 
   it('reduced-motion: lifetime preserved (toast still dismisses at duration)', async () => {

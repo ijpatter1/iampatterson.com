@@ -23,7 +23,7 @@ export function EventToast({
       data-position={position}
       data-reduced-motion={reducedMotion ? 'true' : 'false'}
       role="status"
-      className="pointer-events-auto flex max-w-[480px] items-start gap-2 rounded-md border border-[#F3C769]/30 bg-[#0D0B09] px-3 py-2 font-mono text-xs text-[#EAD9BC] shadow-lg"
+      className="pointer-events-auto flex max-w-[480px] items-start gap-2 rounded-md border border-[#F3C769]/30 bg-[#0D0B09] px-3 py-2 font-mono text-xs text-[#EAD9BC] shadow-lg motion-safe:animate-toast-enter"
     >
       <span aria-hidden="true" className="text-[#F3C769]">
         &gt;

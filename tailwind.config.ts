@@ -216,6 +216,13 @@ const config: Config = {
         // from the SessionPulse. Slower + larger travel than session-pulse
         // so the hint reads as "notice me" rather than "live signal."
         'nav-hint-ring': 'nav-hint-ring 1.8s ease-out infinite',
+        // Phase 9F UAT r1 item 9 — pre-rework toasts appeared abruptly
+        // with no entry motion, which read as "the site is bugging out"
+        // rather than "a real event just fired." Entry is a short
+        // slide+fade (180ms, ease-out) so the reveal is deliberate.
+        // Gated by `motion-safe:` at the callsite so
+        // `prefers-reduced-motion: reduce` visitors get an instant mount.
+        'toast-enter': 'toast-enter 180ms ease-out both',
       },
 
       keyframes: {
@@ -255,6 +262,10 @@ const config: Config = {
           '0%': { opacity: '0.8', transform: 'scale(1)' },
           '80%': { opacity: '0', transform: 'scale(1.8)' },
           '100%': { opacity: '0', transform: 'scale(1.8)' },
+        },
+        'toast-enter': {
+          '0%': { opacity: '0', transform: 'translateY(-8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
         },
       },
     },

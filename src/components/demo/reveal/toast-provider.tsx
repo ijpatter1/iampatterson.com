@@ -29,7 +29,7 @@ export interface ActiveToast extends Toast {
   id: number;
 }
 
-const DEFAULT_DURATION_MS = 2400;
+const DEFAULT_DURATION_MS = 3200;
 const MAX_VISIBLE = 3;
 
 interface ToastContextValue {
@@ -128,7 +128,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             data-reduced-motion={reducedMotion ? 'true' : 'false'}
             aria-live="polite"
             aria-atomic="false"
-            className="pointer-events-none fixed inset-x-0 top-4 z-toast flex flex-col items-center gap-2"
+            className="pointer-events-none fixed inset-x-0 top-4 z-toast flex flex-col items-center gap-2 md:inset-x-auto md:right-6 md:top-6 md:items-end"
           >
             {toasts.map((t) => (
               <EventToast key={t.id} toast={t} reducedMotion={reducedMotion} />
