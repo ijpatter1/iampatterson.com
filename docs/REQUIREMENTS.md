@@ -577,6 +577,7 @@ The hi-fi prototype was authored after `docs/UX_PIVOT_SPEC.md` §3.5 and resolve
 6. SEO: meta tags, structured data, sitemap, content strategy for organic discoverability
 7. Security review: ensure demo interactions can't expose real data, service accounts are properly scoped, no PII leakage in the event stream
 8. Load testing on the background data generator and WebSocket service
+9. **Anonymous ID first-party cookie for long-term visitor identification.** Mint a first-party cookie (`_iap_aid`, 365-day expiry, `SameSite=Lax`, `Secure` in production) on first visit; thread the value into every data layer push as `anonymous_id` alongside the existing `session_id` (which stays session-scoped). This gives cross-session identity that survives the 30-minute session window without PII. Surface the anonymous ID in the Overview tab's portals-and-state block, and wire it into the ecommerce live sidebars so the BigQuery readout shows the real cross-session identifier rather than an example seed. Rationale: UAT r2 item 15 (2026-04-21, session-2026-04-21-004) — prior CDP experience; a first-party cookie is the honest baseline, localStorage is blocked from sGTM read-path and breaks on subdomain hops
 
 ---
 

@@ -314,6 +314,7 @@
 - ⬜ SEO: meta tags, structured data, sitemap, content strategy for organic discoverability
 - ⬜ Security review: ensure demo interactions can't expose real data, service accounts properly scoped, no PII leakage in event stream
 - ⬜ Load testing on background data generator and WebSocket service
+- ⬜ Anonymous ID first-party cookie (`_iap_aid`, 365-day) threaded as `anonymous_id` alongside session_id; surfaced in Overview tab + ecommerce live sidebars. *Added 2026-04-21 from UAT r2 item 15 — honest cross-session identity without PII.*
 
 ---
 
