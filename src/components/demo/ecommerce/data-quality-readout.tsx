@@ -1,22 +1,34 @@
 'use client';
 
-import { assertionsForCart } from '@/lib/demo/reveal/data-quality';
+import { assertionsForCart, type LiveCartContext } from '@/lib/demo/reveal/data-quality';
 
 /**
  * Data-quality Tier 2 readout — children of `LiveSidebar` on the cart page.
  * Renders the 6 Dataform assertions as an `[OK]` / `[FAIL]` checklist with
  * one-line detail per row, preceded by a `source: raw.events · streaming`
- * header and a 6-cell pipeline-health meter.
+ * header and a 6-cell pipeline-health meter. volume_anomaly / freshness /
+ * session_join_integrity substitute live values when session context is
+ * supplied via `live` (UAT r1 item 8).
  */
-export function DataQualityReadout({ itemCount }: { itemCount: number }) {
-  const assertions = assertionsForCart({ itemCount });
+export function DataQualityReadout({
+  itemCount,
+  live,
+}: {
+  itemCount: number;
+  live?: Omit<LiveCartContext, 'itemCount'>;
+}) {
+  const assertions = assertionsForCart({ itemCount, ...live });
   const passing = assertions.filter((a) => a.status === 'OK').length;
+  const lastEventLabel =
+    live?.lastEventName && live.lastEventName.length > 0 ? live.lastEventName : null;
 
   return (
     <div className="flex flex-col gap-3">
       <header className="flex items-center justify-between text-[11px]">
         <span className="text-[#9E8A6B]">source</span>
-        <span className="font-mono text-[#EAD9BC]">raw.events · streaming</span>
+        <span className="font-mono text-[#EAD9BC]">
+          {lastEventLabel ? `${lastEventLabel} · streaming` : 'raw.events · streaming'}
+        </span>
       </header>
 
       <section className="flex flex-col gap-1.5 border-y border-[#F3C769]/15 py-3">

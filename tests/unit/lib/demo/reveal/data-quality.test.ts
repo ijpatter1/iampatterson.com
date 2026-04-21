@@ -43,4 +43,57 @@ describe('assertionsForCart', () => {
     const schema = out.find((a) => a.k === 'schema_validation');
     expect(schema?.detail).toMatch(/required fields/i);
   });
+
+  // UAT r1 item 8 — the cart sidebar was advertised as live but showed
+  // hardcoded numbers. When live session context is supplied, the three
+  // variable-by-session assertions must substitute.
+  describe('UAT r1 item 8 — live substitutions', () => {
+    it('volume_anomaly counts live add_to_cart events when provided', () => {
+      const out = assertionsForCart({ itemCount: 3, addToCartInLast30s: 4 });
+      const va = out.find((a) => a.k === 'volume_anomaly');
+      expect(va?.status).toBe('OK');
+      expect(va?.detail).toMatch(/4 add_to_cart in 30s/);
+    });
+
+    it('volume_anomaly FAILs on live count > threshold (not cart itemCount)', () => {
+      // Cart has 3 items but 15 add_to_cart events fired in the last
+      // 30s (the visitor was thrashing) — volume_anomaly should FAIL
+      // on the event count, not the cart count.
+      const out = assertionsForCart({ itemCount: 3, addToCartInLast30s: 15 });
+      const va = out.find((a) => a.k === 'volume_anomaly');
+      expect(va?.status).toBe('FAIL');
+      expect(va?.detail).toMatch(/15/);
+    });
+
+    it('session_join_integrity names the real session_id when provided', () => {
+      const out = assertionsForCart({
+        itemCount: 1,
+        sessionId: 'abc12345-6789-4def-8abc-deadbeefcafe',
+      });
+      const sj = out.find((a) => a.k === 'session_join_integrity');
+      expect(sj?.detail).toMatch(/abc12345/);
+    });
+
+    it('freshness shows real seconds-since-last-event + event name when supplied', () => {
+      const out = assertionsForCart({
+        itemCount: 1,
+        secondsSinceLastEvent: 7,
+        lastEventName: 'add_to_cart',
+      });
+      const fr = out.find((a) => a.k === 'freshness');
+      expect(fr?.detail).toMatch(/last add_to_cart 7s ago/);
+    });
+
+    it('freshness falls back to seed copy when no live context', () => {
+      const out = assertionsForCart({ itemCount: 1 });
+      const fr = out.find((a) => a.k === 'freshness');
+      expect(fr?.detail).toMatch(/last raw event 2.1s ago/);
+    });
+
+    it('session_join_integrity keeps seed copy when no session_id', () => {
+      const out = assertionsForCart({ itemCount: 1 });
+      const sj = out.find((a) => a.k === 'session_join_integrity');
+      expect(sj?.detail).toMatch(/session_id matches active session row/);
+    });
+  });
 });

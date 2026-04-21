@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useCart } from './cart-context';
 import { useToast } from '@/components/demo/reveal/toast-provider';
 import { LiveSidebar } from '@/components/demo/reveal/live-sidebar';
+import { useSessionContext } from '@/hooks/useSessionContext';
 import { DataQualityReadout } from './data-quality-readout';
 import { products as allProducts } from '@/lib/demo/products';
 
@@ -19,6 +20,7 @@ import { products as allProducts } from '@/lib/demo/products';
 export function CartView() {
   const { items, itemCount, total, updateQuantity, removeItem } = useCart();
   const { push } = useToast();
+  const session = useSessionContext();
   const firedRef = useRef(false);
   const lookup = useMemo(() => Object.fromEntries(allProducts.map((p) => [p.id, p])), []);
 
@@ -173,7 +175,21 @@ export function CartView() {
           title="Data quality · 6 assertions running"
           tag="UNDER · TIER 2 · DATAFORM"
         >
-          <DataQualityReadout itemCount={itemCount} />
+          <DataQualityReadout
+            itemCount={itemCount}
+            live={{
+              // Only pass stream-level stats when at least one event has
+              // flowed, so the assertion falls back to the cart-itemCount
+              // threshold for a fresh session with no events yet.
+              addToCartInLast30s:
+                session.events_in_session > 0 ? session.add_to_cart_in_last_30s : undefined,
+              sessionId: session.session_id,
+              secondsSinceLastEvent: session.last_event_at
+                ? session.seconds_since_last_event
+                : undefined,
+              lastEventName: session.last_event_name,
+            }}
+          />
         </LiveSidebar>
       </div>
     </div>

@@ -8,6 +8,24 @@ import { CartView } from '@/components/demo/ecommerce/cart-view';
 import { CartProvider, useCart } from '@/components/demo/ecommerce/cart-context';
 import { ToastProvider } from '@/components/demo/reveal/toast-provider';
 
+const mockSession = jest.fn();
+jest.mock('@/hooks/useSessionContext', () => ({
+  useSessionContext: () => mockSession(),
+}));
+const DEFAULT_SESSION = {
+  session_id: '',
+  last_event_name: '',
+  last_event_at: '',
+  seconds_since_last_event: 0,
+  events_in_session: 0,
+  add_to_cart_in_last_30s: 0,
+  consent_analytics: false,
+  consent_marketing: false,
+};
+beforeEach(() => {
+  mockSession.mockReturnValue(DEFAULT_SESSION);
+});
+
 function SeedItem({
   product_id,
   product_name,
@@ -295,5 +313,93 @@ describe('CartProvider — localStorage persistence (Phase 9F D7)', () => {
     );
     // Falls back to empty cart; no crash
     expect(screen.getByText(/\[ cart · empty \]/i)).toBeInTheDocument();
+  });
+
+  // UAT r1 item 8 — data-quality sidebar reflects live session facts.
+  describe('UAT r1 item 8 — live data-quality sidebar', () => {
+    it('surfaces live add_to_cart count into volume_anomaly detail', () => {
+      mockSession.mockReturnValue({
+        ...DEFAULT_SESSION,
+        events_in_session: 6,
+        add_to_cart_in_last_30s: 4,
+      });
+      renderWithCart([
+        {
+          product_id: 'tuna-plush-classic',
+          product_name: 'Tuna Plush',
+          product_price: 26,
+          quantity: 1,
+        },
+      ]);
+      const sidebar = document.querySelector('aside[data-live-sidebar]');
+      expect(sidebar?.textContent).toMatch(/4 add_to_cart in 30s/);
+    });
+
+    it('shows real session_id in session_join_integrity detail', () => {
+      mockSession.mockReturnValue({
+        ...DEFAULT_SESSION,
+        session_id: 'abc12345-6789-4def-8abc-deadbeefcafe',
+      });
+      renderWithCart([
+        {
+          product_id: 'x',
+          product_name: 'x',
+          product_price: 1,
+          quantity: 1,
+        },
+      ]);
+      const sidebar = document.querySelector('aside[data-live-sidebar]');
+      expect(sidebar?.textContent).toMatch(/session_id = abc12345…/);
+    });
+
+    it('shows real seconds-since-last-event in freshness detail', () => {
+      mockSession.mockReturnValue({
+        ...DEFAULT_SESSION,
+        last_event_name: 'add_to_cart',
+        last_event_at: new Date().toISOString(),
+        seconds_since_last_event: 7,
+      });
+      renderWithCart([
+        {
+          product_id: 'x',
+          product_name: 'x',
+          product_price: 1,
+          quantity: 1,
+        },
+      ]);
+      const sidebar = document.querySelector('aside[data-live-sidebar]');
+      expect(sidebar?.textContent).toMatch(/last add_to_cart 7s ago/);
+    });
+
+    it('header source line names the latest event when present', () => {
+      mockSession.mockReturnValue({
+        ...DEFAULT_SESSION,
+        last_event_name: 'add_to_cart',
+        last_event_at: new Date().toISOString(),
+      });
+      renderWithCart([
+        {
+          product_id: 'x',
+          product_name: 'x',
+          product_price: 1,
+          quantity: 1,
+        },
+      ]);
+      const sidebar = document.querySelector('aside[data-live-sidebar]');
+      expect(sidebar?.textContent).toMatch(/add_to_cart · streaming/);
+    });
+
+    it('falls back to seed copy when no events have flowed yet', () => {
+      renderWithCart([
+        {
+          product_id: 'x',
+          product_name: 'x',
+          product_price: 1,
+          quantity: 1,
+        },
+      ]);
+      const sidebar = document.querySelector('aside[data-live-sidebar]');
+      expect(sidebar?.textContent).toMatch(/raw\.events · streaming/);
+    });
   });
 });
