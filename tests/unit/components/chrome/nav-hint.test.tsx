@@ -4,8 +4,9 @@
  * Phase 9E D1 first-session pulse-ring hint. Pinning:
  *  - 3s idle trigger / 10s auto-clear (animated) / 6s fade (reduced-motion)
  *  - Idle definition: scroll/click/keydown/pointermove on document
- *  - Dismissal modes: scroll, click_session_pulse, click_outside, timeout
- *    — disjoint and exhaustive against the listener surface
+ *  - Dismissal modes: scroll, click_outside, timeout — three values post-
+ *    UAT (click_session_pulse removed: SessionPulse click is a
+ *    conversion tracked via click_cta(session_pulse), not a dismissal)
  *  - Once-per-session via sessionStorage gate (set on render, not mount)
  *  - Homepage-entry-scoped (only fires on `/`)
  *  - Reduced-motion: static text "← your session" instead of ring
@@ -49,7 +50,7 @@ function mockReducedMotion(matches: boolean) {
 
 function Harness() {
   // The harness owns the ref to the simulated SessionPulse element so
-  // `click_session_pulse` vs `click_outside` classification can be
+  // SessionPulse-click (hide visually, no dismissal event) vs
   // exercised by clicking inside vs outside this element.
   const pulseRef = useRef<HTMLButtonElement>(null);
   return (
@@ -185,15 +186,24 @@ describe('NavHint — first-session pulse ring', () => {
       expect(mockDismissed).toHaveBeenCalledWith('scroll');
     });
 
-    it('dismisses with `click_session_pulse` on a click whose target is the SessionPulse', () => {
+    it('hides visually but does NOT fire nav_hint_dismissed on a SessionPulse click (conversion, not dismissal)', () => {
+      // Pre-UAT the enum had `click_session_pulse` as a fourth dismissal
+      // value. Post-UAT that value was removed: clicking SessionPulse is
+      // the hint's intended conversion, already tracked by click_cta
+      // with cta_location='session_pulse'. Firing a dismissal event for
+      // the conversion path would conflate engagement with abandonment
+      // in BI, making the dismissal metric useless. The hint still
+      // disappears visually — this test pins that DOM behavior while
+      // confirming zero dismissal-event emission.
       render(<Harness />);
       showHint();
       const pulse = screen.getByTestId('fake-session-pulse');
+      mockDismissed.mockClear();
       act(() => {
         fireEvent.click(pulse);
       });
       expect(screen.queryByTestId('nav-hint')).not.toBeInTheDocument();
-      expect(mockDismissed).toHaveBeenCalledWith('click_session_pulse');
+      expect(mockDismissed).not.toHaveBeenCalled();
     });
 
     it('dismisses with `click_outside` on a click whose target is anywhere else', () => {

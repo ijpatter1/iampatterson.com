@@ -20,7 +20,8 @@ export function Header() {
   // is removed from the header; the SessionPulse is the only nav
   // affordance. Footer carries the conventional-nav escape hatch on
   // every page. `sessionPulseRef` lets NavHint classify clicks on the
-  // pulse as `click_session_pulse` vs `click_outside`.
+  // pulse (which hides the hint visually without firing a dismissal
+  // event) vs `click_outside` (which fires `nav_hint_dismissed`).
   const sessionPulseRef = useRef<HTMLElement>(null);
 
   useEffect(() => {

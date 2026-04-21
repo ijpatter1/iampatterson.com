@@ -47,11 +47,12 @@ function markShownThisSession(): void {
 interface NavHintProps {
   /**
    * Ref to the SessionPulse element. Used only for dismissal
-   * classification (`click_session_pulse` vs `click_outside`) — a click
-   * whose target is the ref'd element or any descendant maps to the
-   * former; any other click maps to the latter. The four dismissal
-   * modes are disjoint + exhaustive per UX_PIVOT_SPEC §3.1 and
-   * `NavHintDismissedEvent.dismissal_mode` in the schema.
+   * classification (SessionPulse-click → hide without dismissal event,
+   * conversion tracked via click_cta; any other click → fire
+   * `click_outside` dismissal). Three dismissal modes post-UAT per
+   * `NavHintDismissedEvent.dismissal_mode` in the schema
+   * (click_session_pulse removed — it was a conversion misclassified
+   * as a dismissal mode).
    */
   sessionPulseRef: React.RefObject<HTMLElement | null>;
 }
@@ -140,7 +141,18 @@ export function NavHint({ sessionPulseRef }: NavHintProps) {
         const insidePulse = Boolean(
           target && sessionPulseRef.current && sessionPulseRef.current.contains(target),
         );
-        dismiss(insidePulse ? 'click_session_pulse' : 'click_outside');
+        if (insidePulse) {
+          // Conversion, not a dismissal. Hide the hint visually but
+          // don't fire nav_hint_dismissed — the click_cta(session_pulse)
+          // emission already captures the outcome. Firing a "dismissal"
+          // event for the intended call-to-action would conflate
+          // conversions and abandonments in BI, making the dismissal
+          // metric meaningless.
+          setPhase('dismissed');
+          if (autoClearTimer !== null) window.clearTimeout(autoClearTimer);
+        } else {
+          dismiss('click_outside');
+        }
       } else {
         resetIdle();
       }

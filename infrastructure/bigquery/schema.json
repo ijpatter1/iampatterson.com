@@ -309,7 +309,7 @@
     "name": "dismissal_mode",
     "type": "STRING",
     "mode": "NULLABLE",
-    "description": "How the first-session nav hint was dismissed: scroll, click_session_pulse, click_outside, timeout (nav_hint_dismissed events, Phase 9E deliverable 9)"
+    "description": "How the first-session nav hint was dismissed: scroll, click_outside, timeout (nav_hint_dismissed events, Phase 9E deliverable 9; click_session_pulse removed post-UAT — clicks on SessionPulse are conversions, tracked by click_cta + cta_location='session_pulse')"
   },
   {
     "name": "source",

@@ -15,14 +15,16 @@ import {
 } from '@/lib/session-state/types';
 
 const BAR_WIDTH = 16;
-// Post-UAT threshold lowered from 10 to 5. Original spec set 10 against
-// a denominator of 22 (pre-UAT F2), ≈45% engagement — too high; the CTA
-// rarely surfaced during casual exploration. Post-UAT F2 the visitor-
-// facing denominator is 20 (RENDERABLE subset), so 5 events = 25% —
-// reliably crossed by a visitor who scrolls, clicks a CTA, navigates,
-// accepts consent, and opens the overlay. User-reported in the F8 final
-// review that the CTA never showed.
-const EVENT_TYPE_THRESHOLD = 5;
+// Restored to the spec's original 10 after user reported > 5 surfaced
+// the CTA too aggressively (triggered at ~6-7 events fired during
+// basic homepage exploration — consent_update + nav_hint_shown +
+// session_pulse_hover + click_cta + overview_tab_view + a couple
+// more). The earlier "CTA never shows" complaint was under > 10; the
+// right balance per spec intent is visitor engaged with >10 distinct
+// event types OR progressed to ecommerce `begin_checkout`. The OR
+// branch fast-tracks engaged demo visitors; the >10 branch filters
+// for genuine homepage engagement.
+const EVENT_TYPE_THRESHOLD = 10;
 const TYPING_INTERVAL_MS = 24;
 
 type PortalDestination = 'services' | 'about' | 'contact';

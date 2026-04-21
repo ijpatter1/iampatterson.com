@@ -203,22 +203,32 @@ export interface NavHintShownEvent extends BaseEvent {
 }
 
 /**
- * Fired when the first-session nav hint clears. The four `dismissal_mode` values
- * are disjoint and exhaustive against the hint's listener surface:
+ * Fired when the first-session nav hint clears WITHOUT conversion. Three
+ * dismissal modes, all of which represent the visitor not engaging with
+ * the hint's call-to-action:
  *
- * - `scroll` — any `scroll` event on `document`.
- * - `click_session_pulse` — a `click` whose target is the `SessionPulse` element
- *   itself or any descendant of it.
- * - `click_outside` — any `click` whose target is not `SessionPulse` or a descendant
- *   (covers the full "any other click on the page" case).
+ * - `scroll` — any `scroll` event on `document` (visitor scrolled away).
+ * - `click_outside` — any `click` whose target is not `SessionPulse` or a
+ *   descendant (visitor clicked something unrelated).
  * - `timeout` — the ~10s auto-clear timer elapsed without user interaction.
  *
- * Full hint lifecycle and dismissal contract in `docs/REQUIREMENTS.md` Phase 9E
- * deliverable 1.
+ * Clicking `SessionPulse` itself is the hint's *conversion*, not a
+ * dismissal — it does NOT fire `nav_hint_dismissed`. The conversion is
+ * tracked by the existing `click_cta` emission with
+ * `cta_location: 'session_pulse'`. Conflating conversions with dismissals
+ * in the same event stream would make the dismissal metric useless for BI
+ * (`COUNT(*) WHERE event = 'nav_hint_dismissed'` would report "how many
+ * visitors saw the hint and reacted in any way," which answers no useful
+ * product question). Removed the pre-UAT `click_session_pulse` enum value
+ * for this reason; the hint still hides visually on SessionPulse click,
+ * just without emitting a dismissal event.
+ *
+ * Full hint lifecycle and dismissal contract in `docs/REQUIREMENTS.md`
+ * Phase 9E deliverable 1.
  */
 export interface NavHintDismissedEvent extends BaseEvent {
   event: 'nav_hint_dismissed';
-  dismissal_mode: 'scroll' | 'click_session_pulse' | 'click_outside' | 'timeout';
+  dismissal_mode: 'scroll' | 'click_outside' | 'timeout';
 }
 
 /**

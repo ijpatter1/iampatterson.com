@@ -174,20 +174,15 @@ describe('Event schema types', () => {
     expect(event.event).toBe('nav_hint_shown');
   });
 
-  it('defines NavHintDismissedEvent with all four dismissal_mode values', () => {
+  it('defines NavHintDismissedEvent with three dismissal_mode values (click_session_pulse removed post-UAT — clicks on SessionPulse are conversions, not dismissals)', () => {
     const byScroll: NavHintDismissedEvent = {
       ...baseFields,
       event: 'nav_hint_dismissed',
       dismissal_mode: 'scroll',
     };
-    const byPulseClick: NavHintDismissedEvent = {
-      ...byScroll,
-      dismissal_mode: 'click_session_pulse',
-    };
     const byOutsideClick: NavHintDismissedEvent = { ...byScroll, dismissal_mode: 'click_outside' };
     const byTimeout: NavHintDismissedEvent = { ...byScroll, dismissal_mode: 'timeout' };
     expect(byScroll.dismissal_mode).toBe('scroll');
-    expect(byPulseClick.dismissal_mode).toBe('click_session_pulse');
     expect(byOutsideClick.dismissal_mode).toBe('click_outside');
     expect(byTimeout.dismissal_mode).toBe('timeout');
   });
