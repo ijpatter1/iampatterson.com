@@ -90,4 +90,17 @@ describe('EcomSubNav (Phase 9F follow-up)', () => {
     const nav = screen.getByRole('navigation');
     expect(nav.getAttribute('aria-label')).toMatch(/tuna shop/i);
   });
+
+  // UAT r1 item 2 — wordmark and nav items hug the edges of the
+  // viewport on the shipped version. The prototype caps the nav's
+  // inner content width so the items align with page content
+  // beneath. A max-width inner container provides the margin.
+  it('wraps nav content in a max-width inner container (UAT r1 item 2)', () => {
+    renderNav();
+    const nav = screen.getByRole('navigation');
+    const inner = nav.firstElementChild as HTMLElement | null;
+    expect(inner).not.toBeNull();
+    expect(inner?.className).toMatch(/mx-auto/);
+    expect(inner?.className).toMatch(/max-w-content/);
+  });
 });
