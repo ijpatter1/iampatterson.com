@@ -10,7 +10,7 @@ import { useCart } from './cart-context';
  *
  * Sits at the top of every `/demo/ecommerce/*` page directly below the
  * site chrome (`SessionPulse` + `LiveStrip` + `HomeBar`). Three sections:
- * (left) Tuna Shop wordmark + "the underdog with the underbite · shop"
+ * (left) Tuna Shop wordmark + "the underdog with the overbite · shop"
  * sub-tagline, (right) `shop` / `cart` wayfinding with a live item-count
  * badge. The current route is highlighted via the terracotta accent.
  * Distinct from the site's session-scoped nav — this is the demo's own
@@ -38,7 +38,7 @@ export function EcomSubNav() {
             tuna melts my heart
           </span>
           <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--shop-warm-brown,#5C4A3D)]/60">
-            the underdog with the underbite · shop
+            the underdog with the overbite · shop
           </span>
         </Link>
         <div className="flex items-center gap-4 font-mono text-xs uppercase tracking-[0.12em]">

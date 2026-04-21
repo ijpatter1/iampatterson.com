@@ -109,7 +109,7 @@ export function ListingView() {
         </div>
         <h1 className="font-display text-[clamp(2.5rem,5vw,4rem)] leading-[1.05] tracking-[-0.015em] text-[var(--shop-warm-brown,#5C4A3D)]">
           the underdog with the{' '}
-          <em className="not-italic text-[var(--shop-terracotta,#C4703A)]">underbite.</em>
+          <em className="not-italic text-[var(--shop-terracotta,#C4703A)]">overbite.</em>
         </h1>
         <p className="max-w-[640px] text-[15px] leading-relaxed text-[var(--shop-warm-brown,#5C4A3D)]/80">
           tuna is a chiweenie with a famous face. this is his shop. plushes, a calendar, a cameo or
