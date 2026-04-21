@@ -74,6 +74,43 @@ describe('ListingView (Phase 9F D5 — product listing)', () => {
     expect(screen.getByText(/prospecting · lookalike/i)).toBeInTheDocument();
   });
 
+  // UAT r2 item 8 — the UTM capture panel previously used the cream +
+  // warm-brown shop palette; per the user, it should match the under-the-
+  // hood reveal overlay (amber on near-black terminal).
+  describe('UAT r2 item 8 — UTM capture panel adopts the terminal palette', () => {
+    it('uses the near-black terminal background + amber accent border', () => {
+      renderView();
+      const panel = document.querySelector('[data-utm-capture]') as HTMLElement;
+      expect(panel).not.toBeNull();
+      expect(panel.className).toMatch(/#0D0B09|bg-\[#0D0B09\]/i);
+      expect(panel.className).toMatch(/#F3C769/);
+    });
+
+    it("classified-bucket chip uses the amber accent (the panel's highlight color)", () => {
+      renderView();
+      const panel = document.querySelector('[data-utm-capture]') as HTMLElement;
+      // `bucket` is the last of the three classified chips.
+      const chips = panel.querySelectorAll('dd:last-of-type span');
+      const bucketChip = chips[chips.length - 1] as HTMLElement;
+      expect(bucketChip.className).toMatch(/\[#F3C769\]/);
+    });
+  });
+
+  // UAT r2 item 9 — the shop homepage body copy was `text-[15px]`, which
+  // read smaller than the site homepage's 17px. Match the homepage body
+  // size so the shop doesn't feel like a downgrade.
+  describe('UAT r2 item 9 — shop body copy matches homepage body size', () => {
+    it('listing hero paragraph is 17px (matches site homepage demos-section body)', () => {
+      renderView();
+      const paragraphs = document.querySelectorAll('section p');
+      const lede = Array.from(paragraphs).find((p) =>
+        /Tuna is a chiweenie with a famous face/.test(p.textContent ?? ''),
+      ) as HTMLElement | undefined;
+      expect(lede).toBeDefined();
+      expect(lede?.className).toMatch(/text-\[17px\]/);
+    });
+  });
+
   // UAT r1 item 3 — the `dl` previously labelled the default UTM seed
   // as "your utm_campaign" even when the visitor's URL carried no
   // utm_campaign. That's dishonest — it's an example, not theirs.

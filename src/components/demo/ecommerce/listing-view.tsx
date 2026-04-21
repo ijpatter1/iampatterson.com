@@ -111,34 +111,37 @@ export function ListingView() {
           the underdog with the{' '}
           <em className="not-italic text-[var(--shop-terracotta,#C4703A)]">overbite.</em>
         </h1>
-        <p className="max-w-[640px] text-[15px] leading-relaxed text-[var(--shop-warm-brown,#5C4A3D)]/80">
+        <p className="max-w-[640px] text-[17px] leading-[1.55] text-[var(--shop-warm-brown,#5C4A3D)]/80">
           Tuna is a chiweenie with a famous face. This is his shop. Plushes, a calendar, a cameo or
           two. A portion of every order goes to no-kill rescues. Every click you make is also a
           demo: the toasts up top are your browser talking to sGTM, which talks to BigQuery.
         </p>
-        <dl className="grid grid-cols-1 gap-2 rounded border border-[var(--shop-warm-brown,#5C4A3D)]/12 bg-[var(--shop-cream-2,#F5EEDB)] p-4 sm:grid-cols-[max-content_1fr] sm:gap-x-6 sm:gap-y-3">
-          <dt className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--shop-warm-brown,#5C4A3D)]/60">
+        <dl
+          data-utm-capture=""
+          className="grid grid-cols-1 gap-2 rounded border border-[#F3C769]/25 bg-[#0D0B09] p-4 sm:grid-cols-[max-content_1fr] sm:gap-x-6 sm:gap-y-3"
+        >
+          <dt className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#9E8A6B]">
             {utmMeta.isLive ? 'your utm_campaign' : 'example utm_campaign'}
           </dt>
-          <dd className="flex flex-wrap items-center gap-2 font-mono text-xs text-[var(--shop-warm-brown,#5C4A3D)]">
+          <dd className="flex flex-wrap items-center gap-2 font-mono text-xs text-[#EAD9BC]">
             <span>{utmCampaign}</span>
             {utmMeta.isLive ? null : (
-              <span className="rounded border border-[var(--shop-warm-brown,#5C4A3D)]/30 bg-[var(--shop-cream,#FBF6EA)] px-1.5 py-[1px] text-[9px] uppercase tracking-[0.12em] text-[var(--shop-warm-brown,#5C4A3D)]/70">
+              <span className="rounded border border-[#F3C769]/40 px-1.5 py-[1px] text-[9px] uppercase tracking-[0.12em] text-[#F3C769]">
                 example · no utm in your url
               </span>
             )}
           </dd>
-          <dt className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--shop-warm-brown,#5C4A3D)]/60">
+          <dt className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#9E8A6B]">
             classified as
           </dt>
           <dd className="flex flex-wrap items-center gap-2">
-            <span className="rounded border border-[var(--shop-warm-brown,#5C4A3D)]/30 px-2 py-[2px] font-mono text-[10px] tracking-[0.05em] text-[var(--shop-warm-brown,#5C4A3D)]">
+            <span className="rounded border border-[#F3C769]/30 px-2 py-[2px] font-mono text-[10px] tracking-[0.05em] text-[#EAD9BC]">
               {classification.source}
             </span>
-            <span className="rounded border border-[var(--shop-warm-brown,#5C4A3D)]/30 px-2 py-[2px] font-mono text-[10px] tracking-[0.05em] text-[var(--shop-warm-brown,#5C4A3D)]">
+            <span className="rounded border border-[#F3C769]/30 px-2 py-[2px] font-mono text-[10px] tracking-[0.05em] text-[#EAD9BC]">
               {classification.medium}
             </span>
-            <span className="rounded border border-[var(--shop-terracotta,#C4703A)] bg-[var(--shop-terracotta,#C4703A)]/10 px-2 py-[2px] font-mono text-[10px] tracking-[0.05em] text-[var(--shop-terracotta,#C4703A)]">
+            <span className="rounded border border-[#F3C769] bg-[#F3C769]/10 px-2 py-[2px] font-mono text-[10px] tracking-[0.05em] text-[#F3C769]">
               {classification.bucket}
             </span>
           </dd>
