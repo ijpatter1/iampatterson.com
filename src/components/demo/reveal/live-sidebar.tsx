@@ -36,6 +36,13 @@ function writePersisted(route: string, collapsed: boolean) {
  *
  * Collapse state persists within-route via sessionStorage, never across routes
  * (each demo page re-presents its Tier 2 content open-by-default).
+ *
+ * UAT r2 items 14 + 17 — on mobile the sidebar stacks below the main
+ * content, so a visitor scrolling to read it ends up at the bottom of
+ * the page. The header carries a `↑ back to top` chip (mobile-only;
+ * `md:hidden`) that smooth-scrolls back to the page's walkthrough
+ * blurb. Paired with the walkthrough's `see the stack ↓` chip, this
+ * makes the sidebar round-trippable without fixed-position chrome.
  */
 export function LiveSidebar({
   route,
@@ -74,6 +81,21 @@ export function LiveSidebar({
       return next;
     });
   }, [route]);
+
+  // UAT r2 items 14 + 17 — mobile round-trip. The walkthrough blurb's
+  // "see the stack ↓" chip brings the visitor down to the sidebar; this
+  // handler scrolls back to the walkthrough blurb (not the absolute top
+  // of the page — the demo banner + sub-nav are less useful landing
+  // targets than the blurb itself).
+  const handleBackToTop = useCallback(() => {
+    if (typeof document === 'undefined') return;
+    const target = document.querySelector('[data-walkthrough-blurb]');
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, []);
 
   // Escape collapses sidebar when focus is inside it (focus does not trap).
   useEffect(() => {
@@ -124,15 +146,30 @@ export function LiveSidebar({
         <div className="relative z-10 flex flex-col gap-3 p-4">
           <header className="flex items-start justify-between gap-2">
             <div className="text-[10px] uppercase tracking-[0.18em] text-[#F3C769]">{tag}</div>
-            <button
-              type="button"
-              onClick={toggle}
-              aria-expanded="true"
-              aria-label="Collapse instrumentation sidebar"
-              className="text-[#F3C769] hover:text-[#EAD9BC]"
-            >
-              ›
-            </button>
+            <div className="flex items-center gap-3">
+              {/* UAT r2 items 14, 17 — mobile-only back-to-top chip so a
+                  visitor who reached the sidebar via the walkthrough's
+                  "see the stack ↓" link has a round-trip path. Desktop
+                  renders the sidebar in-view so the chip is hidden. */}
+              <button
+                type="button"
+                onClick={handleBackToTop}
+                className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#F3C769] hover:text-[#EAD9BC] md:hidden"
+                data-sidebar-back-to-top=""
+                aria-label="Back to top of page"
+              >
+                ↑ back to top
+              </button>
+              <button
+                type="button"
+                onClick={toggle}
+                aria-expanded="true"
+                aria-label="Collapse instrumentation sidebar"
+                className="text-[#F3C769] hover:text-[#EAD9BC]"
+              >
+                ›
+              </button>
+            </div>
           </header>
           <h3 className="font-display text-base leading-tight text-[#EAD9BC]">{title}</h3>
           <div className="flex flex-col gap-2">{children}</div>

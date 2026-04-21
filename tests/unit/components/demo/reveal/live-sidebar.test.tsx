@@ -232,4 +232,56 @@ describe('LiveSidebar', () => {
     // Class list should not include `fixed` — sidebar must scroll with content.
     expect(aside.className).not.toMatch(/\bfixed\b/);
   });
+
+  // UAT r2 items 14 + 17 — mobile round-trip. On mobile the sidebar
+  // stacks below main content, so a visitor who scrolled to read it
+  // ends up at the bottom. The header carries a mobile-only "↑ back to
+  // top" chip that smooth-scrolls to the page's walkthrough blurb (or
+  // window top as fallback).
+  describe('UAT r2 items 14 + 17 — back-to-top chip', () => {
+    it('renders a mobile-only back-to-top chip in the header when open', () => {
+      render(
+        <LiveSidebar route="cart" title="Data quality" tag="UNDER · DATAFORM ASSERTIONS">
+          <div>x</div>
+        </LiveSidebar>,
+      );
+      const chip = document.querySelector('[data-sidebar-back-to-top]') as HTMLElement;
+      expect(chip).not.toBeNull();
+      expect(chip.textContent).toMatch(/back to top/i);
+      expect(chip.className).toMatch(/md:hidden/);
+    });
+
+    it('clicking back-to-top scrolls to the walkthrough blurb when one exists', async () => {
+      const blurb = document.createElement('section');
+      blurb.setAttribute('data-walkthrough-blurb', '');
+      const scrollSpy = jest.fn();
+      blurb.scrollIntoView = scrollSpy;
+      document.body.appendChild(blurb);
+
+      const user = userEvent.setup();
+      render(
+        <LiveSidebar route="cart" title="t" tag="UNDER">
+          <div>x</div>
+        </LiveSidebar>,
+      );
+      await user.click(document.querySelector('[data-sidebar-back-to-top]') as HTMLElement);
+      expect(scrollSpy).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
+
+      blurb.remove();
+    });
+
+    it('back-to-top chip does not render when the sidebar is collapsed', () => {
+      // Persisted collapsed state — simulate a visitor who has already
+      // tapped the collapse chevron. The header collapses into a single
+      // writing-mode-rotated expand-button; the back-to-top chip is
+      // scoped to the expanded state.
+      sessionStorage.setItem('iampatterson.sidebar.collapsed.cart', '1');
+      render(
+        <LiveSidebar route="cart" title="t" tag="UNDER">
+          <div>x</div>
+        </LiveSidebar>,
+      );
+      expect(document.querySelector('[data-sidebar-back-to-top]')).toBeNull();
+    });
+  });
 });
