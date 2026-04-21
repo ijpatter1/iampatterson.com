@@ -493,7 +493,70 @@ Tier state machine (React re-renders only when the class changes): `bleed > 0.85
 
 ### Phase 9F — Ecommerce Demo Native-Reveal Rebuild
 
-To be expanded in the 9F doc pass. Scope: four-pattern native-reveal language (event toast, live sidebar, inline diagnostic block, full-page diagnostic moment) replacing the overlay-based Tier 2/3 reveal model on the ecommerce demo; confirmation-page all-inline Metabase payoff (embed shape — six individual embeds vs. one full-dashboard embed — locked in the 9F deliverable spec); salvage of content from the `*Underside` components removed in 9E (UTM classification display, BigQuery row schema readout, data-quality assertions) into the new patterns; SessionPulse reachability verified across demo pages. Full pattern reference and per-page pattern assignments in `docs/UX_PIVOT_SPEC.md` §3.5.
+Rebuilds the ecommerce demo's Tier 2/3 reveal mechanics using the four-pattern native-reveal language specified in `docs/UX_PIVOT_SPEC.md` §3.5. Ships jointly with Phase 9E per the 9E block's release coupling. The phase replaces the overlay-based per-page `*Underside` content with in-flow reveals that live inside the demo pages, and replaces the three-individual-question Metabase confirmation embed with a single full-dashboard embed. Simultaneously, the demo adopts the hi-fi Tuna Shop brand treatment (demo-scoped editorial palette, prototype-verbatim voice rules, 6-SKU catalog mirroring `tunameltsmyheart.com`) from the reference implementation at `docs/input_artifacts/design_handoff_ecommerce/`.
+
+**Four-pattern component topology.**
+
+```
+src/components/demo/reveal/
+├── event-toast.tsx          # Pattern 1 — non-blocking notification
+├── live-sidebar.tsx         # Pattern 2 — collapsible Tier 2 panel
+├── inline-diagnostic.tsx    # Pattern 3 — styled wrapper for inline blocks
+├── full-page-diagnostic.tsx # Pattern 4 — full-bleed transitional moment (one total)
+└── toast-provider.tsx       # Portal + useToast() imperative API
+
+src/lib/demo/reveal/
+├── campaign-taxonomy.ts     # UTM classifier + display (salvaged from CampaignTaxonomyUnderside)
+├── staging-layer.ts         # Staging transformation shape (salvaged from StagingLayerUnderside)
+├── data-quality.ts          # Assertion list + failure messages (salvaged from DataQualityUnderside)
+├── warehouse-write.ts       # BigQuery row preview (salvaged from WarehouseWriteUnderside)
+└── dashboard-payoff.ts      # Confirmation-page narrative + embed-shape helpers
+```
+
+Pattern 1 (`EventToast`) renders into a portal rooted at `src/app/layout.tsx` so stacking context is independent of the consuming page's layout and the portal outlives App Router route transitions; a `ToastProvider` at the demo-layout root owns the portal and exposes an imperative `useToast()` API callers invoke (callers never manage toast lifecycle directly). `aria-live="polite"` announces the event to screen readers without stealing focus. Multiple toasts stack vertically (newest at top, max 3 visible, older toasts dropped rather than queued). On route change, in-flight toasts are cancelled immediately. Motion: 220ms entry (slide-down + fade), 180ms exit (fade). Under `prefers-reduced-motion` the 2–2.6-second lifetime is preserved but fade transitions become instant. Pattern 2 (`LiveSidebar`) is position-relative / sticky, not fixed — the sidebar scrolls with page content. Desktop breakpoint for the right-side rail is ≥1024px (the prototype's breakpoint); below that, the sidebar becomes a top accordion above the page content. Per-page default: open on product detail, cart, and checkout; collapse state does NOT persist across routes (each page re-presents its Tier 2 content open-by-default) but MAY persist within the current route via `sessionStorage` key `iampatterson.sidebar.collapsed.<route>` so mid-page re-renders don't force-reopen. Pattern 3 (`InlineDiagnostic`) is a thin styled wrapper that applies the token set (dark background, amber headers, `>` prompt prefixes, terminal-style rules) and composes arbitrary children — callers (deliverables 8 warehouse-write sidebar, 9 confirmation-page payoff) own content shape. Pattern 4 (`FullPageDiagnostic`) is the one full-bleed transitional moment; orchestrated via Next.js App Router `useRouter` — render the diagnostic, run the typed sequence, then `router.push` + `cart.clear()`. Keyboard-skippable (`keydown` on `document`, any key) so users aren't trapped; backdrop click does NOT skip; touch visitors auto-advance in ~1.9s; skipped entirely under `prefers-reduced-motion`. `role="dialog"` with focus trap active during the moment.
+
+**Per-page pattern assignments (ecommerce).**
+
+| Route | Pattern(s) | Salvage source |
+|---|---|---|
+| `/demo/ecommerce` | Toast cascade (session_start + taxonomy_classified + view_item_list, `viewport-top`) | `CampaignTaxonomyUnderside` |
+| `/demo/ecommerce/[productId]` | Toast (product_view, `near-product`) + Sidebar | `StagingLayerUnderside` |
+| `/demo/ecommerce/cart` | Toast (view_cart) + Sidebar | `DataQualityUnderside` |
+| `/demo/ecommerce/checkout` | Toast (begin_checkout) + Sidebar + Full-page moment on submit | `WarehouseWriteUnderside` |
+| `/demo/ecommerce/confirmation` | Toast (purchase) + Inline diagnostic + full-dashboard Metabase embed | today's three `LiveEmbedFrame` instances + overlay Dashboards-tab fallback |
+
+The five `*Underside` components and the `EcommerceUnderside` router wrapper are deleted at the end of deliverable 10 (if any aren't already gone from 9E D2). Their display content migrates into the reveal components per the table; utility logic (UTM classification lookup, staging-layer field-cast rules, assertion list, BigQuery row-schema preview) migrates into `src/lib/demo/reveal/`.
+
+**Confirmation-page Metabase payoff — embed-shape decision.** Phase 9F locks the open decision from `docs/UX_PIVOT_SPEC.md` §3.5: **one full-dashboard embed, not six individual question embeds.** Rationale: the confirmation page is the Tier 3 *payoff* surface, not a collection of charts; a single production-BI canvas is a stronger proof-of-tier than six scattered question-embeds with per-chart narrative, and Metabase dashboards are designed to be read as cohesive surfaces rather than split into per-chart frames. The signing flow from Phase 9B deliverable 6b is retained but adapted: the Next.js Server Component now mints **one** HS256 JWT against Metabase's `/embed/dashboard/:jwt` path instead of three JWTs against `/embed/question/:jwt`:
+
+```
+payload = { resource: { dashboard: <dashboardId> }, params: {}, exp: now + 600 }
+url     = `https://bi.iampatterson.com/embed/dashboard/${jwt}#bordered=true&titled=false`
+```
+
+`METABASE_EMBED_CONFIG.dashboardId` (already present per 9B-infra Task 5) carries the correct dashboard ID. The `cardIds` subfields are no longer load-bearing at render time — they may stay for fallback/observability or be removed in deliverable 10's cleanup. `MB_EMBEDDING_SECRET_KEY` is unchanged. The 10-minute TTL is unchanged. The IAP-gated `/dashboard/2` deep-link fallback from 9B is removed from desktop / tablet — the `/embed/*` URL-map path from 9B-infra Task 5 loads the full dashboard anonymously. A visible "View full dashboard → (Google SSO required — internal BI)" link is retained below the embed on mobile (<768px) as an honest "here's where this lives in production" affordance, not an escape hatch to additional content.
+
+The confirmation page layout widens from its current constrained width to `max-w-[1200px]` at ≥1024px so Metabase's 2–3 column dashboard grid renders at its intended layout. Between 768px and 1024px, the embed renders at 100% of the available width with Metabase reflowing to a single-column stack. Below 768px, same single-column reflow with taller iframe + the IAP-gated deep-link affordance described above. The per-order narrative (the `$total` interpolation and "you just converted" framing) sits in a single lead paragraph *above* the dashboard embed — the visual rhythm changes from "paragraph → chart → paragraph → chart" to "paragraph → full-dashboard canvas." The dashboard embed is wrapped in the Pattern 3 `InlineDiagnostic` so the payoff block reads visually continuous with the demo's reveal aesthetic (amber headers, terminal-style separators framing the canvas).
+
+**Cold-start ship-gate (binary release blocker).** The full-dashboard embed hits the same Metabase Cloud Run JVM path as today's three question-embeds, but the failure mode is more jarring because the payoff surface has higher visual weight than three smaller iframes. **9F does not merge to the joint 9E+9F release branch until:** (a) 9B operational follow-up #1 is applied — `gcloud run services update metabase --region=us-central1 --project=iampatterson --no-cpu-throttling` (~$20/mo cost delta); (b) a cold-start probe from a fresh tab after ≥15 minutes of verifiable Metabase idleness (Cloud Run request logs empty, or temporarily `--min-instances=0`) loads the confirmation page's full-dashboard embed in under 10 seconds to first paint, 15 seconds to interactive; (c) the probe result is recorded in the session handoff. This is a binary release gate, not a soft caveat.
+
+**Brand treatment (Tuna Shop, demo-scoped).** Phase 9F inherits `docs/input_artifacts/design_handoff_ecommerce/` as the high-fidelity reference. The demo root sets `data-demo="ecommerce"` (existing `DemoThemeProvider` pattern from Phase 8); the attribute is the scope anchor for the shop's palette override. Shop palette: `--shop-cream #FBF6EA` (page bg), `--shop-cream-2 #F5EEDB` (card tint), `--shop-amber #E6B769` (secondary), `--shop-amber-2 #C4703A` (terracotta primary, overriding `--accent`), `--shop-warm-brown #5C4A3D` (secondary depth). Terminal palette for reveal-pattern surfaces: `--term-bg #0D0B09`, `--term-ink #EAD9BC`, `--term-amber #F3C769`, status `--term-ok #8FBF7A` / `--term-warn #E6A94A` / `--term-err #D9725B`. The terminal warm amber (`#F3C769`) differs from the site-wide phosphor amber (`#FFA400`) by design — per the prototype README, "terminal surfaces should feel like the inverse of the shop, not a separate environment." UX_PIVOT_SPEC §1.4 "no editorial surface adopts amber as primary" is preserved: the shop's primary is terracotta, not amber; amber remains reserved for underside/terminal/diagnostic surfaces. Typography: Instrument Serif for display (H1, product names, section headings), Plus Jakarta Sans for body / buttons / nav, JetBrains Mono for event names / parameter keys / BQ columns / eyebrows — already loaded site-wide, demo inherits. Brand voice rules (prototype-verbatim): all-lowercase headings and body copy (proper nouns / acronyms stay cased); no em dashes; no rule-of-three adjective lists; no "serves as" / "stands as" / "marks"; reuse the same word rather than synonym-cycling; first-person plural when the shop voices itself; no-kill rescues mention on footer / product detail / confirmation (not hero).
+
+**Z-index budget for reveal layers.** Five overlay-layer surfaces coexist on demo pages. Ordering (highest → lowest):
+
+1. Cookiebot CMP banner — compliance surface, must always be reachable
+2. 9E Session overlay (SessionPulse-triggered) — covers the whole site when open
+3. Pattern 4 full-page diagnostic — the 1.5–1.9s transition moment
+4. Pattern 1 event toasts — above page content and sidebars
+5. Pattern 2 live sidebar — scrolls with page content, above page content only
+
+Assign explicit z-index tokens in `tailwind.config.ts` (`z-cookiebot`, `z-overlay`, `z-full-page-diagnostic`, `z-toast`, `z-sidebar`) rather than ad-hoc numeric values so the ordering is maintainable. Predictable collisions resolve naturally by the ordering above (toasts clear off-screen when the overlay opens; Cookiebot takes priority on re-open; full-page diagnostic covers any in-flight toast).
+
+**Header topology on demo pages.** The site header (`SessionPulse`-only nav + `LiveStrip` + `HomeBar`) renders above the demo's own `EcomHeader` (brand mark + shop/cart nav) — the two stacks read as "site chrome (session-scoped nav)" over "demo chrome (shop-scoped nav)." This preserves both the 9E nav pivot's instrument-as-nav framing and the shop's believable storefront presence. The overlay stays reachable from the `SessionPulse` on every demo page (9E constraint); the demo's own header carries only demo-scoped links (`shop`, `cart`, back-to-site).
+
+**Palette-token harmony pass.** Demo surfaces currently use raw `neutral-*` Tailwind classes; editorial surfaces use the `ink / paper / rule` token scale. 9F's deliverable 12 folds the unified palette pass into the demo rebuild — migrate `neutral-*` to `ink / paper / rule` where the editorial system applies, preserve ecommerce-specific warmth (product imagery tint, terracotta highlights on storefront CTAs). This addresses Phase 9B follow-up #3 as part of the phase that already touches every demo page.
+
+**What's deliberately unchanged in 9F.** Event schemas (`src/lib/events/schema.ts`) — 9F consumes existing events, does not add new ones (nav-analytics events are scoped to 9E deliverable 9). SSE Cloud Run service, `_iap_sid` cookie, GTM, sGTM, Pub/Sub, BigQuery, Dataform, Metabase deployment. The 9B-infra IAP / backend-direct URL-map split. The `MB_EMBEDDING_SECRET_KEY` / `METABASE_EMBED_CONFIG` Vercel env contract.
 
 ### Phase 8 — Attribution
 Shapley value MTA in Dataform. Comparison views against last-click and platform-reported.
