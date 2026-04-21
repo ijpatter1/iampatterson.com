@@ -8,21 +8,19 @@ import { trackClickNav } from '@/lib/events/track';
  * Phase 9F demo-scoped footer (product review 2026-04-21 Major #4).
  *
  * Renders at the bottom of every `/demo/ecommerce/*` route, below the
- * page content + any reveal sidebars. Carries the prototype's EcomFooter
- * block: "this is a demo" framing + the no-kill rescues mission line +
- * lowercase back-to-site links. The no-kill rescues mention lives here
- * (as the brand voice rules require) even though it also appears on
- * product detail + confirmation — footer surface is the closing brand
- * beat on every demo page.
+ * page content + any reveal sidebars. Carries the mission paragraph +
+ * no-kill rescues brand beat + lowercase back-to-site links.
+ *
+ * The "this is a demo" eyebrow that used to live here moved to
+ * `EcomDemoBanner` at the top of the layout in UAT r2 item 7 — the
+ * reminder needed to be visible on every page load, not buried in the
+ * footer where many visitors never scrolled.
  */
 export function EcomFooter() {
   return (
     <footer className="border-t border-[var(--shop-warm-brown,#5C4A3D)]/15 bg-[var(--shop-cream-2,#F5EEDB)] px-6 py-10">
       <div className="mx-auto flex max-w-content flex-col gap-6 md:flex-row md:justify-between">
         <div className="flex flex-col gap-2 md:max-w-[520px]">
-          <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--shop-warm-brown,#5C4A3D)]/60">
-            this is a demo
-          </div>
           <p className="text-[13px] leading-relaxed text-[var(--shop-warm-brown,#5C4A3D)]/80">
             The tuna shop is a working storefront built to show what a production measurement stack
             looks like end-to-end. Nothing actually ships from here. Every interaction you make is

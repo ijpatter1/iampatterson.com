@@ -1,6 +1,7 @@
 'use client';
 
 import { CartProvider } from '@/components/demo/ecommerce/cart-context';
+import { EcomDemoBanner } from '@/components/demo/ecommerce/ecom-demo-banner';
 import { EcomFooter } from '@/components/demo/ecommerce/ecom-footer';
 import { EcomSubNav } from '@/components/demo/ecommerce/ecom-sub-nav';
 
@@ -13,13 +14,19 @@ export default function EcommerceLayout({ children }: { children: React.ReactNod
   // See docs/REQUIREMENTS.md Phase 9F deliverable 12 + docs/ARCHITECTURE.md
   // "Brand treatment".
   //
-  // EcomSubNav renders the Tuna Shop wordmark + `shop · cart` wayfinding
-  // at the top; EcomFooter renders the "this is a demo / no-kill rescues"
-  // brand beat + back-to-site links at the bottom. Both are distinct from
-  // the session-scoped site chrome (SessionPulse + LiveStrip + HomeBar).
+  // Stacking order inside the demo surface (top → bottom):
+  //   1. EcomDemoBanner — terminal-styled "this is a demo" top strip
+  //      (UAT r2 item 7 — previously only lived in the footer).
+  //   2. EcomSubNav — Tuna Shop wordmark + `shop · cart` wayfinding.
+  //   3. Page content.
+  //   4. EcomFooter — mission paragraph + back-to-site links.
+  //
+  // All four are distinct from the session-scoped site chrome
+  // (SessionPulse + LiveStrip + HomeBar) which renders above them.
   return (
     <div data-demo="ecommerce" className="flex min-h-screen flex-col">
       <CartProvider>
+        <EcomDemoBanner />
         <EcomSubNav />
         <div className="flex-1">{children}</div>
         <EcomFooter />
