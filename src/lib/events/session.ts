@@ -8,7 +8,7 @@
  * Cookie properties:
  * - Path: / (available on all routes)
  * - SameSite: Lax (sent on top-level navigations)
- * - Max-Age: 1800s (30 min, matching GA4 session window — refreshed on activity)
+ * - Max-Age: 1800s (30 min, matching GA4 session window, refreshed on activity)
  */
 
 export const SESSION_COOKIE_NAME = '_iap_sid';

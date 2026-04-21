@@ -12,6 +12,8 @@ const config: Config = {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
   roots: ['<rootDir>/tests/', '<rootDir>/src/'],
+  // Exclude Playwright specs — run via `npx playwright test` not Jest.
+  testPathIgnorePatterns: ['/node_modules/', '/tests/e2e/'],
   collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/**/*.d.ts'],
 };
 

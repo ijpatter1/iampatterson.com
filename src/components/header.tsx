@@ -1,22 +1,28 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-import { MobileSheet } from '@/components/chrome/mobile-sheet';
-import { NAV_LINKS } from '@/components/chrome/nav-links';
+import { NavHint } from '@/components/chrome/nav-hint';
 import { SessionPulse } from '@/components/chrome/session-pulse';
 import { useOverlay } from '@/components/overlay/overlay-context';
-import { trackClickCta, trackClickNav } from '@/lib/events/track';
+import { trackClickCta } from '@/lib/events/track';
 
 import { LiveStrip } from '@/components/chrome/live-strip';
 
 export function Header() {
-  const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname() ?? '/';
+  const isHomepage = pathname === '/';
   const { open } = useOverlay();
+  // Phase 9E D1: conventional nav (Home/Services/Demos/About/Contact)
+  // is removed from the header; the SessionPulse is the only nav
+  // affordance. Footer carries the conventional-nav escape hatch on
+  // every page. `sessionPulseRef` lets NavHint classify clicks on the
+  // pulse (which hides the hint visually without firing a dismissal
+  // event) vs `click_outside` (which fires `nav_hint_dismissed`).
+  const sessionPulseRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -26,7 +32,7 @@ export function Header() {
   }, []);
 
   const handleOpenOverlay = () => {
-    trackClickCta('Under the hood', 'header-session-pulse');
+    trackClickCta('Session', 'session_pulse');
     open();
   };
 
@@ -37,62 +43,60 @@ export function Header() {
           scrolled ? 'border-rule-soft shadow-[0_1px_3px_rgba(0,0,0,0.04)]' : 'border-transparent'
         }`}
       >
-        <div className="mx-auto flex max-w-content items-center justify-between gap-4 px-5 py-4 md:px-10">
-          <span className="flex-shrink-0">
-            <SessionPulse onClick={handleOpenOverlay} />
+        {/* Mobile: SessionPulse right-aligned (hamburger position per
+            UX_PIVOT_SPEC §3.1 mobile treatment + UAT S11.1, "SessionPulse
+            is top-right on mobile"). Desktop: left-aligned per §3.1 desktop
+            treatment, "roughly where a primary nav's first link would sit
+          , left of center or adjacent to the brand wordmark, not tucked
+            in a corner." */}
+        <div className="mx-auto flex max-w-content items-center justify-end gap-4 px-5 py-4 md:justify-start md:px-10">
+          <span className="relative flex-shrink-0">
+            <SessionPulse ref={sessionPulseRef} onClick={handleOpenOverlay} />
             <Link href="/" className="sr-only">
-              Patterson Consulting — home
+              Patterson Consulting, home
             </Link>
+            {isHomepage && <NavHint sessionPulseRef={sessionPulseRef} />}
           </span>
-
-          <nav className="hidden md:block">
-            <ul className="flex items-center gap-7">
-              {NAV_LINKS.map((l) => {
-                const active =
-                  l.href === '/#demos'
-                    ? false
-                    : l.href === '/'
-                      ? pathname === '/'
-                      : pathname.startsWith(l.href);
-                return (
-                  <li key={l.href}>
-                    <Link
-                      href={l.href}
-                      onClick={() => trackClickNav(l.label, l.href)}
-                      className={`text-sm transition-colors ${
-                        active ? 'font-medium text-ink' : 'font-normal text-ink-2 hover:text-ink'
-                      }`}
-                    >
-                      {l.label}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
-
-          <button
-            type="button"
-            onClick={() => setMenuOpen(true)}
-            aria-label="Open menu"
-            aria-expanded={menuOpen}
-            className="flex-shrink-0 rounded-sm p-1 text-ink hover:bg-paper-alt md:hidden"
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-            >
-              <path d="M4 7h16M4 12h16M4 17h16" />
-            </svg>
-          </button>
         </div>
       </header>
       <LiveStrip />
-      <MobileSheet open={menuOpen} onClose={() => setMenuOpen(false)} currentPath={pathname} />
+      {showHomeBar(pathname) && <HomeBar />}
+    </div>
+  );
+}
+
+/**
+ * Routes where HomeBar is suppressed because the page shell already
+ * provides a back-nav affordance. Demo routes use `DemoFooterNav`
+ * (back-to-/) + inline "Back to The Tuna Shop" links; stacking HomeBar
+ * on top would triple-up the chrome. F8 eval Minor #10.
+ */
+function showHomeBar(pathname: string): boolean {
+  if (pathname === '/') return false;
+  if (pathname.startsWith('/demo/')) return false;
+  return true;
+}
+
+/**
+ * Slim "Back to homepage" bar (F5 UAT fix for S2, "each non-homepage
+ * page needs a back-to-homepage CTA; navigating via footer is too much
+ * friction"). Rendered directly below the LiveStrip on services / about
+ * / contact / contact-thanks. F8 polish: text-ink-2 (was text-ink-3)
+ * so it reads as an action, not chrome; arrow gets a hover-translate
+ * for discoverability.
+ */
+function HomeBar() {
+  return (
+    <div data-testid="home-bar" className="border-b border-rule-soft bg-paper-alt">
+      <div className="mx-auto flex max-w-content items-center px-5 py-2 md:px-10">
+        <Link
+          href="/"
+          className="group inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest text-ink-2 transition-colors hover:text-accent-current"
+        >
+          <span className="inline-block transition-transform group-hover:-translate-x-0.5">←</span>
+          Back to homepage
+        </Link>
+      </div>
     </div>
   );
 }

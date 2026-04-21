@@ -57,7 +57,7 @@ const channelColumns = [
     key: 'roas',
     label: 'ROAS',
     align: 'right' as const,
-    render: (r: ChannelBreakdown) => (r.roas > 0 ? `${r.roas.toFixed(2)}x` : '—'),
+    render: (r: ChannelBreakdown) => (r.roas > 0 ? `${r.roas.toFixed(2)}x` : ', '),
   },
 ];
 
@@ -130,10 +130,8 @@ export function EcommerceDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-neutral-900">
-          The Tuna Shop | Analytics Dashboard
-        </h2>
-        <p className="text-sm text-neutral-500">
+        <h2 className="text-lg font-semibold text-ink">The Tuna Shop | Analytics Dashboard</h2>
+        <p className="text-sm text-ink-3">
           E-commerce performance from BigQuery mart tables via Dataform
         </p>
       </div>

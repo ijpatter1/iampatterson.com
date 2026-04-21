@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════
-# Task 3 — Deploy Metabase to Cloud Run
+# Task 3, Deploy Metabase to Cloud Run
 # Created: 2026-04-17, session-2026-04-17-020
 # Phase: 9B-infra
 # Blocks: Task 5 (LB needs a live Cloud Run backend), Task 6 (IAP attaches
@@ -9,7 +9,7 @@
 #
 # The agent produced cloudrun.yaml + deploy.sh in session 019, evaluator-
 # cleared. This wrapper resolves the pinned Metabase image tag (the plan
-# pins to v0.59.6.x — we pick the latest patch), runs the deploy with a
+# pins to v0.59.6.x, we pick the latest patch), runs the deploy with a
 # dry-run preview + confirmation prompt, then verifies the outcome.
 #
 # Usage: bash docs/manual/task-2026-04-17-001.sh
@@ -22,9 +22,9 @@ PROJECT="${PROJECT:-iampatterson}"
 REGION="${REGION:-us-central1}"
 SERVICE_NAME="${SERVICE_NAME:-metabase}"
 # Major.minor pinned by the deployment plan. Change ONLY if the plan
-# changes — and then update cloudrun.yaml + README together.
+# changes, and then update cloudrun.yaml + README together.
 METABASE_MAJOR_MINOR="v0.59.6"
-# Override by exporting METABASE_IMAGE before running — skips auto-resolution.
+# Override by exporting METABASE_IMAGE before running, skips auto-resolution.
 FORCE_IMAGE="${METABASE_IMAGE:-}"
 
 SKIP_CONFIRM=false
@@ -49,7 +49,7 @@ if [[ "${CURRENT_PROJECT}" != "${PROJECT}" ]]; then
   exit 1
 fi
 
-# compute.googleapis.com must be enabled — Direct VPC egress depends on it.
+# compute.googleapis.com must be enabled, Direct VPC egress depends on it.
 if ! gcloud services list --enabled --project="${PROJECT}" \
      --filter="config.name=compute.googleapis.com" --format="value(config.name)" \
      | grep -q compute; then
@@ -63,13 +63,13 @@ if ! gcloud services list --enabled --project="${PROJECT}" \
   gcloud services enable run.googleapis.com --project="${PROJECT}"
 fi
 
-# Tasks 1 & 2 artifacts — deploy.sh checks these too but fail early here
+# Tasks 1 & 2 artifacts, deploy.sh checks these too but fail early here
 # for a better error surface.
 gcloud sql instances describe metabase-app-db --project="${PROJECT}" >/dev/null 2>&1 \
-  || { echo "❌ Cloud SQL instance metabase-app-db missing (run setup-cloudsql.sh — Task 1)"; exit 1; }
+  || { echo "❌ Cloud SQL instance metabase-app-db missing (run setup-cloudsql.sh, Task 1)"; exit 1; }
 gcloud iam service-accounts describe "metabase-runtime@${PROJECT}.iam.gserviceaccount.com" \
   --project="${PROJECT}" >/dev/null 2>&1 \
-  || { echo "❌ metabase-runtime service account missing (run setup-iam.sh — Task 2)"; exit 1; }
+  || { echo "❌ metabase-runtime service account missing (run setup-iam.sh, Task 2)"; exit 1; }
 
 echo "✓ Prereqs OK"
 echo ""
@@ -80,7 +80,7 @@ if [[ -n "${FORCE_IMAGE}" ]]; then
   echo "==> Using METABASE_IMAGE from environment: ${RESOLVED_IMAGE}"
 else
   echo "==> Resolving latest ${METABASE_MAJOR_MINOR}.x tag from GitHub..."
-  # Paginate up to 3 pages (300 releases) — Metabase releases often ship
+  # Paginate up to 3 pages (300 releases), Metabase releases often ship
   # multiple patch builds and 0.59.6 may be several pages back by now.
   RESOLVED_TAG=""
   for PAGE in 1 2 3; do
@@ -161,7 +161,7 @@ verify "[[ '${DEPLOYED_IMAGE}' == '${RESOLVED_IMAGE}' ]]"       "Deployed image 
 verify "[[ -n '${URL}' ]]"                                      ".run.app URL assigned (got: ${URL})"
 verify "[[ '${INGRESS}' == 'internal-and-cloud-load-balancing' ]]" "Ingress locked to LB (got: ${INGRESS})"
 
-# Direct .run.app access should be refused — any non-2xx is acceptable.
+# Direct .run.app access should be refused, any non-2xx is acceptable.
 # A 2xx here would mean ingress is wrong and the service is exposed.
 if [[ -n "${URL}" ]]; then
   CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "${URL}/api/health" || echo "000")
@@ -169,7 +169,7 @@ if [[ -n "${URL}" ]]; then
     echo "  ✓ .run.app direct access blocked (got: ${CODE})"
     PASS=$((PASS+1))
   elif [[ "${CODE}" =~ ^2 ]]; then
-    echo "  ✗ .run.app returned ${CODE} — ingress lock leaked! Service is exposed."
+    echo "  ✗ .run.app returned ${CODE}, ingress lock leaked! Service is exposed."
     FAIL=$((FAIL+1))
   else
     echo "  ✓ .run.app direct access returned ${CODE} (non-2xx, acceptable)"
@@ -195,9 +195,9 @@ if [[ "${FAIL}" -eq 0 ]]; then
 Next:
   1. Update task-2026-04-17-001.sh status in your handoff notes to 'done'.
   2. Record the pinned image tag in infrastructure/metabase/.env.example
-     (or a future VERSIONS.md) — product reviewer flagged this as a Minor
+     (or a future VERSIONS.md), product reviewer flagged this as a Minor
      gap in session 019.
-  3. Proceed to Task 5 — see docs/manual/task-2026-04-17-002.md.
+  3. Proceed to Task 5, see docs/manual/task-2026-04-17-002.md.
 ═══════════════════════════════════════════════════════
 EOF
   exit 0

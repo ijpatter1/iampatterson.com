@@ -10,7 +10,7 @@ interface UseFilteredEventsResult {
   currentPath: string;
 }
 
-const DEMO_PREFIXES = ['/demo/ecommerce', '/demo/subscription', '/demo/leadgen'];
+const DEMO_PREFIXES = ['/demo/ecommerce'];
 
 function getRoutePrefix(path: string): string {
   for (const prefix of DEMO_PREFIXES) {

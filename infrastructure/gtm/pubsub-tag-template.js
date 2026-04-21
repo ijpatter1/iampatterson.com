@@ -105,6 +105,11 @@ var payload = {
       'consent_analytics',
       'consent_marketing',
       'consent_preferences',
+      // Phase 9E deliverable 9 — nav & Session State analytics discriminators
+      'dismissal_mode', // NavHintDismissedEvent
+      'source', // OverviewTabViewEvent / TimelineTabViewEvent / ConsentTabViewEvent
+      'destination', // PortalClickEvent
+      'threshold', // CoverageMilestoneEvent
     ];
     for (var i = 0; i < keys.length; i++) {
       var val = eventData[keys[i]];

@@ -8,21 +8,17 @@ import type { OverlayTab } from '@/components/overlay/overlay-context';
 import { useOverlay } from '@/components/overlay/overlay-context';
 import { trackClickCta, trackClickNav } from '@/lib/events/track';
 
-// Footer under-the-hood deep-links route to non-dashboards tabs; the Dashboards
-// tab is reachable from overlay chrome directly.
-type UndersideTab = Exclude<OverlayTab, 'dashboards'>;
-
-const UNDER_THE_HOOD_LINKS: { label: string; tab: UndersideTab }[] = [
+const SESSION_LINKS: { label: string; tab: OverlayTab }[] = [
+  { label: 'Overview', tab: 'overview' },
   { label: 'Live event stream', tab: 'timeline' },
-  { label: 'Pipeline architecture', tab: 'overview' },
   { label: 'Consent state', tab: 'consent' },
 ];
 
 export function Footer() {
   const { open } = useOverlay();
 
-  const openOverlay = (label: string, tab: UndersideTab) => {
-    trackClickCta(label, 'footer-under-the-hood');
+  const openOverlay = (label: string, tab: OverlayTab) => {
+    trackClickCta(label, 'footer_session');
     open(tab);
   };
 
@@ -78,11 +74,9 @@ export function Footer() {
           </div>
 
           <div>
-            <h5 className="font-mono text-[10px] uppercase tracking-widest text-ink-3">
-              Under the hood
-            </h5>
+            <h5 className="font-mono text-[10px] uppercase tracking-widest text-ink-3">Session</h5>
             <ul className="mt-4 space-y-2">
-              {UNDER_THE_HOOD_LINKS.map(({ label, tab }) => (
+              {SESSION_LINKS.map(({ label, tab }) => (
                 <li key={label}>
                   <button
                     type="button"

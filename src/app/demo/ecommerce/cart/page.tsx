@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 
 import { CartView } from '@/components/demo/ecommerce/cart-view';
+import { ToastProvider } from '@/components/demo/reveal/toast-provider';
 
 export const metadata: Metadata = {
   title: 'Cart | The Tuna Shop',
@@ -8,9 +9,10 @@ export const metadata: Metadata = {
 
 export default function CartPage() {
   return (
-    <main className="mx-auto max-w-4xl px-6 py-12">
-      <h1 className="mb-8 text-2xl font-bold text-neutral-900">Your Cart</h1>
-      <CartView />
-    </main>
+    <ToastProvider>
+      <main className="mx-auto max-w-content px-6 py-12">
+        <CartView />
+      </main>
+    </ToastProvider>
   );
 }

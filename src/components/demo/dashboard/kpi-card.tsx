@@ -15,12 +15,12 @@ export function KpiCard({ metric }: KpiCardProps) {
   const showRed = isChurnMetric ? isPositive : isNegative;
 
   return (
-    <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
-      <p className="text-sm text-neutral-500">{metric.label}</p>
-      <p className="mt-1 text-2xl font-semibold text-neutral-900">{metric.value}</p>
+    <div className="rounded-lg border border-rule-soft bg-paper-alt p-4">
+      <p className="text-sm text-ink-3">{metric.label}</p>
+      <p className="mt-1 text-2xl font-semibold text-ink">{metric.value}</p>
       <p
         className={`mt-1 text-sm font-medium ${
-          showGreen ? 'text-emerald-600' : showRed ? 'text-red-600' : 'text-neutral-500'
+          showGreen ? 'text-emerald-600' : showRed ? 'text-red-600' : 'text-ink-3'
         }`}
       >
         {isPositive ? '+' : ''}

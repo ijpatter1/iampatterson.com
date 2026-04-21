@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  *
- * The homepage composes section components — each has its own dedicated
+ * The homepage composes section components, each has its own dedicated
  * test file (hero.test.tsx, pipeline.test.tsx, etc.). This file only
  * verifies that the composition itself is in place.
  */
@@ -13,6 +13,12 @@ import { OverlayProvider } from '@/components/overlay/overlay-context';
 jest.mock('@/lib/events/track', () => ({
   trackClickCta: jest.fn(),
   trackClickNav: jest.fn(),
+}));
+
+jest.mock('next/navigation', () => ({
+  useSearchParams: () => new URLSearchParams(),
+  useRouter: () => ({ push: jest.fn() }),
+  usePathname: () => '/',
 }));
 
 function renderHome() {

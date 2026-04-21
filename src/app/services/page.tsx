@@ -30,7 +30,7 @@ export default function ServicesPage() {
       if (rafId !== null) return;
       rafId = window.requestAnimationFrame(sync);
     };
-    // Initial sync — only when already scrolled. At scrollY=0 the default
+    // Initial sync, only when already scrolled. At scrollY=0 the default
     // activeTier '01' is already correct; forcing sync() would match the
     // last tier whose offsetTop (0 in jsdom / the topmost section in the
     // browser) is ≤ y.
@@ -82,14 +82,14 @@ export default function ServicesPage() {
             <p className="max-w-[56ch] text-base leading-[1.7] text-ink-2">
               I structure engagements as discrete tiers with decision gates between them. You buy
               what you need, see the results, and decide whether to go further. The first two tiers
-              have non-negotiable components — these are the things that must be done properly or
+              have non-negotiable components, these are the things that must be done properly or
               not at all. Everything else is modular and scoped to your specific situation.
             </p>
           </div>
         </div>
       </section>
 
-      {/* Tier layout — sticky nav + content */}
+      {/* Tier layout, sticky nav + content */}
       <div className="mx-auto max-w-content px-5 md:px-10">
         <div className="grid gap-10 md:grid-cols-[240px_1fr] md:gap-14">
           <aside className="hidden md:block">
@@ -207,7 +207,7 @@ export default function ServicesPage() {
                   {t.seeItLive && (
                     <Link
                       href={t.seeItLive.href}
-                      onClick={() => trackClickCta('See it live', `services-tier-${t.num}`)}
+                      onClick={() => trackClickCta('See it live', `services_tier_${t.num}`)}
                       className="mt-4 inline-block text-sm text-accent-current underline-offset-4 hover:underline"
                     >
                       See it live →
@@ -228,27 +228,27 @@ export default function ServicesPage() {
                 }}
               >
                 Not sure where you&apos;d start?{' '}
-                <em className="text-accent-current">Watch it run first.</em>
+                <em className="text-accent-current">See your session first.</em>
               </h2>
               <p className="mt-5 max-w-[56ch] text-base leading-[1.65] text-ink-2">
-                Every page on this site is instrumented with the same Tier 1 foundation. Look under
-                the hood on any page to see your session flowing through the stack. The best pitch I
-                have is the one running underneath you.
+                Every page on this site is instrumented with the same Tier 1 foundation. Open your
+                session on any page to see it flowing through the stack. The best pitch I have is
+                the one running underneath you.
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
                 <EditorialButton
                   variant="accent"
                   onClick={() => {
-                    trackClickCta('Look under the hood', 'services-closer');
+                    trackClickCta('See your session', 'services_closer');
                     open();
                   }}
                 >
-                  Look under the hood →
+                  See your session →
                 </EditorialButton>
                 <EditorialLink
                   href="/contact"
                   variant="ghost"
-                  onClick={() => trackClickCta('Start a conversation', 'services-closer')}
+                  onClick={() => trackClickCta('Start a conversation', 'services_closer')}
                 >
                   Start a conversation
                 </EditorialLink>

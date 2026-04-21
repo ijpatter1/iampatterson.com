@@ -38,7 +38,7 @@ function mockReducedMotion(matches: boolean) {
   });
 }
 
-describe('OverlayProvider — accent flip', () => {
+describe('OverlayProvider, accent flip', () => {
   beforeEach(() => {
     document.documentElement.style.removeProperty('--accent');
     mockReducedMotion(false);
@@ -97,7 +97,7 @@ describe('OverlayProvider — accent flip', () => {
     expect(getAccent()).toBe(PHOSPHOR);
 
     await user.click(screen.getByText('Close'));
-    // Instant revert — no delay on close
+    // Instant revert, no delay on close
     expect(getAccent()).toBe(PERSIMMON);
   });
 
@@ -112,7 +112,7 @@ describe('OverlayProvider — accent flip', () => {
     );
 
     await user.click(screen.getByText('Open'));
-    // No timer to advance — the reduced-motion path sets accent synchronously
+    // No timer to advance, the reduced-motion path sets accent synchronously
     expect(getAccent()).toBe(PHOSPHOR);
   });
 
@@ -151,7 +151,7 @@ describe('OverlayProvider — accent flip', () => {
       jest.advanceTimersByTime(200);
     });
 
-    // Accent should have stayed on paper — the pending timer was cleared
+    // Accent should have stayed on paper, the pending timer was cleared
     expect(getAccent()).toBe(PERSIMMON);
   });
 });

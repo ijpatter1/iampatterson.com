@@ -13,9 +13,9 @@ export function FinalCta() {
         <a
           href="mailto:ian@iampatterson.com"
           className="block font-mono text-[10px] uppercase tracking-widest text-accent-current"
-          onClick={() => trackClickCta('contact — email', 'final-cta')}
+          onClick={() => trackClickCta('contact, email', 'final_cta')}
         >
-          contact — ian@iampatterson.com
+          contact, ian@iampatterson.com
         </a>
         <h2
           className="mt-5 font-display font-normal text-ink"
@@ -25,31 +25,30 @@ export function FinalCta() {
             letterSpacing: '-0.03em',
           }}
         >
-          Watch it
+          See your
           <br />
-          run first.
+          session first.
           <br />
           <em className="text-accent-current">Then hire me.</em>
         </h2>
         <p className="mt-8 max-w-[52ch] text-base leading-[1.7] text-ink-2">
-          Look under the hood of this site. Every event your session fires, streaming live. Every
-          destination, every consent decision, every transformation. Then we can talk about what
-          you&apos;d build.
+          Your session, live. Every event it fires, every destination it reaches, every consent
+          decision, every transformation. Then we can talk about what you&apos;d build.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <EditorialButton
             variant="accent"
             onClick={() => {
-              trackClickCta('Look under the hood', 'final-cta');
+              trackClickCta('See your session', 'final_cta');
               open();
             }}
           >
-            Look under the hood →
+            See your session →
           </EditorialButton>
           <EditorialLink
             href="/contact"
             variant="ghost"
-            onClick={() => trackClickCta('Start a conversation', 'final-cta')}
+            onClick={() => trackClickCta('Start a conversation', 'final_cta')}
           >
             Start a conversation
           </EditorialLink>

@@ -1,5 +1,5 @@
 /**
- * Tests for Phase 9B deliverable 6a — Metabase dashboards-as-code.
+ * Tests for Phase 9B deliverable 6a, Metabase dashboards-as-code.
  *
  * Validates:
  * - Spec YAML files exist and parse
@@ -126,7 +126,7 @@ describe('Question specs', () => {
 
   test.each(expectedQuestions)('%s query targets iampatterson_marts', (fileName) => {
     const q = loadQuestion(fileName);
-    // All queries must go through the marts layer — raw/staging bypass
+    // All queries must go through the marts layer, raw/staging bypass
     // the Dataform transformation pipeline that's part of the demo story.
     expect(q.query).toMatch(/iampatterson_marts\.mart_/);
     expect(q.query).not.toMatch(/iampatterson_raw\./);
@@ -214,7 +214,7 @@ describe('Dashboard spec', () => {
 describe('apply.sh behavioral invariants', () => {
   const applySh = fs.readFileSync(path.join(DASHBOARDS_ROOT, 'apply.sh'), 'utf-8');
 
-  test('uses numeric stub id (not string) for dry-run collection — jq --argjson compatible', () => {
+  test('uses numeric stub id (not string) for dry-run collection, jq --argjson compatible', () => {
     expect(applySh).not.toMatch(/COLLECTION_ID=['"]dry-run/);
     expect(applySh).toMatch(/COLLECTION_ID=0/);
     expect(applySh).toMatch(/COLLECTION_IS_STUB/);
@@ -341,7 +341,7 @@ describe('setup-domain.sh URL-map split (deliverable 6a prerequisite)', () => {
 
   test('heal swap-back happens after backend recreation, not before delete', () => {
     // The swap-back must run AFTER the backend is re-created AND the NEG
-    // is re-attached — otherwise the URL map briefly points at a backend
+    // is re-attached, otherwise the URL map briefly points at a backend
     // that exists but has no backends attached, 502'ing the UI. Guard by
     // asserting the swap-back references BACKEND_NAME and comes after
     // the add-backend block textually (rough proxy for execution order).

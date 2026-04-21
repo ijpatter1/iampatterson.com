@@ -18,7 +18,7 @@ function TestConsumer() {
   );
 }
 
-describe('DemoThemeProvider', () => {
+describe('DemoThemeProvider, post-9E ecommerce-only', () => {
   it('provides ecommerce theme for /demo/ecommerce path', () => {
     render(
       <DemoThemeProvider pathname="/demo/ecommerce/cart">
@@ -29,27 +29,12 @@ describe('DemoThemeProvider', () => {
     expect(screen.getByTestId('label')).toHaveTextContent('The Tuna Shop');
   });
 
-  it('provides subscription theme for /demo/subscription path', () => {
-    render(
-      <DemoThemeProvider pathname="/demo/subscription">
-        <TestConsumer />
-      </DemoThemeProvider>,
-    );
-    expect(screen.getByTestId('demo-id')).toHaveTextContent('subscription');
-    expect(screen.getByTestId('label')).toHaveTextContent('Tuna Subscription');
-  });
-
-  it('provides leadgen theme for /demo/leadgen path', () => {
-    render(
-      <DemoThemeProvider pathname="/demo/leadgen/thanks">
-        <TestConsumer />
-      </DemoThemeProvider>,
-    );
-    expect(screen.getByTestId('demo-id')).toHaveTextContent('leadgen');
-    expect(screen.getByTestId('label')).toHaveTextContent('Tuna Partnerships');
-  });
-
-  it('provides default (null demo) for /demo root path', () => {
+  it('provides default (null demo) for paths not under /demo/ecommerce', () => {
+    // Phase 9E deliverable 7: subscription and leadgen paths are 301-
+    // redirected at the Next.js config level. Any request that somehow
+    // reaches the DemoThemeProvider on a non-ecommerce path should fall
+    // through to the default (null) theme, the provider's shape stays
+    // permissive so future demos can be added without rework.
     render(
       <DemoThemeProvider pathname="/demo">
         <TestConsumer />
@@ -58,7 +43,7 @@ describe('DemoThemeProvider', () => {
     expect(screen.getByTestId('demo-id')).toHaveTextContent('');
   });
 
-  it('exposes accent color values', () => {
+  it('exposes accent color values for the ecommerce theme', () => {
     render(
       <DemoThemeProvider pathname="/demo/ecommerce">
         <TestConsumer />

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════
-# Phase 9B-infra — UAT (User Acceptance Test)
+# Phase 9B-infra, UAT (User Acceptance Test)
 #
 # End-to-end verification of the deployed Metabase stack. Exercises the
 # deliverables of all 8 tasks as a user (or a dev re-validating after
@@ -19,7 +19,7 @@
 # Exit status: 0 if all checks pass, 1 otherwise.
 # ═══════════════════════════════════════════════════════
 set -uo pipefail
-# Note: do NOT use set -e — we want all checks to run even if one fails.
+# Note: do NOT use set -e, we want all checks to run even if one fails.
 
 PROJECT="${PROJECT:-iampatterson}"
 REGION="${REGION:-us-central1}"
@@ -66,7 +66,7 @@ gcloud config get-value account >/dev/null 2>&1 \
   || { echo "❌ gcloud not authenticated; run: gcloud auth login"; exit 1; }
 
 # ── Scenario 1: Cloud SQL app DB is live and backed up ──
-section "Scenario 1 — Cloud SQL app DB (Task 1)"
+section "Scenario 1, Cloud SQL app DB (Task 1)"
 # Exercises: instance exists, private-IP-only, PITR + daily backups on,
 # password secret accessible.
 
@@ -86,7 +86,7 @@ verify "Secret metabase-db-password exists" \
   "gcloud secrets describe metabase-db-password --project=${PROJECT}"
 
 # ── Scenario 2: Service accounts + IAM ──
-section "Scenario 2 — Service accounts + IAM (Task 2)"
+section "Scenario 2, Service accounts + IAM (Task 2)"
 # Exercises: both SAs exist, each has expected role bindings, BQ SA is
 # dataset-scoped (not project-wide dataViewer).
 
@@ -106,7 +106,7 @@ verify "BQ SA dataset-scoped dataViewer on iampatterson_marts" \
   "[[ '${BQ_DATASET_ACCESS}' == 'READER' || '${BQ_DATASET_ACCESS}' == 'roles/bigquery.dataViewer' ]]"
 
 # ── Scenario 3: Cloud Run deployment state ──
-section "Scenario 3 — Cloud Run deployment (Tasks 3 + 4)"
+section "Scenario 3, Cloud Run deployment (Tasks 3 + 4)"
 # Exercises: service is Ready, running a pinned image, ingress locked,
 # runtime SA correct, required env vars present.
 
@@ -137,7 +137,7 @@ if [[ -n "${RUN_URL}" ]]; then
 fi
 
 # ── Scenario 4: Load balancer + SSL cert ──
-section "Scenario 4 — LB + SSL cert (Task 5)"
+section "Scenario 4, LB + SSL cert (Task 5)"
 # Exercises: all 7 LB components exist, cert is ACTIVE, serverless NEG
 # correctly targets the Cloud Run service, backend has no portName.
 
@@ -162,7 +162,7 @@ verify "DNS resolves ${DOMAIN} to the LB IP" \
   "LB_IP=\$(gcloud compute addresses describe metabase-lb-ip --global --project=${PROJECT} --format='value(address)'); [[ \$(dig +short ${DOMAIN}) == \"\${LB_IP}\" ]]"
 
 # ── Scenario 5: IAP gate is enforcing ──
-section "Scenario 5 — IAP enforcing (Task 6)"
+section "Scenario 5, IAP enforcing (Task 6)"
 # Exercises: IAP enabled on backend, OAuth client stored in Secret
 # Manager, allowlist has members, IAP service agent provisioned and has
 # run.invoker on Cloud Run, browser request gets 302 to Google SSO.
@@ -192,7 +192,7 @@ else
 fi
 
 # ── Scenario 6: Metabase + BigQuery wiring (Task 7) ──
-section "Scenario 6 — Metabase + BigQuery data source (Task 7)"
+section "Scenario 6, Metabase + BigQuery data source (Task 7)"
 # Metabase's admin UI state isn't introspectable without a session cookie.
 # Exercise the preconditions that the session-7 walkthrough depends on:
 # the BQ SA key is retrievable, BQ SA can actually run a query on the
@@ -205,7 +205,7 @@ verify "BQ SA can query mart_campaign_performance (proves dataset-scoped access)
   "bq query --use_legacy_sql=false --project_id=${PROJECT} --format=none 'SELECT 1 FROM \`${PROJECT}.iampatterson_marts.mart_campaign_performance\` LIMIT 1'"
 
 # ── Scenario 7: Operational runbooks (Task 8) ──
-section "Scenario 7 — Operational scripts (Task 8)"
+section "Scenario 7, Operational scripts (Task 8)"
 # Exercises: scripts exist, are executable, syntax-clean. Happy-path
 # execution is deferred (nothing to actually back up beyond what Cloud
 # SQL's automated daily backups already cover).
@@ -227,11 +227,11 @@ section "Edge cases"
 # Ingress-lock holds even when IAP is enforcing. Confirm the .run.app
 # URL doesn't accidentally pass through after an LB-side change.
 if [[ -n "${RUN_URL:-}" ]]; then
-  expect_code "Ingress lock holds post-IAP — .run.app returns 404" "${RUN_URL}/api/health" "404"
+  expect_code "Ingress lock holds post-IAP, .run.app returns 404" "${RUN_URL}/api/health" "404"
 fi
 
 # Public sharing and embedding must be OFF in Metabase.
-# (Deferred — requires authenticated Metabase session. Human-verified
+# (Deferred, requires authenticated Metabase session. Human-verified
 # in session 020 per README Task 7 step 5. Listed here for visibility.)
 echo "  ⊖ Metabase Public Sharing and Embedding = OFF (manual verification only)"
 SKIP=$((SKIP+1))
@@ -242,7 +242,7 @@ verify "No secret JSON keyfiles left in infrastructure/metabase/" \
 
 # ── Optional: Interactive browser check ──────────────
 if ! $NO_BROWSER; then
-  section "Interactive (optional) — Metabase UI via IAP"
+  section "Interactive (optional), Metabase UI via IAP"
   cat <<EOF
 Open this URL in a browser:
 

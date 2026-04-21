@@ -34,14 +34,14 @@ beforeEach(() => {
 describe('FinalCta', () => {
   it('renders the contact eyebrow with the email address', () => {
     renderCta();
-    const eyebrow = screen.getByRole('link', { name: /contact — ian@iampatterson\.com/i });
+    const eyebrow = screen.getByRole('link', { name: /contact, ian@iampatterson\.com/i });
     expect(eyebrow).toHaveAttribute('href', 'mailto:ian@iampatterson.com');
   });
 
   it('renders the three-line headline with italic "Then hire me."', () => {
     renderCta();
     const h2 = screen.getByRole('heading', { level: 2 });
-    expect(h2.textContent).toMatch(/Watch it[\s\S]*run first[\s\S]*Then hire me/);
+    expect(h2.textContent).toMatch(/See your[\s\S]*session first[\s\S]*Then hire me/);
     const em = screen.getByText(/^Then hire me\.$/);
     expect(em.tagName).toBe('EM');
     expect(em.className).toContain('accent-current');
@@ -49,16 +49,18 @@ describe('FinalCta', () => {
 
   it('renders the sub-headline copy', () => {
     renderCta();
-    expect(screen.getByText(/Every event your session fires, streaming live/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Every event it fires, every destination it reaches/i),
+    ).toBeInTheDocument();
   });
 
   it('primary CTA opens the overlay and fires click_cta', async () => {
     const user = userEvent.setup();
     renderCta();
-    const cta = screen.getByRole('button', { name: /look under the hood/i });
+    const cta = screen.getByRole('button', { name: /see your session/i });
     await user.click(cta);
     expect(screen.getByTestId('overlay-status')).toHaveTextContent('open');
-    expect(trackClickCta).toHaveBeenCalledWith('Look under the hood', 'final-cta');
+    expect(trackClickCta).toHaveBeenCalledWith('See your session', 'final_cta');
   });
 
   it('ghost CTA links to /contact', () => {

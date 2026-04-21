@@ -60,10 +60,10 @@ describe('HeroEditorial', () => {
   it('primary CTA opens the overlay and fires click_cta', async () => {
     const user = userEvent.setup();
     renderHero();
-    const cta = screen.getByRole('button', { name: /look under the hood/i });
+    const cta = screen.getByRole('button', { name: /see your session/i });
     await user.click(cta);
     expect(screen.getByTestId('overlay-status')).toHaveTextContent('open');
-    expect(trackClickCta).toHaveBeenCalledWith('Look under the hood', 'hero');
+    expect(trackClickCta).toHaveBeenCalledWith('See your session', 'hero');
   });
 
   it('ghost CTA links to the demos anchor and fires click_cta', async () => {

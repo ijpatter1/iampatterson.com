@@ -35,15 +35,15 @@ describe('ProofSection', () => {
 
   it('shows the three headline metrics', () => {
     render(<ProofSection />);
-    // 2.5M — audience
+    // 2.5M, audience
     const audience = screen.getByTestId('proof-card-audience');
     expect(audience.textContent).toContain('2.5');
     expect(audience.textContent).toContain('M');
-    // $45K — revenue proof
+    // $45K, revenue proof
     const revenue = screen.getByTestId('proof-card-revenue-proof');
     expect(revenue.textContent).toContain('$45');
     expect(revenue.textContent).toContain('K');
-    // 24/7 — live events
+    // 24/7, live events
     const live = screen.getByTestId('proof-card-live-events');
     expect(live.textContent).toContain('24/');
     expect(live.textContent).toContain('7');

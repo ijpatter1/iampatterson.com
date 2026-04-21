@@ -11,6 +11,12 @@ function wrapper({ children }: { children: ReactNode }) {
 }
 
 describe('useCart', () => {
+  beforeEach(() => {
+    // Phase 9F D7 added localStorage persistence; clear between tests so
+    // earlier-test writes don't hydrate later-test providers.
+    localStorage.clear();
+  });
+
   it('starts with an empty cart', () => {
     const { result } = renderHook(() => useCart(), { wrapper });
     expect(result.current.items).toHaveLength(0);

@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 
 import { getProduct, products } from '@/lib/demo/products';
 import { ProductDetail } from '@/components/demo/ecommerce/product-detail';
+import { ToastProvider } from '@/components/demo/reveal/toast-provider';
 
 interface ProductPageProps {
   params: Promise<{ productId: string }>;
@@ -18,7 +19,7 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
   if (!product) return { title: 'Product Not Found' };
   return {
     title: product.name,
-    description: product.description,
+    description: product.blurb,
   };
 }
 
@@ -28,8 +29,10 @@ export default async function ProductPage({ params }: ProductPageProps) {
   if (!product) notFound();
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-12">
-      <ProductDetail product={product} />
-    </main>
+    <ToastProvider>
+      <main className="mx-auto max-w-content px-6 py-12">
+        <ProductDetail product={product} />
+      </main>
+    </ToastProvider>
   );
 }

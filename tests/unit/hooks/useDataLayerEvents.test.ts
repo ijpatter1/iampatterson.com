@@ -1,5 +1,5 @@
 /**
- * Tests for useDataLayerEvents — converts window.dataLayer pushes
+ * Tests for useDataLayerEvents, converts window.dataLayer pushes
  * into PipelineEvent objects for the timeline.
  */
 import { renderHook, act } from '@testing-library/react';
@@ -27,6 +27,10 @@ function makeDataLayerEntry(overrides: Record<string, unknown> = {}) {
 describe('useDataLayerEvents', () => {
   beforeEach(() => {
     window.dataLayer = [];
+    // F8 added a timeline-buffer sessionStorage persistence. Clear the
+    // key between tests so previous-test fixtures don't bleed into
+    // useState(() => loadTimelineBuffer()) on the next mount.
+    window.sessionStorage.clear();
   });
 
   afterEach(() => {
@@ -37,6 +41,41 @@ describe('useDataLayerEvents', () => {
   it('returns empty events initially', () => {
     const { result } = renderHook(() => useDataLayerEvents());
     expect(result.current.events).toEqual([]);
+  });
+
+  it('hydrates the persisted timeline buffer via post-mount effect (F8 refresh fix, hydration-safe)', () => {
+    // Seed the sessionStorage ring buffer as if a prior page-load had
+    // captured these events. Initial state is []; the post-mount useEffect
+    // reads the persisted buffer and re-renders with it. Testing-library's
+    // renderHook flushes effects synchronously so result.current.events
+    // reflects the post-effect state after renderHook returns.
+    window.sessionStorage.setItem(
+      'iampatterson.timeline_buffer',
+      JSON.stringify([
+        {
+          pipeline_id: 'prev-1',
+          received_at: '2026-04-21T00:00:01.000Z',
+          session_id: 'sid-xyz',
+          event_name: 'page_view',
+          timestamp: '2026-04-21T00:00:00.000Z',
+          page_path: '/',
+          page_title: '',
+          page_location: 'http://localhost/',
+          parameters: {},
+          consent: {
+            analytics_storage: 'granted',
+            ad_storage: 'denied',
+            ad_user_data: 'denied',
+            ad_personalization: 'denied',
+            functionality_storage: 'granted',
+          },
+          routing: [],
+        },
+      ]),
+    );
+    const { result } = renderHook(() => useDataLayerEvents());
+    expect(result.current.events).toHaveLength(1);
+    expect(result.current.events[0].pipeline_id).toBe('prev-1');
   });
 
   it('converts a dataLayer push into a PipelineEvent', () => {
@@ -135,7 +174,7 @@ describe('useDataLayerEvents', () => {
     jest.useFakeTimers();
     const { result } = renderHook(() => useDataLayerEvents());
 
-    // Marketing denied — Meta CAPI and Google Ads should be blocked
+    // Marketing denied, Meta CAPI and Google Ads should be blocked
     act(() => {
       window.dataLayer.push(makeDataLayerEntry({ consent_marketing: false }));
       jest.advanceTimersByTime(500);

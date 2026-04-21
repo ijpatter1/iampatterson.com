@@ -14,6 +14,53 @@
     --u-paper: #0d0b0a;
   }
 
+  /* Tuna Shop brand palette, Phase 9F deliverable 12. Scoped to the
+     ecommerce demo subtree via `data-demo="ecommerce"` on the layout wrapper.
+     Inside this scope:
+     - `--accent` flips from site-wide persimmon (#EA5F2A) to Tuna Shop
+       terracotta (#C4703A). Preserves the UX_PIVOT_SPEC §1.4 invariant that
+       no editorial surface adopts amber as its primary accent, the shop's
+       primary is terracotta, not amber.
+     - Editorial surfaces warm to a cream page (#FBF6EA) with warm-brown
+       depth (#5C4A3D), the Tuna Shop's authored palette mirroring
+       `docs/input_artifacts/design_handoff_ecommerce/styles/ecommerce.css`.
+     - Terminal reveal-pattern surfaces (Pattern 1 toast, Pattern 2 sidebar,
+       Pattern 3 inline diagnostic, Pattern 4 full-page diagnostic) use the
+       warm amber #F3C769 rather than the site-wide phosphor amber #FFA400, 
+       the prototype frames terminal surfaces as "the inverse of the shop,
+       not a separate environment." The palette-family continuity is the
+       point; the components themselves hardcode these hex values because
+       the scope is demo-local, not cross-site.
+     Keep in sync with docs/REQUIREMENTS.md Phase 9F constraints. */
+  [data-demo='ecommerce'] {
+    /* Cream page background so product cards breathe on cream rather than
+       floating on the site's white surface. Per the prototype README
+       §Visual direction: "Warm cream background (#FBF6EA)... Product cards
+       breathe on the cream." Product review 2026-04-21 Major #3. */
+    background-color: #fbf6ea;
+    color: #5c4a3d;
+
+    --accent: #c4703a;
+    --shop-cream: #fbf6ea;
+    --shop-cream-2: #f5eedb;
+    --shop-amber: #e6b769;
+    --shop-terracotta: #c4703a;
+    --shop-warm-brown: #5c4a3d;
+
+    --term-bg: #0d0b09;
+    --term-bg-2: #161310;
+    --term-ink: #ead9bc;
+    --term-ink-2: #9e8a6b;
+    --term-ink-3: #6b5c45;
+    --term-amber: #f3c769;
+    --term-amber-dim: #b5893b;
+    --term-ok: #8fbf7a;
+    --term-warn: #e6a94a;
+    --term-err: #d9725b;
+    --term-rule: rgba(234, 217, 188, 0.14);
+    --term-rule-2: rgba(234, 217, 188, 0.28);
+  }
+
   /* Smooth scrolling with reduced-motion respect */
   html {
     scroll-behavior: smooth;
@@ -42,23 +89,23 @@
 }
 
 @layer components {
-  /* Section container — full-viewport sections for scroll-driven layout */
+  /* Section container, full-viewport sections for scroll-driven layout */
   .section-container {
     @apply mx-auto w-full max-w-content px-6;
   }
 
-  /* Prose container — narrower for text-heavy content */
+  /* Prose container, narrower for text-heavy content */
   .prose-container {
     @apply mx-auto w-full max-w-prose px-6;
   }
 
-  /* Under-the-hood overlay — CRT field layers.
+  /* Session overlay, CRT field layers.
      The CRT field is absolute-positioned *on top* of in-flow header/tabs/body
      (positioned z:auto outranks in-flow block children in its stacking context),
      so mix-blend-mode: screen on these layers reads across the whole surface
      including the header. Respect reduced-motion. */
 
-  /* Persistent ambient glow — warm radial from top-center. Visible whenever
+  /* Persistent ambient glow, warm radial from top-center. Visible whenever
      the CRT field is mounted (boot + on). This is the "screen is warm" feel. */
   .crt-ambient {
     position: absolute;
@@ -73,7 +120,7 @@
     mix-blend-mode: screen;
   }
 
-  /* Black curtain that paints down during boot — the terminal "filling in".
+  /* Black curtain that paints down during boot, the terminal "filling in".
      Opaque (no blend mode) so it actually masks content. At phase-on the
      curtain snaps to fully-painted and fades opacity to 0 over 200ms (with
      an 80ms delay that overlaps the tab-flash reveal), porting the
@@ -106,7 +153,7 @@
     }
   }
 
-  /* One-shot warm pulse during boot — "power coming on". No persistent loop. */
+  /* One-shot warm pulse during boot, "power coming on". No persistent loop. */
   .crt-flicker {
     position: absolute;
     inset: 0;
@@ -132,7 +179,7 @@
     }
   }
 
-  /* Subtle repeating scanlines — fade in after boot settles. */
+  /* Subtle repeating scanlines, fade in after boot settles. */
   .crt-scanlines {
     position: absolute;
     inset: 0;
@@ -159,6 +206,358 @@
     }
     .crt-scanlines {
       transition: none;
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     Phase 9E D5, Pipeline section progressive bleed-through reveal.
+     The four `.bleed-*` siblings sit above paper, under content, all
+     pointer-transparent. JS writes `--bleed` (0..1) to the section
+     element each rAF tick; these rules read it via `color-mix` and
+     opacity calc(). Tier-class state (`warm` / `hot` / `peak`) is
+     toggled on the section by React only when a threshold crosses.
+     Reference: docs/input_artifacts/design_handoff_pipeline/styles/
+     ═══════════════════════════════════════════════════════════════════ */
+
+  .pipeline-section.bleed-layer {
+    transition: background 220ms ease;
+    background:
+      radial-gradient(
+        120% 90% at 50% 110%,
+        color-mix(in oklab, #ffa400 calc(var(--bleed, 0) * 14%), transparent) 0%,
+        transparent 60%
+      ),
+      color-mix(in oklab, #ffa400 calc(var(--bleed, 0) * 2.5%), var(--paper, #ffffff));
+  }
+
+  /* The headline + meta + log warm as bleed grows. Persimmon → amber via
+     the page's --accent (which OverlayProvider also flips when the overlay
+     opens, keeping the accent story continuous across surfaces). */
+  .pipeline-section.bleed-layer h2,
+  .pipeline-section.bleed-layer .p-meta,
+  .pipeline-section.bleed-layer .pv-edit__fn-list {
+    transition:
+      color 240ms ease,
+      text-shadow 180ms ease;
+  }
+  .pipeline-section.bleed-layer h2 em {
+    color: color-mix(in oklab, #ffa400 calc(var(--bleed, 0) * 90%), var(--accent));
+    text-shadow: 0 0 calc(var(--bleed, 0) * 14px)
+      color-mix(in oklab, #ffa400 calc(var(--bleed, 0) * 55%), transparent);
+  }
+
+  /* Active stage number bleeds toward amber at hot+. */
+  .pipeline-section.hot .pv-edit__stage[data-active='true'] .pv-edit__num {
+    color: color-mix(in oklab, #ffa400 calc(var(--bleed, 0) * 100%), var(--accent));
+  }
+
+  /* Active-stage background highlight, base persimmon wash on the active
+     row at every tier, escalating to an amber wash bound to --bleed at
+     the hot+ tiers. The highlight is the schematic's primary signal of
+     "this stage is the active one"; without it the rotation reads as
+     copy-flicker rather than a guided tour. */
+  .pv-edit__stage.is-hot {
+    background: linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--accent) 6%, transparent),
+      transparent 60%
+    );
+  }
+  .pipeline-section.hot .pv-edit__stage.is-hot {
+    background: linear-gradient(
+      90deg,
+      color-mix(in oklab, #ffa400 calc(var(--bleed, 0) * 16%), transparent),
+      transparent 70%
+    );
+  }
+
+  /* All four bleed layers, pointer-transparent, stacked above paper but
+     below the .pipeline-shell content. */
+  .pipeline-section .bleed-scanlines,
+  .pipeline-section .bleed-phosphor,
+  .pipeline-section .bleed-vignette,
+  .pipeline-section .bleed-rgb {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* --- Scanlines: horizontal CRT raster, drifts vertically --- */
+  .pipeline-section .bleed-scanlines {
+    opacity: calc(var(--bleed, 0) * 0.55);
+    background-image: repeating-linear-gradient(
+      to bottom,
+      rgba(255, 164, 0, 0.22) 0px,
+      rgba(255, 164, 0, 0.22) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    mix-blend-mode: multiply;
+    animation: bleed-scan-drift 6s linear infinite;
+  }
+  @keyframes bleed-scan-drift {
+    from {
+      background-position: 0 0;
+    }
+    to {
+      background-position: 0 6px;
+    }
+  }
+
+  /* --- Phosphor: amber bloom rising from the bottom, breathes --- */
+  .pipeline-section .bleed-phosphor {
+    opacity: calc(var(--bleed, 0) * 0.85);
+    background: radial-gradient(
+      ellipse 70% 50% at 50% 100%,
+      rgba(255, 164, 0, 0.28) 0%,
+      rgba(255, 164, 0, 0.1) 40%,
+      transparent 75%
+    );
+    mix-blend-mode: screen;
+    animation: bleed-phosphor-breathe 3.2s ease-in-out infinite;
+  }
+  @keyframes bleed-phosphor-breathe {
+    0%,
+    100% {
+      filter: brightness(0.92);
+    }
+    50% {
+      filter: brightness(1.08);
+    }
+  }
+
+  /* --- Vignette: dark corners, curved-tube effect --- */
+  .pipeline-section .bleed-vignette {
+    opacity: calc(var(--bleed, 0) * 0.65);
+    background: radial-gradient(
+      120% 100% at 50% 50%,
+      transparent 50%,
+      rgba(13, 11, 10, 0.35) 90%,
+      rgba(13, 11, 10, 0.55) 100%
+    );
+    mix-blend-mode: multiply;
+  }
+
+  /* --- RGB sweep: chromatic-aberration band, only at hot tier --- */
+  .pipeline-section .bleed-rgb {
+    opacity: 0;
+    background: linear-gradient(
+      to bottom,
+      transparent 0%,
+      transparent 47%,
+      rgba(255, 60, 0, 0.18) 49%,
+      rgba(0, 200, 255, 0.18) 51%,
+      transparent 53%,
+      transparent 100%
+    );
+    mix-blend-mode: screen;
+    transform: translateY(-100%);
+  }
+  .pipeline-section.hot .bleed-rgb {
+    opacity: 1;
+    animation: bleed-rgb-sweep 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+  @keyframes bleed-rgb-sweep {
+    0% {
+      transform: translateY(-60%);
+      opacity: 0;
+    }
+    20% {
+      opacity: 0.9;
+    }
+    80% {
+      opacity: 0.9;
+    }
+    100% {
+      transform: translateY(60%);
+      opacity: 0;
+    }
+  }
+
+  /* --- Flicker burst: short, sharp full-field amber strobe --- */
+  .pipeline-section.flick .bleed-phosphor {
+    filter: brightness(1.45) contrast(1.1);
+  }
+  .pipeline-section.flick .bleed-scanlines {
+    opacity: calc(var(--bleed, 0) * 0.95);
+    transform: translateY(1px);
+  }
+  .pipeline-section.flick .pv-edit {
+    transform: translate(0.5px, -0.5px);
+  }
+  .pipeline-section.flick h2,
+  .pipeline-section.flick .p-meta,
+  .pipeline-section.flick .pv-edit__fn-list {
+    text-shadow:
+      -1px 0 rgba(255, 60, 0, 0.6),
+      1px 0 rgba(0, 200, 255, 0.45);
+  }
+
+  /* --- Sub-pixel jitter on the schematic at peak --- */
+  .pipeline-section.peak .pv-edit {
+    animation: bleed-jitter 140ms steps(2, end) infinite;
+  }
+  @keyframes bleed-jitter {
+    0% {
+      transform: translate(0, 0);
+    }
+    50% {
+      transform: translate(0.4px, -0.3px);
+    }
+    100% {
+      transform: translate(-0.3px, 0.4px);
+    }
+  }
+
+  /* --- Top-edge scan beam, sweeps L→R as bleed grows. Pulls the eye
+       toward the CTA at the bottom of the section. --- */
+  .pipeline-section.bleed-layer::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 2px;
+    pointer-events: none;
+    z-index: 3;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 164, 0, 0.9),
+      rgba(255, 255, 255, 0.9),
+      rgba(255, 164, 0, 0.9),
+      transparent
+    );
+    filter: blur(0.5px);
+    opacity: calc(var(--bleed, 0) * 0.9);
+    transform: translateX(calc(-100% + var(--bleed, 0) * 200%));
+    transition: opacity 200ms ease;
+  }
+
+  /* --- "Watch it live" CTA, escapes the bleed.
+       Border, halo, and flip-icon rotation all couple to --bleed. At hot
+       it warms; at peak it flips solid amber and gets a sub-pixel jitter. --- */
+  .pipeline-section .flip-cta-wrap::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 260px;
+    height: 120px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(
+      ellipse at center,
+      color-mix(in oklab, #ffa400 calc(var(--bleed, 0) * 55%), transparent) 0%,
+      transparent 70%
+    );
+    filter: blur(calc(8px + var(--bleed, 0) * 14px));
+    opacity: calc(var(--bleed, 0) * 1);
+    pointer-events: none;
+    z-index: -1;
+    animation: bleed-cta-pulse 2.2s ease-in-out infinite;
+  }
+  @keyframes bleed-cta-pulse {
+    0%,
+    100% {
+      transform: translate(-50%, -50%) scale(1);
+    }
+    50% {
+      transform: translate(-50%, -50%) scale(1.12);
+    }
+  }
+
+  .pipeline-section .bleed-cta {
+    position: relative;
+    transition:
+      transform 200ms ease,
+      border-color 200ms ease,
+      box-shadow 220ms ease,
+      background 200ms ease,
+      color 200ms ease;
+    border-color: color-mix(in oklab, #ffa400 calc(var(--bleed, 0) * 80%), #111111);
+    box-shadow:
+      0 0 0 calc(var(--bleed, 0) * 1px)
+        color-mix(in oklab, #ffa400 calc(var(--bleed, 0) * 70%), transparent),
+      0 0 calc(var(--bleed, 0) * 26px)
+        color-mix(in oklab, #ffa400 calc(var(--bleed, 0) * 55%), transparent);
+  }
+  .pipeline-section.hot .bleed-cta {
+    background: color-mix(in oklab, #ffa400 14%, #ffffff);
+  }
+  .pipeline-section.peak .bleed-cta {
+    background: #ffa400;
+    color: #0d0b0a;
+    border-color: #ffa400;
+    animation: bleed-cta-jitter 420ms steps(3, end) infinite;
+  }
+  @keyframes bleed-cta-jitter {
+    0%,
+    100% {
+      transform: translate(0, 0);
+    }
+    33% {
+      transform: translate(-0.5px, 0.4px);
+    }
+    66% {
+      transform: translate(0.5px, -0.4px);
+    }
+  }
+  .pipeline-section .bleed-cta .flip-icon {
+    display: inline-block;
+    transform: rotate(calc(var(--bleed, 0) * 180deg));
+    color: color-mix(in oklab, #ffa400 calc(var(--bleed, 0) * 100%), var(--accent));
+    transition: transform 220ms ease;
+  }
+  .pipeline-section.peak .bleed-cta .flip-icon {
+    color: #0d0b0a;
+  }
+  /* "flip →" suffix fades in over the hot→peak band */
+  .pipeline-section .bleed-cta .flip-nudge {
+    font-size: 10px;
+    opacity: 0;
+    max-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    transition:
+      opacity 220ms ease,
+      max-width 260ms ease,
+      margin-left 260ms ease;
+    margin-left: 0;
+  }
+  .pipeline-section.hot .bleed-cta .flip-nudge {
+    opacity: calc((var(--bleed, 0) - 0.55) / 0.45);
+    max-width: 80px;
+    margin-left: 4px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pipeline-section .bleed-scanlines,
+    .pipeline-section .bleed-phosphor,
+    .pipeline-section .bleed-vignette,
+    .pipeline-section .bleed-rgb,
+    .pipeline-section .flip-cta-wrap::before,
+    .pipeline-section.bleed-layer::after {
+      animation: none !important;
+    }
+    .pipeline-section.peak .pv-edit,
+    .pipeline-section.peak .bleed-cta {
+      animation: none !important;
+    }
+    /* Reduced-motion readouts fallback: stage rotation is suppressed in JS,
+       which would freeze the active stage on `01 Browser`. On mobile this
+       collapses readouts for stages 02-05 (`max-h-0 opacity-0`), giving a
+       reduced-motion mobile visitor only 1/5 of the substantive readout
+       content. Desktop already renders readouts inline so this is a no-op
+       there, applying the rule to all viewports under reduced-motion
+       keeps the cascade simple, has no visual side-effect on desktop, and
+       preserves the section's editorial value on mobile per spec §3.4. */
+    .pipeline-section .pv-edit__stage .pv-edit__reads {
+      max-height: none !important;
+      opacity: 1 !important;
+      margin-top: 6px !important;
+      overflow: visible !important;
     }
   }
 
@@ -195,7 +594,7 @@
     }
   }
 
-  /* Overlay chrome — header + tabs wrapper. Hidden during phase-boot so they
+  /* Overlay chrome, header + tabs wrapper. Hidden during phase-boot so they
      don't paint under the curtain if the curtain misses a frame (low-end
      device, reconciliation jank). Matches the prototype's `.overlay-panel > *`
      opacity:0 behavior, just scoped to the structural chrome rather than

@@ -2,7 +2,7 @@
 
 ## Project Identity
 
-This is the consulting website for Patterson Consulting **and** a live, interactive demonstration of a full measurement infrastructure stack. Visitors experience a polished consulting site with three embedded demo environments (e-commerce, subscription, lead gen). At any point, they can activate an instrumentation overlay ("flip the card") to see the stack running beneath their own session in real time. The site itself is the portfolio.
+This is the consulting website for Patterson Consulting **and** a live, interactive demonstration of a full measurement infrastructure stack. Visitors experience a polished consulting site with a single embedded ecommerce demo environment (the Tuna Shop). At any point, they can activate the Session overlay via the SessionPulse affordance to see the stack running beneath their own session in real time. The site itself is the portfolio. Subscription and lead gen demos were removed in Phase 9E pending rebuild to the native-reveal pattern established by Phase 9F; see `docs/UX_PIVOT_SPEC.md` §4 for the scope rationale and reintroduction criteria.
 
 ## Tech Stack
 
@@ -12,17 +12,17 @@ This is the consulting website for Patterson Consulting **and** a live, interact
 - **Data:** BigQuery (raw → staging → marts via Dataform), background data generator on Cloud Run
 - **BI:** Self-hosted Metabase on Cloud Run (IAP-gated at `bi.iampatterson.com`), dashboards-as-code via YAML + `apply.sh`. Signed-JWT (`jsonwebtoken`) static embeds on the ecommerce confirmation page.
 - **AI:** BigQuery managed AI functions (AI.CLASSIFY, AI.IF), RAG pipeline for narrative reporting
-- **Hosting:** Vercel (Next.js frontend), GCP Cloud Run (backend services — WebSocket, data generator, sGTM, Metabase)
+- **Hosting:** Vercel (Next.js frontend), GCP Cloud Run (backend services, WebSocket, data generator, sGTM, Metabase)
 - **Package Manager:** npm
 - **Testing:** Jest + React Testing Library (components), Playwright (E2E), custom integration tests for event pipeline
 
 ## Current Phase
 
-**Phase 9B — E-Commerce Demo: Tiers 2 & 3** (all deliverables dev-complete in session-026. 6a Metabase dashboards-as-code verified live at `https://bi.iampatterson.com/dashboard/2`. 6b signed-JWT embeds inline on `/demo/ecommerce/confirmation` (three embeddable cards: daily revenue, funnel, AOV), with an overlay Dashboards-tab fallback for the three non-embeddable (ROAS, Revenue share, LTV) behind IAP. Services page cross-links from Tier 2 / Tier 3 summary boxes. Vercel env vars `MB_EMBEDDING_SECRET_KEY` + `METABASE_EMBED_CONFIG` must be set before embeds render in production; when absent, a visible fallback block points at the IAP-gated dashboard.)
+**Phase 9E, Navigation & Overlay Pivot, dev-complete + UAT close-out + user-directed follow-ups COMPLETE; Phase 9F, Ecommerce Demo Native-Reveal Rebuild, DEV-COMPLETE + UAT rounds 1 & 2 fully closed (15 + 16 items shipped across UAT-response commits + dual-evaluator fix packs across sessions 003 and 004). Pass-3 evaluators returned Tech 3.85/5 PASS WITH ISSUES (1 Important: `remove_from_cart` has no GTM web-container trigger or GA4 tag, infrastructure allow-list didn't follow the schema addition, close by replicating the `add_to_cart` trigger+tag pair in `deploy-phase6.js` + `web-container.json`) + Product 4.75/5 PASS with explicit "Pass-3 not warranted." Remaining before joint 9E+9F release cut: close the GTM trigger/tag gap, Metabase cold-start probe (binary ship-gate, runbook at `docs/manual/task-2026-04-21-006.md`), optional UAT r3 pass, then merge 14 unpushed commits on `phase/9f-ecommerce-native-reveal`**. Branch: `phase/9f-ecommerce-native-reveal` (cut from `phase/9e-nav-overlay-pivot` HEAD on 2026-04-21). The 9F doc pass reconciles canonical `docs/UX_PIVOT_SPEC.md` §3.5 against the hi-fi reference implementation at `docs/input_artifacts/design_handoff_ecommerce/`, 12 deliverables drafted covering four pattern primitives (event toast / live sidebar / inline diagnostic / one full-page diagnostic moment on checkout submit), five per-page rebuilds (listing 3-toast cascade, product detail toast + staging-layer sidebar, cart toast + data-quality sidebar, checkout toast + warehouse-write sidebar + full-page on submit, confirmation toast + inline diagnostic + full-dashboard Metabase embed), component cleanup, SessionPulse-on-demo reachability verification, and a palette-token harmony pass that adopts the prototype's Tuna Shop brand treatment (cream/terracotta/warm-brown editorial palette + warm-amber `#F3C769` terminal palette, scoped via `data-demo="ecommerce"`). Confirmation embed shape locked: **one full-dashboard embed via `/embed/dashboard/:jwt`** (not six individual question embeds). Cold-start ship-gate upgraded to **binary release blocker**. **9E side previously:** All 9 deliverables shipped (D1–D9). UAT was performed and an 8-block close-out landed on top (F1–F8) to resolve the feedback; four full dual-evaluator cycles during F8 (tech + product both PASS). Three user-reported browser-only issues resolved in follow-up commits after F8: refresh-persistence audit, hydration-error revert, and threshold + dismissal-mode fixes. Key post-UAT changes: (a) language consolidated to `Session` / `your session` / `Overview`, the "Under the Hood" / "Watch it live" / "Flip" fragmentation is gone; (b) Overview tab (renamed from Session State, with matching `overview_tab_view` analytics event + new `timeline_tab_view` + `consent_tab_view` peers) now surfaces portals + threshold CTA at the top, with desktop multi-column layout and WCAG 2.2 text sizing; chip grid hides the 4 un-triggerable sub/leadgen events via a `RENDERABLE_EVENT_NAMES` subset (denominator drops N/24 → N/20); (c) backdrop click replaced with Escape-key close + background-click-to-close gesture; (d) mobile layout: SessionPulse top-right, NavHint scale reduced to fit 360px, tab bar `overflow-x-auto`, event chips `whitespace-nowrap`, hero CTAs compressed above fold, overlay header decluttered, "Back to homepage" slim bar on non-homepage routes; (e) pipeline section: metadata k/v columns cut entirely in favor of an editorial one-liner per stage, bleed-once-per-session flag so the reveal doesn't repeat after overlay-open, mobile compression + footnote feed hidden <md; (f) refresh persistence: SessionPulse/LiveStrip read persisted blob; new timeline ring buffer (100-event cap) at `iampatterson.timeline_buffer` so Timeline + Consent + pipeline footnote all survive refresh; (g) `nav_hint_dismissed` enum narrowed from 4 → 3 values, SessionPulse clicks are conversions (`click_cta` + `cta_location: 'session_pulse'`), not dismissals; (h) threshold CTA `EVENT_TYPE_THRESHOLD = 10` per spec. **9E ships jointly with Phase 9F**, 9F rebuilds the ecommerce demo's Tier 2/3 reveal mechanics to the native-reveal pattern language; the two phases are authored as separate blocks but release as one branch cut. Phases 9C and 9D are cancelled; the subscription and lead gen demos will be reintroduced in later, separately-numbered phases after 9F ships. Full design spec: `docs/UX_PIVOT_SPEC.md`. Pipeline redesign reference implementation: `docs/input_artifacts/design_handoff_pipeline/`. UAT artifacts: `docs/uat/phase-9e-uat.sh` + `phase-9e-uat-output.md` + `phase-9e-uat-feedback.md`.
 
-Phase 9A-redesign merged to main (`d8ae8f2`). Phase 9B branch is `phase/9b-ecommerce-tiers-2-3`.
+**Prior phase state:** Phase 9B is dev-complete on branch `phase/9b-ecommerce-tiers-2-3` (673 tests passing, Pass 5 dual-eval PASS). 9B is the baseline the 9E branch will be cut from. Phase 9A-redesign merged to main (`d8ae8f2`).
 
-See `docs/REQUIREMENTS.md` for the full development plan (Phases 1-8, 9A / 9A-redesign / 9B-9D, 10-11).
+See `docs/REQUIREMENTS.md` for the full development plan (Phases 1-8, 9A / 9A-redesign / 9B / 9B-infra / 9E / 9F, 10-11; 9C and 9D cancelled).
 See `docs/ARCHITECTURE.md` for technical architecture details.
 See `docs/PHASE_STATUS.md` for current completion state.
 
@@ -34,9 +34,9 @@ Do not modify sections of this file other than "Current Phase" unless explicitly
 
 ```
 iampatterson.com/
-├── CLAUDE.md                    # This file — project context for Claude Code
+├── CLAUDE.md                    # This file, project context for Claude Code
 ├── docs/
-│   ├── REQUIREMENTS.md          # Full development plan (9 phases)
+│   ├── REQUIREMENTS.md          # Full development plan (11 numbered phases + 9A-redesign / 9B-infra / 9E / 9F sub-phases)
 │   ├── ARCHITECTURE.md          # Technical architecture
 │   ├── PHASE_STATUS.md          # Living phase completion tracker
 │   └── sessions/               # Session handoff artifacts
@@ -75,8 +75,8 @@ This anchors you in the current state of the codebase. It tells you how many tes
 
 Use red/green TDD for every feature:
 
-1. **Write the test first** — define what the feature should do
-2. **Run the test and watch it fail** (red) — confirm the test is actually testing something
+1. **Write the test first**, define what the feature should do
+2. **Run the test and watch it fail** (red), confirm the test is actually testing something
 3. **Implement the minimum code to make it pass** (green)
 4. **Refactor** if needed, re-running tests to confirm nothing breaks
 
@@ -160,8 +160,8 @@ refactor(hooks): extract useEventStream from overlay component
 
 ### Branching
 
-- `main` — production-ready code
-- `phase/N-name` — branch per phase, using the exact lowercase phase names from `docs/PHASE_STATUS.md`:
+- `main`, production-ready code
+- `phase/N-name`, branch per phase, using the exact lowercase phase names from `docs/PHASE_STATUS.md`:
   - `phase/1-foundation`
   - `phase/2-realtime-event-pipeline`
   - `phase/3-flip-the-card-ui`
@@ -176,8 +176,8 @@ refactor(hooks): extract useEventStream from overlay component
   - `phase/9d-subscription-attribution`
   - `phase/10-polish-performance-launch`
   - `phase/11-operational-readiness`
-- `dataform` — dedicated branch for GCP Dataform integration. Mirrors `infrastructure/dataform/` at repo root (Dataform requires files at root). Auto-synced from `main` via GitHub Action (`.github/workflows/sync-dataform.yml`). **Do not edit Dataform models directly on this branch** — edit in `infrastructure/dataform/` on main and let the sync action propagate changes.
-- `feat/description` — feature branches off the phase branch for larger features
+- `dataform`, dedicated branch for GCP Dataform integration. Mirrors `infrastructure/dataform/` at repo root (Dataform requires files at root). Auto-synced from `main` via GitHub Action (`.github/workflows/sync-dataform.yml`). **Do not edit Dataform models directly on this branch**, edit in `infrastructure/dataform/` on main and let the sync action propagate changes.
+- `feat/description`, feature branches off the phase branch for larger features
 - Merge feature branches into the phase branch. Merge the phase branch into `main` when the phase is complete and evaluated.
 
 ### Session Context from Git
@@ -188,13 +188,13 @@ When resuming work, reviewing recent git history is a fast way to rebuild contex
 git log --oneline -20
 ```
 
-This is complementary to reading the session handoff artifact — use git log for quick orientation, read the handoff doc for detailed state.
+This is complementary to reading the session handoff artifact, use git log for quick orientation, read the handoff doc for detailed state.
 
 ## Session Workflow
 
 ### Starting a Session
 
-1. **Run the tests:** `npm test` — establish baseline
+1. **Run the tests:** `npm test`, establish baseline
 2. **Load context:** Read `docs/PHASE_STATUS.md` and the latest file in `docs/sessions/`
 3. **Review recent changes:** `git log --oneline -10` to orient on recent work
 4. **Plan:** Identify the next feature to implement within the current phase. State what you'll build and how you'll test it before writing code
@@ -203,8 +203,8 @@ This is complementary to reading the session handoff artifact — use git log fo
 
 - Work on **one feature at a time**. Complete it (including tests) before starting the next
 - **After each completed feature, run a self-check:**
-  1. `npm test` — all tests pass, no regressions
-  2. `npm run build` — clean compile, no TypeScript errors
+  1. `npm test`, all tests pass, no regressions
+  2. `npm run build`, clean compile, no TypeScript errors
   3. Verify: no `any` types introduced, no TODO/FIXME left unresolved, no stubbed implementations
   4. If any check fails, fix before moving to the next feature
 - Commit after each completed feature (after the self-check passes)
@@ -226,7 +226,7 @@ This is complementary to reading the session handoff artifact — use git log fo
 
 ### Session Artifact Conventions
 
-When **writing** handoff artifacts, be concrete: "Built ContactForm with email, name, message fields. Fires `form_start` on first field focus and `form_submit` on submission. 4 tests added." Include commit hashes. Don't omit problems — if you cut a corner or stubbed something, say so. Keep "Next Steps" specific enough to start implementing immediately.
+When **writing** handoff artifacts, be concrete: "Built ContactForm with email, name, message fields. Fires `form_start` on first field focus and `form_submit` on submission. 4 tests added." Include commit hashes. Don't omit problems, if you cut a corner or stubbed something, say so. Keep "Next Steps" specific enough to start implementing immediately.
 
 When **reading** handoff artifacts, prioritize: In Progress → Blocked → Next Steps → Evaluator Results. These determine what happens next. If unresolved critical issues from the evaluator exist, address those before new feature work.
 
@@ -238,7 +238,7 @@ This is a consulting site that demonstrates technical sophistication. The design
 
 - **Not generic.** No purple gradients on white cards. No template aesthetics. This site should look like it was designed by someone with taste, not generated by an AI
 - **Professional but distinctive.** The audience is marketing executives and data leaders. The design should signal expertise without being sterile
-- **Performance matters.** This site demonstrates measurement infrastructure — it should load fast and score well on Core Web Vitals. The instrumentation layer must not degrade UX
+- **Performance matters.** This site demonstrates measurement infrastructure, it should load fast and score well on Core Web Vitals. The instrumentation layer must not degrade UX
 - **Mobile-first.** The flip-the-card overlay in particular must work beautifully on mobile (bottom sheet pattern)
 
 When building UI, read the frontend-design skill at `/mnt/skills/public/frontend-design/SKILL.md` if available for detailed aesthetic guidance.
@@ -247,29 +247,29 @@ When building UI, read the frontend-design skill at `/mnt/skills/public/frontend
 
 - **Solo developer project.** No team coordination overhead, but also no one to catch your mistakes except the evaluator subagent and the test suite
 - **This is a portfolio piece.** Code quality matters. This codebase will be shown to prospects. Write code you'd be proud to walk someone through
-- **The instrumentation is the product.** The measurement stack (GTM → sGTM → BigQuery) is not an afterthought bolted on at the end — it's architected from the start. Every component should fire correct data layer events from day one
+- **The instrumentation is the product.** The measurement stack (GTM → sGTM → BigQuery) is not an afterthought bolted on at the end, it's architected from the start. Every component should fire correct data layer events from day one
 - **Simulated where necessary.** Meta CAPI and Google Ads Enhanced Conversions are simulated in the demos (no real ad accounts). The simulation must be realistic enough to demonstrate the concept. sGTM tags should show the payload that *would* be sent
 
 ## References
 
-- `docs/REQUIREMENTS.md` — the full 11-phase development plan with deliverables and dependencies
-- `docs/ARCHITECTURE.md` — technical architecture, infrastructure diagrams, data flow specifications
-- `docs/PHASE_STATUS.md` — living tracker of phase completion
-- `docs/sessions/` — session handoff artifacts with detailed state from prior work sessions
-- `.claude/agents/evaluator.md` — QA/evaluator subagent for post-feature evaluation
-- `docs/STYLE_GUIDE.md` — design direction, voice/tone, typography, component patterns. Note: the design is in active iteration (clean slate as of session 018) — the style guide documents the design intent, not necessarily the current implementation state
-- `.claude/commands/` — session workflow commands (`/start-phase`, `/evaluate`, `/handoff`, `/status`)
-- `.claude/settings.json` — project-level permissions and hooks (committed to git, shared)
-- `.claude/settings.local.json` — personal permission overrides (gitignored). Use this for machine-specific settings like additional Bash commands you need, extra allowed domains, or environment-specific paths. Local scope overrides project scope
-- `.claude/hooks/` — deterministic enforcement scripts (bash-guard, auto-format, stop-check)
-- `sandbox/` — Docker sandbox for running Claude Code with `--dangerously-skip-permissions`
+- `docs/REQUIREMENTS.md`, the full 11-phase development plan with deliverables and dependencies
+- `docs/ARCHITECTURE.md`, technical architecture, infrastructure diagrams, data flow specifications
+- `docs/PHASE_STATUS.md`, living tracker of phase completion
+- `docs/sessions/`, session handoff artifacts with detailed state from prior work sessions
+- `.claude/agents/evaluator.md`, QA/evaluator subagent for post-feature evaluation
+- `docs/STYLE_GUIDE.md`, design direction, voice/tone, typography, component patterns. Note: the design is in active iteration (clean slate as of session 018), the style guide documents the design intent, not necessarily the current implementation state
+- `.claude/commands/`, session workflow commands (`/start-phase`, `/evaluate`, `/handoff`, `/status`)
+- `.claude/settings.json`, project-level permissions and hooks (committed to git, shared)
+- `.claude/settings.local.json`, personal permission overrides (gitignored). Use this for machine-specific settings like additional Bash commands you need, extra allowed domains, or environment-specific paths. Local scope overrides project scope
+- `.claude/hooks/`, deterministic enforcement scripts (bash-guard, auto-format, stop-check)
+- `sandbox/`, Docker sandbox for running Claude Code with `--dangerously-skip-permissions`
 
 ### Security Model
 
 Permissions, hooks, and the Docker sandbox form three layers of defense:
 
-1. **Permissions** (settings.json) — auto-allow safe commands, auto-deny known-bad patterns. Convenience layer — reduces permission prompts for routine work
-2. **Hooks** (bash-guard.sh) — deterministic enforcement of dangerous patterns. Works both inside and outside Docker. Blocks destructive commands, git push, gcloud delete operations
-3. **Docker sandbox** (optional) — network-level isolation via iptables firewall. Blocks all non-allowlisted outbound traffic. Only needed for `--dangerously-skip-permissions` mode
+1. **Permissions** (settings.json), auto-allow safe commands, auto-deny known-bad patterns. Convenience layer, reduces permission prompts for routine work
+2. **Hooks** (bash-guard.sh), deterministic enforcement of dangerous patterns. Works both inside and outside Docker. Blocks destructive commands, git push, gcloud delete operations
+3. **Docker sandbox** (optional), network-level isolation via iptables firewall. Blocks all non-allowlisted outbound traffic. Only needed for `--dangerously-skip-permissions` mode
 
 The Write and Edit permissions in settings.json are scoped to project directories (src, tests, docs, etc.) and config files. If you need to write to an unlisted path, add it to `.claude/settings.local.json`.

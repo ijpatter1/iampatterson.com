@@ -304,5 +304,29 @@
     "type": "STRING",
     "mode": "NULLABLE",
     "description": "Lead qualification tier: high, medium, low (lead_qualify events)"
+  },
+  {
+    "name": "dismissal_mode",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "How the first-session nav hint was dismissed: scroll, click_outside, timeout (nav_hint_dismissed events, Phase 9E deliverable 9; click_session_pulse removed post-UAT — clicks on SessionPulse are conversions, tracked by click_cta + cta_location='session_pulse')"
+  },
+  {
+    "name": "source",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Tab landing source: default_landing (overlay opened onto this tab) or manual_select (tab clicked from the tabs bar) — carried by overview_tab_view, timeline_tab_view, consent_tab_view (Phase 9E deliverable 9)"
+  },
+  {
+    "name": "destination",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Portal link destination: services, about, contact (portal_click events, Phase 9E deliverable 9)"
+  },
+  {
+    "name": "threshold",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "Coverage threshold crossed: 25, 50, 75, 100 (coverage_milestone events, Phase 9E deliverable 9)"
   }
 ]

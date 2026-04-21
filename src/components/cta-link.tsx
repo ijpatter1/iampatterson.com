@@ -3,6 +3,7 @@
 import { Children, isValidElement, type ReactNode } from 'react';
 import Link from 'next/link';
 
+import type { CtaLocation } from '@/lib/events/schema';
 import { trackClickCta } from '@/lib/events/track';
 
 function extractText(node: ReactNode): string {
@@ -20,7 +21,7 @@ function extractText(node: ReactNode): string {
 interface CtaLinkProps {
   href: string;
   children: React.ReactNode;
-  ctaLocation: string;
+  ctaLocation: CtaLocation;
   className?: string;
   disabled?: boolean;
 }

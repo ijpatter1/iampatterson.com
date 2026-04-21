@@ -2,12 +2,28 @@
 
 import { useEffect, useState } from 'react';
 
+import { useSessionState } from '@/components/session-state-provider';
 import { useDataLayerEvents } from '@/hooks/useDataLayerEvents';
 import { getSessionId } from '@/lib/events/session';
+import type { SessionState } from '@/lib/session-state/types';
 
-function consentLabel(events: ReturnType<typeof useDataLayerEvents>['events']): string {
-  if (events.length === 0) return 'analytics:pending ad:pending';
-  const latest = events[0];
+function consentLabel(
+  sessionState: SessionState | null,
+  liveEvents: ReturnType<typeof useDataLayerEvents>['events'],
+): string {
+  // Prefer the persisted SessionState consent_snapshot so the indicator
+  // survives a page refresh (user-reported regression: live dataLayer
+  // is empty post-reload, so reading `events[0].consent` would always
+  // return 'pending' after a refresh even when the visitor's session
+  // has real consent state). Falls back to the live data-layer buffer
+  // during the brief pre-hydration window.
+  if (sessionState) {
+    const analytics = sessionState.consent_snapshot.analytics;
+    const ad = sessionState.consent_snapshot.marketing;
+    return `analytics:${analytics} ad:${ad}`;
+  }
+  if (liveEvents.length === 0) return 'analytics:pending ad:pending';
+  const latest = liveEvents[0];
   const analytics = latest.consent.analytics_storage === 'granted' ? 'granted' : 'denied';
   const ad = latest.consent.ad_storage === 'granted' ? 'granted' : 'denied';
   return `analytics:${analytics} ad:${ad}`;
@@ -15,25 +31,29 @@ function consentLabel(events: ReturnType<typeof useDataLayerEvents>['events']): 
 
 /**
  * Horizontal ticker strip mounted below the site header. Surfaces the stack
- * the visitor is flowing through right now — session ID, pipeline path,
+ * the visitor is flowing through right now, session ID, pipeline path,
  * consent state, BI layer, attribution approach. Loops via CSS keyframe.
  */
 export function LiveStrip() {
   const [sessionId, setSessionId] = useState('');
   const { events } = useDataLayerEvents();
+  const sessionState = useSessionState();
 
   useEffect(() => {
     setSessionId(getSessionId());
   }, []);
 
   // Match SessionPulse's 6-char suffix so the two components show the same
-  // session identity.
-  const shortId = sessionId ? sessionId.slice(-6) : '······';
+  // session identity. Prefer the persisted blob's session_id so it stays
+  // consistent with the Overview tab + ride-along payload across refresh.
+  const persistedSid = sessionState?.session_id ?? '';
+  const effectiveSid = persistedSid || sessionId;
+  const shortId = effectiveSid ? effectiveSid.slice(-6) : '······';
 
   const items = [
     { label: 'SESSION', value: shortId },
     { label: 'STACK', value: 'GTM → sGTM → BigQuery' },
-    { label: 'CONSENT', value: consentLabel(events) },
+    { label: 'CONSENT', value: consentLabel(sessionState, events) },
     { label: 'PIPELINE', value: 'live' },
     { label: 'DASHBOARDS', value: 'Metabase' },
     { label: 'ATTRIB', value: 'last-click · Shapley planned' },

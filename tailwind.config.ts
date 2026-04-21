@@ -5,7 +5,8 @@ import type { Config } from 'tailwindcss';
  *
  * Editorial direction (9A-redesign): paper/ink neutral palette plus a single
  * dynamic accent. Persimmon on the marketing surface, phosphor amber in the
- * under-the-hood overlay. The swap is driven at runtime via the `--accent`
+ * Session overlay (post-UAT F1 rename; originally "under-the-hood overlay").
+ * The swap is driven at runtime via the `--accent`
  * CSS variable; use `text-accent-current` / `bg-accent-current` / etc. to
  * consume it.
  *
@@ -102,7 +103,8 @@ const config: Config = {
 
         // Underside (overlay) scale — editorial's negative. Near-black paper,
         // warm cream ink, amber as luminous signal. Used ONLY inside the
-        // under-the-hood overlay surface.
+        // Session overlay surface (post-UAT F1 rename; originally
+        // "under-the-hood overlay" — the `u-*` prefix stays for brevity).
         'u-paper': {
           DEFAULT: '#0D0B0A',
           alt: '#141210',
@@ -146,6 +148,24 @@ const config: Config = {
         },
       },
 
+      // Z-index budget for Phase 9F reveal layers + the 9E overlay. Highest →
+      // lowest: Cookiebot (managed externally, ~int max) > overlay > full-page
+      // diagnostic > toast > sidebar > page content. Existing surfaces keep
+      // using their numeric tokens (header `z-40`, overlay `z-50`); these new
+      // tokens map onto the same scale so collisions are predictable. See
+      // `docs/REQUIREMENTS.md` Phase 9F constraints "Z-index budget".
+      zIndex: {
+        sidebar: '20',
+        toast: '45',
+        'full-page-diagnostic': '49',
+        overlay: '50',
+        // Cookiebot's own banner uses a very high z-index (~2147483647) that
+        // we don't set; this token reserves a high slot for any in-app
+        // affordance that must sit above the Cookiebot layer (none today —
+        // documented here for budget completeness per UAT eval note).
+        cookiebot: '100',
+      },
+
       fontFamily: {
         display: ['var(--font-display)', 'Georgia', 'serif'],
         sans: ['var(--font-body)', 'system-ui', 'sans-serif'],
@@ -184,7 +204,25 @@ const config: Config = {
         'slide-up': 'slideUp 0.6s ease-out',
         'bubble-rise': 'bubble-rise 3s ease-in-out forwards',
         'session-pulse': 'session-pulse 2.4s ease-out infinite',
+        // Phase 9E D1 — UX_PIVOT_SPEC §3.1: the pulse is "slightly
+        // stronger on desktop than mobile. The mobile eye forgives
+        // more motion; desktop visitors stare longer." Desktop
+        // variant has larger travel (scale 1 → 2.6) and faster
+        // cycle (1.9s) so the affordance has more presence as
+        // visitors linger.
+        'session-pulse-strong': 'session-pulse-strong 1.9s ease-out infinite',
         'live-strip': 'live-strip 40s linear infinite',
+        // Phase 9E D1 first-session nav hint: amber ring expanding outward
+        // from the SessionPulse. Slower + larger travel than session-pulse
+        // so the hint reads as "notice me" rather than "live signal."
+        'nav-hint-ring': 'nav-hint-ring 1.8s ease-out infinite',
+        // Phase 9F UAT r1 item 9 — pre-rework toasts appeared abruptly
+        // with no entry motion, which read as "the site is bugging out"
+        // rather than "a real event just fired." Entry is a short
+        // slide+fade (180ms, ease-out) so the reveal is deliberate.
+        // Gated by `motion-safe:` at the callsite so
+        // `prefers-reduced-motion: reduce` visitors get an instant mount.
+        'toast-enter': 'toast-enter 180ms ease-out both',
       },
 
       keyframes: {
@@ -207,9 +245,27 @@ const config: Config = {
           '80%': { opacity: '0', transform: 'scale(2.2)' },
           '100%': { opacity: '0', transform: 'scale(2.2)' },
         },
+        'session-pulse-strong': {
+          '0%': { opacity: '0.75', transform: 'scale(1)' },
+          '80%': { opacity: '0', transform: 'scale(2.6)' },
+          '100%': { opacity: '0', transform: 'scale(2.6)' },
+        },
         'live-strip': {
           '0%': { transform: 'translateX(0)' },
           '100%': { transform: 'translateX(-50%)' },
+        },
+        'nav-hint-ring': {
+          // F5 UAT S11.2 fix: max scale reduced 2.5 → 1.8 so the ring
+          // stays within safe bounds when SessionPulse sits top-right on
+          // mobile. Pre-fix the ring expanded ~55px past each side of a
+          // 44×44 button, clipping past the 360px viewport right edge.
+          '0%': { opacity: '0.8', transform: 'scale(1)' },
+          '80%': { opacity: '0', transform: 'scale(1.8)' },
+          '100%': { opacity: '0', transform: 'scale(1.8)' },
+        },
+        'toast-enter': {
+          '0%': { opacity: '0', transform: 'translateY(-8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
         },
       },
     },

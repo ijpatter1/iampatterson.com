@@ -3,8 +3,10 @@ export interface TierComponent {
   description: string;
 }
 
+export type TierNum = '01' | '02' | '03' | '04';
+
 export interface Tier {
-  num: string;
+  num: TierNum;
   title: string;
   subtitle: string;
   lede: string;
@@ -19,7 +21,7 @@ export const TIERS: Tier[] = [
     num: '01',
     title: 'Measurement Foundation',
     subtitle: 'Get the data right at the source.',
-    lede: 'Server-side GTM is the backbone of modern measurement. It moves your tracking from the browser to a server you control — longer cookie life, higher match rates, immunity to ad blockers, proper consent enforcement.',
+    lede: 'Server-side GTM is the backbone of modern measurement. It moves your tracking from the browser to a server you control, longer cookie life, higher match rates, immunity to ad blockers, proper consent enforcement.',
     core: [
       {
         title: 'Tag Audit & Data Layer Spec',
@@ -34,7 +36,7 @@ export const TIERS: Tier[] = [
       {
         title: 'Warehouse Event Sink',
         description:
-          'Your sGTM event stream flows directly into a data warehouse from day one. Without it, Tier 1 is a dead end — and you should hire a GTM specialist, not me.',
+          'Your sGTM event stream flows directly into a data warehouse from day one. Without it, Tier 1 is a dead end, and you should hire a GTM specialist, not me.',
       },
     ],
     optional: [
@@ -51,7 +53,7 @@ export const TIERS: Tier[] = [
       {
         title: 'Real-Time Event Architecture',
         description:
-          'Implementation designed with awareness of future real-time streaming (Pub/Sub, webhooks) — no decisions that close doors.',
+          'Implementation designed with awareness of future real-time streaming (Pub/Sub, webhooks), no decisions that close doors.',
       },
     ],
     summary:
@@ -81,12 +83,12 @@ export const TIERS: Tier[] = [
       {
         title: 'Data Dictionary & Schema Docs',
         description:
-          'AI-generated, human-reviewed docs of every model, column, and dependency. Ships as a deliverable and lives in the repo — makes your data self-describing for your team and for any AI that needs to work with it.',
+          'AI-generated, human-reviewed docs of every model, column, and dependency. Ships as a deliverable and lives in the repo, makes your data self-describing for your team and for any AI that needs to work with it.',
       },
       {
         title: 'AI Access Layer',
         description:
-          'A scheduled BigQuery export to Cloud Storage in parquet or JSON — a clean handoff point for Claude, ChatGPT, Gemini, or your own internal systems, no direct warehouse access required.',
+          'A scheduled BigQuery export to Cloud Storage in parquet or JSON, a clean handoff point for Claude, ChatGPT, Gemini, or your own internal systems, no direct warehouse access required.',
       },
     ],
     optional: [
@@ -98,7 +100,7 @@ export const TIERS: Tier[] = [
       {
         title: 'Automated Campaign Taxonomy',
         description:
-          "Dataform models using BigQuery's native AI to standardize campaign names, UTMs, and ad-group naming. Runs continuously — kills the eternal spreadsheet-mapping exercise.",
+          "Dataform models using BigQuery's native AI to standardize campaign names, UTMs, and ad-group naming. Runs continuously, kills the eternal spreadsheet-mapping exercise.",
       },
     ],
     summary:
@@ -136,7 +138,7 @@ export const TIERS: Tier[] = [
     num: '04',
     title: 'Attribution & Advanced',
     subtitle: 'Finally answering "what\u2019s actually working."',
-    lede: 'Only available to clients who have completed Tiers 1 and 2 with me. Not because of a commercial requirement — because the models are only as good as the data feeding them, and I need to know the data is right.',
+    lede: 'Only available to clients who have completed Tiers 1 and 2 with me. Not because of a commercial requirement, because the models are only as good as the data feeding them, and I need to know the data is right.',
     core: [],
     optional: [
       {
@@ -157,7 +159,7 @@ export const TIERS: Tier[] = [
       {
         title: 'Measurement Strategy & Roadmap',
         description:
-          'Ongoing advisory on what to test next, which channels to validate, and how to build a culture of measurement. The retainer component — not maintaining infra, but guiding the questions.',
+          'Ongoing advisory on what to test next, which channels to validate, and how to build a culture of measurement. The retainer component, not maintaining infra, but guiding the questions.',
       },
     ],
     summary:

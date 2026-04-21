@@ -20,14 +20,14 @@ export function ConsentView({ events }: ConsentViewProps) {
     return (
       <div className="space-y-4">
         <div className="mb-3 font-mono text-[10px] uppercase tracking-widest text-accent-current">
-          Consent enforcement — live
+          Consent enforcement, live
         </div>
         <h3 className="font-display text-2xl font-normal leading-tight text-u-ink">
           What happens when you <em className="text-accent-current">deny</em> consent.
         </h3>
         <p className="max-w-[62ch] text-sm leading-relaxed text-u-ink-2">
           In server-side GTM, consent state determines tag firing. Interact with the page to
-          populate the timeline — we&apos;ll show your live consent decisions here.
+          populate the timeline, we&apos;ll show your live consent decisions here.
         </p>
       </div>
     );
@@ -43,7 +43,7 @@ export function ConsentView({ events }: ConsentViewProps) {
   return (
     <div>
       <div className="mb-3 font-mono text-[10px] uppercase tracking-widest text-accent-current">
-        Consent enforcement — live
+        Consent enforcement, live
       </div>
       <h3 className="font-display text-2xl font-normal leading-tight text-u-ink">
         What happens when you <em className="text-accent-current">deny</em> consent.

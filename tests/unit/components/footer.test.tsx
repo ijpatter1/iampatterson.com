@@ -26,7 +26,7 @@ function renderFooter() {
   );
 }
 
-describe('Footer — editorial', () => {
+describe('Footer, editorial', () => {
   it('renders the Patterson wordmark', () => {
     renderFooter();
     expect(screen.getByRole('heading', { level: 4 })).toHaveTextContent(/patterson/i);
@@ -50,31 +50,37 @@ describe('Footer — editorial', () => {
     );
   });
 
-  it('renders the Demos column with all three demos', () => {
+  it('renders the Demos column with the ecommerce demo (post-9E-D7)', () => {
+    // Phase 9E deliverable 7 removed the subscription + leadgen demos
+    // from the site; the Demos column reduces to the ecommerce entry
+    // per UX_PIVOT_SPEC §3.7. Those two event types remain in the
+    // schema for Session State coverage, but the UI that fired them
+    // is gone until the demos return.
     renderFooter();
     const footer = screen.getByRole('contentinfo');
     expect(within(footer).getByRole('link', { name: /tuna shop/i })).toHaveAttribute(
       'href',
       '/demo/ecommerce',
     );
-    expect(within(footer).getByRole('link', { name: /tuna subscription/i })).toHaveAttribute(
-      'href',
-      '/demo/subscription',
-    );
-    expect(within(footer).getByRole('link', { name: /tuna partnerships/i })).toHaveAttribute(
-      'href',
-      '/demo/leadgen',
-    );
+    expect(
+      within(footer).queryByRole('link', { name: /tuna subscription/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(footer).queryByRole('link', { name: /tuna partnerships/i }),
+    ).not.toBeInTheDocument();
   });
 
-  it('renders the Under-the-hood column with overlay-triggering buttons', async () => {
+  it('renders the Session column with overlay-triggering buttons', async () => {
     const user = userEvent.setup();
     renderFooter();
     const liveStream = screen.getByRole('button', { name: /live event stream/i });
     await user.click(liveStream);
     expect(screen.getByTestId('overlay-status')).toHaveTextContent('open');
-    // All three entries present
-    expect(screen.getByRole('button', { name: /pipeline architecture/i })).toBeInTheDocument();
+    // Post-F1 rename: the footer's three-entry column deep-links to the
+    // three remaining overlay tabs (Overview, Timeline, Consent). The
+    // column header is "Session" (F1 language rename) and the first
+    // entry is "Overview" matching the default landing tab.
+    expect(screen.getByRole('button', { name: /^overview$/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /consent state/i })).toBeInTheDocument();
   });
 

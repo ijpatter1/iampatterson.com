@@ -37,7 +37,7 @@ export interface RoutingResult {
 }
 
 /**
- * A pipeline event — the standardized shape flowing through the
+ * A pipeline event, the standardized shape flowing through the
  * real-time event stream (Pub/Sub → Cloud Run → browser).
  */
 export interface PipelineEvent {
@@ -61,7 +61,7 @@ export interface PipelineEvent {
   parameters: Record<string, string | number | boolean>;
   /** Consent Mode v2 state at the time of event processing. */
   consent: ConsentState;
-  /** Routing results — which destinations received this event and their status. */
+  /** Routing results, which destinations received this event and their status. */
   routing: RoutingResult[];
 }
 
@@ -96,7 +96,7 @@ function isConsentState(value: unknown): value is ConsentState {
   );
 }
 
-/** Runtime type guard for PipelineEvent — validates parsed JSON from the event stream. */
+/** Runtime type guard for PipelineEvent, validates parsed JSON from the event stream. */
 export function isPipelineEvent(data: unknown): data is PipelineEvent {
   if (typeof data !== 'object' || data === null) return false;
   const obj = data as Record<string, unknown>;

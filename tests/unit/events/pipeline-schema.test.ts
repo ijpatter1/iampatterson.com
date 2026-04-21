@@ -19,7 +19,7 @@ function validEvent(overrides: Partial<PipelineEvent> = {}): PipelineEvent {
     event_name: 'page_view',
     timestamp: '2026-03-26T11:59:59.500Z',
     page_path: '/',
-    page_title: 'Home — Patterson Consulting',
+    page_title: 'Home, Patterson Consulting',
     page_location: 'https://iampatterson-com.vercel.app/',
     parameters: { page_referrer: '/about' },
     consent: {

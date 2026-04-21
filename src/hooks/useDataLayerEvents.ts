@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { DATA_LAYER_EVENT_NAMES } from '@/lib/events/schema';
 import type { ConsentState, PipelineEvent, RoutingResult } from '@/lib/events/pipeline-schema';
+import { loadTimelineBuffer, saveTimelineBuffer } from '@/lib/events/timeline-buffer';
 
 export interface UseDataLayerEventsOptions {
   /** Maximum events to keep in the buffer. Default: 100. */
@@ -16,25 +18,13 @@ export interface UseDataLayerEventsReturn {
   clearEvents: () => void;
 }
 
-/** Known iap_source event names worth capturing. */
-const IAP_EVENTS = new Set([
-  'page_view',
-  'scroll_depth',
-  'click_nav',
-  'click_cta',
-  'form_start',
-  'form_submit',
-  'form_field_focus',
-  'consent_update',
-  'product_view',
-  'add_to_cart',
-  'begin_checkout',
-  'purchase',
-  'plan_select',
-  'trial_signup',
-  'form_complete',
-  'lead_qualify',
-]);
+/**
+ * Known iap_source event names worth capturing, derived from the
+ * `DataLayerEvent` union's single source of truth in `src/lib/events/schema.ts`.
+ * Adding a new event to the schema automatically flows here; no parallel
+ * list to maintain. Per Phase 9E deliverable 4's derive-from-schema-day-one rule.
+ */
+const IAP_EVENTS: ReadonlySet<string> = new Set(DATA_LAYER_EVENT_NAMES);
 
 let dlCounter = 0;
 
@@ -129,12 +119,29 @@ export function useDataLayerEvents({
   maxBufferSize = 100,
   pollInterval = 400,
 }: UseDataLayerEventsOptions = {}): UseDataLayerEventsReturn {
+  // Initial empty array, matches SSR output and client-first-render so
+  // the Timeline / Consent / pipeline-footnote consumers (some SSR'd)
+  // don't hydration-mismatch. The persisted ring buffer is loaded in a
+  // post-mount useEffect below (client-only, never runs on server).
   const [events, setEvents] = useState<PipelineEvent[]>([]);
   const lastIndexRef = useRef(0);
   const bufferSizeRef = useRef(maxBufferSize);
   bufferSizeRef.current = maxBufferSize;
 
-  const clearEvents = useCallback(() => setEvents([]), []);
+  const clearEvents = useCallback(() => {
+    setEvents([]);
+    saveTimelineBuffer([]);
+  }, []);
+
+  // Post-mount hydration from sessionStorage ring buffer. Runs once on
+  // the client; SSR safely skipped (useEffect never runs server-side).
+  // Net result: first client render shows [] (matches server), then
+  // this effect populates from persisted buffer → re-render shows
+  // prior events. Brief flash is the tradeoff for hydration safety.
+  useEffect(() => {
+    const persisted = loadTimelineBuffer();
+    if (persisted.length > 0) setEvents(persisted);
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -155,9 +162,11 @@ export function useDataLayerEvents({
       if (newEvents.length > 0) {
         setEvents((prev) => {
           const merged = [...newEvents.reverse(), ...prev];
-          return merged.length > bufferSizeRef.current
-            ? merged.slice(0, bufferSizeRef.current)
-            : merged;
+          const capped =
+            merged.length > bufferSizeRef.current ? merged.slice(0, bufferSizeRef.current) : merged;
+          // Persist the sliding window so Timeline survives refresh.
+          saveTimelineBuffer(capped);
+          return capped;
         });
       }
     }, pollInterval);

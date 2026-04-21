@@ -16,7 +16,7 @@ export function RouteTracker() {
     if (firedRef.current === pathname) return;
     firedRef.current = pathname;
 
-    // Skip the initial page load — the googtag config tag fires its own
+    // Skip the initial page load, the googtag config tag fires its own
     // page_view on initialization. Only fire for SPA navigations.
     if (isInitialRef.current) {
       isInitialRef.current = false;

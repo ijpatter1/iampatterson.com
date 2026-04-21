@@ -79,7 +79,7 @@ describe('GtmScript', () => {
     const { GtmScript } = require('@/components/scripts/gtm');
     const { container } = render(<GtmScript />);
     const gtmScript = container.querySelector('#gtm-script');
-    // gtm.js should always come from Google CDN — sGTM handles data
+    // gtm.js should always come from Google CDN, sGTM handles data
     // transport via server_container_url in the web GTM config tag
     expect(gtmScript?.textContent).toContain('www.googletagmanager.com/gtm.js');
   });
@@ -104,7 +104,7 @@ describe('GtmScript', () => {
 });
 
 describe('GtmNoscript', () => {
-  // noscript children only render server-side — use renderToStaticMarkup
+  // noscript children only render server-side, use renderToStaticMarkup
   function renderStatic(element: React.ReactElement): string {
     // Lazy import to avoid top-level TextEncoder issues
     // eslint-disable-next-line @typescript-eslint/no-require-imports

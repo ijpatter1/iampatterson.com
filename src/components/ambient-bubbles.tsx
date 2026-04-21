@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { DATA_LAYER_EVENT_NAMES } from '@/lib/events/schema';
+
 interface Bubble {
   id: number;
   eventName: string;
@@ -15,16 +17,12 @@ interface AmbientBubblesProps {
   duration?: number;
 }
 
-const EVENT_LABELS: Record<string, string> = {
-  page_view: 'page_view',
-  scroll_depth: 'scroll_depth',
-  click_nav: 'click_nav',
-  click_cta: 'click_cta',
-  form_start: 'form_start',
-  form_submit: 'form_submit',
-  form_field_focus: 'form_field_focus',
-  consent_update: 'consent_update',
-};
+/**
+ * Known iap_source event names derived from `DATA_LAYER_EVENT_NAMES`, the
+ * same single source of truth `useDataLayerEvents` uses. Adding an event to
+ * the schema automatically surfaces it here as a bubble-eligible name.
+ */
+const IAP_EVENT_NAMES: ReadonlySet<string> = new Set(DATA_LAYER_EVENT_NAMES);
 
 let nextId = 0;
 
@@ -40,7 +38,7 @@ export function AmbientBubbles({ maxBubbles = 3, duration = 3000 }: AmbientBubbl
       const id = nextId++;
       setBubbles((prev) => {
         const next = [...prev, { id, eventName, createdAt: Date.now() }];
-        // Cap at maxBubbles — drop oldest
+        // Cap at maxBubbles, drop oldest
         return next.slice(-maxBubbles);
       });
       // Schedule removal
@@ -59,8 +57,8 @@ export function AmbientBubbles({ maxBubbles = 3, duration = 3000 }: AmbientBubbl
         const entry = dl[lastIndexRef.current];
         lastIndexRef.current++;
         const eventName = entry?.event;
-        if (typeof eventName === 'string' && EVENT_LABELS[eventName]) {
-          addBubble(EVENT_LABELS[eventName]);
+        if (typeof eventName === 'string' && IAP_EVENT_NAMES.has(eventName)) {
+          addBubble(eventName);
         }
       }
     }, pollIntervalMs);

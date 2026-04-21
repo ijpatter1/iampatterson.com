@@ -9,9 +9,9 @@ interface ChartCardProps {
 
 export function ChartCard({ title, description, children, className = '' }: ChartCardProps) {
   return (
-    <div className={`rounded-lg border border-neutral-200 bg-neutral-50 p-4 ${className}`}>
-      <h3 className="text-sm font-semibold text-neutral-900">{title}</h3>
-      {description && <p className="mt-0.5 text-xs text-neutral-500">{description}</p>}
+    <div className={`rounded-lg border border-rule-soft bg-paper-alt p-4 ${className}`}>
+      <h3 className="text-sm font-semibold text-ink">{title}</h3>
+      {description && <p className="mt-0.5 text-xs text-ink-3">{description}</p>}
       <div className="mt-4">{children}</div>
     </div>
   );

@@ -1,0 +1,140 @@
+/**
+ * Tuna Shop UTM seed taxonomy (Phase 9F deliverable 5).
+ *
+ * Mirrors `docs/input_artifacts/design_handoff_ecommerce/app/data.js`'s
+ * UTM_TAXONOMY map. Drives the listing-page session-boot toast cascade
+ * (`taxonomy_classified` toast) and the listing-hero `your-utm` /
+ * `classified-as` panel below the editorial copy.
+ *
+ * Distinct from the generic `src/lib/demo/campaign-taxonomy.ts` regex
+ * classifier (which mirrors the Phase 5 BigQuery AI.CLASSIFY logic), this
+ * module is a lookup over real Tuna Shop demo seeds, deterministic for
+ * screenshots and tests, and falls back to "Unclassified" rather than
+ * pattern-matching on arbitrary inputs. Pre-9E `CampaignTaxonomyUnderside`
+ * salvage destination per the doc spec.
+ */
+
+export interface CampaignClassification {
+  source: string;
+  medium: string;
+  bucket: string;
+}
+
+export const UTM_TAXONOMY: Record<string, CampaignClassification> = {
+  meta_prospecting_lal_tuna_q1: {
+    source: 'Meta',
+    medium: 'paid_social',
+    bucket: 'Prospecting · Lookalike',
+  },
+  meta_retargeting_atc_q1: {
+    source: 'Meta',
+    medium: 'paid_social',
+    bucket: 'Retargeting · ATC',
+  },
+  google_brand_tuna: {
+    source: 'Google',
+    medium: 'cpc',
+    bucket: 'Brand · Search',
+  },
+  google_nonbrand_plush_toys: {
+    source: 'Google',
+    medium: 'cpc',
+    bucket: 'Non-brand · Search',
+  },
+  tiktok_creative_unboxing_v3: {
+    source: 'TikTok',
+    medium: 'paid_social',
+    bucket: 'Creative · UGC',
+  },
+  klaviyo_welcome_flow_3: {
+    source: 'Email',
+    medium: 'email',
+    bucket: 'Lifecycle · Welcome',
+  },
+  organic_newsletter_april: {
+    source: 'Email',
+    medium: 'email',
+    bucket: 'Newsletter · Monthly',
+  },
+};
+
+/**
+ * Default UTM campaign seed used when no `utm_campaign` is present in
+ * `searchParams`. Deterministic, picked once and pinned so tests and
+ * screenshots are reproducible. Do NOT change to a randomised pick.
+ */
+export const DEFAULT_UTM = 'meta_prospecting_lal_tuna_q1';
+
+/**
+ * Resolve the visitor's effective `utm_campaign` from a search-params-like
+ * input. Returns the explicit value when present (even if unknown to the
+ * taxonomy, the caller decides whether to display "unclassified" or fall
+ * back); otherwise the deterministic default seed.
+ */
+export function resolveUtm(params: { utm_campaign?: string | null }): string {
+  const explicit = params.utm_campaign;
+  if (typeof explicit === 'string' && explicit.length > 0) return explicit;
+  return DEFAULT_UTM;
+}
+
+/**
+ * Same resolution as `resolveUtm` but also reports whether the value came
+ * from the URL (`isLive: true`) or fell back to the seed (`isLive: false`).
+ * Added for UAT r1 item 3: surfaces MUST label a seed value as an example,
+ * not as the visitor's own utm_campaign. The listing-hero panel is the
+ * primary caller, toasts happily use the raw `resolveUtm` value either way.
+ */
+export function resolveUtmMeta(params: { utm_campaign?: string | null }): {
+  value: string;
+  isLive: boolean;
+} {
+  const explicit = params.utm_campaign;
+  if (typeof explicit === 'string' && explicit.length > 0) {
+    return { value: explicit, isLive: true };
+  }
+  return { value: DEFAULT_UTM, isLive: false };
+}
+
+/**
+ * Classify a campaign id against the seed taxonomy. Returns an
+ * `Unclassified` placeholder when the id isn't in the seed map, preserves
+ * the visitor-facing "we don't pretend to recognise everything" honesty.
+ */
+export function classifyUtm(campaignId: string): CampaignClassification {
+  const hit = UTM_TAXONOMY[campaignId];
+  if (hit) return hit;
+  return { source: 'Unknown', medium: 'unknown', bucket: 'Unclassified' };
+}
+
+/**
+ * Pick a random seed campaign id from the taxonomy. Used by the homepage
+ * "Enter the demo" CTA (UAT r2 item 6) to stamp the deep-link with a
+ * realistic utm_campaign on every click, the listing page then runs the
+ * value through `classifyUtm` and the visitor sees a different classified
+ * bucket each visit. `rng` is injectable so tests can pin the pick.
+ */
+export function pickRandomSeedCampaign(rng: () => number = Math.random): string {
+  const keys = Object.keys(UTM_TAXONOMY);
+  return keys[Math.floor(rng() * keys.length)];
+}
+
+/**
+ * Build a randomised `{ utm_campaign, utm_source, utm_medium }` triple
+ * suitable for URL-encoding onto the "Enter the demo" CTA. Consistent
+ * with the taxonomy's classification so the three params agree. Source
+ * is lowercased (matches prototype seed conventions, "Meta" → "meta"
+ * on the URL, the display stays proper-cased in the readout).
+ */
+export function randomUtmSeedParams(rng: () => number = Math.random): {
+  utm_campaign: string;
+  utm_source: string;
+  utm_medium: string;
+} {
+  const campaign = pickRandomSeedCampaign(rng);
+  const c = UTM_TAXONOMY[campaign];
+  return {
+    utm_campaign: campaign,
+    utm_source: c.source.toLowerCase(),
+    utm_medium: c.medium,
+  };
+}

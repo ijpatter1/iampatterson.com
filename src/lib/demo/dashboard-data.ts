@@ -1,14 +1,16 @@
 /**
  * Mock dashboard data matching BigQuery Dataform mart schemas.
  * This data will be replaced by real BigQuery API queries in production.
- * Values are realistic for 18 months of simulated Tuna Shop/Subscription/Partnerships data.
+ * Values are realistic for 18 months of simulated Tuna Shop data.
+ *
+ * Phase 9E deliverable 7 removed the subscription and lead gen demos
+ * from the site. Their dashboard data bundles (`subscriptionDashboardData`,
+ * `leadGenDashboardData`) have been deleted; the underlying event types
+ * in `src/lib/events/schema.ts` remain intact so Session State coverage
+ * continues to include them as unfired.
  */
 
-import type {
-  EcommerceDashboardData,
-  SubscriptionDashboardData,
-  LeadGenDashboardData,
-} from './dashboard-types';
+import type { EcommerceDashboardData } from './dashboard-types';
 
 // --- E-commerce: The Tuna Shop ---
 
@@ -157,7 +159,7 @@ export const ecommerceDashboardData: EcommerceDashboardData = {
       report_date: '2026-03-01',
       platform: 'google',
       business_model: 'ecommerce',
-      campaign_name: 'Brand — Tuna Shop',
+      campaign_name: 'Brand, Tuna Shop',
       campaign_name_raw: 'tuna_shop_brand_google_2025',
       impressions: 124000,
       clicks: 8680,
@@ -175,7 +177,7 @@ export const ecommerceDashboardData: EcommerceDashboardData = {
       report_date: '2026-03-01',
       platform: 'meta',
       business_model: 'ecommerce',
-      campaign_name: 'Prospecting — Lookalike',
+      campaign_name: 'Prospecting, Lookalike',
       campaign_name_raw: 'meta_prospecting_lal_tuna_q1',
       impressions: 342000,
       clicks: 6840,
@@ -193,7 +195,7 @@ export const ecommerceDashboardData: EcommerceDashboardData = {
       report_date: '2026-03-01',
       platform: 'tiktok',
       business_model: 'ecommerce',
-      campaign_name: 'Video — Product Showcase',
+      campaign_name: 'Video, Product Showcase',
       campaign_name_raw: 'tiktok_video_product_showcase_2025',
       impressions: 580000,
       clicks: 11600,
@@ -211,7 +213,7 @@ export const ecommerceDashboardData: EcommerceDashboardData = {
       report_date: '2026-03-01',
       platform: 'google',
       business_model: 'ecommerce',
-      campaign_name: 'Shopping — All Products',
+      campaign_name: 'Shopping, All Products',
       campaign_name_raw: 'google_shopping_all_products_2025',
       impressions: 210000,
       clicks: 12600,
@@ -225,203 +227,5 @@ export const ecommerceDashboardData: EcommerceDashboardData = {
       cost_per_purchase: 13.33,
       roas: 2.58,
     },
-  ],
-};
-
-// --- Subscription: Tuna Subscription Box ---
-
-export const subscriptionDashboardData: SubscriptionDashboardData = {
-  kpis: [
-    { label: 'MRR', value: '$18,420', change: 6.2, prefix: '$' },
-    { label: 'Active Subscribers', value: '612', change: 4.8 },
-    { label: 'Trial-to-Paid', value: '34.2%', change: 1.1, suffix: '%' },
-    { label: 'Monthly Churn', value: '5.8%', change: -0.3, suffix: '%' },
-  ],
-  mrrTrend: [
-    { date: '2024-10', value: 8240 },
-    { date: '2024-11', value: 8890 },
-    { date: '2024-12', value: 9420 },
-    { date: '2025-01', value: 9810 },
-    { date: '2025-02', value: 10340 },
-    { date: '2025-03', value: 10920 },
-    { date: '2025-04', value: 11480 },
-    { date: '2025-05', value: 11890 },
-    { date: '2025-06', value: 12340 },
-    { date: '2025-07', value: 12980 },
-    { date: '2025-08', value: 13540 },
-    { date: '2025-09', value: 14120 },
-    { date: '2025-10', value: 14890 },
-    { date: '2025-11', value: 15640 },
-    { date: '2025-12', value: 16280 },
-    { date: '2026-01', value: 16940 },
-    { date: '2026-02', value: 17580 },
-    { date: '2026-03', value: 18420 },
-  ],
-  cohortRetention: [
-    {
-      cohortMonth: '2025-07',
-      signups: 84,
-      retentionByMonth: [100, 72, 58, 48, 42, 38, 35, 33, 31],
-    },
-    {
-      cohortMonth: '2025-08',
-      signups: 92,
-      retentionByMonth: [100, 74, 61, 51, 44, 40, 37, 34],
-    },
-    {
-      cohortMonth: '2025-09',
-      signups: 88,
-      retentionByMonth: [100, 71, 57, 47, 41, 37, 34],
-    },
-    {
-      cohortMonth: '2025-10',
-      signups: 96,
-      retentionByMonth: [100, 75, 62, 52, 45, 41],
-    },
-    {
-      cohortMonth: '2025-11',
-      signups: 104,
-      retentionByMonth: [100, 73, 59, 49, 43],
-    },
-    {
-      cohortMonth: '2025-12',
-      signups: 110,
-      retentionByMonth: [100, 76, 63, 53],
-    },
-    {
-      cohortMonth: '2026-01',
-      signups: 98,
-      retentionByMonth: [100, 74, 60],
-    },
-    {
-      cohortMonth: '2026-02',
-      signups: 108,
-      retentionByMonth: [100, 72],
-    },
-    {
-      cohortMonth: '2026-03',
-      signups: 114,
-      retentionByMonth: [100],
-    },
-  ],
-  trialConversionByChannel: [
-    {
-      channel: 'google / cpc',
-      sessions: 8420,
-      conversions: 312,
-      revenue: 9360,
-      conversionRate: 36.8,
-      costPerAcquisition: 28.4,
-      roas: 1.06,
-    },
-    {
-      channel: 'meta / paid_social',
-      sessions: 7210,
-      conversions: 238,
-      revenue: 7854,
-      conversionRate: 33.1,
-      costPerAcquisition: 34.2,
-      roas: 0.96,
-    },
-    {
-      channel: 'google / organic',
-      sessions: 5840,
-      conversions: 216,
-      revenue: 7128,
-      conversionRate: 38.4,
-      costPerAcquisition: 0,
-      roas: 0,
-    },
-    {
-      channel: 'tiktok / paid_social',
-      sessions: 4920,
-      conversions: 142,
-      revenue: 4260,
-      conversionRate: 28.9,
-      costPerAcquisition: 42.1,
-      roas: 0.71,
-    },
-    {
-      channel: 'email / newsletter',
-      sessions: 3180,
-      conversions: 148,
-      revenue: 5180,
-      conversionRate: 42.6,
-      costPerAcquisition: 3.8,
-      roas: 9.2,
-    },
-  ],
-  churnBreakdown: [
-    { reason: 'Too expensive', count: 142, percentage: 28.4 },
-    { reason: 'Not enough variety', count: 118, percentage: 23.6 },
-    { reason: 'No longer needed', count: 94, percentage: 18.8 },
-    { reason: 'Switched to competitor', count: 72, percentage: 14.4 },
-    { reason: 'Quality issues', count: 48, percentage: 9.6 },
-    { reason: 'Other', count: 26, percentage: 5.2 },
-  ],
-  ltvBySource: [
-    { source: 'google / organic', avgLtv: 142.8, customers: 216 },
-    { source: 'email / newsletter', avgLtv: 138.4, customers: 148 },
-    { source: 'google / cpc', avgLtv: 118.2, customers: 312 },
-    { source: 'meta / paid_social', avgLtv: 104.6, customers: 238 },
-    { source: 'tiktok / paid_social', avgLtv: 86.2, customers: 142 },
-    { source: 'direct / none', avgLtv: 124.8, customers: 96 },
-  ],
-};
-
-// --- Lead Gen: Tuna Brand Partnerships ---
-
-export const leadGenDashboardData: LeadGenDashboardData = {
-  kpis: [
-    { label: 'Total Leads', value: '1,842', change: 14.2 },
-    { label: 'Qualified Leads', value: '486', change: 11.8 },
-    { label: 'Qualification Rate', value: '26.4%', change: 2.1, suffix: '%' },
-    { label: 'Cost per Lead', value: '$42.18', change: -4.2, prefix: '$' },
-  ],
-  leadVolumeTrend: [
-    { date: '2024-10', value: 68 },
-    { date: '2024-11', value: 74 },
-    { date: '2024-12', value: 62 },
-    { date: '2025-01', value: 82 },
-    { date: '2025-02', value: 88 },
-    { date: '2025-03', value: 94 },
-    { date: '2025-04', value: 98 },
-    { date: '2025-05', value: 102 },
-    { date: '2025-06', value: 108 },
-    { date: '2025-07', value: 112 },
-    { date: '2025-08', value: 118 },
-    { date: '2025-09', value: 124 },
-    { date: '2025-10', value: 128 },
-    { date: '2025-11', value: 134 },
-    { date: '2025-12', value: 112 },
-    { date: '2026-01', value: 138 },
-    { date: '2026-02', value: 142 },
-    { date: '2026-03', value: 148 },
-  ],
-  funnel: [
-    { label: 'Page Views', value: 24180, percentage: 100 },
-    { label: 'Form Starts', value: 4836, percentage: 20.0 },
-    { label: 'Form Submissions', value: 1842, percentage: 7.62 },
-    { label: 'Qualified Leads', value: 486, percentage: 2.01 },
-  ],
-  costPerLeadByChannel: [
-    { channel: 'google / cpc', costPerLead: 38.4, leads: 612, spend: 23501 },
-    { channel: 'meta / paid_social', costPerLead: 44.2, leads: 418, spend: 18476 },
-    { channel: 'linkedin / paid_social', costPerLead: 62.8, leads: 286, spend: 17961 },
-    { channel: 'google / organic', costPerLead: 0, leads: 312, spend: 0 },
-    { channel: 'direct / none', costPerLead: 0, leads: 214, spend: 0 },
-  ],
-  qualityDistribution: [
-    { tier: 'Enterprise', count: 124, percentage: 25.5 },
-    { tier: 'Mid-Market', count: 186, percentage: 38.3 },
-    { tier: 'Small Business', count: 176, percentage: 36.2 },
-  ],
-  conversionTimeline: [
-    { date: '2025-10', value: 32 },
-    { date: '2025-11', value: 36 },
-    { date: '2025-12', value: 28 },
-    { date: '2026-01', value: 38 },
-    { date: '2026-02', value: 42 },
-    { date: '2026-03', value: 46 },
   ],
 };

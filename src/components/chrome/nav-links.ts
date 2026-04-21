@@ -17,8 +17,4 @@ export interface DemoLink {
   title: string;
 }
 
-export const DEMO_LINKS: DemoLink[] = [
-  { href: '/demo/ecommerce', title: 'The Tuna Shop' },
-  { href: '/demo/subscription', title: 'Tuna Subscription' },
-  { href: '/demo/leadgen', title: 'Tuna Partnerships' },
-];
+export const DEMO_LINKS: DemoLink[] = [{ href: '/demo/ecommerce', title: 'The Tuna Shop' }];

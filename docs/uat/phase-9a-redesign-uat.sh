@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════
-# Phase 9A-redesign — UAT (User Acceptance Test)
+# Phase 9A-redesign, UAT (User Acceptance Test)
 #
 # End-to-end verification of the editorial reskin of the homepage,
 # services page, and under-the-hood overlay. Interactive script: mixes
@@ -18,7 +18,7 @@
 # Exit status: 0 if all checks pass, 1 otherwise.
 # ═══════════════════════════════════════════════════════
 set -uo pipefail
-# Do NOT set -e — we want all checks to run even if one fails.
+# Do NOT set -e, we want all checks to run even if one fails.
 
 BASE_URL="${BASE_URL:-http://localhost:3000}"
 AUTO_ONLY=false
@@ -50,7 +50,7 @@ verify() {
 confirm() {
   local prompt="$1" label="${2:-${1}}"
   if [[ "${AUTO_ONLY}" == "true" ]]; then
-    echo "  ⏭  ${label}  (skipped — --auto-only)"
+    echo "  ⏭  ${label}  (skipped, --auto-only)"
     SKIP=$((SKIP + 1))
     return
   fi
@@ -85,8 +85,8 @@ if [[ ${FAIL} -gt 0 ]]; then
   exit 1
 fi
 
-# ── Scenario 1 — First-visit editorial read ──────────
-section "Scenario 1 — First-visit editorial read of the homepage"
+# ── Scenario 1, First-visit editorial read ──────────
+section "Scenario 1, First-visit editorial read of the homepage"
 echo "  Exercises: D1 tokens · D3 hero · D4 pipeline · D5 demos · D6 teaser · D7 proof · D8 CTA"
 
 HOME_HTML="$(fetch "${BASE_URL}/")"
@@ -115,13 +115,13 @@ confirm "Hero headline renders in Instrument Serif (tall serif), with 'measureme
   "Hero serif + italic accent"
 confirm "Scrolling top-to-bottom: hero → pipeline → demos → services teaser (4 tiers) → proof (3 metrics) → final CTA" \
   "Homepage section order"
-confirm "Accent color is persimmon everywhere (italic emphases, CTAs, metric units, left borders) — NOT amber. Background is paper, not dark" \
+confirm "Accent color is persimmon everywhere (italic emphases, CTAs, metric units, left borders), NOT amber. Background is paper, not dark" \
   "Accent discipline on paper surface"
 confirm "Proof section shows 2.5M, \$45K, 24/7 metrics with tags + context blurbs" \
   "Proof 3-metric grid"
 
-# ── Scenario 2 — Pipeline with real events ───────────
-section "Scenario 2 — Pipeline section shows real events flowing"
+# ── Scenario 2, Pipeline with real events ───────────
+section "Scenario 2, Pipeline section shows real events flowing"
 echo "  Exercises: D4 (pipeline + useLiveEvents), D10 (event pipeline preserved)"
 
 confirm "5 pipeline stages labeled in order: Browser → Client GTM → sGTM → BigQuery → Dashboards" \
@@ -133,8 +133,8 @@ confirm "After scrolling for ~3s, the live log feed has populated with timestamp
 confirm "A 'Watch it live' pill CTA sits near the log feed" \
   "Pipeline CTA present"
 
-# ── Scenario 3 — Flip the card ───────────────────────
-section "Scenario 3 — Flip the card: paper → CRT boot → amber overlay → back to paper"
+# ── Scenario 3, Flip the card ───────────────────────
+section "Scenario 3, Flip the card: paper → CRT boot → amber overlay → back to paper"
 echo "  Exercises: D1 accent flip · D2 SessionPulse · D9 CRT overlay · D10 provider wiring"
 
 confirm "Header has a SessionPulse pill on the left with a pulsing persimmon dot + short session ID + live event count" \
@@ -154,8 +154,8 @@ echo "  → Click 'Back to site' (or click the backdrop outside the panel)."
 confirm "Overlay closes; page accent returns instantly to persimmon (no lingering amber)" \
   "Close returns to persimmon"
 
-# ── Scenario 4 — Overlay tabs tell the story ─────────
-section "Scenario 4 — Overlay tabs tell the coherent 'under the hood' story"
+# ── Scenario 4, Overlay tabs tell the story ─────────
+section "Scenario 4, Overlay tabs tell the coherent 'under the hood' story"
 echo "  Exercises: D9 (tabs), D4 (shared hook), D10 (event pipeline)"
 
 echo ""
@@ -171,7 +171,7 @@ confirm "Event-detail drill-down opens with structured fields; a contextual narr
 
 echo ""
 echo "  → Click the Overview tab."
-confirm "Overview: Tier 1-3 narrative framing with editorial italic-accent in the headline ('instrumented') — NOT a blank panel" \
+confirm "Overview: Tier 1-3 narrative framing with editorial italic-accent in the headline ('instrumented'), NOT a blank panel" \
   "Overview editorial content"
 
 echo ""
@@ -187,8 +187,8 @@ confirm "Dashboards: editorial headline + italic accent on 'dashboards', 3 demo-
 echo ""
 echo "  → Close the overlay."
 
-# ── Scenario 5 — Services page + scroll-spy ──────────
-section "Scenario 5 — Homepage teaser hands off to Services page with sticky scroll-spy"
+# ── Scenario 5, Services page + scroll-spy ──────────
+section "Scenario 5, Homepage teaser hands off to Services page with sticky scroll-spy"
 echo "  Exercises: D6 (teaser + page), D1 (accent), D9 (overlay from closer), D10"
 
 verify "/services returns 200" \
@@ -215,7 +215,7 @@ confirm "/services has a sticky tier-nav sidebar on desktop with 4 tier entries"
 
 echo ""
 echo "  → Scroll down through /services slowly."
-confirm "Sticky nav highlights the active tier (scroll-spy) — persimmon accent on the active entry" \
+confirm "Sticky nav highlights the active tier (scroll-spy), persimmon accent on the active entry" \
   "Scroll-spy active highlight"
 
 echo ""
@@ -238,8 +238,8 @@ confirm "Overlay boots with amber accent flip (same as Scenario 3); tab is Overv
 echo ""
 echo "  → Close the overlay."
 
-# ── Scenario 6 — Editorial chrome on all consulting routes ──
-section "Scenario 6 — Editorial chrome wraps every consulting route"
+# ── Scenario 6, Editorial chrome on all consulting routes ──
+section "Scenario 6, Editorial chrome wraps every consulting route"
 echo "  Exercises: D2 (chrome), D10 (route integration), D1, D9 (tab-hinted open)"
 
 confirm "Header: SessionPulse left · nav center (Home, Services, Demos, About, Contact) · hamburger on narrow widths" \
@@ -253,7 +253,7 @@ confirm "Footer: 4-column editorial grid (brand · pages · demos · under-the-h
 
 echo ""
 echo "  → Click one of the 3 'under the hood' deep links in the footer column (Live event stream / Pipeline architecture / Consent state)."
-confirm "Overlay opens already on the matching tab (Timeline / Overview / Consent) — no extra click needed" \
+confirm "Overlay opens already on the matching tab (Timeline / Overview / Consent), no extra click needed" \
   "Tab-hinted deep link from footer"
 
 echo ""
@@ -263,11 +263,11 @@ confirm "Same header + LiveStrip + footer wrap the services page" \
 
 echo ""
 echo "  → Navigate to /about and /contact."
-confirm "Same editorial chrome wraps these routes (body content is Phase 8 styling — deferred, not a failure)" \
+confirm "Same editorial chrome wraps these routes (body content is Phase 8 styling, deferred, not a failure)" \
   "Chrome persists on /about + /contact"
 
-# ── Scenario 7 — Mobile sheet + demos scroll-snap ────
-section "Scenario 7 — Mobile sheet nav + horizontal-scroll demos + demo routes still render"
+# ── Scenario 7, Mobile sheet + demos scroll-snap ────
+section "Scenario 7, Mobile sheet nav + horizontal-scroll demos + demo routes still render"
 echo "  Exercises: D2 (MobileSheet), D5 (demos), D10 (demo routes untouched)"
 
 echo ""
@@ -297,7 +297,7 @@ verify "/demo/leadgen returns 200" \
 
 echo ""
 echo "  → Tap each demo card in turn and confirm each demo route renders without errors."
-confirm "/demo/ecommerce renders (styling does not match editorial chrome — expected, scope-deferred)" \
+confirm "/demo/ecommerce renders (styling does not match editorial chrome, expected, scope-deferred)" \
   "Ecommerce demo renders"
 confirm "/demo/subscription renders" \
   "Subscription demo renders"
@@ -307,18 +307,18 @@ confirm "/demo/leadgen renders" \
 echo ""
 echo "  → Switch browser back to desktop viewport for remaining scenarios."
 
-# ── Scenario 8 — Overlay available on demo routes, ambient bubbles gated ──
-section "Scenario 8 — Overlay available on ecommerce demo; ambient bubbles gated"
+# ── Scenario 8, Overlay available on demo routes, ambient bubbles gated ──
+section "Scenario 8, Overlay available on ecommerce demo; ambient bubbles gated"
 echo "  Exercises: D10 (route integration), D9 (pathname-specific overview panel)"
 echo ""
 echo "  Phase 9B explicitly uses the overlay on /demo/ecommerce/* for the Tier 2"
 echo "  under-the-hood content (campaign taxonomy, staging, data quality, etc.),"
-echo "  so the overlay SHOULD be reachable on ecommerce routes — only the ambient"
+echo "  so the overlay SHOULD be reachable on ecommerce routes, only the ambient"
 echo "  event bubbles are gated off /demo/* per AmbientBubblesWrapper."
 
 echo ""
 echo "  → Navigate to /demo/ecommerce. Click SessionPulse in the header."
-confirm "Overlay opens on /demo/ecommerce. Overview tab renders EcommerceUnderside (Phase 9B content) — styling may still use Phase 8 tokens (scope-deferred)" \
+confirm "Overlay opens on /demo/ecommerce. Overview tab renders EcommerceUnderside (Phase 9B content), styling may still use Phase 8 tokens (scope-deferred)" \
   "Overlay reachable on ecommerce demo"
 confirm "Ambient event bubbles are NOT shown on /demo/ecommerce (gated by AmbientBubblesWrapper)" \
   "Ambient bubbles gated off /demo/*"
@@ -328,8 +328,8 @@ echo "  → Close the overlay. Navigate back to /."
 confirm "Ambient bubbles return on /; overlay still reachable" \
   "Bubbles back on consulting route"
 
-# ── Edge-1 — prefers-reduced-motion ──────────────────
-section "Edge-1 — prefers-reduced-motion respected"
+# ── Edge-1, prefers-reduced-motion ──────────────────
+section "Edge-1, prefers-reduced-motion respected"
 echo "  Exercises: D1 (accent flip), D4 (pipeline motion), D9 (boot + CRT)"
 
 echo ""
@@ -345,7 +345,7 @@ confirm "Scroll-reveal animations disabled (content appears immediately on scrol
 
 echo ""
 echo "  → Open overlay via SessionPulse."
-confirm "No boot hold — panel content renders immediately. Accent still flips persimmon → amber, but instantly" \
+confirm "No boot hold, panel content renders immediately. Accent still flips persimmon → amber, but instantly" \
   "Boot phase skipped under reduced-motion"
 confirm "CRT flicker animation is disabled (static layers are OK)" \
   "CRT flicker paused"
@@ -358,27 +358,27 @@ confirm "Accent flips back to persimmon instantly" \
 echo ""
 echo "  → Disable reduced motion before continuing."
 
-# ── Edge-2 — close-then-reopen state reset ───────────
-section "Edge-2 — Close-then-reopen lands on tab-level, not stale drill-down"
+# ── Edge-2, close-then-reopen state reset ───────────
+section "Edge-2, Close-then-reopen lands on tab-level, not stale drill-down"
 echo "  Exercises: D9 (state reset), D2 (footer deep-links), D10"
 
 echo ""
 echo "  → Open overlay. Click Timeline tab. Click into any event row (drill into event detail)."
 echo "  → Close the overlay."
 echo "  → Reopen via SessionPulse (or any entry point)."
-confirm "Overlay reopens on tab-level Timeline view — NOT stuck on the previous event-detail drill-down" \
+confirm "Overlay reopens on tab-level Timeline view, NOT stuck on the previous event-detail drill-down" \
   "selectedEvent cleared on close"
 
 echo ""
 echo "  → Switch to Dashboards tab. Close. Reopen from the footer's 'Consent state' deep link."
-confirm "Overlay opens on the Consent tab — not Dashboards (stale), not Timeline (default)" \
+confirm "Overlay opens on the Consent tab, not Dashboards (stale), not Timeline (default)" \
   "Tab-hint overrides stale viewMode"
 
 echo ""
 echo "  → Close the overlay."
 
-# ── Edge-3 — cancel accent flip on fast close ────────
-section "Edge-3 — Fast-close during boot hold does not leave accent stuck amber"
+# ── Edge-3, cancel accent flip on fast close ────────
+section "Edge-3, Fast-close during boot hold does not leave accent stuck amber"
 echo "  Exercises: D1 (cancel-on-close accent flip), D9 (boot state machine)"
 
 echo ""
@@ -392,9 +392,9 @@ echo "  → Repeat the click-then-immediate-close cycle 2-3 times in a row."
 confirm "Accent remains persimmon throughout; no accumulated amber state" \
   "Repeated fast-close stays persimmon"
 
-# ── Session-024 addendum — CRT boot fidelity + once-per-session ─────
+# ── Session-024 addendum, CRT boot fidelity + once-per-session ─────
 
-section "Addendum-1 — Once-per-session boot (sessionStorage scope)"
+section "Addendum-1, Once-per-session boot (sessionStorage scope)"
 echo "  Exercises: D9 once-per-session spec refinement (session-024)"
 
 echo ""
@@ -415,7 +415,7 @@ echo "  → Click SessionPulse to open the overlay in the new tab."
 confirm "Boot sequence plays again (new sessionStorage scope)" \
   "New tab / new session re-fires boot"
 
-section "Addendum-2 — CRT boot visual fidelity (split-layer)"
+section "Addendum-2, CRT boot visual fidelity (split-layer)"
 echo "  Exercises: D9 CRT four-layer structure (session-024 commits 4e185f7 + 1ca8233)"
 
 echo ""
@@ -426,7 +426,7 @@ confirm "A warm amber glow is visible behind the 'Under the Hood' header. NOT a 
 
 echo ""
 echo "  → Once the boot settles, look at the tabs row and the content body."
-confirm "Subtle amber horizontal scanlines visible across the ENTIRE overlay, including tabs and body — not just the header." \
+confirm "Subtle amber horizontal scanlines visible across the ENTIRE overlay, including tabs and body, not just the header." \
   "Scanlines cover full surface (z:3 CRT wrapper)"
 
 echo ""

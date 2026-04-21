@@ -31,7 +31,7 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-describe('ServicesPage — editorial', () => {
+describe('ServicesPage, editorial', () => {
   it('renders the positioning headline with italic "Not" emphasis', () => {
     renderPage();
     const h1 = screen.getByRole('heading', { level: 1 });
@@ -138,10 +138,10 @@ describe('ServicesPage — editorial', () => {
     renderPage();
     const closer = screen.getByText(/Not sure where you'd start/);
     expect(closer).toBeInTheDocument();
-    const cta = screen.getByRole('button', { name: /look under the hood/i });
+    const cta = screen.getByRole('button', { name: /see your session/i });
     await user.click(cta);
     expect(screen.getByTestId('overlay-status')).toHaveTextContent('open');
-    expect(trackClickCta).toHaveBeenCalledWith('Look under the hood', 'services-closer');
+    expect(trackClickCta).toHaveBeenCalledWith('See your session', 'services_closer');
   });
 
   it('closer ghost CTA links to contact', () => {
@@ -151,7 +151,7 @@ describe('ServicesPage — editorial', () => {
   });
 
   // -------------------------------------------------------------------------
-  // Phase 9B deliverable 7 — services cross-links
+  // Phase 9B deliverable 7, services cross-links
   // -------------------------------------------------------------------------
   it('Tier 2 summary box links to the ecommerce demo', () => {
     renderPage();
@@ -165,7 +165,7 @@ describe('ServicesPage — editorial', () => {
     const tier3 = screen.getByTestId('tier-03');
     const link = within(tier3).getByRole('link', { name: /see it live/i });
     const href = link.getAttribute('href') ?? '';
-    // Confirmation page reads order_id, total, items from the query string —
+    // Confirmation page reads order_id, total, items from the query string, 
     // pre-filling them makes the inline Tier 3 embeds meaningful on arrival
     // rather than landing on an empty-order state.
     expect(href).toMatch(/^\/demo\/ecommerce\/confirmation\?/);

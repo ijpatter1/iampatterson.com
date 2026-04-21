@@ -1,7 +1,13 @@
 import { pushEvent } from './push';
+import type {
+  CoverageMilestoneEvent,
+  CtaLocation,
+  NavHintDismissedEvent,
+  PortalClickEvent,
+} from './schema';
 import { getSessionId } from './session';
 
-/** Current consent state — updated by trackConsentUpdate and initConsentState. */
+/** Current consent state, updated by trackConsentUpdate and initConsentState. */
 let currentConsent = {
   consent_analytics: false,
   consent_marketing: false,
@@ -19,6 +25,18 @@ export function initConsentState(
     consent_marketing: marketing,
     consent_preferences: preferences,
   };
+}
+
+/**
+ * Read the module's current consent snapshot. The returned object is a copy,
+ * safe to pass into a pure reducer without aliasing the mutable module state.
+ */
+export function getCurrentConsent(): {
+  consent_analytics: boolean;
+  consent_marketing: boolean;
+  consent_preferences: boolean;
+} {
+  return { ...currentConsent };
 }
 
 function baseFields(): {
@@ -52,7 +70,7 @@ export function trackClickNav(linkText: string, linkUrl: string): void {
   pushEvent({ ...baseFields(), event: 'click_nav', link_text: linkText, link_url: linkUrl });
 }
 
-export function trackClickCta(ctaText: string, ctaLocation: string): void {
+export function trackClickCta(ctaText: string, ctaLocation: CtaLocation): void {
   pushEvent({ ...baseFields(), event: 'click_cta', cta_text: ctaText, cta_location: ctaLocation });
 }
 
@@ -118,6 +136,15 @@ export function trackAddToCart(params: {
   pushEvent({ ...baseFields(), event: 'add_to_cart', ...params });
 }
 
+export function trackRemoveFromCart(params: {
+  product_id: string;
+  product_name: string;
+  product_price: number;
+  quantity: number;
+}): void {
+  pushEvent({ ...baseFields(), event: 'remove_from_cart', ...params });
+}
+
 export function trackBeginCheckout(params: { cart_total: number; item_count: number }): void {
   pushEvent({ ...baseFields(), event: 'begin_checkout', ...params });
 }
@@ -167,4 +194,38 @@ export function trackLeadQualify(params: {
   budget_range: string;
 }): void {
   pushEvent({ ...baseFields(), event: 'lead_qualify', ...params });
+}
+
+// --- Phase 9E, nav & Session State analytics ---
+
+export function trackCoverageMilestone(threshold: CoverageMilestoneEvent['threshold']): void {
+  pushEvent({ ...baseFields(), event: 'coverage_milestone', threshold });
+}
+
+export function trackPortalClick(destination: PortalClickEvent['destination']): void {
+  pushEvent({ ...baseFields(), event: 'portal_click', destination });
+}
+
+export function trackOverviewTabView(source: 'default_landing' | 'manual_select'): void {
+  pushEvent({ ...baseFields(), event: 'overview_tab_view', source });
+}
+
+export function trackTimelineTabView(source: 'default_landing' | 'manual_select'): void {
+  pushEvent({ ...baseFields(), event: 'timeline_tab_view', source });
+}
+
+export function trackConsentTabView(source: 'default_landing' | 'manual_select'): void {
+  pushEvent({ ...baseFields(), event: 'consent_tab_view', source });
+}
+
+export function trackNavHintShown(): void {
+  pushEvent({ ...baseFields(), event: 'nav_hint_shown' });
+}
+
+export function trackNavHintDismissed(mode: NavHintDismissedEvent['dismissal_mode']): void {
+  pushEvent({ ...baseFields(), event: 'nav_hint_dismissed', dismissal_mode: mode });
+}
+
+export function trackSessionPulseHover(): void {
+  pushEvent({ ...baseFields(), event: 'session_pulse_hover' });
 }
