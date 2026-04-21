@@ -28,7 +28,7 @@ export function initConsentState(
 }
 
 /**
- * Read the module's current consent snapshot. The returned object is a copy, 
+ * Read the module's current consent snapshot. The returned object is a copy,
  * safe to pass into a pure reducer without aliasing the mutable module state.
  */
 export function getCurrentConsent(): {
@@ -134,6 +134,15 @@ export function trackAddToCart(params: {
   quantity: number;
 }): void {
   pushEvent({ ...baseFields(), event: 'add_to_cart', ...params });
+}
+
+export function trackRemoveFromCart(params: {
+  product_id: string;
+  product_name: string;
+  product_price: number;
+  quantity: number;
+}): void {
+  pushEvent({ ...baseFields(), event: 'remove_from_cart', ...params });
 }
 
 export function trackBeginCheckout(params: { cart_total: number; item_count: number }): void {

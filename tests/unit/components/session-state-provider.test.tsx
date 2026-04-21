@@ -266,16 +266,12 @@ describe('SessionStateProvider', () => {
     jest.useFakeTimers();
     const { result } = renderHook(() => useSessionState(), { wrapper: Wrapper });
 
-    // Fire 6 distinct iap_source events to cross 25% coverage (6/22 = 27.3%).
+    // Fire enough distinct iap_source events to cross the 25% coverage
+    // threshold. Derive the required count from the schema so the test
+    // survives future additions to DATA_LAYER_EVENT_NAMES.
+    const needed = Math.ceil(DATA_LAYER_EVENT_NAMES.length * 0.25);
+    const names = DATA_LAYER_EVENT_NAMES.slice(0, needed);
     act(() => {
-      const names = [
-        'page_view',
-        'click_cta',
-        'scroll_depth',
-        'click_nav',
-        'form_start',
-        'form_submit',
-      ];
       for (const name of names) {
         window.dataLayer.push(makeDataLayerEntry({ event: name }));
       }

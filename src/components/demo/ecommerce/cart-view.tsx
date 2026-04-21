@@ -3,13 +3,14 @@
 import { useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 
-import { useCart } from './cart-context';
+import { useCart, type CartItem } from './cart-context';
 import { useToast } from '@/components/demo/reveal/toast-provider';
 import { LiveSidebar } from '@/components/demo/reveal/live-sidebar';
 import { WalkthroughBlurb } from '@/components/demo/reveal/walkthrough-blurb';
 import { useSessionContext } from '@/hooks/useSessionContext';
 import { DataQualityReadout } from './data-quality-readout';
 import { products as allProducts } from '@/lib/demo/products';
+import { trackRemoveFromCart } from '@/lib/events/track';
 
 /**
  * Phase 9F D7, cart page content.
@@ -17,6 +18,17 @@ import { products as allProducts } from '@/lib/demo/products';
  * Fires a `view_cart` toast on mount; renders the prototype's editorial
  * cart-row layout with a summary column and a Pattern 2 `LiveSidebar`
  * carrying the 6-assertion data-quality checklist.
+ *
+ * UAT r2 follow-up (2026-04-21):
+ * - Remove + decrement-to-zero now fire `remove_from_cart` via
+ *   `trackRemoveFromCart` and a `near-cart` toast so the event the
+ *   walkthrough advertises actually lands.
+ * - Line-item layout switched to a mobile-vertical / desktop-grid
+ *   stack. The pre-fix `grid-cols-[1fr_90px_90px_90px]` (4×fixed)
+ *   overflowed on 360px (90×3 + 36px gaps = 306px, leaving 6px for
+ *   the item column inside px-6 content padding). Mobile now stacks
+ *   image+name on one row and controls+prices on the next; sm+
+ *   returns to the original 4-column grid.
  */
 export function CartView() {
   const { items, itemCount, total, updateQuantity, removeItem } = useCart();
@@ -40,6 +52,37 @@ export function CartView() {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /** Fire trackRemoveFromCart + a near-cart toast, then drop the item
+   *  from cart state. Covers both the explicit "remove" link and the
+   *  decrement-quantity-past-0 path (the latter routed here from the
+   *  minus button when quantity === 1). `quantity` on the event is
+   *  how many units left the cart, matching GA4's remove_from_cart
+   *  shape. */
+  const fireRemoveFromCart = (item: CartItem) => {
+    trackRemoveFromCart({
+      product_id: item.product_id,
+      product_name: item.product_name,
+      product_price: item.product_price,
+      quantity: item.quantity,
+    });
+    push({
+      event_name: 'remove_from_cart',
+      detail: `item_id=${item.product_id}  quantity=${item.quantity}`,
+      routing: ['GA4', 'BigQuery'],
+      position: 'near-cart',
+      duration: 2000,
+    });
+    removeItem(item.product_id);
+  };
+
+  const handleDecrement = (item: CartItem) => {
+    if (item.quantity <= 1) {
+      fireRemoveFromCart(item);
+      return;
+    }
+    updateQuantity(item.product_id, item.quantity - 1);
+  };
 
   const isEmpty = items.length === 0;
 
@@ -84,7 +127,9 @@ export function CartView() {
             </div>
           ) : (
             <div className="flex flex-col divide-y divide-[var(--shop-warm-brown,#5C4A3D)]/12">
-              <div className="grid grid-cols-[1fr_90px_90px_90px] gap-3 pb-2 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--shop-warm-brown,#5C4A3D)]/60">
+              {/* Header row, desktop only. On mobile each line item is
+                  a two-row stack so there are no columns to label. */}
+              <div className="hidden grid-cols-[minmax(0,1fr)_90px_80px_80px] gap-3 pb-2 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--shop-warm-brown,#5C4A3D)]/60 sm:grid">
                 <span>item</span>
                 <span className="text-right">qty</span>
                 <span className="text-right">price</span>
@@ -95,9 +140,10 @@ export function CartView() {
                 return (
                   <div
                     key={item.product_id}
-                    className="grid grid-cols-[1fr_90px_90px_90px] items-center gap-3 py-4 text-[var(--shop-warm-brown,#5C4A3D)]"
+                    data-cart-line=""
+                    className="flex flex-col gap-3 py-4 text-[var(--shop-warm-brown,#5C4A3D)] sm:grid sm:grid-cols-[minmax(0,1fr)_90px_80px_80px] sm:items-center sm:gap-3"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
                       {p ? (
                         <div
                           className="h-12 w-12 shrink-0 rounded"
@@ -110,13 +156,13 @@ export function CartView() {
                           />
                         </div>
                       ) : null}
-                      <div className="flex flex-col">
-                        <div className="font-display text-base leading-tight">
+                      <div className="flex min-w-0 flex-col">
+                        <div className="truncate font-display text-base leading-tight">
                           {item.product_name}
                         </div>
                         <button
                           type="button"
-                          onClick={() => removeItem(item.product_id)}
+                          onClick={() => fireRemoveFromCart(item)}
                           className="text-left font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--shop-terracotta,#C4703A)] hover:underline"
                           aria-label={`Remove ${item.product_name}`}
                         >
@@ -124,12 +170,14 @@ export function CartView() {
                         </button>
                       </div>
                     </div>
-                    <div className="flex items-center justify-end gap-1.5">
+                    {/* Controls row. Mobile: qty on the left, price +
+                        line on the right. sm+: each in its own grid cell. */}
+                    <div className="flex items-center gap-1.5 sm:justify-end">
                       <button
                         type="button"
-                        onClick={() => updateQuantity(item.product_id, item.quantity - 1)}
+                        onClick={() => handleDecrement(item)}
                         aria-label={`Decrease quantity for ${item.product_name}`}
-                        className="inline-flex h-6 w-6 items-center justify-center rounded border border-[var(--shop-warm-brown,#5C4A3D)]/30 text-xs hover:border-[var(--shop-terracotta,#C4703A)]"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded border border-[var(--shop-warm-brown,#5C4A3D)]/30 text-xs hover:border-[var(--shop-terracotta,#C4703A)] sm:h-6 sm:w-6"
                       >
                         −
                       </button>
@@ -138,13 +186,26 @@ export function CartView() {
                         type="button"
                         onClick={() => updateQuantity(item.product_id, item.quantity + 1)}
                         aria-label={`Increase quantity for ${item.product_name}`}
-                        className="inline-flex h-6 w-6 items-center justify-center rounded border border-[var(--shop-warm-brown,#5C4A3D)]/30 text-xs hover:border-[var(--shop-terracotta,#C4703A)]"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded border border-[var(--shop-warm-brown,#5C4A3D)]/30 text-xs hover:border-[var(--shop-terracotta,#C4703A)] sm:h-6 sm:w-6"
                       >
                         +
                       </button>
+                      {/* Mobile-only inline prices. Desktop hides these
+                          since the 4-col grid has dedicated cells. */}
+                      <div className="ml-auto flex items-baseline gap-3 text-sm sm:hidden">
+                        <span className="text-[var(--shop-warm-brown,#5C4A3D)]/70">
+                          ${item.product_price.toFixed(2)}
+                        </span>
+                        <span className="font-medium">
+                          ${(item.product_price * item.quantity).toFixed(2)}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-right text-sm">${item.product_price.toFixed(2)}</div>
-                    <div className="text-right text-sm font-medium">
+                    {/* Desktop-only price + line cells. */}
+                    <div className="hidden text-right text-sm sm:block">
+                      ${item.product_price.toFixed(2)}
+                    </div>
+                    <div className="hidden text-right text-sm font-medium sm:block">
                       ${(item.product_price * item.quantity).toFixed(2)}
                     </div>
                   </div>

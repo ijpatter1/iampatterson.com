@@ -137,6 +137,18 @@ export interface AddToCartEvent extends BaseEvent {
   quantity: number;
 }
 
+/** Fired when a product is removed from the cart (via the remove link or
+ *  by decrementing quantity to 0). Added 2026-04-21 in UAT r2 follow-up,
+ *  the walkthrough copy advertised the event but no code path fired it.
+ *  `quantity` is the number of units removed (matches GA4's convention). */
+export interface RemoveFromCartEvent extends BaseEvent {
+  event: 'remove_from_cart';
+  product_id: string;
+  product_name: string;
+  product_price: number;
+  quantity: number;
+}
+
 /** Fired when the checkout flow begins. */
 export interface BeginCheckoutEvent extends BaseEvent {
   event: 'begin_checkout';
@@ -299,6 +311,7 @@ export type DataLayerEvent =
   | ConsentUpdateEvent
   | ProductViewEvent
   | AddToCartEvent
+  | RemoveFromCartEvent
   | BeginCheckoutEvent
   | PurchaseEvent
   | PlanSelectEvent
@@ -316,7 +329,7 @@ export type DataLayerEvent =
 
 /**
  * Runtime array of every distinct `event` string literal in the `DataLayerEvent`
- * union. The single source of truth for code that needs to iterate event names, 
+ * union. The single source of truth for code that needs to iterate event names,
  * consumers like `useDataLayerEvents` (which filters the window.dataLayer by
  * iap_source event name), the Session State coverage denominator (Phase 9E
  * deliverable 4), and any future introspection tooling derive from this array.
@@ -336,6 +349,7 @@ export const DATA_LAYER_EVENT_NAMES = [
   'consent_update',
   'product_view',
   'add_to_cart',
+  'remove_from_cart',
   'begin_checkout',
   'purchase',
   'plan_select',

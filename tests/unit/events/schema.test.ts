@@ -255,6 +255,7 @@ describe('Event schema types', () => {
       consent_update: true,
       product_view: true,
       add_to_cart: true,
+      remove_from_cart: true,
       begin_checkout: true,
       purchase: true,
       plan_select: true,
@@ -270,7 +271,7 @@ describe('Event schema types', () => {
       portal_click: true,
       coverage_milestone: true,
     };
-    // Runtime assertion derives the expected count from the schema's own source of truth, 
+    // Runtime assertion derives the expected count from the schema's own source of truth,
     // extending DATA_LAYER_EVENT_NAMES is the single edit needed; this test re-derives.
     expect(Object.keys(allEventNames)).toHaveLength(DATA_LAYER_EVENT_NAMES.length);
     // Sanity: the set of names rendered here matches the schema's runtime array.

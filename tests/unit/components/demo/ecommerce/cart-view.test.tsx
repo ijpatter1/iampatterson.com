@@ -8,6 +8,11 @@ import { CartView } from '@/components/demo/ecommerce/cart-view';
 import { CartProvider, useCart } from '@/components/demo/ecommerce/cart-context';
 import { ToastProvider } from '@/components/demo/reveal/toast-provider';
 
+const mockRemoveFromCart = jest.fn();
+jest.mock('@/lib/events/track', () => ({
+  trackRemoveFromCart: (...a: unknown[]) => mockRemoveFromCart(...a),
+}));
+
 const mockSession = jest.fn();
 jest.mock('@/hooks/useSessionContext', () => ({
   useSessionContext: () => mockSession(),
@@ -24,6 +29,7 @@ const DEFAULT_SESSION = {
 };
 beforeEach(() => {
   mockSession.mockReturnValue(DEFAULT_SESSION);
+  mockRemoveFromCart.mockClear();
 });
 
 function SeedItem({
@@ -129,9 +135,11 @@ describe('CartView (Phase 9F D7)', () => {
       },
     ]);
     expect(screen.getByText('Tuna Plush')).toBeInTheDocument();
-    // Per-item price
-    expect(screen.getByText('$26.00')).toBeInTheDocument();
-    // Line total ($52) + subtotal + total all show $52 with a single 2× line
+    // Per-item price. Post-2026-04-21 mobile-layout fix renders the price
+    // twice in the DOM (mobile-only inline copy + sm+ grid cell) since
+    // jsdom doesn't evaluate responsive CSS, both co-exist in the tree.
+    expect(screen.getAllByText('$26.00').length).toBeGreaterThanOrEqual(1);
+    // Line total ($52) + subtotal + total all show $52.
     expect(screen.getAllByText('$52.00').length).toBeGreaterThanOrEqual(1);
   });
 
@@ -242,6 +250,100 @@ describe('CartView (Phase 9F D7)', () => {
         },
       ]);
       expect(document.querySelector('[data-walkthrough-stack-link]')).not.toBeNull();
+    });
+  });
+
+  // UAT r2 follow-up (user-flagged 2026-04-21): the walkthrough
+  // promised remove_from_cart fires but no code path did.
+  describe('remove_from_cart event firing', () => {
+    it('fires trackRemoveFromCart when the remove link is clicked', async () => {
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      renderWithCart([
+        {
+          product_id: 'tuna-plush-classic',
+          product_name: 'Tuna Plush',
+          product_price: 26,
+          quantity: 2,
+        },
+      ]);
+      await user.click(screen.getByLabelText(/remove tuna plush/i));
+      expect(mockRemoveFromCart).toHaveBeenCalledTimes(1);
+      expect(mockRemoveFromCart).toHaveBeenCalledWith(
+        expect.objectContaining({
+          product_id: 'tuna-plush-classic',
+          product_name: 'Tuna Plush',
+          product_price: 26,
+          quantity: 2,
+        }),
+      );
+    });
+
+    it('fires a remove_from_cart toast at near-cart position', async () => {
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      renderWithCart([
+        {
+          product_id: 'tuna-plush-classic',
+          product_name: 'Tuna Plush',
+          product_price: 26,
+          quantity: 1,
+        },
+      ]);
+      await user.click(screen.getByLabelText(/remove tuna plush/i));
+      const toast = Array.from(document.querySelectorAll('[data-toast-card]')).find((c) =>
+        c.textContent?.includes('remove_from_cart'),
+      );
+      expect(toast).toBeTruthy();
+    });
+
+    it('fires remove_from_cart when decrementing quantity from 1 to 0', async () => {
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      renderWithCart([
+        {
+          product_id: 'tuna-plush-classic',
+          product_name: 'Tuna Plush',
+          product_price: 26,
+          quantity: 1,
+        },
+      ]);
+      await user.click(screen.getByLabelText(/decrease quantity for tuna plush/i));
+      expect(mockRemoveFromCart).toHaveBeenCalledTimes(1);
+    });
+
+    it('does NOT fire remove_from_cart on an ordinary quantity decrement (2 to 1)', async () => {
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      renderWithCart([
+        {
+          product_id: 'tuna-plush-classic',
+          product_name: 'Tuna Plush',
+          product_price: 26,
+          quantity: 2,
+        },
+      ]);
+      await user.click(screen.getByLabelText(/decrease quantity for tuna plush/i));
+      expect(mockRemoveFromCart).not.toHaveBeenCalled();
+    });
+  });
+
+  // UAT r2 follow-up (user-flagged 2026-04-21): the cart line item's
+  // pre-fix `grid-cols-[1fr_90px_90px_90px]` (4 fixed tracks, ~306px)
+  // overflowed 360px viewports. Mobile now stacks; desktop keeps the grid.
+  describe('mobile viewport containment', () => {
+    it('cart line items stack vertically on mobile and grid on sm+', () => {
+      renderWithCart([
+        {
+          product_id: 'tuna-plush-classic',
+          product_name: 'Tuna Plush',
+          product_price: 26,
+          quantity: 1,
+        },
+      ]);
+      const line = document.querySelector('[data-cart-line]') as HTMLElement;
+      expect(line).not.toBeNull();
+      // Mobile: flex-col. sm+: grid.
+      expect(line.className).toMatch(/flex-col/);
+      expect(line.className).toMatch(/sm:grid\b/);
+      // The grid uses minmax(0, 1fr) so the item column can shrink.
+      expect(line.className).toMatch(/minmax\(0,1fr\)/);
     });
   });
 });
