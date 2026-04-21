@@ -11,7 +11,10 @@ import { LiveSidebar } from '@/components/demo/reveal/live-sidebar';
 import { FullPageDiagnostic } from '@/components/demo/reveal/full-page-diagnostic';
 import { useSessionContext } from '@/hooks/useSessionContext';
 import { WarehouseWriteReadout } from './warehouse-write-readout';
-import { FULL_PAGE_DIAGNOSTIC_LINES } from '@/lib/demo/reveal/warehouse-write';
+import {
+  FULL_PAGE_DIAGNOSTIC_LINES,
+  diagnosticLinesForConsent,
+} from '@/lib/demo/reveal/warehouse-write';
 
 /**
  * Phase 9F D8 — checkout page content.
@@ -292,8 +295,14 @@ export function CheckoutForm() {
 
       {step === 'diagnostic' ? (
         <FullPageDiagnostic
-          duration={1900}
-          lines={FULL_PAGE_DIAGNOSTIC_LINES}
+          lines={
+            session.events_in_session > 0
+              ? diagnosticLinesForConsent({
+                  analytics: session.consent_analytics,
+                  marketing: session.consent_marketing,
+                })
+              : FULL_PAGE_DIAGNOSTIC_LINES
+          }
           onComplete={handleDiagnosticComplete}
         />
       ) : null}

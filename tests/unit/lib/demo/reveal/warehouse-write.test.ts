@@ -2,6 +2,7 @@ import {
   BQ_ROW_COLUMNS,
   bqRowForCart,
   FULL_PAGE_DIAGNOSTIC_LINES,
+  diagnosticLinesForConsent,
 } from '@/lib/demo/reveal/warehouse-write';
 
 describe('warehouse-write — BQ row preview', () => {
@@ -118,5 +119,40 @@ describe('FULL_PAGE_DIAGNOSTIC_LINES', () => {
   it('references the real BQ raw table', () => {
     const bq = FULL_PAGE_DIAGNOSTIC_LINES.find((l) => l.text.includes('BigQuery'));
     expect(bq?.text).toContain('iampatterson_raw.events_raw');
+  });
+});
+
+describe('diagnosticLinesForConsent (UAT r1 item 14 — real consent data)', () => {
+  it('reports analytics=granted + marketing=denied on the consent-check line', () => {
+    const lines = diagnosticLinesForConsent({ analytics: true, marketing: false });
+    const consentLine = lines.find((l) => l.text.startsWith('consent check'));
+    expect(consentLine?.text).toBe('consent check · analytics=granted, marketing=denied');
+  });
+
+  it('reports analytics=denied + marketing=granted on the consent-check line', () => {
+    const lines = diagnosticLinesForConsent({ analytics: false, marketing: true });
+    const consentLine = lines.find((l) => l.text.startsWith('consent check'));
+    expect(consentLine?.text).toBe('consent check · analytics=denied, marketing=granted');
+  });
+
+  it('Meta CAPI line is OK + "event sent" when marketing=granted (not SKIP)', () => {
+    const lines = diagnosticLinesForConsent({ analytics: true, marketing: true });
+    const meta = lines.find((l) => l.text.includes('Meta CAPI'));
+    expect(meta?.tag).toBe('OK');
+    expect(meta?.text).toMatch(/event sent/);
+  });
+
+  it('Meta CAPI line is SKIP + "skipped" when marketing=denied', () => {
+    const lines = diagnosticLinesForConsent({ analytics: true, marketing: false });
+    const meta = lines.find((l) => l.text.includes('Meta CAPI'));
+    expect(meta?.tag).toBe('SKIP');
+    expect(meta?.text).toMatch(/skipped/);
+  });
+
+  it('final line is always the LIVE emph dashboards refresh', () => {
+    const lines = diagnosticLinesForConsent({ analytics: false, marketing: false });
+    const last = lines[lines.length - 1];
+    expect(last.tag).toBe('LIVE');
+    expect(last.emph).toBe(true);
   });
 });

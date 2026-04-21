@@ -90,7 +90,13 @@ export function bqRowForCart(params: {
   });
 }
 
-/** 7-line pipeline-journey sequence for the full-page diagnostic moment. */
+/** 7-line pipeline-journey sequence for the full-page diagnostic moment.
+ *
+ * The static default assumes analytics=granted, marketing=denied — the
+ * most common state for a visitor who accepts only strictly necessary
+ * cookies via Cookiebot. Call `diagnosticLinesForConsent` to branch on
+ * the visitor's real consent flags (UAT r1 item 14 — honest data).
+ */
 export const FULL_PAGE_DIAGNOSTIC_LINES: Array<{
   text: string;
   tag?: string;
@@ -104,3 +110,36 @@ export const FULL_PAGE_DIAGNOSTIC_LINES: Array<{
   { text: 'attribution engine · last-click + shapley triggered', tag: 'OK' },
   { text: 'dashboards · revenue KPI refreshing', tag: 'LIVE', emph: true },
 ];
+
+/**
+ * Build the 7-line pipeline-journey sequence against the visitor's real
+ * consent state so the diagnostic text matches what would actually
+ * happen. When analytics is denied, the consent check line reflects that;
+ * when marketing is granted, the Meta CAPI line flips from SKIP to OK
+ * ("routed → Meta CAPI · event sent"). Other lines are unconditional —
+ * the purchase fires, sGTM receives it, BigQuery inserts the row, the
+ * attribution engine and dashboards downstream of BQ both run.
+ */
+export function diagnosticLinesForConsent(consent: {
+  analytics: boolean;
+  marketing: boolean;
+}): typeof FULL_PAGE_DIAGNOSTIC_LINES {
+  const analyticsLabel = consent.analytics ? 'granted' : 'denied';
+  const marketingLabel = consent.marketing ? 'granted' : 'denied';
+  const metaLine = consent.marketing
+    ? { text: 'routed → Meta CAPI · event sent (marketing granted)', tag: 'OK' }
+    : { text: 'routed → Meta CAPI · skipped (marketing denied)', tag: 'SKIP' };
+
+  return [
+    { text: 'purchase event fired', tag: 'OK' },
+    {
+      text: `consent check · analytics=${analyticsLabel}, marketing=${marketingLabel}`,
+      tag: 'OK',
+    },
+    { text: 'routed → sGTM (io.iampatterson.com)', tag: 'OK' },
+    metaLine,
+    { text: 'routed → BigQuery · 1 row written to iampatterson_raw.events_raw', tag: 'OK' },
+    { text: 'attribution engine · last-click + shapley triggered', tag: 'OK' },
+    { text: 'dashboards · revenue KPI refreshing', tag: 'LIVE', emph: true },
+  ];
+}

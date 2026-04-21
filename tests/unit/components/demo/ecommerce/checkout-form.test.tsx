@@ -158,9 +158,10 @@ describe('CheckoutForm (Phase 9F D8)', () => {
     await user.click(screen.getByRole('button', { name: /place order/i }));
     // Diagnostic dialog should be mounted
     expect(document.querySelector('[role="dialog"]')).not.toBeNull();
-    // Let the 1.9s sequence complete
+    // Let the full 4.5s sequence complete (UAT r1 item 14 — bumped
+    // from 1.9s so readers have time to read each line).
     act(() => {
-      jest.advanceTimersByTime(2000);
+      jest.advanceTimersByTime(4600);
     });
     expect(mockPush).toHaveBeenCalledTimes(1);
     const pushedUrl = mockPush.mock.calls[0][0] as string;
@@ -174,7 +175,7 @@ describe('CheckoutForm (Phase 9F D8)', () => {
     renderCheckout();
     await user.click(screen.getByRole('button', { name: /place order/i }));
     act(() => {
-      jest.advanceTimersByTime(2000);
+      jest.advanceTimersByTime(4600);
     });
     // After completion, push was called with the confirmation URL
     expect(mockPush).toHaveBeenCalled();
@@ -188,6 +189,43 @@ describe('CheckoutForm (Phase 9F D8)', () => {
     // Press any key — onComplete fires, router.push called
     await user.keyboard('{Enter}');
     expect(mockPush).toHaveBeenCalledTimes(1);
+  });
+
+  // UAT r1 item 14 — the full-page intermission was too fast + used
+  // hardcoded consent values. The duration bump (1900 → 4500) is pinned
+  // in the full-page-diagnostic test; the live-consent substitution is
+  // pinned here.
+  describe('UAT r1 item 14 — live consent in full-page diagnostic', () => {
+    it('uses live consent in the diagnostic consent-check line when events have flowed', async () => {
+      mockSession.mockReturnValue({
+        ...DEFAULT_SESSION,
+        events_in_session: 2,
+        consent_analytics: false,
+        consent_marketing: true,
+      });
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      renderCheckout();
+      await user.click(screen.getByRole('button', { name: /place order/i }));
+      const dialog = document.querySelector('[role="dialog"]');
+      // Let all lines stagger-in (dialog spans 4500ms total with 7 lines).
+      act(() => {
+        jest.advanceTimersByTime(4000);
+      });
+      expect(dialog?.textContent).toMatch(/consent check · analytics=denied, marketing=granted/);
+    });
+
+    it('falls back to the static seed lines when no events have flowed yet', async () => {
+      // No events → events_in_session=0 → stays on seed list, which
+      // reads analytics=granted + marketing=denied.
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      renderCheckout();
+      await user.click(screen.getByRole('button', { name: /place order/i }));
+      const dialog = document.querySelector('[role="dialog"]');
+      act(() => {
+        jest.advanceTimersByTime(4000);
+      });
+      expect(dialog?.textContent).toMatch(/consent check · analytics=granted, marketing=denied/);
+    });
   });
 
   // UAT r1 items 11 + 13 — warehouse-write sidebar reflects real session.

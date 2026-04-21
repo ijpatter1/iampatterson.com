@@ -197,11 +197,14 @@ describe('FullPageDiagnostic', () => {
     expect(onComplete).not.toHaveBeenCalled();
   });
 
-  it('uses default duration ~1900ms when not provided', () => {
+  it('uses default duration ~4500ms when not provided (UAT r1 item 14)', () => {
+    // Pre-UAT this was 1900ms — with 7 lines that gave each line only
+    // ~240ms before the next arrived + ~240ms to read the final line.
+    // Bumped to 4500ms so readers have ~640ms per line.
     const onComplete = jest.fn();
     render(<FullPageDiagnostic lines={[{ text: 'a' }]} onComplete={onComplete} />);
     act(() => {
-      jest.advanceTimersByTime(1899);
+      jest.advanceTimersByTime(4499);
     });
     expect(onComplete).not.toHaveBeenCalled();
     act(() => {

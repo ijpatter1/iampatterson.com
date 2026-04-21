@@ -5,7 +5,11 @@ import { createPortal } from 'react-dom';
 
 /** Elements to exclude from the focus-restore target (dialog itself). */
 
-const DEFAULT_DURATION_MS = 1900;
+// UAT r1 item 14 — 1900ms for 7 lines gave each line only ~240ms before
+// the next arrived + ~240ms to read the final line before dismissal. Bump
+// to 4500ms so each line has ~640ms — still brief, but readable. Skippable
+// via any keydown when a returning visitor doesn't need the beat.
+const DEFAULT_DURATION_MS = 4500;
 
 export interface DiagnosticLine {
   text: string;
