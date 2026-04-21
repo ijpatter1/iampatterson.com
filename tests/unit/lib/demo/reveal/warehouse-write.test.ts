@@ -39,10 +39,61 @@ describe('bqRowForCart', () => {
     expect(rows.find((c) => c.k === 'items')?.v).toBe('ARRAY<STRUCT>(2)');
   });
 
-  it('preserves non-cart columns unchanged', () => {
+  it('preserves non-cart columns unchanged when no live context supplied', () => {
     const rows = bqRowForCart({ total: 0, itemCount: 0, uniqueItems: 0 });
     const channel = rows.find((c) => c.k === 'channel_classified');
     expect(channel?.v).toBe('"Meta · Prospecting"');
+    const sid = rows.find((c) => c.k === 'session_id');
+    expect(sid?.v).toBe('"ses_x9b2jk3q"'); // seed
+  });
+
+  // UAT r1 items 11 + 13 — checkout sidebar advertised as live but all
+  // visitor-scoped columns (session_id, timestamps, consent) were static.
+  describe('UAT r1 items 11 + 13 — live substitutions', () => {
+    it('substitutes session_id with the real id (truncated 8 chars + ellipsis)', () => {
+      const rows = bqRowForCart({
+        total: 26,
+        itemCount: 1,
+        uniqueItems: 1,
+        live: { sessionId: 'abc12345-6789-4def-8abc-deadbeefcafe' },
+      });
+      expect(rows.find((c) => c.k === 'session_id')?.v).toBe('"abc12345…"');
+    });
+
+    it('substitutes event_timestamp + received_timestamp with the live ISO + its ms', () => {
+      const iso = '2026-04-21T18:15:02.000Z';
+      const rows = bqRowForCart({
+        total: 0,
+        itemCount: 0,
+        uniqueItems: 0,
+        live: { eventTimestamp: iso },
+      });
+      expect(rows.find((c) => c.k === 'event_timestamp')?.v).toBe(`"${iso}"`);
+      expect(rows.find((c) => c.k === 'received_timestamp')?.v).toBe(String(Date.parse(iso)));
+    });
+
+    it('substitutes consent_analytics / consent_marketing with the real flags', () => {
+      const rows = bqRowForCart({
+        total: 0,
+        itemCount: 0,
+        uniqueItems: 0,
+        live: { consentAnalytics: true, consentMarketing: false },
+      });
+      expect(rows.find((c) => c.k === 'consent_analytics')?.v).toBe('"granted"');
+      expect(rows.find((c) => c.k === 'consent_marketing')?.v).toBe('"denied"');
+    });
+
+    it('consent columns fall back to seed when no live consent is supplied', () => {
+      const rows = bqRowForCart({
+        total: 0,
+        itemCount: 0,
+        uniqueItems: 0,
+        live: { sessionId: 'x'.repeat(36) }, // live ctx, but no consent keys
+      });
+      // Seed values stay intact (consent keys not in the partial ctx).
+      expect(rows.find((c) => c.k === 'consent_analytics')?.v).toBe('"granted"');
+      expect(rows.find((c) => c.k === 'consent_marketing')?.v).toBe('"denied"');
+    });
   });
 });
 

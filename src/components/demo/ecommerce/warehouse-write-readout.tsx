@@ -1,23 +1,28 @@
 'use client';
 
-import { bqRowForCart } from '@/lib/demo/reveal/warehouse-write';
+import { bqRowForCart, type LiveCheckoutContext } from '@/lib/demo/reveal/warehouse-write';
 
 /**
  * Warehouse-write Tier 2 readout — children of `LiveSidebar` on the
  * checkout page. Renders the row preview being written to BigQuery with
  * cart-reactive fields (`cart_value`, `cart_item_count`, `items`) updated
- * live as the visitor modifies cart state.
+ * live as the visitor modifies cart state. When live session context is
+ * supplied, `session_id`, `event_timestamp`, `received_timestamp`, and the
+ * two consent flags also substitute with the visitor's real values
+ * (UAT r1 items 11 + 13).
  */
 export function WarehouseWriteReadout({
   total,
   itemCount,
   uniqueItems,
+  live,
 }: {
   total: number;
   itemCount: number;
   uniqueItems: number;
+  live?: LiveCheckoutContext;
 }) {
-  const cols = bqRowForCart({ total, itemCount, uniqueItems });
+  const cols = bqRowForCart({ total, itemCount, uniqueItems, live });
   return (
     <div className="flex flex-col gap-3">
       <header className="flex items-center justify-between text-[11px]">

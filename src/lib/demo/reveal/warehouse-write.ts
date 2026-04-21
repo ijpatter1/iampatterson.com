@@ -37,19 +37,55 @@ export const BQ_ROW_COLUMNS: BQColumn[] = [
   { k: 'ingested_at', v: 'CURRENT_TIMESTAMP()', type: 'TIMESTAMP' },
 ];
 
+export interface LiveCheckoutContext {
+  /** Real _iap_sid session id. */
+  sessionId?: string;
+  /** ISO timestamp of the most recent live event. */
+  eventTimestamp?: string;
+  /** Whether analytics consent has been granted in the real consent state. */
+  consentAnalytics?: boolean;
+  /** Whether marketing/ad-storage consent has been granted. */
+  consentMarketing?: boolean;
+}
+
 /**
  * Substitute `cart_value` / `cart_item_count` / `items` rows with the
- * visitor's current cart state so the preview is specific.
+ * visitor's current cart state so the preview is specific. When live
+ * session context is supplied, also substitutes `session_id`,
+ * `event_timestamp`, `received_timestamp`, and the two consent flags
+ * with the visitor's real values (UAT r1 items 11 + 13).
  */
 export function bqRowForCart(params: {
   total: number;
   itemCount: number;
   uniqueItems: number;
+  live?: LiveCheckoutContext;
 }): BQColumn[] {
+  const sid =
+    params.live?.sessionId && params.live.sessionId.length > 0 ? params.live.sessionId : null;
+  const ts =
+    params.live?.eventTimestamp && params.live.eventTimestamp.length > 0
+      ? params.live.eventTimestamp
+      : null;
+  const hasLiveConsent =
+    params.live?.consentAnalytics !== undefined || params.live?.consentMarketing !== undefined;
+
   return BQ_ROW_COLUMNS.map((c) => {
     if (c.k === 'cart_value') return { ...c, v: params.total.toFixed(2) };
     if (c.k === 'cart_item_count') return { ...c, v: String(params.itemCount) };
     if (c.k === 'items') return { ...c, v: `ARRAY<STRUCT>(${params.uniqueItems})` };
+    if (c.k === 'session_id' && sid) return { ...c, v: `"${sid.slice(0, 8)}…"` };
+    if (c.k === 'event_timestamp' && ts) return { ...c, v: `"${ts}"` };
+    if (c.k === 'received_timestamp' && ts) {
+      const ms = Date.parse(ts);
+      if (Number.isFinite(ms)) return { ...c, v: String(ms) };
+    }
+    if (c.k === 'consent_analytics' && hasLiveConsent) {
+      return { ...c, v: `"${params.live?.consentAnalytics ? 'granted' : 'denied'}"` };
+    }
+    if (c.k === 'consent_marketing' && hasLiveConsent) {
+      return { ...c, v: `"${params.live?.consentMarketing ? 'granted' : 'denied'}"` };
+    }
     return c;
   });
 }

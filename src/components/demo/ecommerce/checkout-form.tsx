@@ -9,6 +9,7 @@ import { useCart } from './cart-context';
 import { useToast } from '@/components/demo/reveal/toast-provider';
 import { LiveSidebar } from '@/components/demo/reveal/live-sidebar';
 import { FullPageDiagnostic } from '@/components/demo/reveal/full-page-diagnostic';
+import { useSessionContext } from '@/hooks/useSessionContext';
 import { WarehouseWriteReadout } from './warehouse-write-readout';
 import { FULL_PAGE_DIAGNOSTIC_LINES } from '@/lib/demo/reveal/warehouse-write';
 
@@ -26,6 +27,7 @@ export function CheckoutForm() {
   const { items, total, itemCount, clearCart } = useCart();
   const router = useRouter();
   const { push } = useToast();
+  const session = useSessionContext();
   const toastedRef = useRef(false);
   const checkoutFiredRef = useRef(false);
   const [step, setStep] = useState<'form' | 'diagnostic'>('form');
@@ -269,7 +271,21 @@ export function CheckoutForm() {
             title="Warehouse write · begin_checkout"
             tag="UNDER · TIER 2 · BQ"
           >
-            <WarehouseWriteReadout total={total} itemCount={itemCount} uniqueItems={items.length} />
+            <WarehouseWriteReadout
+              total={total}
+              itemCount={itemCount}
+              uniqueItems={items.length}
+              live={{
+                sessionId: session.session_id,
+                eventTimestamp: session.last_event_at || undefined,
+                // Consent flags only substitute once at least one event
+                // has landed — before that we don't know the real state.
+                consentAnalytics:
+                  session.events_in_session > 0 ? session.consent_analytics : undefined,
+                consentMarketing:
+                  session.events_in_session > 0 ? session.consent_marketing : undefined,
+              }}
+            />
           </LiveSidebar>
         </aside>
       </div>

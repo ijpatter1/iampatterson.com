@@ -22,6 +22,21 @@ jest.mock('@/lib/events/track', () => ({
   trackPurchase: (...a: unknown[]) => mockPurchase(...a),
 }));
 
+const mockSession = jest.fn();
+jest.mock('@/hooks/useSessionContext', () => ({
+  useSessionContext: () => mockSession(),
+}));
+const DEFAULT_SESSION = {
+  session_id: '',
+  last_event_name: '',
+  last_event_at: '',
+  seconds_since_last_event: 0,
+  events_in_session: 0,
+  add_to_cart_in_last_30s: 0,
+  consent_analytics: false,
+  consent_marketing: false,
+};
+
 function Seed({ product_id }: { product_id: string }) {
   const { addItem } = useCart();
   const seeded = React.useRef(false);
@@ -55,6 +70,7 @@ describe('CheckoutForm (Phase 9F D8)', () => {
     mockPush.mockClear();
     mockBeginCheckout.mockClear();
     mockPurchase.mockClear();
+    mockSession.mockReturnValue(DEFAULT_SESSION);
   });
   afterEach(() => {
     act(() => {
@@ -172,6 +188,52 @@ describe('CheckoutForm (Phase 9F D8)', () => {
     // Press any key — onComplete fires, router.push called
     await user.keyboard('{Enter}');
     expect(mockPush).toHaveBeenCalledTimes(1);
+  });
+
+  // UAT r1 items 11 + 13 — warehouse-write sidebar reflects real session.
+  describe('UAT r1 items 11 + 13 — live warehouse-write sidebar', () => {
+    it('substitutes real session_id into the BQ row preview', () => {
+      mockSession.mockReturnValue({
+        ...DEFAULT_SESSION,
+        session_id: 'abc12345-6789-4def-8abc-deadbeefcafe',
+      });
+      renderCheckout();
+      const sidebar = document.querySelector('aside[data-live-sidebar]');
+      expect(sidebar?.textContent).toMatch(/abc12345…/);
+    });
+
+    it('substitutes event_timestamp with the real last-event ISO', () => {
+      const iso = '2026-04-21T18:15:02.000Z';
+      mockSession.mockReturnValue({
+        ...DEFAULT_SESSION,
+        last_event_at: iso,
+      });
+      renderCheckout();
+      const sidebar = document.querySelector('aside[data-live-sidebar]');
+      expect(sidebar?.textContent).toContain(iso);
+    });
+
+    it('substitutes consent flags once events have flowed', () => {
+      mockSession.mockReturnValue({
+        ...DEFAULT_SESSION,
+        events_in_session: 2,
+        consent_analytics: true,
+        consent_marketing: true,
+      });
+      renderCheckout();
+      const sidebar = document.querySelector('aside[data-live-sidebar]');
+      // Both should read granted when events carry both flags granted.
+      const grantedMatches = (sidebar?.textContent ?? '').match(/granted/g) ?? [];
+      expect(grantedMatches.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('falls back to seed consent values when no events have flowed yet', () => {
+      renderCheckout();
+      const sidebar = document.querySelector('aside[data-live-sidebar]');
+      // Seed has analytics=granted, marketing=denied.
+      expect(sidebar?.textContent).toMatch(/granted/);
+      expect(sidebar?.textContent).toMatch(/denied/);
+    });
   });
 
   // UAT r1 item 10 — the pre-rework defaults "Courtney" / "Patterson"
