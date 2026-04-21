@@ -8,7 +8,7 @@ import { useCart } from './cart-context';
 import { useToast } from '@/components/demo/reveal/toast-provider';
 import { products as allProducts, type Product } from '@/lib/demo/products';
 import { trackAddToCart } from '@/lib/events/track';
-import { classifyUtm, resolveUtm } from '@/lib/demo/reveal/campaign-taxonomy';
+import { classifyUtm, resolveUtmMeta } from '@/lib/demo/reveal/campaign-taxonomy';
 
 /**
  * Phase 9F D5 — listing view.
@@ -22,10 +22,11 @@ import { classifyUtm, resolveUtm } from '@/lib/demo/reveal/campaign-taxonomy';
  */
 export function ListingView() {
   const searchParams = useSearchParams();
-  const utmCampaign = useMemo(
-    () => resolveUtm({ utm_campaign: searchParams?.get('utm_campaign') }),
+  const utmMeta = useMemo(
+    () => resolveUtmMeta({ utm_campaign: searchParams?.get('utm_campaign') }),
     [searchParams],
   );
+  const utmCampaign = utmMeta.value;
   const classification = useMemo(() => classifyUtm(utmCampaign), [utmCampaign]);
 
   const { addItem } = useCart();
@@ -117,9 +118,16 @@ export function ListingView() {
         </p>
         <dl className="grid grid-cols-1 gap-2 rounded border border-[var(--shop-warm-brown,#5C4A3D)]/12 bg-[var(--shop-cream-2,#F5EEDB)] p-4 sm:grid-cols-[max-content_1fr] sm:gap-x-6 sm:gap-y-3">
           <dt className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--shop-warm-brown,#5C4A3D)]/60">
-            your utm_campaign
+            {utmMeta.isLive ? 'your utm_campaign' : 'example utm_campaign'}
           </dt>
-          <dd className="font-mono text-xs text-[var(--shop-warm-brown,#5C4A3D)]">{utmCampaign}</dd>
+          <dd className="flex flex-wrap items-center gap-2 font-mono text-xs text-[var(--shop-warm-brown,#5C4A3D)]">
+            <span>{utmCampaign}</span>
+            {utmMeta.isLive ? null : (
+              <span className="rounded border border-[var(--shop-warm-brown,#5C4A3D)]/30 bg-[var(--shop-cream,#FBF6EA)] px-1.5 py-[1px] text-[9px] uppercase tracking-[0.12em] text-[var(--shop-warm-brown,#5C4A3D)]/70">
+                example · no utm in your url
+              </span>
+            )}
+          </dd>
           <dt className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--shop-warm-brown,#5C4A3D)]/60">
             classified as
           </dt>

@@ -78,6 +78,24 @@ export function resolveUtm(params: { utm_campaign?: string | null }): string {
 }
 
 /**
+ * Same resolution as `resolveUtm` but also reports whether the value came
+ * from the URL (`isLive: true`) or fell back to the seed (`isLive: false`).
+ * Added for UAT r1 item 3: surfaces MUST label a seed value as an example,
+ * not as the visitor's own utm_campaign. The listing-hero panel is the
+ * primary caller — toasts happily use the raw `resolveUtm` value either way.
+ */
+export function resolveUtmMeta(params: { utm_campaign?: string | null }): {
+  value: string;
+  isLive: boolean;
+} {
+  const explicit = params.utm_campaign;
+  if (typeof explicit === 'string' && explicit.length > 0) {
+    return { value: explicit, isLive: true };
+  }
+  return { value: DEFAULT_UTM, isLive: false };
+}
+
+/**
  * Classify a campaign id against the seed taxonomy. Returns an
  * `Unclassified` placeholder when the id isn't in the seed map — preserves
  * the visitor-facing "we don't pretend to recognise everything" honesty.

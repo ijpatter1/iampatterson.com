@@ -143,7 +143,7 @@ export function CheckoutForm() {
                 <span>first name</span>
                 <input
                   type="text"
-                  defaultValue="Courtney"
+                  defaultValue="Jane"
                   className="rounded border border-[var(--shop-warm-brown,#5C4A3D)]/25 bg-[var(--shop-cream-2,#F5EEDB)] px-3 py-2 text-sm"
                 />
               </label>
@@ -151,7 +151,7 @@ export function CheckoutForm() {
                 <span>last name</span>
                 <input
                   type="text"
-                  defaultValue="Patterson"
+                  defaultValue="Rivera"
                   className="rounded border border-[var(--shop-warm-brown,#5C4A3D)]/25 bg-[var(--shop-cream-2,#F5EEDB)] px-3 py-2 text-sm"
                 />
               </label>

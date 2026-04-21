@@ -71,6 +71,36 @@ describe('ListingView (Phase 9F D5 — product listing)', () => {
     expect(screen.getByText(/prospecting · lookalike/i)).toBeInTheDocument();
   });
 
+  // UAT r1 item 3 — the `dl` previously labelled the default UTM seed
+  // as "your utm_campaign" even when the visitor's URL carried no
+  // utm_campaign. That's dishonest — it's an example, not theirs.
+  // When no utm_campaign is in the URL, the panel must flag the
+  // value as a representative example; when one IS present, the flag
+  // must not appear.
+  describe('UAT r1 item 3 — honest UTM labelling', () => {
+    it('flags the seed as an example when no utm_campaign is in the URL', () => {
+      renderView();
+      const panel = document.querySelector('dl');
+      expect(panel?.textContent).toMatch(/example/i);
+    });
+
+    it('does NOT flag it as "your utm_campaign" when the seed is showing', () => {
+      renderView();
+      const panel = document.querySelector('dl');
+      // Pre-rework label "your utm_campaign" was the lie when the
+      // value was the fallback seed.
+      expect(panel?.textContent).not.toMatch(/your utm_campaign/i);
+    });
+
+    it('uses the live "your utm_campaign" label when an explicit utm_campaign is present', () => {
+      mockSearchParams = new URLSearchParams({ utm_campaign: 'google_brand_tuna' });
+      renderView();
+      const panel = document.querySelector('dl');
+      expect(panel?.textContent).toMatch(/your utm_campaign/i);
+      expect(panel?.textContent).not.toMatch(/example/i);
+    });
+  });
+
   it('renders all 6 products in a grid', () => {
     renderView();
     expect(screen.getByText('Tuna Plush')).toBeInTheDocument();

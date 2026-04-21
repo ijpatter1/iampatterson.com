@@ -173,4 +173,21 @@ describe('CheckoutForm (Phase 9F D8)', () => {
     await user.keyboard('{Enter}');
     expect(mockPush).toHaveBeenCalledTimes(1);
   });
+
+  // UAT r1 item 10 — the pre-rework defaults "Courtney" / "Patterson"
+  // carried the site owner's own family name into the demo checkout.
+  // Generic placeholder names only.
+  describe('UAT r1 item 10 — generic checkout placeholder names', () => {
+    it('does NOT prefill "Courtney" as first name', () => {
+      renderCheckout();
+      const firstName = screen.getByLabelText(/first name/i) as HTMLInputElement;
+      expect(firstName.value).not.toBe('Courtney');
+    });
+
+    it('does NOT prefill "Patterson" as last name', () => {
+      renderCheckout();
+      const lastName = screen.getByLabelText(/last name/i) as HTMLInputElement;
+      expect(lastName.value).not.toBe('Patterson');
+    });
+  });
 });
