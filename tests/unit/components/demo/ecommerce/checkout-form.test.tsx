@@ -277,6 +277,54 @@ describe('CheckoutForm (Phase 9F D8)', () => {
     });
   });
 
+  // UAT r2 item 16 — the mobile checkout had flex items spilling past the
+  // viewport. The fix is a belt-and-braces set: inputs are all w-full, the
+  // form + aside columns both carry min-w-0 so they can shrink inside the
+  // grid, and the grid template uses minmax(0, 1fr) instead of plain 1fr.
+  describe('UAT r2 item 16 — mobile viewport containment', () => {
+    it('every form input is w-full with min-w-0 so nothing forces the form wider than its column', () => {
+      renderCheckout();
+      const inputs = document.querySelectorAll('input');
+      expect(inputs.length).toBeGreaterThan(0);
+      inputs.forEach((el) => {
+        expect(el.className).toMatch(/\bw-full\b/);
+        expect(el.className).toMatch(/\bmin-w-0\b/);
+      });
+    });
+
+    it('form + aside columns carry min-w-0 so the grid lets them shrink', () => {
+      renderCheckout();
+      const form = document.querySelector('form');
+      expect(form?.className).toMatch(/\bmin-w-0\b/);
+      // The aside directly holding the live sidebar is the right column
+      // (NOT the aria-labelled sidebar itself which has its own width logic).
+      const asideOuter = document.querySelector('form + aside');
+      expect(asideOuter?.className).toMatch(/\bmin-w-0\b/);
+    });
+  });
+
+  // UAT r2 item 13 — warehouse-write readout's key/value cells used to
+  // overflow on narrow viewports because the first two grid tracks were
+  // plain `1fr` (which lets grid items grow past their track) with no
+  // truncate on the key span.
+  describe('UAT r2 item 13 — warehouse-write readout cells truncate on narrow viewports', () => {
+    it('BQ row rows use minmax(0, 1fr) tracks with truncate on both key + value spans', () => {
+      renderCheckout();
+      const sidebar = document.querySelector('aside[data-live-sidebar]') as HTMLElement;
+      const rows = sidebar.querySelectorAll('div.grid');
+      expect(rows.length).toBeGreaterThan(0);
+      const first = rows[0] as HTMLElement;
+      expect(first.className).toMatch(/minmax\(0,1fr\)/);
+      const spans = first.querySelectorAll('span');
+      // First two spans should truncate + min-w-0. Third span is the
+      // right-aligned type cell and doesn't need truncate.
+      expect(spans[0].className).toMatch(/\btruncate\b/);
+      expect(spans[0].className).toMatch(/\bmin-w-0\b/);
+      expect(spans[1].className).toMatch(/\btruncate\b/);
+      expect(spans[1].className).toMatch(/\bmin-w-0\b/);
+    });
+  });
+
   // UAT r1 item 10 — the pre-rework defaults "Courtney" / "Patterson"
   // carried the site owner's own family name into the demo checkout.
   // Generic placeholder names only.

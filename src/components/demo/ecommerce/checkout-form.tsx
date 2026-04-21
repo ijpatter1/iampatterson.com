@@ -148,11 +148,11 @@ export function CheckoutForm() {
         checkout
       </h1>
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_320px] lg:gap-10">
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-10">
         <form
           onSubmit={handleSubmit}
           autoComplete="off"
-          className="flex flex-col gap-6 text-[var(--shop-warm-brown,#5C4A3D)]"
+          className="flex min-w-0 flex-col gap-6 text-[var(--shop-warm-brown,#5C4A3D)]"
         >
           <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--shop-warm-brown,#5C4A3D)]/55">
             demo prefill — nothing ships from here, nothing is charged.
@@ -166,7 +166,7 @@ export function CheckoutForm() {
               <input
                 type="email"
                 defaultValue="hello@example.com"
-                className="rounded border border-[var(--shop-warm-brown,#5C4A3D)]/25 bg-[var(--shop-cream-2,#F5EEDB)] px-3 py-2 text-sm"
+                className="w-full min-w-0 rounded border border-[var(--shop-warm-brown,#5C4A3D)]/25 bg-[var(--shop-cream-2,#F5EEDB)] px-3 py-2 text-sm"
               />
             </label>
           </fieldset>
@@ -181,7 +181,7 @@ export function CheckoutForm() {
                 <input
                   type="text"
                   defaultValue="Jane"
-                  className="rounded border border-[var(--shop-warm-brown,#5C4A3D)]/25 bg-[var(--shop-cream-2,#F5EEDB)] px-3 py-2 text-sm"
+                  className="w-full min-w-0 rounded border border-[var(--shop-warm-brown,#5C4A3D)]/25 bg-[var(--shop-cream-2,#F5EEDB)] px-3 py-2 text-sm"
                 />
               </label>
               <label className="flex flex-col gap-1 text-xs">
@@ -189,7 +189,7 @@ export function CheckoutForm() {
                 <input
                   type="text"
                   defaultValue="Rivera"
-                  className="rounded border border-[var(--shop-warm-brown,#5C4A3D)]/25 bg-[var(--shop-cream-2,#F5EEDB)] px-3 py-2 text-sm"
+                  className="w-full min-w-0 rounded border border-[var(--shop-warm-brown,#5C4A3D)]/25 bg-[var(--shop-cream-2,#F5EEDB)] px-3 py-2 text-sm"
                 />
               </label>
             </div>
@@ -198,7 +198,7 @@ export function CheckoutForm() {
               <input
                 type="text"
                 defaultValue="123 Abbot Kinney Blvd"
-                className="rounded border border-[var(--shop-warm-brown,#5C4A3D)]/25 bg-[var(--shop-cream-2,#F5EEDB)] px-3 py-2 text-sm"
+                className="w-full min-w-0 rounded border border-[var(--shop-warm-brown,#5C4A3D)]/25 bg-[var(--shop-cream-2,#F5EEDB)] px-3 py-2 text-sm"
               />
             </label>
             <div className="grid gap-3 sm:grid-cols-3">
@@ -207,7 +207,7 @@ export function CheckoutForm() {
                 <input
                   type="text"
                   defaultValue="Venice"
-                  className="rounded border border-[var(--shop-warm-brown,#5C4A3D)]/25 bg-[var(--shop-cream-2,#F5EEDB)] px-3 py-2 text-sm"
+                  className="w-full min-w-0 rounded border border-[var(--shop-warm-brown,#5C4A3D)]/25 bg-[var(--shop-cream-2,#F5EEDB)] px-3 py-2 text-sm"
                 />
               </label>
               <label className="flex flex-col gap-1 text-xs">
@@ -215,7 +215,7 @@ export function CheckoutForm() {
                 <input
                   type="text"
                   defaultValue="CA"
-                  className="rounded border border-[var(--shop-warm-brown,#5C4A3D)]/25 bg-[var(--shop-cream-2,#F5EEDB)] px-3 py-2 text-sm"
+                  className="w-full min-w-0 rounded border border-[var(--shop-warm-brown,#5C4A3D)]/25 bg-[var(--shop-cream-2,#F5EEDB)] px-3 py-2 text-sm"
                 />
               </label>
               <label className="flex flex-col gap-1 text-xs">
@@ -223,7 +223,7 @@ export function CheckoutForm() {
                 <input
                   type="text"
                   defaultValue="90291"
-                  className="rounded border border-[var(--shop-warm-brown,#5C4A3D)]/25 bg-[var(--shop-cream-2,#F5EEDB)] px-3 py-2 text-sm"
+                  className="w-full min-w-0 rounded border border-[var(--shop-warm-brown,#5C4A3D)]/25 bg-[var(--shop-cream-2,#F5EEDB)] px-3 py-2 text-sm"
                 />
               </label>
             </div>
@@ -238,7 +238,7 @@ export function CheckoutForm() {
               <input
                 type="text"
                 defaultValue="4242 4242 4242 4242"
-                className="rounded border border-[var(--shop-warm-brown,#5C4A3D)]/25 bg-[var(--shop-cream-2,#F5EEDB)] px-3 py-2 font-mono text-sm"
+                className="w-full min-w-0 rounded border border-[var(--shop-warm-brown,#5C4A3D)]/25 bg-[var(--shop-cream-2,#F5EEDB)] px-3 py-2 font-mono text-sm"
               />
             </label>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -247,7 +247,7 @@ export function CheckoutForm() {
                 <input
                   type="text"
                   defaultValue="12 / 28"
-                  className="rounded border border-[var(--shop-warm-brown,#5C4A3D)]/25 bg-[var(--shop-cream-2,#F5EEDB)] px-3 py-2 font-mono text-sm"
+                  className="w-full min-w-0 rounded border border-[var(--shop-warm-brown,#5C4A3D)]/25 bg-[var(--shop-cream-2,#F5EEDB)] px-3 py-2 font-mono text-sm"
                 />
               </label>
               <label className="flex flex-col gap-1 text-xs">
@@ -255,7 +255,7 @@ export function CheckoutForm() {
                 <input
                   type="text"
                   defaultValue="123"
-                  className="rounded border border-[var(--shop-warm-brown,#5C4A3D)]/25 bg-[var(--shop-cream-2,#F5EEDB)] px-3 py-2 font-mono text-sm"
+                  className="w-full min-w-0 rounded border border-[var(--shop-warm-brown,#5C4A3D)]/25 bg-[var(--shop-cream-2,#F5EEDB)] px-3 py-2 font-mono text-sm"
                 />
               </label>
             </div>
@@ -275,7 +275,7 @@ export function CheckoutForm() {
           </p>
         </form>
 
-        <aside className="flex flex-col gap-4">
+        <aside className="flex min-w-0 flex-col gap-4">
           <section className="rounded border border-[var(--shop-warm-brown,#5C4A3D)]/12 bg-[var(--shop-cream-2,#F5EEDB)] p-4">
             <header className="mb-3 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--shop-warm-brown,#5C4A3D)]/70">
               <span>your order</span>

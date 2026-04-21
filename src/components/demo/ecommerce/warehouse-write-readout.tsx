@@ -42,9 +42,12 @@ export function WarehouseWriteReadout({
 
       <div className="flex flex-col gap-[2px] font-mono text-[10px]">
         {cols.map((c) => (
-          <div key={c.k} className="grid grid-cols-[1fr_1fr_60px] gap-2 py-[2px] text-[#EAD9BC]">
-            <span className="text-[#F3C769]">{c.k}</span>
-            <span className="truncate text-[#EAD9BC]/90">{c.v}</span>
+          <div
+            key={c.k}
+            className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 py-[2px] text-[#EAD9BC]"
+          >
+            <span className="min-w-0 truncate text-[#F3C769]">{c.k}</span>
+            <span className="min-w-0 truncate text-[#EAD9BC]/90">{c.v}</span>
             <span className="text-right text-[9px] text-[#9E8A6B]">{c.type}</span>
           </div>
         ))}

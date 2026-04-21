@@ -31,20 +31,20 @@ export function StagingLayerReadout({
             raw → typed cast
           </span>
         </header>
-        <table className="w-full border-collapse">
+        <table className="w-full table-fixed border-collapse">
           <thead>
             <tr className="text-left text-[10px] uppercase tracking-[0.1em] text-[#9E8A6B]">
-              <th className="py-1 font-normal">field</th>
-              <th className="py-1 font-normal">raw</th>
-              <th className="py-1 font-normal">typed</th>
+              <th className="w-[32%] py-1 font-normal">field</th>
+              <th className="w-[34%] py-1 font-normal">raw</th>
+              <th className="w-[34%] py-1 font-normal">typed</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
               <tr key={r.k} className="align-top text-[11px]">
-                <td className="py-[3px] pr-2 text-[#F3C769]">{r.k}</td>
-                <td className="py-[3px] pr-2 text-[#EAD9BC]/80">{r.raw}</td>
-                <td className="py-[3px] text-[#EAD9BC]">
+                <td className="break-words py-[3px] pr-2 text-[#F3C769]">{r.k}</td>
+                <td className="break-words py-[3px] pr-2 text-[#EAD9BC]/80">{r.raw}</td>
+                <td className="break-words py-[3px] text-[#EAD9BC]">
                   <div>{r.typed}</div>
                   <div className="text-[9px] uppercase tracking-[0.08em] text-[#9E8A6B]">
                     [{r.cast}]
@@ -79,7 +79,7 @@ export function StagingLayerReadout({
                 >
                   [{o.status}]
                 </span>
-                <span className="flex-1">
+                <span className="min-w-0 flex-1 break-words">
                   <span className="text-[#F3C769]">{o.op}</span>
                   <span className="ml-2 text-[#EAD9BC]/70">{o.detail}</span>
                 </span>

@@ -222,6 +222,39 @@ describe('ProductDetail (Phase 9F D6)', () => {
     });
   });
 
+  // UAT r2 item 13 — staging-layer readout's raw → typed table used to
+  // overflow on narrow viewports (long raw/typed strings with no wrap
+  // point pushed the table wider than the sidebar). Fix: table-fixed +
+  // break-words on every cell, and the stitch-op detail line carries
+  // min-w-0 + break-words.
+  describe('UAT r2 item 13 — staging-layer readout fits narrow viewports', () => {
+    it('raw → typed table is table-fixed so column widths stay bounded', () => {
+      renderDetail();
+      const table = document.querySelector('aside[data-live-sidebar] table');
+      expect(table?.className).toMatch(/\btable-fixed\b/);
+    });
+
+    it('table cells carry break-words so long values wrap instead of overflow', () => {
+      renderDetail();
+      const cells = document.querySelectorAll('aside[data-live-sidebar] td');
+      expect(cells.length).toBeGreaterThan(0);
+      cells.forEach((td) => {
+        expect(td.className).toMatch(/\bbreak-words\b/);
+      });
+    });
+
+    it('stitch-op detail line uses min-w-0 + break-words to allow wrapping', () => {
+      renderDetail();
+      const sidebar = document.querySelector('aside[data-live-sidebar]');
+      const opSpans = sidebar?.querySelectorAll('li span.flex-1');
+      expect(opSpans?.length).toBeGreaterThan(0);
+      opSpans?.forEach((span) => {
+        expect(span.className).toMatch(/\bmin-w-0\b/);
+        expect(span.className).toMatch(/\bbreak-words\b/);
+      });
+    });
+  });
+
   // UAT r1 item 7 — the palette swatch row under the product blurb
   // was a design reference in the hi-fi prototype, not intended as
   // shipped UI. Remove it.

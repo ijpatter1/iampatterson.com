@@ -64,7 +64,7 @@ export function DataQualityReadout({
             >
               [{a.status}]
             </span>
-            <span className="flex-1">
+            <span className="min-w-0 flex-1 break-words">
               <span className="text-[#F3C769]">{a.k}</span>
               <span className="ml-2 text-[#EAD9BC]/70">{a.detail}</span>
             </span>
