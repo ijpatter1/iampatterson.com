@@ -17,8 +17,10 @@ jest.mock('@/lib/events/track', () => ({
 }));
 
 let mockSearchParams = new URLSearchParams();
+const mockRouterPush = jest.fn();
 jest.mock('next/navigation', () => ({
   useSearchParams: () => mockSearchParams,
+  useRouter: () => ({ push: mockRouterPush }),
 }));
 
 import { trackClickCta } from '@/lib/events/track';
@@ -26,6 +28,7 @@ import { trackClickCta } from '@/lib/events/track';
 beforeEach(() => {
   jest.clearAllMocks();
   mockSearchParams = new URLSearchParams();
+  mockRouterPush.mockClear();
 });
 
 describe('DemosSection — post-9E-D6 single ecommerce section', () => {
@@ -114,6 +117,60 @@ describe('DemosSection — post-9E-D6 single ecommerce section', () => {
       expect(section.textContent).toMatch(/server-side gtm/i);
       expect(section.textContent).toMatch(/bigquery/i);
       expect(section.textContent).toMatch(/metabase/i);
+    });
+  });
+
+  // UAT r2 item 6 — the "Enter the demo" CTA previously navigated to a
+  // bare `/demo/ecommerce` URL. Without a utm_campaign in the URL, the
+  // listing hero panel showed the default seed flagged as "example · no
+  // utm in your url" — the visitor never saw the classification step
+  // with THEIR own data. Fix: stamp the CTA with a random seed
+  // utm_campaign + matching source/medium on every click, so the
+  // listing hero classifies a different campaign each visit.
+  describe('UAT r2 item 6 — random UTM seed on Enter-the-demo CTA', () => {
+    it('click navigates to /demo/ecommerce with utm_campaign / utm_source / utm_medium', async () => {
+      const user = userEvent.setup();
+      render(<DemosSection />);
+      await user.click(screen.getByRole('link', { name: /enter the demo/i }));
+      expect(mockRouterPush).toHaveBeenCalledTimes(1);
+      const url = mockRouterPush.mock.calls[0][0] as string;
+      expect(url).toMatch(/^\/demo\/ecommerce\?/);
+      expect(url).toMatch(/utm_campaign=/);
+      expect(url).toMatch(/utm_source=/);
+      expect(url).toMatch(/utm_medium=/);
+    });
+
+    it('the stamped utm_campaign is one of the seed taxonomy keys', async () => {
+      const user = userEvent.setup();
+      render(<DemosSection />);
+      await user.click(screen.getByRole('link', { name: /enter the demo/i }));
+      const url = mockRouterPush.mock.calls[0][0] as string;
+      const params = new URLSearchParams(url.split('?')[1]);
+      const campaign = params.get('utm_campaign');
+      // Seed taxonomy keys from campaign-taxonomy.ts.
+      const knownSeeds = [
+        'meta_prospecting_lal_tuna_q1',
+        'meta_retargeting_atc_q1',
+        'google_brand_tuna',
+        'google_nonbrand_plush_toys',
+        'tiktok_creative_unboxing_v3',
+        'klaviyo_welcome_flow_3',
+        'organic_newsletter_april',
+      ];
+      expect(knownSeeds).toContain(campaign);
+    });
+
+    it('the CTA href stays /demo/ecommerce so middle-click / open-in-new-tab still works', () => {
+      render(<DemosSection />);
+      const cta = screen.getByRole('link', { name: /enter the demo/i });
+      expect(cta).toHaveAttribute('href', '/demo/ecommerce');
+    });
+
+    it('still fires trackClickCta with the same analytics identifier', async () => {
+      const user = userEvent.setup();
+      render(<DemosSection />);
+      await user.click(screen.getByRole('link', { name: /enter the demo/i }));
+      expect(trackClickCta).toHaveBeenCalledWith(expect.any(String), 'demo_card_ecommerce');
     });
   });
 

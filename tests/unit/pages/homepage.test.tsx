@@ -15,6 +15,12 @@ jest.mock('@/lib/events/track', () => ({
   trackClickNav: jest.fn(),
 }));
 
+jest.mock('next/navigation', () => ({
+  useSearchParams: () => new URLSearchParams(),
+  useRouter: () => ({ push: jest.fn() }),
+  usePathname: () => '/',
+}));
+
 function renderHome() {
   return render(
     <OverlayProvider>

@@ -2,9 +2,10 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 import { trackClickCta } from '@/lib/events/track';
+import { randomUtmSeedParams } from '@/lib/demo/reveal/campaign-taxonomy';
 
 // Phase 9E D6: the three-card horizontal-scroll track is replaced by a
 // single full-width section dedicated to the ecommerce demo. Subscription
@@ -125,6 +126,30 @@ function RebuildBanner() {
 }
 
 export function DemosSection() {
+  const router = useRouter();
+
+  // UAT r2 item 6 — stamp the "Enter the demo" deep-link with a random
+  // seed utm_campaign + matching source/medium on every click. The
+  // listing page already runs the URL-provided campaign through
+  // `classifyUtm` and surfaces the classified source / medium / bucket
+  // in the listing-hero UTM panel; stamping random seeds at click time
+  // means every enter-the-demo visit shows a different classification,
+  // which demonstrates the pipeline step honestly.
+  //
+  // Middle-click / ctrl-click (open-in-new-tab) bypasses onClick in most
+  // browsers, so the `href="/demo/ecommerce"` is the fallback — visitors
+  // who open in a new tab land on the plain URL and see the default seed
+  // with the "example · no utm in your url" honesty badge. That's the
+  // correct behavior: the randomiser only fires for an intentional
+  // primary-button click.
+  const handleEnterDemo = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    trackClickCta('Enter the ecommerce demo', 'demo_card_ecommerce');
+    const params = randomUtmSeedParams();
+    const qs = new URLSearchParams(params).toString();
+    router.push(`/demo/ecommerce?${qs}`);
+  };
+
   return (
     <section
       id="demos"
@@ -174,7 +199,7 @@ export function DemosSection() {
             <div className="mt-10">
               <Link
                 href="/demo/ecommerce"
-                onClick={() => trackClickCta('Enter the ecommerce demo', 'demo_card_ecommerce')}
+                onClick={handleEnterDemo}
                 className="group inline-flex items-center gap-3 border border-ink bg-ink px-6 py-4 font-mono text-[11px] uppercase tracking-widest text-paper transition-all hover:border-accent-current hover:bg-accent-current"
               >
                 Enter the demo

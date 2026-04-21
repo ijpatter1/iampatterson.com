@@ -105,3 +105,36 @@ export function classifyUtm(campaignId: string): CampaignClassification {
   if (hit) return hit;
   return { source: 'Unknown', medium: 'unknown', bucket: 'Unclassified' };
 }
+
+/**
+ * Pick a random seed campaign id from the taxonomy. Used by the homepage
+ * "Enter the demo" CTA (UAT r2 item 6) to stamp the deep-link with a
+ * realistic utm_campaign on every click — the listing page then runs the
+ * value through `classifyUtm` and the visitor sees a different classified
+ * bucket each visit. `rng` is injectable so tests can pin the pick.
+ */
+export function pickRandomSeedCampaign(rng: () => number = Math.random): string {
+  const keys = Object.keys(UTM_TAXONOMY);
+  return keys[Math.floor(rng() * keys.length)];
+}
+
+/**
+ * Build a randomised `{ utm_campaign, utm_source, utm_medium }` triple
+ * suitable for URL-encoding onto the "Enter the demo" CTA. Consistent
+ * with the taxonomy's classification so the three params agree. Source
+ * is lowercased (matches prototype seed conventions — "Meta" → "meta"
+ * on the URL, the display stays proper-cased in the readout).
+ */
+export function randomUtmSeedParams(rng: () => number = Math.random): {
+  utm_campaign: string;
+  utm_source: string;
+  utm_medium: string;
+} {
+  const campaign = pickRandomSeedCampaign(rng);
+  const c = UTM_TAXONOMY[campaign];
+  return {
+    utm_campaign: campaign,
+    utm_source: c.source.toLowerCase(),
+    utm_medium: c.medium,
+  };
+}
