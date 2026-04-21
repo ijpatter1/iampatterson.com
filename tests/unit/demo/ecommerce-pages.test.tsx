@@ -5,7 +5,6 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import { CartView } from '@/components/demo/ecommerce/cart-view';
 import { CheckoutForm } from '@/components/demo/ecommerce/checkout-form';
 import { OrderConfirmation } from '@/components/demo/ecommerce/order-confirmation';
 import { CartProvider, useCart } from '@/components/demo/ecommerce/cart-context';
@@ -52,28 +51,11 @@ beforeEach(() => {
 // toast + render the staging-layer LiveSidebar; the new tests cover that
 // composed surface (ToastProvider + CartProvider render context).
 
-describe('CartView', () => {
-  it('shows empty cart message when no items', () => {
-    render(
-      <CartProvider>
-        <CartView />
-      </CartProvider>,
-    );
-    expect(screen.getByText(/cart is empty/i)).toBeInTheDocument();
-  });
-
-  it('shows link to continue shopping', () => {
-    render(
-      <CartProvider>
-        <CartView />
-      </CartProvider>,
-    );
-    expect(screen.getByRole('link', { name: /continue shopping/i })).toHaveAttribute(
-      'href',
-      '/demo/ecommerce',
-    );
-  });
-});
+// CartView's direct-render tests moved to
+// `tests/unit/components/demo/ecommerce/cart-view.test.tsx`. Phase 9F D7
+// rewrote CartView to the Tuna Shop hi-fi design + fire view_cart toast +
+// render the data-quality LiveSidebar; the new tests cover that composed
+// surface (ToastProvider + CartProvider + localStorage persistence).
 
 function AddItemThenCheckout() {
   const { addItem } = useCart();

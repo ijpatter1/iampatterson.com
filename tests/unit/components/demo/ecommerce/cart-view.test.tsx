@@ -1,0 +1,259 @@
+/**
+ * @jest-environment jsdom
+ */
+import { act, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+
+import { CartView } from '@/components/demo/ecommerce/cart-view';
+import { CartProvider, useCart } from '@/components/demo/ecommerce/cart-context';
+import { ToastProvider } from '@/components/demo/reveal/toast-provider';
+
+function SeedItem({
+  product_id,
+  product_name,
+  product_price,
+  quantity,
+}: {
+  product_id: string;
+  product_name: string;
+  product_price: number;
+  quantity: number;
+}) {
+  const { addItem } = useCart();
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const seededRef = React.useRef(false);
+  if (!seededRef.current) {
+    seededRef.current = true;
+    addItem({ product_id, product_name, product_price, quantity });
+  }
+  return null;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const React = require('react');
+
+function renderWithCart(seeds: Array<React.ComponentProps<typeof SeedItem>> = []) {
+  return render(
+    <ToastProvider>
+      <CartProvider>
+        {seeds.map((s) => (
+          <SeedItem key={s.product_id} {...s} />
+        ))}
+        <CartView />
+      </CartProvider>
+    </ToastProvider>,
+  );
+}
+
+describe('CartView (Phase 9F D7)', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    localStorage.clear();
+  });
+  afterEach(() => {
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+    jest.useRealTimers();
+  });
+
+  it('renders the empty-state block when the cart has no items', () => {
+    renderWithCart();
+    expect(screen.getByText(/\[ cart · empty \]/i)).toBeInTheDocument();
+    expect(screen.getByText(/nothing in here yet/i)).toBeInTheDocument();
+  });
+
+  it('renders the continue-shopping link in the empty state', () => {
+    renderWithCart();
+    const links = screen.getAllByRole('link');
+    expect(links.some((l) => l.getAttribute('href') === '/demo/ecommerce')).toBe(true);
+  });
+
+  it('fires a view_cart toast on mount', () => {
+    renderWithCart();
+    act(() => {
+      jest.advanceTimersByTime(600);
+    });
+    const toast = document.querySelector('[data-toast-card]');
+    expect(toast?.textContent).toContain('view_cart');
+  });
+
+  it('renders the your cart heading (lowercase)', () => {
+    renderWithCart();
+    expect(screen.getByText('your cart')).toBeInTheDocument();
+  });
+
+  it('renders the data-quality LiveSidebar with all 6 assertions', () => {
+    renderWithCart();
+    const sidebar = document.querySelector('aside[data-live-sidebar]');
+    expect(sidebar).not.toBeNull();
+    expect(sidebar?.textContent).toContain('schema_validation');
+    expect(sidebar?.textContent).toContain('null_check');
+    expect(sidebar?.textContent).toContain('volume_anomaly');
+    expect(sidebar?.textContent).toContain('session_join_integrity');
+    expect(sidebar?.textContent).toContain('freshness');
+    expect(sidebar?.textContent).toContain('referential_integrity');
+  });
+
+  it('sidebar shows the 6/6 passing pipeline-health meter with empty cart', () => {
+    renderWithCart();
+    const sidebar = document.querySelector('aside[data-live-sidebar]');
+    expect(sidebar?.textContent).toContain('6 / 6 passing');
+  });
+
+  it('renders cart rows when the cart has items', () => {
+    renderWithCart([
+      {
+        product_id: 'tuna-plush-classic',
+        product_name: 'Tuna Plush',
+        product_price: 26,
+        quantity: 2,
+      },
+    ]);
+    expect(screen.getByText('Tuna Plush')).toBeInTheDocument();
+    // Per-item price
+    expect(screen.getByText('$26.00')).toBeInTheDocument();
+    // Line total ($52) + subtotal + total all show $52 with a single 2× line
+    expect(screen.getAllByText('$52.00').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('renders a summary block with subtotal, total, and checkout link when items present', () => {
+    renderWithCart([
+      {
+        product_id: 'tuna-plush-classic',
+        product_name: 'Tuna Plush',
+        product_price: 26,
+        quantity: 1,
+      },
+      {
+        product_id: 'tuna-calendar-2026',
+        product_name: '2026 Tuna Calendar',
+        product_price: 14,
+        quantity: 1,
+      },
+    ]);
+    expect(screen.getByText(/subtotal/i)).toBeInTheDocument();
+    expect(screen.getByText(/^total$/i)).toBeInTheDocument();
+    const links = screen.getAllByRole('link');
+    expect(links.some((l) => l.getAttribute('href') === '/demo/ecommerce/checkout')).toBe(true);
+  });
+
+  it('increments quantity when the + button is clicked', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    renderWithCart([
+      {
+        product_id: 'tuna-plush-classic',
+        product_name: 'Tuna Plush',
+        product_price: 26,
+        quantity: 1,
+      },
+    ]);
+    const plusButton = screen.getByLabelText(/increase quantity for tuna plush/i);
+    await user.click(plusButton);
+    // Line total updates to $52.00 (2 × $26.00) — appears as line + subtotal + total
+    expect(screen.getAllByText('$52.00').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('removes item when the remove link is clicked', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    renderWithCart([
+      {
+        product_id: 'tuna-plush-classic',
+        product_name: 'Tuna Plush',
+        product_price: 26,
+        quantity: 1,
+      },
+    ]);
+    expect(screen.getByText('Tuna Plush')).toBeInTheDocument();
+    await user.click(screen.getByLabelText(/remove tuna plush/i));
+    // Cart becomes empty again
+    expect(screen.getByText(/\[ cart · empty \]/i)).toBeInTheDocument();
+  });
+
+  it('shows FAIL volume_anomaly assertion when item count exceeds threshold', () => {
+    renderWithCart([
+      {
+        product_id: 'tuna-plush-classic',
+        product_name: 'Tuna Plush',
+        product_price: 26,
+        quantity: 15,
+      },
+    ]);
+    const sidebar = document.querySelector('aside[data-live-sidebar]');
+    expect(sidebar?.textContent).toMatch(/15 add_to_cart/i);
+    expect(sidebar?.textContent).toMatch(/exceeds expected range/i);
+  });
+
+  it('renders the no-kill rescues trust line in the summary', () => {
+    renderWithCart([
+      {
+        product_id: 'tuna-plush-classic',
+        product_name: 'Tuna Plush',
+        product_price: 26,
+        quantity: 1,
+      },
+    ]);
+    expect(screen.getByText(/no-kill rescues/i)).toBeInTheDocument();
+  });
+});
+
+describe('CartProvider — localStorage persistence (Phase 9F D7)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('persists cart to iampatterson.tunashop.cart.v1 on update', () => {
+    const { unmount } = render(
+      <CartProvider>
+        <SeedItem
+          product_id="tuna-plush-classic"
+          product_name="Tuna Plush"
+          product_price={26}
+          quantity={1}
+        />
+      </CartProvider>,
+    );
+    const raw = localStorage.getItem('iampatterson.tunashop.cart.v1');
+    expect(raw).not.toBeNull();
+    const parsed = JSON.parse(raw ?? '[]');
+    expect(parsed).toHaveLength(1);
+    expect(parsed[0].product_id).toBe('tuna-plush-classic');
+    unmount();
+  });
+
+  it('hydrates from localStorage on mount', () => {
+    localStorage.setItem(
+      'iampatterson.tunashop.cart.v1',
+      JSON.stringify([
+        {
+          product_id: 'tuna-plush-classic',
+          product_name: 'Tuna Plush',
+          product_price: 26,
+          quantity: 2,
+        },
+      ]),
+    );
+    render(
+      <ToastProvider>
+        <CartProvider>
+          <CartView />
+        </CartProvider>
+      </ToastProvider>,
+    );
+    expect(screen.getByText('Tuna Plush')).toBeInTheDocument();
+    expect(screen.getAllByText('$52.00').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('discards malformed persisted data (invalid JSON or unexpected shape)', () => {
+    localStorage.setItem('iampatterson.tunashop.cart.v1', 'not-json');
+    render(
+      <ToastProvider>
+        <CartProvider>
+          <CartView />
+        </CartProvider>
+      </ToastProvider>,
+    );
+    // Falls back to empty cart; no crash
+    expect(screen.getByText(/\[ cart · empty \]/i)).toBeInTheDocument();
+  });
+});

@@ -1,83 +1,180 @@
 'use client';
 
+import { useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 
 import { useCart } from './cart-context';
+import { useToast } from '@/components/demo/reveal/toast-provider';
+import { LiveSidebar } from '@/components/demo/reveal/live-sidebar';
+import { DataQualityReadout } from './data-quality-readout';
+import { products as allProducts } from '@/lib/demo/products';
 
+/**
+ * Phase 9F D7 — cart page content.
+ *
+ * Fires a `view_cart` toast on mount; renders the prototype's editorial
+ * cart-row layout with a summary column and a Pattern 2 `LiveSidebar`
+ * carrying the 6-assertion data-quality checklist.
+ */
 export function CartView() {
-  const { items, total, updateQuantity, removeItem } = useCart();
+  const { items, itemCount, total, updateQuantity, removeItem } = useCart();
+  const { push } = useToast();
+  const firedRef = useRef(false);
+  const lookup = useMemo(() => Object.fromEntries(allProducts.map((p) => [p.id, p])), []);
 
-  if (items.length === 0) {
-    return (
-      <div className="py-16 text-center">
-        <p className="mb-4 text-lg text-neutral-600">Your cart is empty.</p>
-        <Link
-          href="/demo/ecommerce"
-          className="text-sm font-medium text-neutral-900 underline hover:text-neutral-700"
-        >
-          Continue shopping
-        </Link>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (firedRef.current) return;
+    firedRef.current = true;
+    const t = setTimeout(() => {
+      push({
+        event_name: 'view_cart',
+        detail: `items=${itemCount}  value=${total.toFixed(2)}`,
+        routing: ['GA4', 'BigQuery'],
+        position: 'near-cart',
+        duration: 2100,
+      });
+    }, 500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const isEmpty = items.length === 0;
 
   return (
-    <div>
-      <div className="divide-y divide-neutral-200">
-        {items.map((item) => (
-          <div key={item.product_id} className="flex items-center justify-between py-4">
-            <div>
-              <h3 className="font-medium text-neutral-900">{item.product_name}</h3>
-              <p className="text-sm text-neutral-500">${item.product_price.toFixed(2)} each</p>
-            </div>
-            <div className="flex items-center gap-4">
-              <select
-                value={item.quantity}
-                onChange={(e) => updateQuantity(item.product_id, Number(e.target.value))}
-                className="rounded border border-neutral-300 px-2 py-1 text-sm"
-                aria-label={`Quantity for ${item.product_name}`}
-              >
-                {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-              <p className="w-20 text-right font-medium text-neutral-900">
-                ${(item.product_price * item.quantity).toFixed(2)}
-              </p>
-              <button
-                type="button"
-                onClick={() => removeItem(item.product_id)}
-                className="text-sm text-neutral-500 hover:text-neutral-900"
-                aria-label={`Remove ${item.product_name}`}
-              >
-                Remove
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+    <div className="flex flex-col gap-10">
+      <Link
+        href="/demo/ecommerce"
+        className="font-mono text-xs text-[var(--shop-warm-brown,#5C4A3D)]/70 hover:text-[var(--shop-terracotta,#C4703A)]"
+      >
+        ← continue shopping
+      </Link>
+      <h1 className="font-display text-[clamp(2.5rem,5vw,4rem)] leading-[1.05] tracking-[-0.015em] text-[var(--shop-warm-brown,#5C4A3D)]">
+        your cart
+      </h1>
 
-      <div className="mt-6 border-t border-neutral-200 pt-6">
-        <div className="flex items-center justify-between">
-          <p className="text-lg font-semibold text-neutral-900">Order Total</p>
-          <p className="text-lg font-semibold text-neutral-900">${total.toFixed(2)}</p>
-        </div>
-        <div className="mt-6 flex items-center gap-4">
-          <Link
-            href="/demo/ecommerce/checkout"
-            className="rounded-lg bg-neutral-900 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-neutral-700"
-          >
-            Proceed to Checkout
-          </Link>
-          <Link
-            href="/demo/ecommerce"
-            className="text-sm text-neutral-600 underline hover:text-neutral-900"
-          >
-            Continue shopping
-          </Link>
-        </div>
+      <div className="grid gap-8 lg:grid-cols-[1fr_320px] lg:gap-10">
+        <article className="flex flex-col gap-4">
+          {isEmpty ? (
+            <div className="flex flex-col items-start gap-3 rounded border border-[var(--shop-warm-brown,#5C4A3D)]/12 bg-[var(--shop-cream-2,#F5EEDB)] p-6">
+              <div className="font-mono text-[11px] uppercase tracking-[0.1em] text-[var(--shop-warm-brown,#5C4A3D)]/70">
+                [ cart · empty ]
+              </div>
+              <p className="text-[15px] text-[var(--shop-warm-brown,#5C4A3D)]/80">
+                nothing in here yet. the more interesting part of this demo is watching the events
+                flow through the stack, so head back and grab a plush.
+              </p>
+              <Link
+                href="/demo/ecommerce"
+                className="font-mono text-xs uppercase tracking-[0.1em] text-[var(--shop-terracotta,#C4703A)] hover:underline"
+              >
+                back to the shop →
+              </Link>
+            </div>
+          ) : (
+            <div className="flex flex-col divide-y divide-[var(--shop-warm-brown,#5C4A3D)]/12">
+              <div className="grid grid-cols-[1fr_90px_90px_90px] gap-3 pb-2 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--shop-warm-brown,#5C4A3D)]/60">
+                <span>item</span>
+                <span className="text-right">qty</span>
+                <span className="text-right">price</span>
+                <span className="text-right">line</span>
+              </div>
+              {items.map((item) => {
+                const p = lookup[item.product_id];
+                return (
+                  <div
+                    key={item.product_id}
+                    className="grid grid-cols-[1fr_90px_90px_90px] items-center gap-3 py-4 text-[var(--shop-warm-brown,#5C4A3D)]"
+                  >
+                    <div className="flex items-center gap-3">
+                      {p ? (
+                        <div
+                          className="h-12 w-12 shrink-0 rounded"
+                          style={{ background: p.palette[0] }}
+                          aria-hidden="true"
+                        >
+                          <div
+                            className="mx-auto mt-2 h-8 w-8 rounded"
+                            style={{ background: p.palette[1] }}
+                          />
+                        </div>
+                      ) : null}
+                      <div className="flex flex-col">
+                        <div className="font-display text-base leading-tight">
+                          {item.product_name}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeItem(item.product_id)}
+                          className="text-left font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--shop-terracotta,#C4703A)] hover:underline"
+                          aria-label={`Remove ${item.product_name}`}
+                        >
+                          remove
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-end gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => updateQuantity(item.product_id, item.quantity - 1)}
+                        aria-label={`Decrease quantity for ${item.product_name}`}
+                        className="inline-flex h-6 w-6 items-center justify-center rounded border border-[var(--shop-warm-brown,#5C4A3D)]/30 text-xs hover:border-[var(--shop-terracotta,#C4703A)]"
+                      >
+                        −
+                      </button>
+                      <span className="w-6 text-center text-sm font-medium">{item.quantity}</span>
+                      <button
+                        type="button"
+                        onClick={() => updateQuantity(item.product_id, item.quantity + 1)}
+                        aria-label={`Increase quantity for ${item.product_name}`}
+                        className="inline-flex h-6 w-6 items-center justify-center rounded border border-[var(--shop-warm-brown,#5C4A3D)]/30 text-xs hover:border-[var(--shop-terracotta,#C4703A)]"
+                      >
+                        +
+                      </button>
+                    </div>
+                    <div className="text-right text-sm">${item.product_price.toFixed(2)}</div>
+                    <div className="text-right text-sm font-medium">
+                      ${(item.product_price * item.quantity).toFixed(2)}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {!isEmpty ? (
+            <section className="flex flex-col gap-3 rounded border border-[var(--shop-warm-brown,#5C4A3D)]/12 bg-[var(--shop-cream-2,#F5EEDB)] p-5">
+              <div className="flex items-center justify-between text-sm text-[var(--shop-warm-brown,#5C4A3D)]">
+                <span>subtotal</span>
+                <span>${total.toFixed(2)}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm text-[var(--shop-warm-brown,#5C4A3D)]/70">
+                <span>shipping</span>
+                <span>calculated at checkout</span>
+              </div>
+              <div className="flex items-center justify-between border-t border-[var(--shop-warm-brown,#5C4A3D)]/15 pt-3 text-lg font-medium text-[var(--shop-warm-brown,#5C4A3D)]">
+                <span>total</span>
+                <span>${total.toFixed(2)}</span>
+              </div>
+              <Link
+                href="/demo/ecommerce/checkout"
+                className="mt-2 inline-block rounded bg-[var(--shop-terracotta,#C4703A)] px-5 py-3 text-center text-sm font-medium text-[var(--shop-cream,#FBF6EA)] transition-opacity hover:opacity-90"
+              >
+                proceed to checkout →
+              </Link>
+              <p className="text-[11px] text-[var(--shop-warm-brown,#5C4A3D)]/60">
+                a portion goes to no-kill rescues · 30-day returns · instrumented end-to-end
+              </p>
+            </section>
+          ) : null}
+        </article>
+
+        <LiveSidebar
+          route="cart"
+          title="Data quality · 6 assertions running"
+          tag="UNDER · TIER 2 · DATAFORM"
+        >
+          <DataQualityReadout itemCount={itemCount} uniqueItems={items.length} />
+        </LiveSidebar>
       </div>
     </div>
   );
