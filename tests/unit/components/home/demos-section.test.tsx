@@ -117,6 +117,37 @@ describe('DemosSection — post-9E-D6 single ecommerce section', () => {
     });
   });
 
+  // UAT r2 item 5 — the pre-r2 "Preview · sample event" box was
+  // flagged as pointless fluff + pushed the section too long on mobile.
+  // Decision: drop on mobile (hide via `hidden md:block`), keep on
+  // desktop as a palette-tile product hero (Tuna Plush Classic palette).
+  describe('UAT r2 item 5 — demos-section hero visual', () => {
+    it('does NOT render the old "Preview · sample event" pre-block', () => {
+      render(<DemosSection />);
+      const section = screen.getByTestId('demos-section');
+      expect(section.textContent).not.toMatch(/preview · sample event/i);
+      expect(section.textContent).not.toMatch(/\[OK\] schema_validation/);
+    });
+
+    it('renders a palette-tile hero element with the Tuna Plush Classic base color', () => {
+      render(<DemosSection />);
+      const hero = document.querySelector('[data-demos-section-hero]') as HTMLElement;
+      expect(hero).not.toBeNull();
+      // c1 = #E8D8BD is the Tuna Plush Classic palette base (cream).
+      // jsdom normalizes inline style hex to rgb(), so assert against the
+      // computed background or the resolved rgb triplet.
+      const bg = hero.style.background || hero.style.backgroundColor;
+      expect(bg.toLowerCase()).toMatch(/#e8d8bd|rgb\(\s*232,\s*216,\s*189\s*\)/);
+    });
+
+    it('hides the hero on mobile via `hidden md:block` (UAT r2 item 5 — mobile-length concern)', () => {
+      render(<DemosSection />);
+      const hero = document.querySelector('[data-demos-section-hero]') as HTMLElement;
+      expect(hero.className).toMatch(/\bhidden\b/);
+      expect(hero.className).toMatch(/md:block/);
+    });
+  });
+
   describe('rebuild banner (post-301-redirect landing)', () => {
     it('does NOT render the banner when ?rebuild param is absent', () => {
       render(<DemosSection />);

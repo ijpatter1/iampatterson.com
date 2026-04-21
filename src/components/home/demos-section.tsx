@@ -185,28 +185,38 @@ export function DemosSection() {
             </div>
           </div>
 
-          {/* Editorial preview column — terminal-styled event readout
-              hints at the aesthetic the visitor will encounter in the
-              demo without committing to a screenshot gallery. Static
-              copy, no live data (the Pipeline section already carries
-              the live event feed). */}
-          <div className="relative flex flex-col justify-center border border-rule-soft bg-paper-alt p-6 md:p-8">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-ink-3">
-              Preview · sample event
-            </span>
-            <pre className="mt-4 whitespace-pre-wrap font-mono text-[13px] leading-[1.6] text-ink">
-              {`> product_view
-  product_id:   tuna-plush-classic
-  product_name: Tuna Plush
-  product_price: 26.00
+          {/* Preview column — desktop only (UAT r2 item 5).
+              Pre-r2 this was a terminal-styled sample-event pre-block.
+              Two problems the user flagged: the box read as pointless
+              filler ("preview sample event"), and stacked on mobile it
+              pushed the section too long. The mobile side is solved by
+              hiding this column entirely below md; the desktop side is
+              solved by swapping the pre-block for a palette-tile hero
+              composed from the Tuna Plush Classic palette (cream /
+              warm-brown / near-black), mirroring the product-detail
+              hero treatment so the homepage preview matches what the
+              visitor will see when they enter the demo.
 
-  [OK] schema_validation
-  [OK] session_stitch
-  [OK] routed: GA4 · BigQuery · Pub/Sub`}
-            </pre>
-            <p className="mt-6 border-t border-rule-soft pt-4 font-mono text-[10px] uppercase tracking-widest text-ink-3">
-              Every interaction here fires a real event.
-            </p>
+              No real product photography exists yet — when it does, the
+              palette-tile composition becomes the one place to swap in
+              a photography-on-cream asset. */}
+          <div
+            data-demos-section-hero=""
+            className="relative hidden aspect-square w-full overflow-hidden rounded-lg md:block"
+            style={{ background: '#E8D8BD' }}
+            aria-hidden="true"
+          >
+            <div
+              className="absolute inset-x-16 top-1/2 h-1/2 -translate-y-1/2 rounded"
+              style={{ background: '#8A6A4A' }}
+            />
+            <div
+              className="absolute right-10 top-10 h-16 w-16 rounded-full"
+              style={{ background: '#3B2A1E' }}
+            />
+            <div className="absolute bottom-5 left-5 font-mono text-[10px] uppercase tracking-[0.12em] text-white/70">
+              Product · Tuna Plush · Classic · 12in
+            </div>
           </div>
         </div>
 
