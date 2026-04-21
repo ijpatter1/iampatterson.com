@@ -78,7 +78,6 @@ export interface LiveCartContext {
  */
 export function assertionsForCart(params: LiveCartContext): Assertion[] {
   const liveCount = params.addToCartInLast30s;
-  const volumeCount = typeof liveCount === 'number' ? liveCount : params.itemCount;
   const sid = params.sessionId && params.sessionId.length > 0 ? params.sessionId : null;
   const secondsSince = params.secondsSinceLastEvent;
   const lastEvent =
@@ -86,15 +85,27 @@ export function assertionsForCart(params: LiveCartContext): Assertion[] {
 
   return DATA_QUALITY_ASSERTIONS.map((a) => {
     if (a.k === 'volume_anomaly') {
-      if (volumeCount > VOLUME_ANOMALY_THRESHOLD) {
+      // Only claim "N add_to_cart in 30s" when the count came from the
+      // live event stream. The cart itemCount fallback still triggers
+      // the FAIL branch on thrash (keeps backward-compat with the
+      // stuff-20-plushes-in-cart test), but the detail text then
+      // honestly names the cart as the signal source.
+      if (typeof liveCount === 'number') {
+        if (liveCount > VOLUME_ANOMALY_THRESHOLD) {
+          return {
+            ...a,
+            status: 'FAIL' as const,
+            detail: `${liveCount} add_to_cart events in 30s exceeds expected range`,
+          };
+        }
+        return { ...a, detail: `${liveCount} add_to_cart in 30s, within expected range` };
+      }
+      if (params.itemCount > VOLUME_ANOMALY_THRESHOLD) {
         return {
           ...a,
           status: 'FAIL' as const,
-          detail: `${volumeCount} add_to_cart events in 30s exceeds expected range`,
+          detail: `cart holds ${params.itemCount} items — anomaly threshold tripped`,
         };
-      }
-      if (typeof liveCount === 'number') {
-        return { ...a, detail: `${liveCount} add_to_cart in 30s, within expected range` };
       }
       return a;
     }

@@ -95,6 +95,60 @@ describe('bqRowForCart', () => {
       expect(rows.find((c) => c.k === 'consent_analytics')?.v).toBe('"granted"');
       expect(rows.find((c) => c.k === 'consent_marketing')?.v).toBe('"denied"');
     });
+
+    // Pass-1 product-review fix: page + utm columns were hardcoded-as-live.
+    it('substitutes page_location / page_referrer when supplied', () => {
+      const rows = bqRowForCart({
+        total: 0,
+        itemCount: 0,
+        uniqueItems: 0,
+        live: {
+          pageLocation: 'https://iampatterson.com/demo/ecommerce/checkout',
+          pageReferrer: 'https://iampatterson.com/demo/ecommerce/cart',
+        },
+      });
+      expect(rows.find((c) => c.k === 'page_location')?.v).toBe(
+        '"https://iampatterson.com/demo/ecommerce/checkout"',
+      );
+      expect(rows.find((c) => c.k === 'page_referrer')?.v).toBe(
+        '"https://iampatterson.com/demo/ecommerce/cart"',
+      );
+    });
+
+    it('substitutes utm_campaign / utm_source / channel_classified when utmIsLive=true', () => {
+      const rows = bqRowForCart({
+        total: 0,
+        itemCount: 0,
+        uniqueItems: 0,
+        live: {
+          utmIsLive: true,
+          utmCampaign: 'google_brand_tuna',
+          utmSource: 'Google',
+          channelClassified: 'Google · Brand · Search',
+        },
+      });
+      expect(rows.find((c) => c.k === 'utm_campaign')?.v).toBe('"google_brand_tuna"');
+      expect(rows.find((c) => c.k === 'utm_source')?.v).toBe('"Google"');
+      expect(rows.find((c) => c.k === 'channel_classified')?.v).toBe('"Google · Brand · Search"');
+    });
+
+    it('leaves utm_* as seed when utmIsLive=false (honest about example data)', () => {
+      const rows = bqRowForCart({
+        total: 0,
+        itemCount: 0,
+        uniqueItems: 0,
+        live: {
+          utmIsLive: false,
+          utmCampaign: 'meta_prospecting_lal_tuna_q1', // seed value
+          utmSource: 'Meta',
+          channelClassified: 'Meta · Prospecting · Lookalike',
+        },
+      });
+      // Seed row values preserve (unchanged from BQ_ROW_COLUMNS defaults).
+      expect(rows.find((c) => c.k === 'utm_campaign')?.v).toBe('"prospecting_lal_tuna_q1"');
+      expect(rows.find((c) => c.k === 'utm_source')?.v).toBe('"meta"');
+      expect(rows.find((c) => c.k === 'channel_classified')?.v).toBe('"Meta · Prospecting"');
+    });
   });
 });
 

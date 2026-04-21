@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-import { renderHook } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
 
 import { useSessionContext } from '@/hooks/useSessionContext';
 import type { PipelineEvent } from '@/lib/events/pipeline-schema';
@@ -89,6 +89,29 @@ describe('useSessionContext', () => {
     });
     const { result } = renderHook(() => useSessionContext());
     expect(result.current.add_to_cart_in_last_30s).toBe(2);
+  });
+
+  it('seconds_since_last_event does not freeze while idle — re-ticks on interval', () => {
+    jest.useFakeTimers();
+    try {
+      const tenSecAgo = new Date(Date.now() - 10_000).toISOString();
+      mockLiveEvents.mockReturnValue({
+        events: [makeEvent({ event_name: 'product_view', received_at: tenSecAgo })],
+        source: 'dataLayer',
+      });
+      const { result } = renderHook(() => useSessionContext());
+      expect(result.current.seconds_since_last_event).toBe(10);
+
+      // Advance real time by 8s; without the tick, the value would
+      // stay at 10. With the tick, it re-computes to ~18.
+      jest.setSystemTime(Date.now() + 8_000);
+      act(() => {
+        jest.advanceTimersByTime(5_000);
+      });
+      expect(result.current.seconds_since_last_event).toBeGreaterThanOrEqual(18);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('derives consent flags from the latest event', () => {

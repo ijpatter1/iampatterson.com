@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 import { trackBeginCheckout, trackPurchase } from '@/lib/events/track';
 import { useCart } from './cart-context';
@@ -15,6 +15,7 @@ import {
   FULL_PAGE_DIAGNOSTIC_LINES,
   diagnosticLinesForConsent,
 } from '@/lib/demo/reveal/warehouse-write';
+import { classifyUtm, resolveUtmMeta } from '@/lib/demo/reveal/campaign-taxonomy';
 
 /**
  * Phase 9F D8 — checkout page content.
@@ -29,8 +30,25 @@ import {
 export function CheckoutForm() {
   const { items, total, itemCount, clearCart } = useCart();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { push } = useToast();
   const session = useSessionContext();
+
+  // Derive URL + browser-derivable values to thread into the BQ row
+  // preview so the warehouse-write sidebar stops rendering hardcoded
+  // utm / page / referrer values as if they were the visitor's.
+  // Pulled on client post-mount via state so SSR stays consistent.
+  const utmMeta = useMemo(
+    () => resolveUtmMeta({ utm_campaign: searchParams?.get('utm_campaign') }),
+    [searchParams],
+  );
+  const utmClassification = useMemo(() => classifyUtm(utmMeta.value), [utmMeta.value]);
+  const [pageLocation, setPageLocation] = useState('');
+  const [pageReferrer, setPageReferrer] = useState('');
+  useEffect(() => {
+    if (typeof window !== 'undefined') setPageLocation(window.location.href);
+    if (typeof document !== 'undefined') setPageReferrer(document.referrer);
+  }, []);
   const toastedRef = useRef(false);
   const checkoutFiredRef = useRef(false);
   const [step, setStep] = useState<'form' | 'diagnostic'>('form');
@@ -125,6 +143,9 @@ export function CheckoutForm() {
           autoComplete="off"
           className="flex flex-col gap-6 text-[var(--shop-warm-brown,#5C4A3D)]"
         >
+          <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--shop-warm-brown,#5C4A3D)]/55">
+            demo prefill — nothing ships from here, nothing is charged.
+          </div>
           <fieldset className="flex flex-col gap-3">
             <legend className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--shop-warm-brown,#5C4A3D)]/70">
               01 · contact
@@ -287,6 +308,12 @@ export function CheckoutForm() {
                   session.events_in_session > 0 ? session.consent_analytics : undefined,
                 consentMarketing:
                   session.events_in_session > 0 ? session.consent_marketing : undefined,
+                pageLocation: pageLocation || undefined,
+                pageReferrer: pageReferrer || undefined,
+                utmCampaign: utmMeta.value,
+                utmIsLive: utmMeta.isLive,
+                utmSource: utmClassification.source,
+                channelClassified: `${utmClassification.source} · ${utmClassification.bucket}`,
               }}
             />
           </LiveSidebar>

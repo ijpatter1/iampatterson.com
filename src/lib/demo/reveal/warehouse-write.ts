@@ -46,6 +46,18 @@ export interface LiveCheckoutContext {
   consentAnalytics?: boolean;
   /** Whether marketing/ad-storage consent has been granted. */
   consentMarketing?: boolean;
+  /** The visitor's actual page URL (window.location.href). */
+  pageLocation?: string;
+  /** document.referrer — honest about where the visitor came from. */
+  pageReferrer?: string;
+  /** Resolved utm_campaign (either URL param or "" when absent). */
+  utmCampaign?: string;
+  /** Whether utmCampaign came from the visitor's URL (vs fallback seed). */
+  utmIsLive?: boolean;
+  /** Classified UTM source — Meta / Google / TikTok / Email / Unknown. */
+  utmSource?: string;
+  /** Classified channel bucket — Prospecting · Lookalike / Brand · Search / … */
+  channelClassified?: string;
 }
 
 /**
@@ -70,6 +82,20 @@ export function bqRowForCart(params: {
   const hasLiveConsent =
     params.live?.consentAnalytics !== undefined || params.live?.consentMarketing !== undefined;
 
+  const pageLoc =
+    params.live?.pageLocation && params.live.pageLocation.length > 0
+      ? params.live.pageLocation
+      : null;
+  const pageRef =
+    params.live?.pageReferrer && params.live.pageReferrer.length > 0
+      ? params.live.pageReferrer
+      : null;
+  // utm_* + channel_classified substitute only when the visitor's URL
+  // actually carried a utm_campaign. Otherwise the seed stays and we
+  // surface the "example" framing via the readout header (same honesty
+  // pattern as the listing-hero UTM panel).
+  const utmLive = params.live?.utmIsLive === true;
+
   return BQ_ROW_COLUMNS.map((c) => {
     if (c.k === 'cart_value') return { ...c, v: params.total.toFixed(2) };
     if (c.k === 'cart_item_count') return { ...c, v: String(params.itemCount) };
@@ -85,6 +111,17 @@ export function bqRowForCart(params: {
     }
     if (c.k === 'consent_marketing' && hasLiveConsent) {
       return { ...c, v: `"${params.live?.consentMarketing ? 'granted' : 'denied'}"` };
+    }
+    if (c.k === 'page_location' && pageLoc) return { ...c, v: `"${pageLoc}"` };
+    if (c.k === 'page_referrer' && pageRef) return { ...c, v: `"${pageRef}"` };
+    if (c.k === 'utm_campaign' && utmLive && params.live?.utmCampaign) {
+      return { ...c, v: `"${params.live.utmCampaign}"` };
+    }
+    if (c.k === 'utm_source' && utmLive && params.live?.utmSource) {
+      return { ...c, v: `"${params.live.utmSource}"` };
+    }
+    if (c.k === 'channel_classified' && utmLive && params.live?.channelClassified) {
+      return { ...c, v: `"${params.live.channelClassified}"` };
     }
     return c;
   });
@@ -107,7 +144,7 @@ export const FULL_PAGE_DIAGNOSTIC_LINES: Array<{
   { text: 'routed → sGTM (io.iampatterson.com)', tag: 'OK' },
   { text: 'routed → Meta CAPI · skipped (marketing denied)', tag: 'SKIP' },
   { text: 'routed → BigQuery · 1 row written to iampatterson_raw.events_raw', tag: 'OK' },
-  { text: 'attribution engine · last-click + shapley triggered', tag: 'OK' },
+  { text: 'dataform · marts rebuilding against the new row', tag: 'OK' },
   { text: 'dashboards · revenue KPI refreshing', tag: 'LIVE', emph: true },
 ];
 
@@ -139,7 +176,7 @@ export function diagnosticLinesForConsent(consent: {
     { text: 'routed → sGTM (io.iampatterson.com)', tag: 'OK' },
     metaLine,
     { text: 'routed → BigQuery · 1 row written to iampatterson_raw.events_raw', tag: 'OK' },
-    { text: 'attribution engine · last-click + shapley triggered', tag: 'OK' },
+    { text: 'dataform · marts rebuilding against the new row', tag: 'OK' },
     { text: 'dashboards · revenue KPI refreshing', tag: 'LIVE', emph: true },
   ];
 }

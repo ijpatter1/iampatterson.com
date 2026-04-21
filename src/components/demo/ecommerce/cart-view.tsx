@@ -62,8 +62,8 @@ export function CartView() {
                 [ cart · empty ]
               </div>
               <p className="text-[15px] text-[var(--shop-warm-brown,#5C4A3D)]/80">
-                nothing in here yet. the more interesting part of this demo is watching the events
-                flow through the stack, so head back and grab a plush.
+                nothing in here yet. the demo is more fun with a plush in it — add one, and the
+                add_to_cart event lands in BigQuery before you get here.
               </p>
               <Link
                 href="/demo/ecommerce"

@@ -119,4 +119,18 @@ describe('stitchOpsForSession', () => {
       expect(live).toEqual(seed);
     }
   });
+
+  // Pass-1 eval fix — session_stitch.detail must NOT emit
+  // "linked to abc12345… (0 events)" during the pre-first-event window
+  // when cookie is loaded but no events have flowed. It's a lie — there
+  // are no events yet.
+  it('leaves session_stitch as seed when session_id is set but events_in_session=0', () => {
+    const ops = stitchOpsForSession({
+      session_id: 'abc12345-6789-4def-8abc-deadbeefcafe',
+      events_in_session: 0,
+    });
+    const stitch = ops.find((o) => o.op === 'session_stitch');
+    const seed = STAGING_STITCH_OPS.find((o) => o.op === 'session_stitch');
+    expect(stitch).toEqual(seed);
+  });
 });

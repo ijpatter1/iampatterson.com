@@ -31,11 +31,17 @@ describe('assertionsForCart', () => {
     expect(out.every((a) => a.status === 'OK')).toBe(true);
   });
 
-  it('flags volume_anomaly as FAIL when item count exceeds the theoretical threshold', () => {
+  it('flags volume_anomaly as FAIL when cart itemCount exceeds the threshold (no live stream)', () => {
+    // Fallback path: no live stream data → volume_anomaly branches on
+    // cart itemCount. Detail text honestly names the cart (not the event
+    // stream) as the signal source — pre-evaluation-fix text read
+    // "N add_to_cart events in 30s" which was a lie when the count came
+    // from the cart.
     const out = assertionsForCart({ itemCount: 20 });
     const va = out.find((a) => a.k === 'volume_anomaly');
     expect(va?.status).toBe('FAIL');
-    expect(va?.detail).toMatch(/exceeds/i);
+    expect(va?.detail).toMatch(/cart holds 20 items/i);
+    expect(va?.detail).not.toMatch(/add_to_cart events in 30s/i);
   });
 
   it('preserves original detail messages when all OK', () => {

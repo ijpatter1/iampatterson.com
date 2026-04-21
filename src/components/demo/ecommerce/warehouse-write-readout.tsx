@@ -23,6 +23,7 @@ export function WarehouseWriteReadout({
   live?: LiveCheckoutContext;
 }) {
   const cols = bqRowForCart({ total, itemCount, uniqueItems, live });
+  const utmIsExample = live?.utmIsLive === false;
   return (
     <div className="flex flex-col gap-3">
       <header className="flex items-center justify-between text-[11px]">
@@ -32,6 +33,14 @@ export function WarehouseWriteReadout({
       <p className="text-[11px] leading-snug text-[#EAD9BC]/70">
         this is the row that will be <span className="text-[#F3C769]">inserted</span> when the
         purchase event fires. {cols.length} of 51 columns shown.
+        {utmIsExample ? (
+          <>
+            {' '}
+            <span className="text-[#9E8A6B]">
+              utm_* values are example seeds — no utm_campaign in your url.
+            </span>
+          </>
+        ) : null}
       </p>
 
       <div className="flex flex-col gap-[2px] font-mono text-[10px]">

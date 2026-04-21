@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { readSessionCookie } from '@/lib/events/session';
 
@@ -47,40 +47,60 @@ const EMPTY_CONTEXT: SessionContext = {
  * mismatches. Consumers should handle the empty-string case (render the
  * seed placeholder instead of an SSR/CSR mismatch).
  */
+/** Re-tick interval for the time-sensitive fields (seconds_since_last_event,
+ * add_to_cart_in_last_30s). 5s is a useful cadence — fast enough that a
+ * visitor watching idle freshness sees it tick up, slow enough that it
+ * doesn't churn React reconciliation. 0 tick disables (tests supply their
+ * own fakeTimer or don't care). */
+const TIME_TICK_MS = 5_000;
+
 export function useSessionContext(): SessionContext {
   const { events } = useLiveEvents();
   const [sessionId, setSessionId] = useState('');
+  const [, setTick] = useState(0);
 
   useEffect(() => {
     const id = readSessionCookie();
     if (id) setSessionId(id);
   }, []);
 
-  return useMemo<SessionContext>(() => {
-    if (events.length === 0) {
-      return { ...EMPTY_CONTEXT, session_id: sessionId };
-    }
-    const latest = events[0];
-    const lastAt = latest.received_at || latest.timestamp;
-    const lastMs = Date.parse(lastAt);
-    const secondsSince = Number.isFinite(lastMs)
-      ? Math.max(0, Math.floor((Date.now() - lastMs) / 1000))
-      : 0;
+  // Force a re-render on a fixed interval so `seconds_since_last_event`
+  // and `add_to_cart_in_last_30s` don't freeze between events. Without
+  // this, a visitor sitting idle on the cart for 30s would keep seeing
+  // "last add_to_cart 2s ago" because no events trigger a re-compute.
+  // The tick runs only on the client (useEffect) and is cleared on
+  // unmount; SSR is unaffected.
+  useEffect(() => {
+    const handle = setInterval(() => setTick((n) => n + 1), TIME_TICK_MS);
+    return () => clearInterval(handle);
+  }, []);
 
-    const cutoffMs = Date.now() - 30_000;
-    const addToCartIn30s = events.filter(
-      (e) => e.event_name === 'add_to_cart' && Date.parse(e.received_at) >= cutoffMs,
-    ).length;
+  // Not memoised on events/sessionId alone — the tick state above forces
+  // a re-run on each interval, recomputing the time-window values
+  // (secondsSince, add_to_cart_in_last_30s) against a fresh Date.now().
+  if (events.length === 0) {
+    return { ...EMPTY_CONTEXT, session_id: sessionId };
+  }
+  const latest = events[0];
+  const lastAt = latest.received_at || latest.timestamp;
+  const lastMs = Date.parse(lastAt);
+  const secondsSince = Number.isFinite(lastMs)
+    ? Math.max(0, Math.floor((Date.now() - lastMs) / 1000))
+    : 0;
 
-    return {
-      session_id: sessionId,
-      last_event_name: latest.event_name,
-      last_event_at: lastAt,
-      seconds_since_last_event: secondsSince,
-      events_in_session: events.length,
-      add_to_cart_in_last_30s: addToCartIn30s,
-      consent_analytics: latest.consent.analytics_storage === 'granted',
-      consent_marketing: latest.consent.ad_storage === 'granted',
-    };
-  }, [events, sessionId]);
+  const cutoffMs = Date.now() - 30_000;
+  const addToCartIn30s = events.filter(
+    (e) => e.event_name === 'add_to_cart' && Date.parse(e.received_at) >= cutoffMs,
+  ).length;
+
+  return {
+    session_id: sessionId,
+    last_event_name: latest.event_name,
+    last_event_at: lastAt,
+    seconds_since_last_event: secondsSince,
+    events_in_session: events.length,
+    add_to_cart_in_last_30s: addToCartIn30s,
+    consent_analytics: latest.consent.analytics_storage === 'granted',
+    consent_marketing: latest.consent.ad_storage === 'granted',
+  };
 }

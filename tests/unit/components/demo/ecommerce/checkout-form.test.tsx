@@ -10,9 +10,11 @@ import { CartProvider, useCart } from '@/components/demo/ecommerce/cart-context'
 import { ToastProvider } from '@/components/demo/reveal/toast-provider';
 
 const mockPush = jest.fn();
+let mockSearchParams = new URLSearchParams();
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
   usePathname: () => '/demo/ecommerce/checkout',
+  useSearchParams: () => mockSearchParams,
 }));
 
 const mockBeginCheckout = jest.fn();
@@ -71,6 +73,7 @@ describe('CheckoutForm (Phase 9F D8)', () => {
     mockBeginCheckout.mockClear();
     mockPurchase.mockClear();
     mockSession.mockReturnValue(DEFAULT_SESSION);
+    mockSearchParams = new URLSearchParams();
   });
   afterEach(() => {
     act(() => {
@@ -161,7 +164,7 @@ describe('CheckoutForm (Phase 9F D8)', () => {
     // Let the full 4.5s sequence complete (UAT r1 item 14 — bumped
     // from 1.9s so readers have time to read each line).
     act(() => {
-      jest.advanceTimersByTime(4600);
+      jest.advanceTimersByTime(3300);
     });
     expect(mockPush).toHaveBeenCalledTimes(1);
     const pushedUrl = mockPush.mock.calls[0][0] as string;
@@ -175,7 +178,7 @@ describe('CheckoutForm (Phase 9F D8)', () => {
     renderCheckout();
     await user.click(screen.getByRole('button', { name: /place order/i }));
     act(() => {
-      jest.advanceTimersByTime(4600);
+      jest.advanceTimersByTime(3300);
     });
     // After completion, push was called with the confirmation URL
     expect(mockPush).toHaveBeenCalled();
@@ -209,7 +212,7 @@ describe('CheckoutForm (Phase 9F D8)', () => {
       const dialog = document.querySelector('[role="dialog"]');
       // Let all lines stagger-in (dialog spans 4500ms total with 7 lines).
       act(() => {
-        jest.advanceTimersByTime(4000);
+        jest.advanceTimersByTime(3000);
       });
       expect(dialog?.textContent).toMatch(/consent check · analytics=denied, marketing=granted/);
     });
@@ -222,7 +225,7 @@ describe('CheckoutForm (Phase 9F D8)', () => {
       await user.click(screen.getByRole('button', { name: /place order/i }));
       const dialog = document.querySelector('[role="dialog"]');
       act(() => {
-        jest.advanceTimersByTime(4000);
+        jest.advanceTimersByTime(3000);
       });
       expect(dialog?.textContent).toMatch(/consent check · analytics=granted, marketing=denied/);
     });

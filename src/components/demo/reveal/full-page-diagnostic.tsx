@@ -5,11 +5,12 @@ import { createPortal } from 'react-dom';
 
 /** Elements to exclude from the focus-restore target (dialog itself). */
 
-// UAT r1 item 14 — 1900ms for 7 lines gave each line only ~240ms before
-// the next arrived + ~240ms to read the final line before dismissal. Bump
-// to 4500ms so each line has ~640ms — still brief, but readable. Skippable
-// via any keydown when a returning visitor doesn't need the beat.
-const DEFAULT_DURATION_MS = 4500;
+// UAT r1 item 14 → Pass-1 eval correction. 1900ms was too fast (~240ms
+// per line); 4500ms was flagged as overcorrection (a full 4.5s block on
+// every checkout). Landed at 3200ms: ~400ms per line across 7 lines,
+// readable without feeling like a gate. The "press any key to skip"
+// affordance (promoted below) handles the returning-visitor case.
+const DEFAULT_DURATION_MS = 3200;
 
 export interface DiagnosticLine {
   text: string;
@@ -166,7 +167,7 @@ export function FullPageDiagnostic({
             <span className="inline-block h-4 w-2 animate-pulse bg-[#F3C769]" aria-hidden="true" />
           ) : null}
         </div>
-        <div className="text-[10px] uppercase tracking-[0.2em] text-[#9E8A6B]">
+        <div className="text-[11px] uppercase tracking-[0.18em] text-[#F3C769]/70">
           press any key to skip
         </div>
       </div>

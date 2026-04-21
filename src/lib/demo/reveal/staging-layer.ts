@@ -68,7 +68,7 @@ export const STAGING_STITCH_OPS: StitchOp[] = [
   { op: 'dedupe', status: 'OK', detail: 'no duplicate event_id in 60s window' },
   { op: 'session_stitch', status: 'OK', detail: 'linked to ses_x9b2… (14 events)' },
   { op: 'param_extract', status: 'OK', detail: '12 params hoisted to columns' },
-  { op: 'geo_enrich', status: 'OK', detail: 'ip → US / CA / Los Angeles' },
+  { op: 'geo_enrich', status: 'OK', detail: 'ip → country · region · city (geoip)' },
 ];
 
 /**
@@ -123,7 +123,11 @@ export function stitchOpsForSession(live?: {
   const count = live?.events_in_session ?? 0;
 
   return STAGING_STITCH_OPS.map((o) => {
-    if (o.op === 'session_stitch' && sid) {
+    // Only rewrite the session_stitch detail when we have BOTH a real
+    // session_id AND at least one event — otherwise we'd emit
+    // "linked to abc12345… (0 events)" which reads as a lie during the
+    // window between cookie load and first event fire.
+    if (o.op === 'session_stitch' && sid && count > 0) {
       const display = sid.slice(0, 8);
       return { ...o, detail: `linked to ${display}… (${count} events)` };
     }

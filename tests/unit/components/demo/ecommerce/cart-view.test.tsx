@@ -188,7 +188,9 @@ describe('CartView (Phase 9F D7)', () => {
     expect(screen.getByText(/\[ cart · empty \]/i)).toBeInTheDocument();
   });
 
-  it('shows FAIL volume_anomaly assertion when item count exceeds threshold', () => {
+  it('shows FAIL volume_anomaly with cart-honest phrasing when no live stream', () => {
+    // No live events yet → cart-itemCount fallback. Detail names the
+    // cart explicitly, not the event stream.
     renderWithCart([
       {
         product_id: 'tuna-plush-classic',
@@ -198,8 +200,8 @@ describe('CartView (Phase 9F D7)', () => {
       },
     ]);
     const sidebar = document.querySelector('aside[data-live-sidebar]');
-    expect(sidebar?.textContent).toMatch(/15 add_to_cart/i);
-    expect(sidebar?.textContent).toMatch(/exceeds expected range/i);
+    expect(sidebar?.textContent).toMatch(/cart holds 15 items/i);
+    expect(sidebar?.textContent).toMatch(/threshold tripped/i);
   });
 
   it('renders the no-kill rescues trust line in the summary', () => {

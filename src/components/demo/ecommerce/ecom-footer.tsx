@@ -24,9 +24,9 @@ export function EcomFooter() {
             this is a demo
           </div>
           <p className="text-[13px] leading-relaxed text-[var(--shop-warm-brown,#5C4A3D)]/80">
-            the tuna shop is a working storefront built to show what my tier 1–3 measurement stack
-            looks like in production. nothing actually ships from here. every interaction you make
-            is traced end-to-end. a portion of every real sale goes to no-kill rescues.
+            the tuna shop is a working storefront built to show what a production measurement stack
+            looks like end-to-end. nothing actually ships from here. every interaction you make is
+            traced from click to dashboard. a portion of every real sale goes to no-kill rescues.
           </p>
         </div>
         <nav
