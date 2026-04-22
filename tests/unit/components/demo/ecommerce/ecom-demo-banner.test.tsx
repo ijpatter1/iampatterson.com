@@ -38,4 +38,17 @@ describe('EcomDemoBanner (UAT r2 item 7)', () => {
     expect(banner.getAttribute('data-testid')).toBe('forwarded');
     expect(banner.getAttribute('aria-live')).toBe('polite');
   });
+
+  // Pass-3 tech-evaluator Minor #3, the original `className="…" {...props}`
+  // ordering let a caller-provided className *replace* the palette
+  // classes (React keeps the last className wins). Compose instead so
+  // caller classes append without clobbering the terminal palette.
+  it('composes a caller-provided className with the palette classes (never replaces)', () => {
+    const { container } = render(<EcomDemoBanner className="custom-outer extra-pad" />);
+    const banner = container.querySelector('[data-ecom-demo-banner]') as HTMLElement;
+    expect(banner.className).toMatch(/#0D0B09/i);
+    expect(banner.className).toMatch(/#F3C769/i);
+    expect(banner.className).toMatch(/\bcustom-outer\b/);
+    expect(banner.className).toMatch(/\bextra-pad\b/);
+  });
 });
