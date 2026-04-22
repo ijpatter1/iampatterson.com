@@ -35,11 +35,13 @@ export interface RideAlongPayload {
  * numbers transmitted match what the visitor saw on the Overview tab.
  *
  * Pre-F8 the payload transmitted `state.event_type_coverage.total.length`
- * which is seeded from `DATA_LAYER_EVENT_NAMES` (24 post-F2), while
- * the Overview tab rendered `N/20` against the renderable subset. A
- * visitor who saw "14 of 20 event types" on screen would have
- * transmitted `{event_types_triggered: 14, event_types_total: 24}`, 
- * surface-vs-transmission mismatch flagged by F8 product + tech eval.
+ * (seeded from `DATA_LAYER_EVENT_NAMES`), while the Overview tab
+ * rendered against `RENDERABLE_EVENT_NAMES` (the smaller subset minus
+ * un-triggerable sub/leadgen events). A visitor who saw e.g.
+ * "14 of 20 event types" on screen would have transmitted
+ * `{event_types_triggered: 14, event_types_total:
+ * DATA_LAYER_EVENT_NAMES.length}`, a surface-vs-transmission mismatch
+ * flagged by F8 product + tech eval.
  */
 export function toRideAlongPayload(state: SessionState): RideAlongPayload {
   const renderable = new Set<string>(RENDERABLE_EVENT_NAMES);
