@@ -17,15 +17,18 @@ const { GoogleAuth } = require('google-auth-library');
 
 const DRY_RUN = process.argv.includes('--dry-run');
 
-// Container paths
+// Container paths. Workspace IDs are looked up at runtime because
+// each publish consumes its source workspace and GTM auto-creates a
+// fresh "Default Workspace" with a new numeric ID. Hard-coding a
+// workspace id is a drift trap: the original deploy used WS 7 / 13;
+// post-Phase-9F-remove_from_cart publish those were already gone.
 const ACCOUNT_ID = '6346433751';
 const WEB_CONTAINER_ID = '247511905';
-const WEB_WORKSPACE_ID = '7';
 const SGTM_CONTAINER_ID = '247531845';
-const SGTM_WORKSPACE_ID = '13';
 
-const WEB_BASE = `https://www.googleapis.com/tagmanager/v2/accounts/${ACCOUNT_ID}/containers/${WEB_CONTAINER_ID}/workspaces/${WEB_WORKSPACE_ID}`;
-const SGTM_BASE = `https://www.googleapis.com/tagmanager/v2/accounts/${ACCOUNT_ID}/containers/${SGTM_CONTAINER_ID}/workspaces/${SGTM_WORKSPACE_ID}`;
+const CONTAINERS_BASE = `https://www.googleapis.com/tagmanager/v2/accounts/${ACCOUNT_ID}/containers`;
+let WEB_BASE = ''; // set by resolveWorkspaceBases() at main() entry
+let SGTM_BASE = '';
 
 // Existing folder IDs (from live container)
 const WEB_DLV_FOLDER = '35'; // "Data Layer Variables"
@@ -233,11 +236,38 @@ async function main() {
   const auth = new GoogleAuth({
     scopes: [
       'https://www.googleapis.com/auth/tagmanager.edit.containers',
+      // edit.containerversions is REQUIRED for :create_version calls.
+      // edit.containers alone is enough for trigger/tag/variable POSTs
+      // but the API returns ACCESS_TOKEN_SCOPE_INSUFFICIENT when the
+      // workspace is versioned without this scope.
+      'https://www.googleapis.com/auth/tagmanager.edit.containerversions',
       'https://www.googleapis.com/auth/tagmanager.publish',
       'https://www.googleapis.com/auth/tagmanager.manage.accounts',
     ],
   });
   const client = await auth.getClient();
+
+  // Resolve live workspace IDs (the previous "Default Workspace" was
+  // consumed by the last publish). Both containers should have exactly
+  // one workspace named "Default Workspace" at a stable point in time.
+  async function resolveDefaultWorkspaceId(containerId) {
+    const res = await client.request({
+      url: `${CONTAINERS_BASE}/${containerId}/workspaces`,
+    });
+    const ws = (res.data.workspace || []).find((w) => w.name === 'Default Workspace');
+    if (!ws) {
+      const names = (res.data.workspace || []).map((w) => w.name).join(', ');
+      throw new Error(
+        `No "Default Workspace" found on container ${containerId}. Found: [${names}].`,
+      );
+    }
+    return ws.workspaceId;
+  }
+  const webWs = await resolveDefaultWorkspaceId(WEB_CONTAINER_ID);
+  const sgtmWs = await resolveDefaultWorkspaceId(SGTM_CONTAINER_ID);
+  WEB_BASE = `${CONTAINERS_BASE}/${WEB_CONTAINER_ID}/workspaces/${webWs}`;
+  SGTM_BASE = `${CONTAINERS_BASE}/${SGTM_CONTAINER_ID}/workspaces/${sgtmWs}`;
+  console.log(`Resolved workspaces, web=${webWs}, sgtm=${sgtmWs}`);
 
   async function apiPost(url, body) {
     if (DRY_RUN) {
