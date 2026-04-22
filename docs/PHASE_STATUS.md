@@ -330,3 +330,4 @@
 - ⬜ Operational runbook: documented procedures for common failure modes (doubles as portfolio content)
 - ⬜ Log aggregation: structured logging across Cloud Run services, log-based metrics, retention policy
 - ⬜ Dependency update process: cadence for Node.js, Next.js, Cloud Run images, npm deps, security advisories
+- ⬜ Declarative GTM deploy pipeline: generic reconciler on web-container.json + GitHub Actions workflow (dry-run diff on PR, live apply on merge via WIF with manual approval); retires deploy-phase6.js
