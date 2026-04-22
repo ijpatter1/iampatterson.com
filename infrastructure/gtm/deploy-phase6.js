@@ -57,6 +57,7 @@ const PHASE6_DLV_NAMES = [
 const PHASE6_TRIGGER_EVENTS = [
   'product_view',
   'add_to_cart',
+  'remove_from_cart',
   'begin_checkout',
   'purchase',
   'plan_select',
@@ -83,6 +84,17 @@ const PHASE6_TAGS = [
     name: 'GA4 - add_to_cart',
     eventName: 'add_to_cart',
     triggerEvent: 'add_to_cart',
+    params: [
+      ['product_id', 'dlv - product_id'],
+      ['product_name', 'dlv - product_name'],
+      ['product_price', 'dlv - product_price'],
+      ['quantity', 'dlv - quantity'],
+    ],
+  },
+  {
+    name: 'GA4 - remove_from_cart',
+    eventName: 'remove_from_cart',
+    triggerEvent: 'remove_from_cart',
     params: [
       ['product_id', 'dlv - product_id'],
       ['product_name', 'dlv - product_name'],
@@ -262,7 +274,9 @@ async function main() {
 
   // ── Step 2: Create Phase 6 triggers in web container ───────────────────
 
-  console.log('\nStep 2: Creating 8 custom event triggers in web container...');
+  console.log(
+    `\nStep 2: Creating ${PHASE6_TRIGGER_EVENTS.length} custom event triggers in web container...`,
+  );
   const triggerIdMap = {};
   for (const eventName of PHASE6_TRIGGER_EVENTS) {
     const body = buildCustomEventTriggerBody(eventName);
@@ -289,7 +303,7 @@ async function main() {
 
   // ── Step 3: Create Phase 6 GA4 event tags in web container ─────────────
 
-  console.log('\nStep 3: Creating 8 GA4 event tags in web container...');
+  console.log(`\nStep 3: Creating ${PHASE6_TAGS.length} GA4 event tags in web container...`);
   for (const tagDef of PHASE6_TAGS) {
     const body = buildGA4EventTagBody(tagDef, triggerIdMap, WEB_GA4_FOLDER);
     try {
