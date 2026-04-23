@@ -97,13 +97,27 @@ export async function warmMetabaseDashboard(deps: KeepWarmDeps = {}): Promise<vo
   // which executes the card's BigQuery query on cold path. Populates
   // Metabase's card cache (24h TTL via admin config) and BigQuery's
   // 24h query result cache for subsequent real visitors.
-  await Promise.allSettled(
+  const cardResults = await Promise.allSettled(
     dashcards.map((c) =>
       fetchFn(
         `${METABASE_BASE_URL}/api/embed/dashboard/${token}/dashcard/${c.id}/card/${c.cardId}`,
       ),
     ),
   );
+
+  // If every card request failed (e.g. IAP regressed onto the
+  // `/api/embed/.../dashcard/...` path), the embed/metadata warn above
+  // may not fire, but the fan-out is the *expensive* layer that
+  // actually populates BQ's cache. Surface an explicit warn so the
+  // ship-gate probe failure isn't the first signal.
+  const allFailed = cardResults.length > 0 && cardResults.every((r) => r.status === 'rejected');
+  if (allFailed) {
+    const firstReason = (cardResults[0] as PromiseRejectedResult).reason as Error | unknown;
+    console.warn(
+      '[metabase/keep-warm] all card fan-out fetches failed:',
+      (firstReason as Error)?.message ?? firstReason,
+    );
+  }
 }
 
 /**

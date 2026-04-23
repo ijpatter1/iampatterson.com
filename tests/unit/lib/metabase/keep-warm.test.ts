@@ -138,6 +138,67 @@ describe('warmMetabaseDashboard', () => {
     }
   });
 
+  it('warns when every card fan-out fetch fails (ship-gate canary on a partial-IAP regression)', async () => {
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const fetchFn: FetchMock = jest.fn(async (input) => {
+        const url = typeof input === 'string' ? input : (input as Request).url;
+        // HTML + metadata succeed; the dashcard endpoints (the expensive
+        // BQ-populating layer) all reject — exactly the partial-IAP
+        // regression pattern this warn exists to surface.
+        if (url.includes('/dashcard/')) {
+          throw new Error('card endpoint unreachable');
+        }
+        if (url.includes('/api/embed/dashboard/')) {
+          return new Response(JSON.stringify(sampleMetadata), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          });
+        }
+        return new Response('ok', { status: 200 });
+      });
+      await warmMetabaseDashboard({
+        mintUrl: () => SAMPLE_URL,
+        fetchFn,
+        now: () => 1_000_000,
+      });
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy.mock.calls[0][0]).toMatch(/all card fan-out fetches failed/);
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('does not warn on card fan-out partial failures (only all-fail is noteworthy)', async () => {
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      let cardCallCount = 0;
+      const fetchFn: FetchMock = jest.fn(async (input) => {
+        const url = typeof input === 'string' ? input : (input as Request).url;
+        if (url.includes('/dashcard/')) {
+          cardCallCount += 1;
+          if (cardCallCount === 1) throw new Error('one card errored');
+          return new Response('ok', { status: 200 });
+        }
+        if (url.includes('/api/embed/dashboard/')) {
+          return new Response(JSON.stringify(sampleMetadata), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          });
+        }
+        return new Response('ok', { status: 200 });
+      });
+      await warmMetabaseDashboard({
+        mintUrl: () => SAMPLE_URL,
+        fetchFn,
+        now: () => 1_000_000,
+      });
+      expect(warnSpy).not.toHaveBeenCalled();
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
   it('does not warn when upstream fetches succeed', async () => {
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     try {
