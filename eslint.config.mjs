@@ -22,18 +22,16 @@ const config = [
     rules: {
       '@next/next/no-before-interactive-script-outside-document': 'off',
 
-      // Phase 10a D3 React-Compiler preflight: `eslint-plugin-react-hooks@7`
-      // (via `eslint-config-next@16`) introduces four rules flagging
-      // patterns React 19 discourages. Running at `warn` during the
-      // fix-up work so `npm run lint` still exits 0 while progress is
-      // visible. Once all call sites are either refactored or carry an
-      // explicit `eslint-disable-next-line` with a rationale comment,
-      // these entries are removed entirely so the rules fall back to
-      // their default severity (error) from eslint-plugin-react-hooks.
-      'react-hooks/immutability': 'warn',
-      'react-hooks/purity': 'warn',
-      'react-hooks/refs': 'warn',
-      'react-hooks/set-state-in-effect': 'warn',
+      // `eslint-plugin-react-hooks@7` React-Compiler rules
+      // (`immutability`, `purity`, `refs`, `set-state-in-effect`) run
+      // at default severity (error) from eslint-config-next/core-web-vitals.
+      // Phase 10a D3 preflight cleared all 31 initial violations across
+      // 20 files — refactored where the React-Compiler-preferred shape
+      // was a clean win, justified-disabled where the preferred shape
+      // would undo load-bearing behaviour (owned-storage hydration,
+      // external-signal sync, live-clock re-render, animation drivers,
+      // test-fixture synchronous seeding). New violations in future
+      // code fail `npm run lint` immediately.
 
       // The rest-sibling destructuring pattern (e.g.
       // `const { pipeline_id: _pid, ...rest } = event`) is deliberate —

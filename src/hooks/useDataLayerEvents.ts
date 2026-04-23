@@ -125,21 +125,30 @@ export function useDataLayerEvents({
   // post-mount useEffect below (client-only, never runs on server).
   const [events, setEvents] = useState<PipelineEvent[]>([]);
   const lastIndexRef = useRef(0);
+  // Mirror `maxBufferSize` prop into a ref so the long-lived polling
+  // interval below can read the latest value without re-registering
+  // on every prop change. The ref update runs in an effect (not
+  // during render) to satisfy `react-hooks/refs`.
   const bufferSizeRef = useRef(maxBufferSize);
-  bufferSizeRef.current = maxBufferSize;
+  useEffect(() => {
+    bufferSizeRef.current = maxBufferSize;
+  }, [maxBufferSize]);
 
   const clearEvents = useCallback(() => {
     setEvents([]);
     saveTimelineBuffer([]);
   }, []);
 
-  // Post-mount hydration from sessionStorage ring buffer. Runs once on
-  // the client; SSR safely skipped (useEffect never runs server-side).
-  // Net result: first client render shows [] (matches server), then
-  // this effect populates from persisted buffer → re-render shows
-  // prior events. Brief flash is the tradeoff for hydration safety.
+  // Post-mount hydration from sessionStorage ring buffer. Owned-storage
+  // pattern (this hook both reads and writes the same key via
+  // saveTimelineBuffer); converting to useSyncExternalStore would be a
+  // circular subscribe/write loop. Runs once on the client; SSR safely
+  // skipped. Net result: first client render shows [] (matches server),
+  // then populates from persisted buffer → re-render shows prior
+  // events. Brief flash is the tradeoff for hydration safety.
   useEffect(() => {
     const persisted = loadTimelineBuffer();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- owned-storage hydration (see comment above)
     if (persisted.length > 0) setEvents(persisted);
   }, []);
 

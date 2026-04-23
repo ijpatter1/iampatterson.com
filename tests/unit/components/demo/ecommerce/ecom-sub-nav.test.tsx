@@ -16,7 +16,10 @@ jest.mock('next/navigation', () => ({
 function Seed({ qty = 1 }: { qty?: number }) {
   const { addItem } = useCart();
   const seeded = React.useRef(false);
+  // Test-fixture idiom: synchronously seed the cart exactly once on
+  // first render (see cart-view.test.tsx for matching rationale).
   if (!seeded.current) {
+    // eslint-disable-next-line react-hooks/immutability -- test-fixture synchronous seed
     seeded.current = true;
     addItem({
       product_id: 'tuna-plush-classic',

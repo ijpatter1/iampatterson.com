@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 
 import type { PipelineEvent } from '@/lib/events/pipeline-schema';
 
@@ -32,14 +32,20 @@ export function useLiveEvents(): UseLiveEventsReturn {
   });
   const { events: dlEvents } = useDataLayerEvents();
 
-  const sseEverDeliveredRef = useRef(false);
+  // Sticky "has SSE ever delivered?" latch. Once flipped true, stays
+  // true for the session so the source doesn't flap back to dataLayer
+  // when the SSE buffer is later cleared (e.g. clearEvents from
+  // session-state reset). Converted from ref to state so the
+  // render-time read below doesn't trip `react-hooks/refs`.
+  const [sseEverDelivered, setSseEverDelivered] = useState(false);
   useEffect(() => {
-    if (sseEnabled && sseEvents.length > 0) {
-      sseEverDeliveredRef.current = true;
+    if (sseEnabled && sseEvents.length > 0 && !sseEverDelivered) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sticky latch (see comment above)
+      setSseEverDelivered(true);
     }
-  }, [sseEnabled, sseEvents.length]);
+  }, [sseEnabled, sseEvents.length, sseEverDelivered]);
 
-  const useSse = sseEnabled && (sseEvents.length > 0 || sseEverDeliveredRef.current);
+  const useSse = sseEnabled && (sseEvents.length > 0 || sseEverDelivered);
   return {
     events: useSse ? sseEvents : dlEvents,
     source: useSse ? 'sse' : 'dataLayer',
