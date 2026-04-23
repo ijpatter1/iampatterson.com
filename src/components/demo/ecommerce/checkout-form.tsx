@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 
@@ -17,6 +17,44 @@ import {
   diagnosticLinesForConsent,
 } from '@/lib/demo/reveal/warehouse-write';
 import { classifyUtm, resolveUtmMeta } from '@/lib/demo/reveal/campaign-taxonomy';
+
+// Client-only metadata (URL, referrer, UA-derived device class) for the
+// BQ row preview in LiveSidebar. Read once on first client render via
+// useSyncExternalStore so SSR renders with empty defaults, hydration
+// matches, and the populated values apply on the first post-mount render
+// without a setState-in-effect cascade. Module-level cache keeps the
+// snapshot reference stable across re-renders (required by the hook).
+interface ClientMeta {
+  pageLocation: string;
+  pageReferrer: string;
+  deviceCategory: 'mobile' | 'tablet' | 'desktop' | '';
+}
+const EMPTY_CLIENT_META: ClientMeta = { pageLocation: '', pageReferrer: '', deviceCategory: '' };
+let clientMetaCache: ClientMeta | null = null;
+function deviceCategoryFromUA(ua: string): ClientMeta['deviceCategory'] {
+  // Conservative UA-based classifier matching GA4's device_category
+  // dimension. Enough for the demo's honest "this is what lands in the
+  // row" reading; avoids a dependency on heavier UA-parser libs.
+  if (/iPad|Tablet|Android(?!.*Mobile)/i.test(ua)) return 'tablet';
+  if (/Mobi|Android|iPhone|iPod/i.test(ua)) return 'mobile';
+  return 'desktop';
+}
+function subscribeClientMeta(): () => void {
+  return () => {};
+}
+function getClientMetaSnapshot(): ClientMeta {
+  if (clientMetaCache) return clientMetaCache;
+  if (typeof window === 'undefined') return EMPTY_CLIENT_META;
+  clientMetaCache = {
+    pageLocation: window.location.href,
+    pageReferrer: typeof document !== 'undefined' ? document.referrer : '',
+    deviceCategory: deviceCategoryFromUA(navigator.userAgent),
+  };
+  return clientMetaCache;
+}
+function getClientMetaServerSnapshot(): ClientMeta {
+  return EMPTY_CLIENT_META;
+}
 
 /**
  * Phase 9F D8, checkout page content.
@@ -44,23 +82,11 @@ export function CheckoutForm() {
     [searchParams],
   );
   const utmClassification = useMemo(() => classifyUtm(utmMeta.value), [utmMeta.value]);
-  const [pageLocation, setPageLocation] = useState('');
-  const [pageReferrer, setPageReferrer] = useState('');
-  const [deviceCategory, setDeviceCategory] = useState('');
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setPageLocation(window.location.href);
-      // Conservative UA-based device classifier. "mobile" / "tablet" /
-      // "desktop", matches GA4's device_category dimension. Enough for
-      // the demo's honest "this is what actually lands in the row"
-      // reading; avoids a dependency on the heavier UA-parser libs.
-      const ua = navigator.userAgent;
-      if (/iPad|Tablet|Android(?!.*Mobile)/i.test(ua)) setDeviceCategory('tablet');
-      else if (/Mobi|Android|iPhone|iPod/i.test(ua)) setDeviceCategory('mobile');
-      else setDeviceCategory('desktop');
-    }
-    if (typeof document !== 'undefined') setPageReferrer(document.referrer);
-  }, []);
+  const { pageLocation, pageReferrer, deviceCategory } = useSyncExternalStore(
+    subscribeClientMeta,
+    getClientMetaSnapshot,
+    getClientMetaServerSnapshot,
+  );
   const toastedRef = useRef(false);
   const checkoutFiredRef = useRef(false);
   const [step, setStep] = useState<'form' | 'diagnostic'>('form');
@@ -86,10 +112,15 @@ export function CheckoutForm() {
     return () => clearTimeout(t);
   }, [items.length, total, itemCount, push]);
 
-  const orderParams = useMemo(() => {
-    const orderId = `ORD-${Date.now().toString(36).toUpperCase()}`;
-    return { orderId, total, itemCount };
-  }, [total, itemCount]);
+  // Order ID is minted once at checkout-form mount; total and itemCount
+  // can still change under the visitor's feet (edit cart in another tab,
+  // quantity change still in flight) but the order identity is stable
+  // for the duration of this checkout session. Lazy useState init runs
+  // Date.now exactly once — previous `Date.now()` inside useMemo with
+  // [total, itemCount] deps would re-mint the ID on cart edits, a
+  // subtle regen bug the React-Compiler purity rule surfaced.
+  const [orderId] = useState(() => `ORD-${Date.now().toString(36).toUpperCase()}`);
+  const orderParams = useMemo(() => ({ orderId, total, itemCount }), [orderId, total, itemCount]);
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

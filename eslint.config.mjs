@@ -22,30 +22,16 @@ const config = [
     rules: {
       '@next/next/no-before-interactive-script-outside-document': 'off',
 
-      // Phase 10a carry-over: eslint-plugin-react-hooks@7 (shipped with
-      // eslint-config-next@16) introduced four React-Compiler-era rules
-      // that flag patterns React 19 discourages for render-correctness
-      // and performance. Re-enabled as warnings, they surface 28 real
-      // violations across 17 files, heavily concentrated in portfolio
-      // surfaces: `src/components/overlay/overlay-view.tsx` (5),
-      // `src/components/home/pipeline-editorial.tsx` (3), the homepage
-      // pipeline + demos sections, the reveal sidebar + walkthrough,
-      // and the core measurement-stack hooks (`useSessionContext`,
-      // `useEventStream`, `useDataLayerEvents`, `useLiveEvents`).
-      //
-      // Disabling is not "runtime-legal" cleanup — it's a deliberate
-      // deferral of work that's directly in-scope for Phase 10's Core
-      // Web Vitals pass (`set-state-in-effect` in particular correlates
-      // with cascading renders that hurt CWV; `refs` can mask stale
-      // reads under React 19's stricter render model). Re-enable and
-      // refactor progressively during Phase 10 polish work; tracked
-      // in session-2026-04-23-002 handoff under Issues & Technical Debt.
-      // Long-standing `react-hooks/rules-of-hooks` and
-      // `react-hooks/exhaustive-deps` remain enforced.
-      'react-hooks/immutability': 'off',
-      'react-hooks/purity': 'off',
-      'react-hooks/refs': 'off',
-      'react-hooks/set-state-in-effect': 'off',
+      // `eslint-plugin-react-hooks@7` React-Compiler rules
+      // (`immutability`, `purity`, `refs`, `set-state-in-effect`) run
+      // at default severity (error) from eslint-config-next/core-web-vitals.
+      // Phase 10a D3 preflight cleared all 31 initial violations across
+      // 20 files — refactored where the React-Compiler-preferred shape
+      // was a clean win, justified-disabled where the preferred shape
+      // would undo load-bearing behaviour (owned-storage hydration,
+      // external-signal sync, live-clock re-render, animation drivers,
+      // test-fixture synchronous seeding). New violations in future
+      // code fail `npm run lint` immediately.
 
       // The rest-sibling destructuring pattern (e.g.
       // `const { pipeline_id: _pid, ...rest } = event`) is deliberate —

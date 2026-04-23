@@ -45,6 +45,10 @@ function SeedItem({
 }) {
   const { addItem } = useCart();
   const seededRef = React.useRef(false);
+  // Test-fixture idiom: synchronously seed the cart exactly once on
+  // first render so the test's render() returns with cart state
+  // already populated (no need to `waitFor` in every test body).
+  // eslint-disable-next-line react-hooks/refs -- test-fixture synchronous seed
   if (!seededRef.current) {
     seededRef.current = true;
     addItem({ product_id, product_name, product_price, quantity });

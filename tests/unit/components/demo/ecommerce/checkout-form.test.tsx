@@ -42,6 +42,9 @@ const DEFAULT_SESSION = {
 function Seed({ product_id }: { product_id: string }) {
   const { addItem } = useCart();
   const seeded = React.useRef(false);
+  // Test-fixture idiom: synchronously seed the cart exactly once on
+  // first render (see cart-view.test.tsx for matching rationale).
+  // eslint-disable-next-line react-hooks/refs -- test-fixture synchronous seed
   if (!seeded.current) {
     seeded.current = true;
     addItem({

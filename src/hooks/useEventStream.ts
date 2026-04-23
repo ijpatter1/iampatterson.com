@@ -39,13 +39,26 @@ export function useEventStream({
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [events, setEvents] = useState<PipelineEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // Mirror `maxBufferSize` into a ref so the long-lived EventSource
+  // onmessage callback reads the latest value without the outer effect
+  // needing to re-register on every prop change. Ref update runs in
+  // an effect (not during render) to satisfy `react-hooks/refs`.
   const bufferSizeRef = useRef(maxBufferSize);
-  bufferSizeRef.current = maxBufferSize;
+  useEffect(() => {
+    bufferSizeRef.current = maxBufferSize;
+  }, [maxBufferSize]);
 
   const clearEvents = useCallback(() => setEvents([]), []);
 
+  // Why the disable: setStatus('disconnected') is an external-signal
+  // sync — reflecting `enabled=false` or missing-session-cookie into
+  // the connection-status state. Both branches are legitimate
+  // terminal paths where the effect short-circuits without opening
+  // an EventSource; lifting to a derived computation would require
+  // threading the gate through every consumer of `status`.
   useEffect(() => {
     if (!enabled) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- external-signal sync (see comment above)
       setStatus('disconnected');
       return;
     }

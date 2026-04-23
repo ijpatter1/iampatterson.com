@@ -129,7 +129,12 @@ export function OverlayView() {
   const [selectedEvent, setSelectedEvent] = useState<PipelineEvent | null>(null);
   const [phase, setPhase] = useState<Phase>('idle');
   const [flashKey, setFlashKey] = useState(false);
-  const hasBooted = useRef(false);
+  // `hasBooted` is state (not a ref) so the `!isOpen && !hasBooted`
+  // render-guard below can read it during render without triggering
+  // `react-hooks/refs`. The re-render on first overlay-open-edge is
+  // cheap (the overlay was just told to open, a re-render was coming
+  // anyway via the `isOpen` edge).
+  const [hasBooted, setHasBooted] = useState(false);
   // Tracks whether the landing phase for the current overlay-open has been
   // resolved (i.e. the first post-pendingTab render has committed). Closing
   // this gate unconditionally on resolution, not only when default_landing
@@ -152,8 +157,17 @@ export function OverlayView() {
   // If the opener requested a specific tab (e.g. footer "Consent state" link),
   // switch to it and clear the request so a subsequent open without a hint
   // doesn't re-select.
+  //
+  // Why the disable: the pendingTab signal lives in the overlay context
+  // (external to this component's render state). Consuming it via
+  // setViewMode + consumePendingTab is the intended coordination
+  // pattern with the default_landing emission effect below, which
+  // depends on seeing the post-transition viewMode with pendingTab
+  // cleared. Lifting to a derived computation would tangle with the
+  // landing-emission resolution gate.
   useEffect(() => {
     if (pendingTab && isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- external-signal consumer (see comment above)
       setViewMode(pendingTab);
       consumePendingTab();
     }
@@ -188,15 +202,21 @@ export function OverlayView() {
     }
   }, [isOpen, viewMode, pendingTab]);
 
+  // Why the disables in this effect: synchronising React state with an
+  // external signal (`isOpen` from the overlay context). On close-edge:
+  // reset phase + selectedEvent so the next open lands on the tab-level
+  // view. On open-edge: flip `hasBooted` so the `!isOpen && !hasBooted`
+  // render-guard subsequently allows the closing animation to replay,
+  // and toggle `flashKey` to drive the boot flash. Each setState call
+  // is load-bearing for the boot/close animation choreography.
   useEffect(() => {
     if (!isOpen) {
-      // Close: reset to idle, clear any mid-investigation state so the next
-      // open lands on the tab-level view, not the visitor's stale selection.
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- external-signal sync (see comment above)
       setPhase((p) => (p === 'idle' ? p : 'idle'));
       setSelectedEvent(null);
       return;
     }
-    hasBooted.current = true;
+    setHasBooted(true);
     setFlashKey((k) => !k);
     const reduced =
       typeof window !== 'undefined' &&
@@ -246,7 +266,7 @@ export function OverlayView() {
     if (e.target === e.currentTarget) close();
   };
 
-  if (!isOpen && !hasBooted.current) return null;
+  if (!isOpen && !hasBooted) return null;
 
   const tabs: TabDef[] = [
     { mode: 'overview', label: 'Overview' },

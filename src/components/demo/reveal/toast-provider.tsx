@@ -12,6 +12,8 @@ import {
 import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
+import { useClientMount } from '@/hooks/useClientMount';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { EventToast } from './event-toast';
 
 export type ToastPosition = 'near-cart' | 'near-product' | 'near-form' | 'viewport-top';
@@ -41,20 +43,14 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ActiveToast[]>([]);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useClientMount();
   const idRef = useRef(0);
   const timersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
 
-  // Reduced-motion is computed once on mount; we use it as a data attribute on
-  // the portal so CSS can branch. Lifetime / dismissal scheduling is unchanged.
-  const [reducedMotion, setReducedMotion] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-    if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
-      setReducedMotion(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-    }
-  }, []);
+  // Reduced-motion applied as a data attribute on the portal so CSS
+  // can branch. Subscribes to live OS-level toggles via the shared
+  // hook; no setState-in-effect cascade.
+  const reducedMotion = usePrefersReducedMotion();
 
   const dismiss = useCallback((id: number) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));

@@ -1,9 +1,10 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 
+import { useClientMount } from '@/hooks/useClientMount';
 import { trackClickCta } from '@/lib/events/track';
 import { randomUtmSeedParams } from '@/lib/demo/reveal/campaign-taxonomy';
 
@@ -85,25 +86,26 @@ function RebuildBanner() {
   // → redirect → "There was an error while hydrating this Suspense
   // boundary. Switched to client rendering.").
   //
-  // Tri-state encodes the pre-resolution period: null = "haven't read
-  // sessionStorage yet, don't render anything"; boolean = resolved. The
-  // banner stays hidden until the effect runs so first paint matches
-  // server output (null) regardless of whether the storage key exists.
-  const [dismissed, setDismissed] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    if (!rebuildLabel) {
-      setDismissed(false);
-      return;
-    }
-    setDismissed(isRebuildBannerDismissed(rebuildLabel));
-  }, [rebuildLabel]);
+  // Tri-state resolves via derived computation: `null` during SSR + the
+  // initial client render (matching hydration output), then boolean
+  // once `useClientMount` flips post-hydration. User-dismiss overlays
+  // as state. Avoids setState-in-effect cascade — the derivation is
+  // idempotent and the effect that used to setState is gone.
+  const mounted = useClientMount();
+  const [userDismissed, setUserDismissed] = useState(false);
+  const dismissed: boolean | null = userDismissed
+    ? true
+    : !mounted
+      ? null
+      : !rebuildLabel
+        ? false
+        : isRebuildBannerDismissed(rebuildLabel);
 
   if (rebuildLabel === null || dismissed === null || dismissed === true) return null;
 
   const dismiss = () => {
     markRebuildBannerDismissed(rebuildLabel);
-    setDismissed(true);
+    setUserDismissed(true);
   };
 
   return (

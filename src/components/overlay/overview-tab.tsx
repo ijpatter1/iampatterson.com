@@ -97,6 +97,12 @@ function useTypedCoverage(text: string): string {
   const [displayed, setDisplayed] = useState<string>('');
   const hasAnimated = useRef(false);
 
+  // Why the disable: the effect IS the animation. `setDisplayed` drives
+  // the typing reveal frame-by-frame via setInterval; the reduced-motion
+  // branch short-circuits to the final value immediately. Either path
+  // needs setState in the effect body — it's literally what the animation
+  // is. Lifting to a derived computation would mean typing on every
+  // render, which is the opposite of intent.
   useEffect(() => {
     // Don't consume the one-shot on an empty placeholder, SessionState
     // hydrates asynchronously, so the first render has `text === ''`.
@@ -111,6 +117,7 @@ function useTypedCoverage(text: string): string {
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduced) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- animation driver (see comment above)
       setDisplayed(text);
       return;
     }

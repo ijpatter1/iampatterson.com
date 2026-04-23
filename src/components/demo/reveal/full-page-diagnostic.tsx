@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
+import { useClientMount } from '@/hooks/useClientMount';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
+
 /** Elements to exclude from the focus-restore target (dialog itself). */
 
 // UAT r1 item 14 → Pass-1 eval correction. 1900ms was too fast (~240ms
@@ -43,17 +46,10 @@ export function FullPageDiagnostic({
 }) {
   const [visibleLines, setVisibleLines] = useState(0);
   const completedRef = useRef(false);
-  const [reduced, setReduced] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const reduced = usePrefersReducedMotion();
+  const mounted = useClientMount();
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
-
-  useEffect(() => {
-    setMounted(true);
-    if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
-      setReduced(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-    }
-  }, []);
 
   const complete = useCallback(() => {
     if (completedRef.current) return;
@@ -96,7 +92,7 @@ export function FullPageDiagnostic({
   }, [duration, lines, reduced, complete]);
 
   // Skippable via any keydown; also keeps Tab focus trapped on the dialog
-  // container (no interactive children, so Tab has nowhere valid to go, 
+  // container (no interactive children, so Tab has nowhere valid to go,
   // preventDefault keeps focus on the dialog).
   useEffect(() => {
     if (reduced) return;

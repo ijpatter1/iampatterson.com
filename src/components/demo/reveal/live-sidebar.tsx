@@ -65,9 +65,16 @@ export function LiveSidebar({
   const rootRef = useRef<HTMLElement | null>(null);
 
   // On mount + on route change, reconcile against persisted state for THIS route.
+  // Why the disable: this component OWNS the persisted state (writes to
+  // sessionStorage on toggle, reads on mount/route-change). Converting
+  // to useSyncExternalStore would create a circular subscribe/write
+  // loop against the same key. The "hydrate from storage post-mount to
+  // avoid SSR/CSR text-content mismatch" pattern is deliberate per 9E
+  // UAT F4 hydration-revert lesson.
   useEffect(() => {
     const persisted = readPersisted(route);
     if (persisted !== null) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- owned-storage hydration (see comment above)
       setCollapsed(persisted);
     } else {
       setCollapsed(!defaultOpen);
