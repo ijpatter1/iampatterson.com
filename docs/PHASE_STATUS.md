@@ -312,7 +312,7 @@
 - ⬜ Third-party dependency audit for React 19 compat (recharts, Radix, RTL, etc.); decision recorded in session handoff per dep
 - ⬜ Test-suite stabilization under React 19; full suite green on 15 and again on 16 (*green jest baseline through both hops with no triage needed, now 1166; browser-surface render-timing regressions still owed to D6's smoke gate*)
 - 🔄 `npm run build` clean on Next 16 + manual smoke across site + cold-cache Metabase embed render confirming `after()` completes per-request — build ✅, HTTP-surface smoke ✅ (Pass-1 fix-pack inline: 10/10 routes 200 via `next start`, hero + dashboard-embed iframe + closing beat rendered, server log clean); interactive browser smoke (overlay boot/cycle, ecommerce add-to-cart, cold-cache Metabase iframe load in DevTools) still owed next session
-- 🔄 Doc currency updates: CLAUDE.md Tech Stack, ARCHITECTURE.md §Next.js Application, session handoff — initial pass landed with this update; final handoff doc still to write
+- ✅ 2026-04-23, session-2026-04-23-002 — Doc currency updates: CLAUDE.md Tech Stack + Current Phase block, ARCHITECTURE.md §Next.js Application, PHASE_STATUS.md Phase 10a deliverables, and session handoff artifact `docs/sessions/session-2026-04-23-002.md` (commits `a346a41` + fix-pack framing rewrites in `04e5ea1` + Pass-2 Minors sweep in `1570533` + `55e0f68` handoff doc + Pass-3 closure sweep)
 
 ---
 
