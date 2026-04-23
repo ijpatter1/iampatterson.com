@@ -31,6 +31,14 @@ describe('Metabase keep-warm wiring (Phase 9F D9)', () => {
     expect(src).not.toMatch(/await\s+warmMetabaseDashboard\b/);
   });
 
+  // Pass-1 evaluator Critical #1, without force-dynamic the homepage is
+  // statically prerendered and the warmup hook fires once at build time
+  // instead of per-visitor, defeating the per-request debounce gate.
+  it('homepage forces dynamic rendering so the warmup hook fires per-request', () => {
+    const src = read(HOMEPAGE_PATH);
+    expect(src).toMatch(/export\s+const\s+dynamic\s*=\s*['"]force-dynamic['"]/);
+  });
+
   it('ecommerce demo-entry imports and invokes warmMetabaseDashboardFireAndForget', () => {
     const src = read(DEMO_ENTRY_PATH);
     expect(src).toMatch(
@@ -43,5 +51,10 @@ describe('Metabase keep-warm wiring (Phase 9F D9)', () => {
     const src = read(DEMO_ENTRY_PATH);
     expect(src).not.toMatch(/await\s+warmMetabaseDashboardFireAndForget/);
     expect(src).not.toMatch(/await\s+warmMetabaseDashboard\b/);
+  });
+
+  it('ecommerce demo-entry forces dynamic rendering so the warmup hook fires per-request', () => {
+    const src = read(DEMO_ENTRY_PATH);
+    expect(src).toMatch(/export\s+const\s+dynamic\s*=\s*['"]force-dynamic['"]/);
   });
 });

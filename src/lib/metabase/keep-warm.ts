@@ -12,10 +12,14 @@ import { METABASE_BASE_URL, mintConfirmationDashboardUrl } from './embed';
  * Warmup sequence:
  *   1. GET `/embed/dashboard/:jwt`        (warms Metabase session + JWT validation)
  *   2. GET `/api/embed/dashboard/:jwt`    (warms dashboard metadata lookup)
- *   3. parse `ordered_cards` from (2), fan-out:
+ *   3. parse `dashcards` (modern Metabase, v0.47+) with fallback to
+ *      `ordered_cards` (pre-0.47 legacy) from (2), fan-out:
  *      GET `/api/embed/dashboard/:jwt/dashcard/:dashcard-id/card/:card-id`
  *      (executes the card's BigQuery query, populating Metabase's card
- *       cache and BigQuery's 24h result cache for subsequent real visitors)
+ *       cache and BigQuery's 24h result cache for subsequent real visitors).
+ *      The fallback is defensive; the project runs Metabase v0.59.6 which
+ *      emits `dashcards`, and `infrastructure/metabase/dashboards/apply.sh`
+ *      writes dashboards using the same modern field.
  *
  * Module-scope 30-min debounce prevents N concurrent visitors from
  * N-multiplying warmup fetches. Debounce resets on Vercel function
@@ -63,14 +67,30 @@ export async function warmMetabaseDashboard(deps: KeepWarmDeps = {}): Promise<vo
   // HTML + metadata in parallel. Both are cheap. The HTML fetch warms
   // Metabase's embed-renderer path; the metadata fetch gives us the
   // dashcard list so we can fan out to the expensive card queries.
-  const [, metadataResult] = await Promise.allSettled([
+  const [htmlResult, metadataResult] = await Promise.allSettled([
     fetchFn(url),
     fetchFn(metadataUrl).then((r) => r.json()),
   ]);
 
+  // Observability: a single warn on the first upstream failure so Vercel
+  // logs surface warmup breakage (e.g. LB regression on the non-IAP
+  // backend, expired secret, Metabase unreachable). Silent otherwise to
+  // keep warmup non-intrusive when everything is healthy.
+  if (htmlResult.status === 'rejected' || metadataResult.status === 'rejected') {
+    const reason = (
+      htmlResult.status === 'rejected'
+        ? (htmlResult as PromiseRejectedResult).reason
+        : (metadataResult as PromiseRejectedResult).reason
+    ) as Error | unknown;
+    console.warn(
+      '[metabase/keep-warm] upstream fetch failed:',
+      (reason as Error)?.message ?? reason,
+    );
+  }
+
   if (metadataResult.status !== 'fulfilled') return;
 
-  const dashcards = parseOrderedCards(metadataResult.value);
+  const dashcards = parseDashcards(metadataResult.value);
   if (dashcards.length === 0) return;
 
   // Card fan-out in parallel. Each hits Metabase's card-result endpoint,
@@ -119,11 +139,18 @@ interface Dashcard {
   cardId: number;
 }
 
-function parseOrderedCards(metadata: unknown): Dashcard[] {
+function parseDashcards(metadata: unknown): Dashcard[] {
   if (typeof metadata !== 'object' || metadata === null) return [];
   const m = metadata as Record<string, unknown>;
-  const raw = m.ordered_cards;
-  if (!Array.isArray(raw)) return [];
+  // Modern Metabase (v0.47+) emits `dashcards`; pre-0.47 used
+  // `ordered_cards`. Accept either so the warmup tolerates a
+  // cross-version upgrade without silently no-op'ing the fan-out.
+  const raw = Array.isArray(m.dashcards)
+    ? m.dashcards
+    : Array.isArray(m.ordered_cards)
+      ? m.ordered_cards
+      : null;
+  if (!raw) return [];
   const out: Dashcard[] = [];
   for (const entry of raw) {
     if (typeof entry !== 'object' || entry === null) continue;

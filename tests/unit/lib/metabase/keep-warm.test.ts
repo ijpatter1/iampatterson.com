@@ -21,8 +21,10 @@ const SAMPLE_URL =
   'https://bi.iampatterson.com/embed/dashboard/SAMPLE.JWT.TOKEN#bordered=true&titled=false';
 const SAMPLE_TOKEN = 'SAMPLE.JWT.TOKEN';
 
+// Modern Metabase (v0.47+, the project runs v0.59.6) emits `dashcards`.
+// Legacy `ordered_cards` is covered by a dedicated pin below.
 const sampleMetadata = {
-  ordered_cards: [
+  dashcards: [
     { id: 10, card: { id: 100 } },
     { id: 11, card: { id: 101 } },
     { id: 12, card: { id: 102 } },
@@ -100,20 +102,88 @@ describe('warmMetabaseDashboard', () => {
     expect(fetchFn).not.toHaveBeenCalled();
   });
 
-  it('swallows fetch failures silently (resolves undefined, never rejects)', async () => {
-    const fetchFn: FetchMock = jest.fn(async () => {
-      throw new Error('network unreachable');
-    });
-    await expect(
-      warmMetabaseDashboard({
+  it('swallows fetch failures (resolves undefined, never rejects the caller promise)', async () => {
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const fetchFn: FetchMock = jest.fn(async () => {
+        throw new Error('network unreachable');
+      });
+      await expect(
+        warmMetabaseDashboard({
+          mintUrl: () => SAMPLE_URL,
+          fetchFn,
+          now: () => 1_000_000,
+        }),
+      ).resolves.toBeUndefined();
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('emits a single console.warn on upstream fetch failure for operator observability', async () => {
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const fetchFn: FetchMock = jest.fn(async () => {
+        throw new Error('network unreachable');
+      });
+      await warmMetabaseDashboard({
         mintUrl: () => SAMPLE_URL,
         fetchFn,
         now: () => 1_000_000,
-      }),
-    ).resolves.toBeUndefined();
+      });
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy.mock.calls[0][0]).toMatch(/\[metabase\/keep-warm\]/);
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 
-  it('tolerates a malformed metadata response (no ordered_cards) without blowing up the card fan-out', async () => {
+  it('does not warn when upstream fetches succeed', async () => {
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const fetchFn = makeFetchMock();
+      await warmMetabaseDashboard({
+        mintUrl: () => SAMPLE_URL,
+        fetchFn,
+        now: () => 1_000_000,
+      });
+      expect(warnSpy).not.toHaveBeenCalled();
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('falls back to legacy ordered_cards when modern dashcards is absent', async () => {
+    const fetchFn: FetchMock = jest.fn(async (input) => {
+      const url = typeof input === 'string' ? input : (input as Request).url;
+      if (url.includes('/api/embed/dashboard/') && !url.includes('/dashcard/')) {
+        return new Response(
+          JSON.stringify({
+            ordered_cards: [
+              { id: 20, card: { id: 200 } },
+              { id: 21, card: { id: 201 } },
+            ],
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        );
+      }
+      return new Response('ok', { status: 200 });
+    });
+    await warmMetabaseDashboard({
+      mintUrl: () => SAMPLE_URL,
+      fetchFn,
+      now: () => 1_000_000,
+    });
+    const urls = fetchFn.mock.calls.map((c) => c[0] as string);
+    expect(urls).toContain(
+      `https://bi.iampatterson.com/api/embed/dashboard/${SAMPLE_TOKEN}/dashcard/20/card/200`,
+    );
+    expect(urls).toContain(
+      `https://bi.iampatterson.com/api/embed/dashboard/${SAMPLE_TOKEN}/dashcard/21/card/201`,
+    );
+  });
+
+  it('tolerates a malformed metadata response (neither dashcards nor ordered_cards) without blowing up the card fan-out', async () => {
     const fetchFn: FetchMock = jest.fn(async (input) => {
       const url = typeof input === 'string' ? input : (input as Request).url;
       if (url.includes('/api/embed/dashboard/') && !url.includes('/dashcard/')) {
@@ -173,16 +243,21 @@ describe('warmMetabaseDashboardFireAndForget', () => {
   });
 
   it('does not throw even when the inner warmup rejects', async () => {
-    const fetchFn: FetchMock = jest.fn(async () => {
-      throw new Error('network');
-    });
-    expect(() =>
-      warmMetabaseDashboardFireAndForget({
-        mintUrl: () => SAMPLE_URL,
-        fetchFn,
-        now: () => 1_000_000,
-      }),
-    ).not.toThrow();
-    await new Promise((resolve) => setImmediate(resolve));
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const fetchFn: FetchMock = jest.fn(async () => {
+        throw new Error('network');
+      });
+      expect(() =>
+        warmMetabaseDashboardFireAndForget({
+          mintUrl: () => SAMPLE_URL,
+          fetchFn,
+          now: () => 1_000_000,
+        }),
+      ).not.toThrow();
+      await new Promise((resolve) => setImmediate(resolve));
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 });

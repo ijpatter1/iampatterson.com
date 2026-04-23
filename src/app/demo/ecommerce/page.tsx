@@ -11,6 +11,12 @@ export const metadata: Metadata = {
     'A fully instrumented e-commerce storefront. Browse products, add to cart, and checkout. Every interaction fires events through the full measurement stack.',
 };
 
+// Force dynamic rendering (Phase 9F D9). Previously static (○ in the
+// build output), which caused the warmup hook below to fire once at
+// build time instead of per-visitor. Dynamic rendering ensures the
+// 30-min module-scope debounce gates by real visit cadence.
+export const dynamic = 'force-dynamic';
+
 export default function EcommerceDemoPage() {
   // Organic Metabase warmup (Phase 9F D9). Stronger intent signal than the
   // homepage hook, a visitor on the demo listing is ~1–2 min away from the
