@@ -349,10 +349,10 @@ describe('SessionStateProvider', () => {
 
     const before = window.dataLayer.length;
     renderHook(() => useSessionState(), { wrapper: Wrapper });
-    // Fire enough more distinct events to cross 50%, crossing threshold
-    // derives from the live DATA_LAYER_EVENT_NAMES.length (24 post-F2, was
-    // 22 pre-F2). Ceil(0.51 * total) gives the first index that puts us
-    // past half so the milestone event actually fires.
+    // Fire enough more distinct events to cross 50%. Threshold derives
+    // from the live `DATA_LAYER_EVENT_NAMES.length` so this pin survives
+    // future schema additions. `Math.ceil(0.51 * total)` gives the first
+    // index that puts us past half, so the milestone event actually fires.
     const halfMark = Math.ceil(DATA_LAYER_EVENT_NAMES.length * 0.51);
     act(() => {
       for (const n of DATA_LAYER_EVENT_NAMES.slice(6, halfMark)) {

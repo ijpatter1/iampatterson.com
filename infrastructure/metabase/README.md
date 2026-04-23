@@ -620,6 +620,33 @@ from Phase 5. This is the Tier 3 demonstration surface that
 Phase 9B deliverable 6 will embed into the ecommerce confirmation
 under-the-hood view.
 
+### 9. Enable dashboard result caching (Phase 9F D9, layer b of three-layer warmup stack)
+
+The confirmation page embed's cold first-paint (30–45s observed on
+2026-04-22) was driven by Metabase's per-card BigQuery queries
+cold-missing Metabase's card cache and BigQuery's 24h query cache.
+Enabling result caching on the embedded dashboard lets Metabase serve
+cards from cache while the organic warmup hook
+(`src/lib/metabase/keep-warm.ts`) keeps the cache refreshed ahead of
+real visitors. 24h TTL is safe because the background data generator
+produces a fresh day of BigQuery data nightly; intra-day data does
+not change, so a dashboard served from a ≤24h-old cache matches a
+freshly computed one.
+
+1. Navigate to **Admin settings → Performance → Caching**, enable
+   **Dashboard and question caching** globally (off by default).
+2. Open the `E-Commerce Executive` dashboard (id 2).
+3. Click the gear icon (top-right) → **Edit dashboard details** →
+   **Caching**.
+4. Set **Cache results for this dashboard** to `24 hours`.
+5. Save.
+
+Verify: subsequent loads of `/embed/dashboard/<jwt>` on the
+confirmation page should hit cache, first paint stays under the D9
+ship-gate thresholds (<10s first paint, <15s interactive) even after
+a fresh Vercel deploy (which resets the warmup module's 30-min
+debounce).
+
 ### Troubleshooting
 
 - **BigQuery data source save fails with "Permission denied"** — the

@@ -197,6 +197,7 @@
     },
     { "name": "ce - product_view", "type": "customEvent", "eventName": "product_view" },
     { "name": "ce - add_to_cart", "type": "customEvent", "eventName": "add_to_cart" },
+    { "name": "ce - remove_from_cart", "type": "customEvent", "eventName": "remove_from_cart" },
     { "name": "ce - begin_checkout", "type": "customEvent", "eventName": "begin_checkout" },
     { "name": "ce - purchase", "type": "customEvent", "eventName": "purchase" },
     { "name": "ce - plan_select", "type": "customEvent", "eventName": "plan_select" },
@@ -397,6 +398,19 @@
         "quantity": "{{dlv - quantity}}"
       },
       "firingTrigger": "ce - add_to_cart",
+      "consentSettings": { "analytics_storage": "required" }
+    },
+    {
+      "name": "GA4 - remove_from_cart",
+      "type": "GA4 Event (gaawe)",
+      "eventName": "remove_from_cart",
+      "parameters": {
+        "product_id": "{{dlv - product_id}}",
+        "product_name": "{{dlv - product_name}}",
+        "product_price": "{{dlv - product_price}}",
+        "quantity": "{{dlv - quantity}}"
+      },
+      "firingTrigger": "ce - remove_from_cart",
       "consentSettings": { "analytics_storage": "required" }
     },
     {

@@ -17,15 +17,18 @@ const { GoogleAuth } = require('google-auth-library');
 
 const DRY_RUN = process.argv.includes('--dry-run');
 
-// Container paths
+// Container paths. Workspace IDs are looked up at runtime because
+// each publish consumes its source workspace and GTM auto-creates a
+// fresh "Default Workspace" with a new numeric ID. Hard-coding a
+// workspace id is a drift trap: the original deploy used WS 7 / 13;
+// post-Phase-9F-remove_from_cart publish those were already gone.
 const ACCOUNT_ID = '6346433751';
 const WEB_CONTAINER_ID = '247511905';
-const WEB_WORKSPACE_ID = '7';
 const SGTM_CONTAINER_ID = '247531845';
-const SGTM_WORKSPACE_ID = '13';
 
-const WEB_BASE = `https://www.googleapis.com/tagmanager/v2/accounts/${ACCOUNT_ID}/containers/${WEB_CONTAINER_ID}/workspaces/${WEB_WORKSPACE_ID}`;
-const SGTM_BASE = `https://www.googleapis.com/tagmanager/v2/accounts/${ACCOUNT_ID}/containers/${SGTM_CONTAINER_ID}/workspaces/${SGTM_WORKSPACE_ID}`;
+const CONTAINERS_BASE = `https://www.googleapis.com/tagmanager/v2/accounts/${ACCOUNT_ID}/containers`;
+let WEB_BASE = ''; // set by resolveWorkspaceBases() at main() entry
+let SGTM_BASE = '';
 
 // Existing folder IDs (from live container)
 const WEB_DLV_FOLDER = '35'; // "Data Layer Variables"
@@ -57,6 +60,7 @@ const PHASE6_DLV_NAMES = [
 const PHASE6_TRIGGER_EVENTS = [
   'product_view',
   'add_to_cart',
+  'remove_from_cart',
   'begin_checkout',
   'purchase',
   'plan_select',
@@ -83,6 +87,17 @@ const PHASE6_TAGS = [
     name: 'GA4 - add_to_cart',
     eventName: 'add_to_cart',
     triggerEvent: 'add_to_cart',
+    params: [
+      ['product_id', 'dlv - product_id'],
+      ['product_name', 'dlv - product_name'],
+      ['product_price', 'dlv - product_price'],
+      ['quantity', 'dlv - quantity'],
+    ],
+  },
+  {
+    name: 'GA4 - remove_from_cart',
+    eventName: 'remove_from_cart',
+    triggerEvent: 'remove_from_cart',
     params: [
       ['product_id', 'dlv - product_id'],
       ['product_name', 'dlv - product_name'],
@@ -221,11 +236,38 @@ async function main() {
   const auth = new GoogleAuth({
     scopes: [
       'https://www.googleapis.com/auth/tagmanager.edit.containers',
+      // edit.containerversions is REQUIRED for :create_version calls.
+      // edit.containers alone is enough for trigger/tag/variable POSTs
+      // but the API returns ACCESS_TOKEN_SCOPE_INSUFFICIENT when the
+      // workspace is versioned without this scope.
+      'https://www.googleapis.com/auth/tagmanager.edit.containerversions',
       'https://www.googleapis.com/auth/tagmanager.publish',
       'https://www.googleapis.com/auth/tagmanager.manage.accounts',
     ],
   });
   const client = await auth.getClient();
+
+  // Resolve live workspace IDs (the previous "Default Workspace" was
+  // consumed by the last publish). Both containers should have exactly
+  // one workspace named "Default Workspace" at a stable point in time.
+  async function resolveDefaultWorkspaceId(containerId) {
+    const res = await client.request({
+      url: `${CONTAINERS_BASE}/${containerId}/workspaces`,
+    });
+    const ws = (res.data.workspace || []).find((w) => w.name === 'Default Workspace');
+    if (!ws) {
+      const names = (res.data.workspace || []).map((w) => w.name).join(', ');
+      throw new Error(
+        `No "Default Workspace" found on container ${containerId}. Found: [${names}].`,
+      );
+    }
+    return ws.workspaceId;
+  }
+  const webWs = await resolveDefaultWorkspaceId(WEB_CONTAINER_ID);
+  const sgtmWs = await resolveDefaultWorkspaceId(SGTM_CONTAINER_ID);
+  WEB_BASE = `${CONTAINERS_BASE}/${WEB_CONTAINER_ID}/workspaces/${webWs}`;
+  SGTM_BASE = `${CONTAINERS_BASE}/${SGTM_CONTAINER_ID}/workspaces/${sgtmWs}`;
+  console.log(`Resolved workspaces, web=${webWs}, sgtm=${sgtmWs}`);
 
   async function apiPost(url, body) {
     if (DRY_RUN) {
@@ -244,7 +286,9 @@ async function main() {
 
   // ── Step 1: Create Phase 6 DLV variables in web container ──────────────
 
-  console.log('Step 1: Creating 18 data layer variables in web container...');
+  console.log(
+    `Step 1: Creating ${PHASE6_DLV_NAMES.length} data layer variables in web container...`,
+  );
   for (const dlvName of PHASE6_DLV_NAMES) {
     const body = buildDLVBody(dlvName, WEB_DLV_FOLDER);
     try {
@@ -262,7 +306,9 @@ async function main() {
 
   // ── Step 2: Create Phase 6 triggers in web container ───────────────────
 
-  console.log('\nStep 2: Creating 8 custom event triggers in web container...');
+  console.log(
+    `\nStep 2: Creating ${PHASE6_TRIGGER_EVENTS.length} custom event triggers in web container...`,
+  );
   const triggerIdMap = {};
   for (const eventName of PHASE6_TRIGGER_EVENTS) {
     const body = buildCustomEventTriggerBody(eventName);
@@ -289,7 +335,7 @@ async function main() {
 
   // ── Step 3: Create Phase 6 GA4 event tags in web container ─────────────
 
-  console.log('\nStep 3: Creating 8 GA4 event tags in web container...');
+  console.log(`\nStep 3: Creating ${PHASE6_TAGS.length} GA4 event tags in web container...`);
   for (const tagDef of PHASE6_TAGS) {
     const body = buildGA4EventTagBody(tagDef, triggerIdMap, WEB_GA4_FOLDER);
     try {
@@ -594,8 +640,7 @@ scenarios: []
         method: 'POST',
         data: {
           name: 'Phase 6 - Demo Event Tags',
-          notes:
-            'Added 18 DLV variables, 8 triggers, 8 GA4 event tags for e-commerce, subscription, and lead gen demos.',
+          notes: `Added ${PHASE6_DLV_NAMES.length} DLV variables, ${PHASE6_TRIGGER_EVENTS.length} triggers, ${PHASE6_TAGS.length} GA4 event tags for e-commerce, subscription, and lead gen demos.`,
         },
       });
       const versionId = webVersion.data.containerVersion.containerVersionId;

@@ -14,6 +14,8 @@ A reference for AI tools generating first-pass copy on Ian's behalf, website, em
 
 **Name the specific.** Replace abstract nouns with concrete ones whenever possible. Tools, amounts, product names, places, dates. If you can't name a specific, you probably don't have enough information to write the sentence yet. This is the single biggest lever against generic AI prose.
 
+**Industry-generalization-as-filler.** Don't make sweeping claims about how "most X fail at Y" or "companies in this space struggle with Z" unless there's specific evidence to back them up. These claims feel like confident domain expertise but collapse the moment anyone asks "based on what?" If the generalization is load-bearing, cite the source or the data. If it's just rhetorical padding before the real point, cut it. The test: would I stand behind this claim if someone asked me to justify it on a call? If no, the sentence is decoration.
+
 **Cut the explanation of why it matters.** If the facts are good, significance is obvious. Delete sentences that explain the point of the previous sentence, the ones starting with "This means…" or ending in "…which demonstrates…" or "…highlighting the importance of…". Trust the reader to draw the conclusion.
 
 **Warmth is fine; padding isn't.** A warm opening that's doing real work stays. A warm opening that's stalling before the content gets cut. "Thanks for X" keeps. "I wanted to reach out to say thanks for X" goes. "I hope this email finds you well" is fine if the email is actually friendly, not if it's burning space before a neutral request.
