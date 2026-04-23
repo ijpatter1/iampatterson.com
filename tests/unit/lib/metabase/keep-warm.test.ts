@@ -7,14 +7,15 @@
  * data endpoints) on homepage / demo-entry render, with a 30-min
  * module-scope debounce, so Metabase's card cache + BigQuery's 24h query
  * cache are populated before a visitor reaches /demo/ecommerce/confirmation.
- * Never awaited by callers (fire-and-forget via the `FireAndForget`
- * variant), never rejects.
+ *
+ * Phase 10a D2: callers invoke `warmMetabaseDashboard` via `after()` from
+ * `next/server` rather than a bare fire-and-forget, so the BigQuery card
+ * fan-out isn't truncated by Vercel's post-response Lambda freeze.
  */
 import {
   DEBOUNCE_MS,
   _resetDebounceForTests,
   warmMetabaseDashboard,
-  warmMetabaseDashboardFireAndForget,
 } from '@/lib/metabase/keep-warm';
 
 const SAMPLE_URL =
@@ -272,53 +273,5 @@ describe('warmMetabaseDashboard', () => {
       now: () => 1_000_000,
     });
     expect(fetchFn).not.toHaveBeenCalled();
-  });
-});
-
-describe('warmMetabaseDashboardFireAndForget', () => {
-  beforeEach(() => {
-    _resetDebounceForTests();
-  });
-
-  it('returns void synchronously (not a Promise) so Server Components cannot accidentally await it', () => {
-    const fetchFn = makeFetchMock();
-    const result = warmMetabaseDashboardFireAndForget({
-      mintUrl: () => SAMPLE_URL,
-      fetchFn,
-      now: () => 1_000_000,
-    });
-    expect(result).toBeUndefined();
-    expect((result as unknown as Promise<unknown>)?.then).toBeUndefined();
-  });
-
-  it('triggers the warmup fetch chain under the hood', async () => {
-    const fetchFn = makeFetchMock();
-    warmMetabaseDashboardFireAndForget({
-      mintUrl: () => SAMPLE_URL,
-      fetchFn,
-      now: () => 1_000_000,
-    });
-    // Yield to the microtask queue so the async warmup chain runs
-    await new Promise((resolve) => setImmediate(resolve));
-    expect(fetchFn).toHaveBeenCalled();
-  });
-
-  it('does not throw even when the inner warmup rejects', async () => {
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    try {
-      const fetchFn: FetchMock = jest.fn(async () => {
-        throw new Error('network');
-      });
-      expect(() =>
-        warmMetabaseDashboardFireAndForget({
-          mintUrl: () => SAMPLE_URL,
-          fetchFn,
-          now: () => 1_000_000,
-        }),
-      ).not.toThrow();
-      await new Promise((resolve) => setImmediate(resolve));
-    } finally {
-      warnSpy.mockRestore();
-    }
   });
 });

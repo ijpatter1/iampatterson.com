@@ -1,9 +1,4 @@
-import type {
-  ConsentState,
-  RoutingDestination,
-  RoutingResult,
-  PipelineEvent,
-} from '@/lib/events/pipeline-schema';
+import type { ConsentState, RoutingResult, PipelineEvent } from '@/lib/events/pipeline-schema';
 import {
   ROUTING_DESTINATIONS,
   isPipelineEvent,
@@ -141,21 +136,25 @@ describe('isPipelineEvent', () => {
 
   it('returns false when pipeline_id is missing', () => {
     const { pipeline_id, ...rest } = validEvent();
+    void pipeline_id;
     expect(isPipelineEvent(rest)).toBe(false);
   });
 
   it('returns false when event_name is missing', () => {
     const { event_name, ...rest } = validEvent();
+    void event_name;
     expect(isPipelineEvent(rest)).toBe(false);
   });
 
   it('returns false when session_id is missing', () => {
     const { session_id, ...rest } = validEvent();
+    void session_id;
     expect(isPipelineEvent(rest)).toBe(false);
   });
 
   it('returns false when consent is missing', () => {
     const { consent, ...rest } = validEvent();
+    void consent;
     expect(isPipelineEvent(rest)).toBe(false);
   });
 

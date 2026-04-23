@@ -38,9 +38,11 @@
 
 ### Next.js Application
 
-**Framework:** Next.js 14+ with App Router
+**Framework:** Next.js 16+ with App Router (upgraded from Next.js 14 in Phase 10a)
 **Language:** TypeScript (strict mode: `"strict": true` in tsconfig.json)
 **Styling:** Tailwind CSS with a custom design system
+**Runtime:** Node.js ≥20.9.0 (Next 16 floor; enforced via `engines.node` in `package.json`)
+**Linting:** ESLint 9 flat config (`eslint.config.mjs`), run via `eslint .`; `next lint` was removed in Next 16
 
 **App Router Structure:**
 

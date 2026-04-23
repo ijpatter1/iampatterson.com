@@ -44,7 +44,6 @@ function SeedItem({
   quantity: number;
 }) {
   const { addItem } = useCart();
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const seededRef = React.useRef(false);
   if (!seededRef.current) {
     seededRef.current = true;

@@ -23,7 +23,7 @@ jest.mock('next/navigation', () => ({
   usePathname: () => '/services',
 }));
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { useSessionState } = require('@/components/session-state-provider') as {
   useSessionState: jest.Mock;
 };
