@@ -53,12 +53,21 @@ export function SessionStateProvider({ children }: { children: ReactNode }) {
   const cursorRef = useRef(0);
   const milestonesEmittedRef = useRef<Set<number>>(new Set());
 
+  // Owned-storage hydration: this provider both reads and writes the
+  // persisted SessionState blob. Converting to useSyncExternalStore
+  // would be a circular subscribe/write loop against the same key.
+  // The "hydrate post-mount to avoid SSR/CSR text-content mismatch"
+  // pattern is deliberate per 9E UAT F4 hydration-revert (reading
+  // session storage in a useState initializer caused text content
+  // mismatches on rehydration; post-mount reconciliation is the
+  // project-wide convention).
   useEffect(() => {
     const sessionId = getSessionId();
     const loaded = loadSessionState();
     const initial = loaded
       ? reconcileRehydrated(loaded, sessionId)
       : createInitialSessionState(sessionId, new Date(), { consent: getCurrentConsent() });
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- owned-storage hydration (see comment above)
     setState(initial);
     // Pre-populate the emitted-ref with any milestones the rehydrated blob
     // already contains so the effect doesn't re-fire them on mount.

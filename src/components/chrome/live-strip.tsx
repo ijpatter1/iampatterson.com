@@ -1,10 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-
 import { useSessionState } from '@/components/session-state-provider';
 import { useDataLayerEvents } from '@/hooks/useDataLayerEvents';
-import { getSessionId } from '@/lib/events/session';
+import { useSessionId } from '@/hooks/useSessionId';
 import type { SessionState } from '@/lib/session-state/types';
 
 function consentLabel(
@@ -35,13 +33,9 @@ function consentLabel(
  * consent state, BI layer, attribution approach. Loops via CSS keyframe.
  */
 export function LiveStrip() {
-  const [sessionId, setSessionId] = useState('');
+  const sessionId = useSessionId();
   const { events } = useDataLayerEvents();
   const sessionState = useSessionState();
-
-  useEffect(() => {
-    setSessionId(getSessionId());
-  }, []);
 
   // Match SessionPulse's 6-char suffix so the two components show the same
   // session identity. Prefer the persisted blob's session_id so it stays

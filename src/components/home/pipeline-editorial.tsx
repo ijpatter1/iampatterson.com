@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { useLiveEvents } from '@/hooks/useLiveEvents';
-import { getSessionId } from '@/lib/events/session';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
+import { useSessionId } from '@/hooks/useSessionId';
 import { PIPELINE_STAGES, type PipelineStage } from '@/lib/content/pipeline';
 
 const STAGE_ROTATION_MS = 1800;
@@ -54,27 +55,25 @@ function formatPayload(
  */
 export function PipelineEditorial() {
   const [activeIndex, setActiveIndex] = useState(0);
-  const [sessionId, setSessionId] = useState<string>('');
+  const sessionId = useSessionId();
   const { events } = useLiveEvents();
-  const startedAtRef = useRef<number>(Date.now());
+  // `t0` marks the instant this PipelineEditorial component mounted;
+  // footnote-row timestamps render as offsets from this anchor so all
+  // visible rows share a single "since session start" reference. Lazy
+  // `useState` init runs `Date.now()` exactly once (not every render),
+  // satisfying the `react-hooks/purity` rule without the prior
+  // `useRef<number>(Date.now())` which triggered it at every render of
+  // the `.map()` closure accessing `.current`.
+  const [t0] = useState<number>(() => Date.now());
+  const reduced = usePrefersReducedMotion();
 
   useEffect(() => {
-    setSessionId(getSessionId());
-  }, []);
-
-  useEffect(() => {
-    const reduced =
-      typeof window !== 'undefined' &&
-      typeof window.matchMedia === 'function' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduced) return;
     const id = window.setInterval(() => {
       setActiveIndex((i) => (i + 1) % PIPELINE_STAGES.length);
     }, STAGE_ROTATION_MS);
     return () => window.clearInterval(id);
-  }, []);
-
-  const t0 = startedAtRef.current;
+  }, [reduced]);
 
   // `useLiveEvents` returns events newest-first. We want the visible window
   // to track the most recent activity, with seeds anchoring the start of

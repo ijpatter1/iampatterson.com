@@ -179,12 +179,21 @@ export function PipelineSection() {
   // leave the section stuck in the amber-flooded peak state until a
   // page reload. On overlay-open edge, reset CSS var to 0, tier to 0,
   // flick to false, section returns to its calm editorial baseline.
+  //
+  // Why the disable: this effect synchronises React state (bleedTier,
+  // flickBurst) with an external system (the DOM `--bleed` CSS var +
+  // the consumed-bleed flag in sessionStorage). The React setState
+  // calls and the DOM write are intentionally coupled: they reset the
+  // editorial baseline together on overlay-open-edge. Decoupling into
+  // a key-prop remount would churn the whole section's render tree
+  // for a cosmetic reset.
   useEffect(() => {
     if (!isOpen) return;
     if (!hasPipelineBleedConsumed()) return;
     const el = sectionRef.current;
     if (el) el.style.setProperty('--bleed', '0');
     bleedRef.current = 0;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- external-system sync (see comment above)
     setBleedTier(0);
     setFlickBurst(false);
   }, [isOpen]);

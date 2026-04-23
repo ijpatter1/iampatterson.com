@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import type { NavHintDismissedEvent } from '@/lib/events/schema';
 import { trackNavHintDismissed, trackNavHintShown } from '@/lib/events/track';
 
@@ -64,20 +65,7 @@ export function NavHint({ sessionPulseRef }: NavHintProps) {
   // close over the initial state value, always see the current phase
   // without the effect having to re-register on every transition.
   const stateRef = useRef<HintState>('idle');
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const mql = window.matchMedia?.('(prefers-reduced-motion: reduce)');
-    if (!mql) return;
-    setPrefersReducedMotion(mql.matches);
-    const onChange = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
-    if (typeof mql.addEventListener === 'function') {
-      mql.addEventListener('change', onChange);
-      return () => mql.removeEventListener('change', onChange);
-    }
-    return undefined;
-  }, []);
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   useEffect(() => {
     // Homepage-entry-scoped: hint only fires on `/` per spec. A visitor

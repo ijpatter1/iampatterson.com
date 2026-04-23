@@ -60,8 +60,14 @@ export function WalkthroughBlurb({
   // sessionStorage in a useState initializer, hydration mismatch).
   const [collapsed, setCollapsed] = useState(false);
 
+  // Owned-storage hydration pattern: this component both reads and
+  // writes the persisted collapsed state in sessionStorage. Converting
+  // to useSyncExternalStore would be a circular subscribe/write loop;
+  // the "hydrate post-mount" pattern is the idiomatic SSR-safe form.
+  // See live-sidebar.tsx for the matching rationale.
   useEffect(() => {
     const persisted = readPersisted(route);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- owned-storage hydration (see comment above)
     if (persisted !== null) setCollapsed(persisted);
   }, [route]);
 
