@@ -414,5 +414,4 @@ type _AssertEventNamesInSync = [DataLayerEvent['event']] extends [DataLayerEvent
     : 'ERROR: DATA_LAYER_EVENT_NAMES contains a name not present in the DataLayerEvent union'
   : 'ERROR: DataLayerEvent union contains an event name not present in DATA_LAYER_EVENT_NAMES';
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const _eventNamesInSync: _AssertEventNamesInSync = true;

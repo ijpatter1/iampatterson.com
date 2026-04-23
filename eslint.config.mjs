@@ -1,7 +1,7 @@
 import nextCoreWebVitals from 'eslint-config-next/core-web-vitals';
 import nextTypescript from 'eslint-config-next/typescript';
 
-export default [
+const config = [
   // `next lint` (Next ≤15) auto-ignored non-app directories. The Next 16
   // migration to `eslint .` walks the entire repo, so we reinstate those
   // exclusions explicitly. The input-artifact directories under docs/ hold
@@ -37,6 +37,23 @@ export default [
       'react-hooks/refs': 'off',
       'react-hooks/set-state-in-effect': 'off',
       'react/use': 'off',
+
+      // The rest-sibling destructuring pattern (e.g.
+      // `const { pipeline_id: _pid, ...rest } = event`) is deliberate —
+      // it's how we strip a key while keeping the remainder — and it
+      // also covers the `_`-prefixed convention for intentionally-unused
+      // identifiers. Both idioms predated the Phase 10a upgrade; the
+      // warnings only became visible because `eslint .` now walks tests/.
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          ignoreRestSiblings: true,
+        },
+      ],
     },
   },
 ];
+
+export default config;

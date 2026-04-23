@@ -7,7 +7,6 @@
  * being dropped, which `next build` schema validation alone wouldn't
  * surface until an external link 404'd in production.
  */
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 import nextConfig from '../../next.config.mjs';
 
 describe('next.config.mjs redirects (Phase 9E D7)', () => {

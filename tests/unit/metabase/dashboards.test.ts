@@ -57,7 +57,6 @@ describe('Metabase dashboards-as-code scaffold', () => {
   test('apply.sh exists and is executable', () => {
     const p = path.join(DASHBOARDS_ROOT, 'apply.sh');
     expect(fs.existsSync(p)).toBe(true);
-    // eslint-disable-next-line no-bitwise
     expect(fs.statSync(p).mode & 0o111).not.toBe(0);
   });
 
