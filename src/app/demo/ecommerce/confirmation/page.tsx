@@ -10,7 +10,7 @@ interface ConfirmationPageProps {
   // Next.js App Router types searchParams values as string | string[] | undefined.
   // Duplicate query params (?total=1&total=2) yield string[]; we normalize to the
   // first value below so parseFloat/parseInt work regardless of input shape.
-  searchParams: Record<string, string | string[] | undefined>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 function firstValue(param: string | string[] | undefined): string | undefined {
@@ -39,7 +39,8 @@ function sanitizeNumber(raw: string | undefined, fallback: number, parse: (s: st
  * `orderTotal` missing / zero / non-finite renders the generic-but-coherent
  * lead paragraph per the doc spec (closes 9B follow-up #5 zombie-state drift).
  */
-export default function ConfirmationPage({ searchParams }: ConfirmationPageProps) {
+export default async function ConfirmationPage(props: ConfirmationPageProps) {
+  const searchParams = await props.searchParams;
   const orderId = firstValue(searchParams.order_id) ?? 'ORD-UNKNOWN';
   const orderTotal = sanitizeNumber(firstValue(searchParams.total), 0, parseFloat);
   const itemCount = sanitizeNumber(firstValue(searchParams.items), 0, (s) => parseInt(s, 10));

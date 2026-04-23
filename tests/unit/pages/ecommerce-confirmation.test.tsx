@@ -11,8 +11,6 @@
  * variants (`/embed/dashboard/:jwt` × 1 + `view full dashboard` link +
  * zombie-state $total fallback per the doc spec).
  */
-import type { ReactElement } from 'react';
-
 import { render, screen } from '@testing-library/react';
 
 import ConfirmationPage from '@/app/demo/ecommerce/confirmation/page';
@@ -26,29 +24,27 @@ afterEach(() => {
   process.env = { ...ORIG_ENV };
 });
 
-function renderPage(searchParams: Record<string, string | string[] | undefined> = {}) {
-  const node = (
-    ConfirmationPage as unknown as (p: {
-      searchParams: Record<string, string | string[] | undefined>;
-    }) => ReactElement
-  )({ searchParams });
+async function renderPage(searchParams: Record<string, string | string[] | undefined> = {}) {
+  // Next 15 made route props async; Server Components can `await props.searchParams`.
+  // Tests unwrap by awaiting the page invocation before handing the element to RTL.
+  const node = await ConfirmationPage({ searchParams: Promise.resolve(searchParams) });
   return render(node);
 }
 
 describe('ConfirmationPage, env → dashboard-embed wiring', () => {
-  it('renders the order confirmation block with the search-param values', () => {
-    renderPage({ order_id: 'demo-d9', total: '44.98', items: '2' });
+  it('renders the order confirmation block with the search-param values', async () => {
+    await renderPage({ order_id: 'demo-d9', total: '44.98', items: '2' });
     expect(screen.getByText(/order confirmed/i)).toBeInTheDocument();
     expect(screen.getByText(/demo-d9/)).toBeInTheDocument();
     // $44.98 appears in the lead paragraph + the total meta row
     expect(screen.getAllByText(/\$44\.98/).length).toBeGreaterThanOrEqual(1);
   });
 
-  it('mints ONE full-dashboard iframe URL when both env vars are present', () => {
+  it('mints ONE full-dashboard iframe URL when both env vars are present', async () => {
     process.env.MB_EMBEDDING_SECRET_KEY = VALID_SECRET;
     process.env.METABASE_EMBED_CONFIG = VALID_CONFIG;
 
-    const { container } = renderPage({ order_id: 'demo-d9', total: '44.98', items: '2' });
+    const { container } = await renderPage({ order_id: 'demo-d9', total: '44.98', items: '2' });
 
     const iframes = container.querySelectorAll('iframe');
     expect(iframes).toHaveLength(1);
@@ -57,11 +53,11 @@ describe('ConfirmationPage, env → dashboard-embed wiring', () => {
     );
   });
 
-  it('renders the visible fallback when MB_EMBEDDING_SECRET_KEY is missing', () => {
+  it('renders the visible fallback when MB_EMBEDDING_SECRET_KEY is missing', async () => {
     delete process.env.MB_EMBEDDING_SECRET_KEY;
     process.env.METABASE_EMBED_CONFIG = VALID_CONFIG;
 
-    const { container } = renderPage({ order_id: 'demo-d9', total: '44.98', items: '2' });
+    const { container } = await renderPage({ order_id: 'demo-d9', total: '44.98', items: '2' });
 
     expect(container.querySelectorAll('iframe')).toHaveLength(0);
     expect(
@@ -69,11 +65,11 @@ describe('ConfirmationPage, env → dashboard-embed wiring', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders the visible fallback when METABASE_EMBED_CONFIG is missing', () => {
+  it('renders the visible fallback when METABASE_EMBED_CONFIG is missing', async () => {
     process.env.MB_EMBEDDING_SECRET_KEY = VALID_SECRET;
     delete process.env.METABASE_EMBED_CONFIG;
 
-    const { container } = renderPage({ order_id: 'demo-d9', total: '44.98', items: '2' });
+    const { container } = await renderPage({ order_id: 'demo-d9', total: '44.98', items: '2' });
 
     expect(container.querySelectorAll('iframe')).toHaveLength(0);
     expect(
@@ -81,18 +77,18 @@ describe('ConfirmationPage, env → dashboard-embed wiring', () => {
     ).toBeInTheDocument();
   });
 
-  it('normalizes duplicate query params (string[] searchParams) to the first value', () => {
+  it('normalizes duplicate query params (string[] searchParams) to the first value', async () => {
     process.env.MB_EMBEDDING_SECRET_KEY = VALID_SECRET;
     process.env.METABASE_EMBED_CONFIG = VALID_CONFIG;
 
-    renderPage({ order_id: ['demo-d9', 'second'], total: ['44.98', '99'], items: ['2'] });
+    await renderPage({ order_id: ['demo-d9', 'second'], total: ['44.98', '99'], items: ['2'] });
 
     expect(screen.getByText(/demo-d9/)).toBeInTheDocument();
     expect(screen.getAllByText(/\$44\.98/).length).toBeGreaterThanOrEqual(1);
   });
 
-  it('zombie-state fallback: non-finite total renders generic "a real order" copy, not $NaN', () => {
-    renderPage({ order_id: 'ORD-D9-DEMO', total: 'abc', items: 'xyz' });
+  it('zombie-state fallback: non-finite total renders generic "a real order" copy, not $NaN', async () => {
+    await renderPage({ order_id: 'ORD-D9-DEMO', total: 'abc', items: 'xyz' });
     // Generic lead copy (no $ interpolation)
     expect(
       screen.getByText(/a real order just landed in production BigQuery/i),
@@ -101,8 +97,8 @@ describe('ConfirmationPage, env → dashboard-embed wiring', () => {
     expect(screen.queryByText(/\$Infinity/)).toBeNull();
   });
 
-  it('zombie-state fallback: negative total treated as 0, generic copy renders', () => {
-    renderPage({ order_id: 'ORD-D9-DEMO', total: '-100', items: '-5' });
+  it('zombie-state fallback: negative total treated as 0, generic copy renders', async () => {
+    await renderPage({ order_id: 'ORD-D9-DEMO', total: '-100', items: '-5' });
     expect(
       screen.getByText(/a real order just landed in production BigQuery/i),
     ).toBeInTheDocument();
@@ -110,16 +106,16 @@ describe('ConfirmationPage, env → dashboard-embed wiring', () => {
     expect(screen.queryByText(/-100/)).toBeNull();
   });
 
-  it('does not leak MB_EMBEDDING_SECRET_KEY into the rendered HTML', () => {
+  it('does not leak MB_EMBEDDING_SECRET_KEY into the rendered HTML', async () => {
     process.env.MB_EMBEDDING_SECRET_KEY = VALID_SECRET;
     process.env.METABASE_EMBED_CONFIG = VALID_CONFIG;
 
-    const { container } = renderPage({ order_id: 'demo-d9', total: '44.98', items: '2' });
+    const { container } = await renderPage({ order_id: 'demo-d9', total: '44.98', items: '2' });
     expect(container.innerHTML).not.toContain(VALID_SECRET);
   });
 
-  it('page container widens to max-w-[1200px] per the doc spec', () => {
-    const { container } = renderPage({ order_id: 'x', total: '10', items: '1' });
+  it('page container widens to max-w-[1200px] per the doc spec', async () => {
+    const { container } = await renderPage({ order_id: 'x', total: '10', items: '1' });
     const main = container.querySelector('main');
     expect(main?.className).toMatch(/max-w-\[1200px\]/);
   });
@@ -127,11 +123,11 @@ describe('ConfirmationPage, env → dashboard-embed wiring', () => {
   // UAT r2 item 20, the dashboard was rendering AFTER the "Dashboards
   // are not the payoff" CTA, which fought the payoff framing.
   describe('UAT r2 item 20, dashboard lands before the closing beat', () => {
-    it('dashboard embed (iframe) appears before the closing beat in the DOM', () => {
+    it('dashboard embed (iframe) appears before the closing beat in the DOM', async () => {
       process.env.MB_EMBEDDING_SECRET_KEY = VALID_SECRET;
       process.env.METABASE_EMBED_CONFIG = VALID_CONFIG;
 
-      const { container } = renderPage({ order_id: 'demo-d9', total: '44.98', items: '2' });
+      const { container } = await renderPage({ order_id: 'demo-d9', total: '44.98', items: '2' });
       const iframe = container.querySelector('iframe');
       const closingBeat = Array.from(container.querySelectorAll('p')).find((p) =>
         /Dashboards are not the payoff/.test(p.textContent ?? ''),
@@ -143,11 +139,11 @@ describe('ConfirmationPage, env → dashboard-embed wiring', () => {
       expect(pos & Node.DOCUMENT_POSITION_FOLLOWING).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     });
 
-    it('even in the fallback path (no env), the closing beat still comes after the dashboard-payoff block', () => {
+    it('even in the fallback path (no env), the closing beat still comes after the dashboard-payoff block', async () => {
       delete process.env.MB_EMBEDDING_SECRET_KEY;
       process.env.METABASE_EMBED_CONFIG = VALID_CONFIG;
 
-      const { container } = renderPage({ order_id: 'demo-d9', total: '44.98', items: '2' });
+      const { container } = await renderPage({ order_id: 'demo-d9', total: '44.98', items: '2' });
       const fallback = Array.from(container.querySelectorAll('p')).find((p) =>
         /signing env vars aren't wired/i.test(p.textContent ?? ''),
       );
