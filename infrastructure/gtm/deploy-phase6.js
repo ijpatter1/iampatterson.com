@@ -286,7 +286,9 @@ async function main() {
 
   // ── Step 1: Create Phase 6 DLV variables in web container ──────────────
 
-  console.log('Step 1: Creating 18 data layer variables in web container...');
+  console.log(
+    `Step 1: Creating ${PHASE6_DLV_NAMES.length} data layer variables in web container...`,
+  );
   for (const dlvName of PHASE6_DLV_NAMES) {
     const body = buildDLVBody(dlvName, WEB_DLV_FOLDER);
     try {
@@ -638,8 +640,7 @@ scenarios: []
         method: 'POST',
         data: {
           name: 'Phase 6 - Demo Event Tags',
-          notes:
-            'Added 18 DLV variables, 8 triggers, 8 GA4 event tags for e-commerce, subscription, and lead gen demos.',
+          notes: `Added ${PHASE6_DLV_NAMES.length} DLV variables, ${PHASE6_TRIGGER_EVENTS.length} triggers, ${PHASE6_TAGS.length} GA4 event tags for e-commerce, subscription, and lead gen demos.`,
         },
       });
       const versionId = webVersion.data.containerVersion.containerVersionId;

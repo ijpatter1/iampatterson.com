@@ -144,7 +144,7 @@ describe('warmMetabaseDashboard', () => {
       const fetchFn: FetchMock = jest.fn(async (input) => {
         const url = typeof input === 'string' ? input : (input as Request).url;
         // HTML + metadata succeed; the dashcard endpoints (the expensive
-        // BQ-populating layer) all reject — exactly the partial-IAP
+        // BQ-populating layer) all reject, exactly the partial-IAP
         // regression pattern this warn exists to surface.
         if (url.includes('/dashcard/')) {
           throw new Error('card endpoint unreachable');
