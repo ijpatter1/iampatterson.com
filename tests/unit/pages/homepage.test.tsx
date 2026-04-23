@@ -48,6 +48,15 @@ function renderHome() {
 }
 
 describe('HomePage composition', () => {
+  // Clear every mock (after spy + the keep-warm module's
+  // warmMetabaseDashboard fn) between tests so call counts don't
+  // leak from the first render into the behaviour pin below. The
+  // explicit afterMock.mockClear() is redundant with this but kept
+  // for signal-reading clarity.
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
   beforeEach(() => {
     afterMock.mockClear();
   });
