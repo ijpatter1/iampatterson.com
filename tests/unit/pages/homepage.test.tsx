@@ -21,6 +21,13 @@ jest.mock('next/navigation', () => ({
   usePathname: () => '/',
 }));
 
+// next/server imports Web Fetch's Request global, which jsdom doesn't
+// provide. The homepage Server Component calls `after(() =>
+// warmMetabaseDashboard())` (Phase 10a D2) and we only care here that
+// the page composes; the `after()` wiring is pinned by
+// tests/unit/app/keep-warm-wiring.test.ts via source sniff.
+jest.mock('next/server', () => ({ after: jest.fn() }));
+
 function renderHome() {
   return render(
     <OverlayProvider>

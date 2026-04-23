@@ -1,13 +1,16 @@
 import { METABASE_BASE_URL, mintConfirmationDashboardUrl } from './embed';
 
 /**
- * Organic Metabase dashboard keep-warm (Phase 9F D9).
+ * Organic Metabase dashboard keep-warm (Phase 9F D9 → 10a D2).
  *
  * Invoked server-side from the homepage (`/`) and ecommerce demo entry
- * (`/demo/ecommerce`) Server Components via the fire-and-forget variant.
- * Fires a lightweight warmup sequence against `bi.iampatterson.com` so
- * Metabase's card cache + BigQuery's 24h query cache are primed before a
- * visitor reaches `/demo/ecommerce/confirmation`.
+ * (`/demo/ecommerce`) Server Components via `after()` from `next/server`,
+ * which on Vercel defers the 5–15s BigQuery card fan-out until after the
+ * response is flushed but before the Lambda freezes (closes the 9F D9
+ * Pass-2 Tech Important fire-and-forget durability gap). Fires a
+ * lightweight warmup sequence against `bi.iampatterson.com` so Metabase's
+ * card cache + BigQuery's 24h query cache are primed before a visitor
+ * reaches `/demo/ecommerce/confirmation`.
  *
  * Warmup sequence:
  *   1. GET `/embed/dashboard/:jwt`        (warms Metabase session + JWT validation)
@@ -25,7 +28,8 @@ import { METABASE_BASE_URL, mintConfirmationDashboardUrl } from './embed';
  * N-multiplying warmup fetches. Debounce resets on Vercel function
  * cold-start (one fresh warmup per cold Next.js instance, acceptable).
  *
- * Never awaited by callers; any network failure is swallowed silently.
+ * Never rethrows: upstream failures surface via `console.warn` for
+ * observability but are swallowed so `after()` callbacks stay non-fatal.
  */
 
 export const DEBOUNCE_MS = 30 * 60 * 1000; // 30 minutes
@@ -44,10 +48,11 @@ export interface KeepWarmDeps {
 let lastFireAt = -Infinity;
 
 /**
- * Async variant, returns a Promise that resolves when the warmup chain
- * completes (or immediately if debounced / misconfigured). Exported
- * primarily so tests can await the full chain deterministically; most
- * real callers use `warmMetabaseDashboardFireAndForget`.
+ * Returns a Promise that resolves when the warmup chain completes (or
+ * immediately if debounced / misconfigured). Callers invoke this via
+ * `after()` from `next/server` so Vercel defers the 5–15s BigQuery
+ * card fan-out until after the response is flushed but before the
+ * Lambda freezes.
  */
 export async function warmMetabaseDashboard(deps: KeepWarmDeps = {}): Promise<void> {
   const now = (deps.now ?? Date.now)();
@@ -118,17 +123,6 @@ export async function warmMetabaseDashboard(deps: KeepWarmDeps = {}): Promise<vo
       (firstReason as Error)?.message ?? firstReason,
     );
   }
-}
-
-/**
- * Fire-and-forget variant for Server Components. Returns `void`
- * synchronously, so render cannot accidentally await it and block. Any
- * rejection from the inner warmup chain is swallowed.
- */
-export function warmMetabaseDashboardFireAndForget(deps: KeepWarmDeps = {}): void {
-  void warmMetabaseDashboard(deps).catch(() => {
-    // Intentional no-op; warmup failures are non-fatal.
-  });
 }
 
 /** Reset the module-scope debounce. Exported only for tests. */
