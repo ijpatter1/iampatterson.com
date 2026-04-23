@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 
 import { ListingView } from '@/components/demo/ecommerce/listing-view';
 import { ToastProvider } from '@/components/demo/reveal/toast-provider';
+import { warmMetabaseDashboardFireAndForget } from '@/lib/metabase/keep-warm';
 
 export const metadata: Metadata = {
   title: 'The Tuna Shop',
@@ -11,6 +12,11 @@ export const metadata: Metadata = {
 };
 
 export default function EcommerceDemoPage() {
+  // Organic Metabase warmup (Phase 9F D9). Stronger intent signal than the
+  // homepage hook, a visitor on the demo listing is ~1–2 min away from the
+  // confirmation page. The 30-min module-scope debounce coalesces with the
+  // homepage fire when both are visited in the same session.
+  warmMetabaseDashboardFireAndForget();
   // ToastProvider at the page root (not demo layout) so the three reveal
   // patterns that fire on this route, plus any add_to_cart toasts firing
   // from the grid, land in the same portal host as the cascade. Suspense
