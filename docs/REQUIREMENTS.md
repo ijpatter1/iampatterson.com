@@ -571,6 +571,39 @@ The hi-fi prototype was authored after `docs/UX_PIVOT_SPEC.md` §3.5 and resolve
 
 ---
 
+## Phase 10a, Framework Currency (Next.js 14 → 16)
+
+**Goal:** Bring the frontend onto the current Next.js + React major versions so Phase 10's performance and launch-prep work is measured on the target framework, and so the site, a consulting portfolio that is itself the demonstration, isn't shipping two Next.js majors behind. Scheduled before Phase 10 body work; not a prerequisite for the 9E+9F joint release cut.
+
+**Context:** The site was scaffolded on Next.js 14 in early 2026. Next.js 15 shipped React 19 support, stable `next/after()`, and an async Request API migration. Next.js 16 (October 2025) followed with further caching refinements and likely raised the Node.js minimum. The Phase 9F D9 keep-warm feature's Pass-2 evaluator flagged a Vercel fire-and-forget durability concern that is resolved cleanly by `after()`, which is the direct trigger for doing this upgrade now rather than during unrelated work. See session handoff 2026-04-23 for the scoping conversation.
+
+**Deliverables:**
+
+1. **Hop 1, Next.js 14.2 → 15.x + React 18 → 19.** Run `npx @next/codemod@latest upgrade` to handle the mechanical async-API edits (`cookies()`, `headers()`, `draftMode()`, route `params` / `searchParams` all become `Promise<T>`); the known surface is the 7 files identified during scoping (`src/app/demo/ecommerce/confirmation/page.tsx`, `src/components/demo/ecommerce/checkout-form.tsx`, `src/components/demo/ecommerce/listing-view.tsx`, `src/components/demo/ecommerce/order-confirmation.tsx`, `src/components/home/demos-section.tsx`, `src/lib/demo/campaign-taxonomy.ts`, `src/lib/demo/reveal/campaign-taxonomy.ts`) but the codemod should be trusted to find additional call sites. Pin `react` + `react-dom` to `^19`; `@types/react` is already on `^19.2.14`. Bump `eslint-config-next` to match the Next major.
+
+2. **Migrate keep-warm to `after()`.** Replace `warmMetabaseDashboardFireAndForget()` server-component invocation pattern with `after(() => warmMetabaseDashboard())` from `next/server`. This moves the warmup execution to after-response-flushed but before Lambda freeze, which is exactly the Vercel-durability gap the Pass-2 tech evaluator flagged as Important on 2026-04-23 and the reason this phase was scheduled. Update `tests/unit/app/keep-warm-wiring.test.ts` to pin `after(` usage instead of the current `warmMetabaseDashboardFireAndForget(` call. Retain the module-scope 30-min debounce; reconsider whether to retire the fire-and-forget variant once no callers remain.
+
+3. **Hop 2, Next.js 15.x → 16.x.** Bump `next` to `^16`, bump `eslint-config-next` to match, bump Node.js minimum in `engines` to the Next 16 floor (verify against official migration notes at implementation time; likely Node 20+). Run the codemod again for any 15→16 API changes. Expected smaller surface than Hop 1; primary work is dependency fallout.
+
+4. **Third-party dependency audit for React 19 compatibility.** Review dependencies pegged to React 18 (audit candidates: `recharts`, `@radix-ui/*` if present, any UI primitive libs, `react-testing-library`). For each, pick one of: (a) upgrade to a React-19-compatible major, (b) accept peer-dep warning if runtime works, (c) replace with an alternative. Document choices in session handoff so the rationale is discoverable.
+
+5. **Test-suite stabilization under React 19.** React 19 can shift render timing in a small number of tests (act() wrapping, useEffect ordering, snapshot serialization). Run the full suite after each hop; triage any failures in one pass per hop rather than interleaving with code changes. Current baseline at phase start (post-9F): 1164 passing.
+
+6. **Build + smoke-test gate before merge.** `npm run build` clean on Next 16. Manual smoke pass across the site in a local dev server: homepage → services → contact → demo ecommerce listing → product detail → cart → checkout → confirmation (with Metabase embed rendering from a cold cache after ≥30-min idle, confirming `after()` completes per-request). Document the smoke result in session handoff.
+
+7. **Documentation currency.** Update `CLAUDE.md` Tech Stack section ("Next.js 14+" → "Next.js 16+"), `docs/ARCHITECTURE.md` §Next.js Application ("Next.js 14+ with App Router" → same update), and the session handoff's Test State block. The "two versions behind" framing is resolved here; future framework-currency debt should be caught by Phase 11 deliverable 8 (dependency update process).
+
+**Why this is Phase 10a:** Framework currency is launch-prep-adjacent, Phase 10 runs Core Web Vitals + Lighthouse + performance optimization, and measuring those on an out-of-date framework produces numbers that won't reflect the shipping surface. Sub-numbered (10a) rather than standalone because the scope is mechanical upgrade work, not a new feature surface; the sub-phase convention matches Phase 9B-infra (infrastructure sidecar to 9B) and Phase 9A-redesign (scope pivot on 9A).
+
+**Release sequencing:** Phase 10a begins after the 9E+9F joint release cut lands on `main`. The upgrade touches every route, so doing it on the in-flight 9F branch would add churn to the release PR. Doing it on a clean main with its own phase branch (`phase/10a-framework-currency`) is the lower-risk path.
+
+**Out of scope for Phase 10a:**
+- Tailwind 3 → 4 (separate decision; may happen in Phase 10 body or later)
+- Turbopack adoption as default (Phase 10 performance work, if the numbers warrant it)
+- Broader third-party dep sweep beyond what Next 16 / React 19 force (Phase 11 deliverable 8)
+
+---
+
 ## Phase 10, Polish, Performance & Launch Prep
 
 **Goal:** Optimize the full experience for production readiness.

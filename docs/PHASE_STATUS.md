@@ -302,6 +302,20 @@
 
 ---
 
+## Phase 10a, Framework Currency (Next.js 14 → 16)
+
+*Goal: Upgrade the frontend from Next.js 14.2 / React 18.3 to Next.js 16 / React 19 so Phase 10's performance work is measured on the target framework, and drop the Phase 9F D9 Vercel fire-and-forget durability concern via `after()`. Runs after the 9E+9F joint release cut.*
+
+- ⬜ Hop 1: Next.js 14.2 → 15.x + React 18 → 19; run `@next/codemod` for async Request API migration on the 7 identified files; bump `eslint-config-next` to match
+- ⬜ Migrate `src/lib/metabase/keep-warm.ts` invocation to `after()` from `next/server`; update `tests/unit/app/keep-warm-wiring.test.ts` pins; closes Phase 9F D9 Pass-2 Tech Important (Vercel fire-and-forget durability)
+- ⬜ Hop 2: Next.js 15.x → 16.x; bump `eslint-config-next`; raise Node.js `engines` minimum to the Next 16 floor
+- ⬜ Third-party dependency audit for React 19 compat (recharts, Radix, RTL, etc.); decision recorded in session handoff per dep
+- ⬜ Test-suite stabilization under React 19; full suite green on 15 and again on 16
+- ⬜ `npm run build` clean on Next 16 + manual smoke across site + cold-cache Metabase embed render confirming `after()` completes per-request
+- ⬜ Doc currency updates: CLAUDE.md Tech Stack, ARCHITECTURE.md §Next.js Application, session handoff
+
+---
+
 ## Phase 10, Polish, Performance & Launch Prep
 
 *Goal: Optimize the full experience for production readiness.*
