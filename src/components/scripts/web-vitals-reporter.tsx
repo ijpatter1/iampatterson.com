@@ -39,6 +39,17 @@ type WebVitalsModule = {
 };
 
 function reportMetric(metric: WebVitalsMetric): void {
+  // Known limitation (Pass-1 evaluator Tech Minor #5): `trackWebVital` →
+  // `baseFields()` reads `window.location.pathname` at emit time. The
+  // web-vitals library fires LCP/CLS/INP on `pagehide` /
+  // `visibilitychange`, which in Next App Router SPA navigation can
+  // fire *after* the pathname has already changed. Real-user LCP data
+  // on sessions with SPA nav will report the destination route's
+  // pathname rather than the route the metric was measured on. The
+  // web-vitals@^5 library supports soft-navigation attribution via a
+  // client-side router integration; wiring that is deferred to the
+  // carry-forward list alongside the Phase 11 D9 GTM trigger work that
+  // has to land before real-user LCP flows to BigQuery.
   trackWebVital({
     metric_name: metric.name,
     metric_value: metric.value,

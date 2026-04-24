@@ -53,7 +53,14 @@ export function useEventStream({
     bufferSizeRef.current = maxBufferSize;
   }, [maxBufferSize]);
   // Mirror `status` into a ref so the `online` listener can read it
-  // without re-registering on every status transition.
+  // without re-registering on every status transition. Known narrow
+  // race acknowledged in Pass-1 Tech Minor #6: between a
+  // `setStatus('disconnected')` inside onerror and this effect flushing
+  // the ref, an `online` event could read the stale ref. In practice
+  // `online` events are browser-triggered and the race window is
+  // microseconds, so collisions are theoretical. A stricter pattern
+  // (inline-setState-and-ref via a wrapper) is a carry-forward if
+  // field data shows the race materializing.
   const statusRef = useRef<ConnectionStatus>(status);
   useEffect(() => {
     statusRef.current = status;

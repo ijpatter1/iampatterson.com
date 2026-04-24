@@ -331,6 +331,8 @@
 
 **Carry-forward mobile perf levers (revisit when Vercel-preview Lighthouse joins the loop and/or when the Phase 11 D9 reconciler wires field-data):** font subsetting (Jakarta + JetBrains), `size-adjust` / `ascent-override` for fallback metrics, bundle splits against the 476KB top chunk, Recharts dynamic import on `/demo/ecommerce/analytics`, Metabase iframe skeleton/lazy on confirmation page, mobile hero `clamp(48px, 15vw, 200px)` tweak, preconnect retry on real-TLS latency.
 
+**Carry-forward reporter + hook polish (from Pass-1 evaluator minors):** (1) `WebVitalsReporter` attribution on SPA nav: web-vitals fires LCP/CLS/INP on pagehide, which in Next App Router can fire after the pathname already changed; real-user reports will attribute metrics to the destination route rather than the measured route. Fix: wire web-vitals@^5's soft-navigation integration (capture pathname at subscription time, thread through `trackWebVital`'s `page_path` field). (2) `useEventStream` statusRef race: between a `setStatus('disconnected')` and the effect-flushed ref sync, an `online` event could read the stale ref. Race window is microseconds and practical collision is theoretical; fix would inline the ref update into the setState wrapper. (3) Optional `window.__iapWebVitals()` dev-console readout helper (pre-formatted five-metric summary) to replace the manual `window.dataLayer.filter(...)` pattern.
+
 ---
 
 ## Phase 10c, Voice & Data Honesty
