@@ -18,9 +18,14 @@
 -- timestamp string (e.g. '2027-03-29T20:12:23.000Z'); SAFE.PARSE
 -- handles both with and without the trailing Z + millisecond fraction.
 
+-- 1-day buffer matches the regression pin in generator.test.ts
+-- ("no event lands more than 1 day past endDate") so this scrub
+-- doesn't delete legitimate same-day intra-day distribution. Synthetic
+-- events generated for "today" carry timestamps spread across 0-23h
+-- UTC; some land past the moment of generation and are correct.
 DELETE FROM `iampatterson.iampatterson_raw.events_raw`
 WHERE timestamp IS NOT NULL
   AND COALESCE(
         SAFE.PARSE_TIMESTAMP('%Y-%m-%dT%H:%M:%E*S%Ez', timestamp),
         SAFE.PARSE_TIMESTAMP('%Y-%m-%dT%H:%M:%E*SZ', timestamp)
-      ) > CURRENT_TIMESTAMP();
+      ) > TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 DAY);

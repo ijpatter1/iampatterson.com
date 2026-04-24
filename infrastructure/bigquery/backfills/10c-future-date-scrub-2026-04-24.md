@@ -23,6 +23,8 @@ The same commit also converts `getMonth/getDay/getHours/setMonth/setDate/setHour
 
 These rows shouldn't exist at all (no semantic equivalent in the corrected world), so DELETE is correct rather than UPDATE. Cheap (3,262 rows) + idempotent (re-runs drop to zero affected rows once clean). BigQuery time-travel covers rollback for 7 days.
 
+**Threshold note:** the SQL uses `> CURRENT_TIMESTAMP() + 1 DAY`, not `> CURRENT_TIMESTAMP()`. This matches the regression-pin threshold in `generator.test.ts` ("no event lands more than 1 day past endDate") and prevents the scrub from deleting *legitimate* same-day intra-day distribution. Synthetic events for "today" carry timestamps spread across 0-23h UTC; some land past the moment of generation as the day progresses, which is correct behavior. Only events landing in the *next calendar day* or beyond indicate a code regression worth scrubbing.
+
 ## Apply procedure
 
 ### Pre-flight
@@ -45,7 +47,7 @@ bq --project_id=iampatterson query --use_legacy_sql=false \
      AND COALESCE(
            SAFE.PARSE_TIMESTAMP("%Y-%m-%dT%H:%M:%E*S%Ez", timestamp),
            SAFE.PARSE_TIMESTAMP("%Y-%m-%dT%H:%M:%E*SZ", timestamp)
-         ) > CURRENT_TIMESTAMP()
+         ) > TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)
    GROUP BY event_name ORDER BY row_count DESC'
 ```
 
@@ -70,7 +72,7 @@ bq --project_id=iampatterson query --use_legacy_sql=false \
      AND COALESCE(
            SAFE.PARSE_TIMESTAMP("%Y-%m-%dT%H:%M:%E*S%Ez", timestamp),
            SAFE.PARSE_TIMESTAMP("%Y-%m-%dT%H:%M:%E*SZ", timestamp)
-         ) > CURRENT_TIMESTAMP()'
+         ) > TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)'
 ```
 
 Then trigger a Dataform workflow run so `stg_events`, `mart_*`, and the lifecycle-aware marts (`mart_customer_ltv`, `mart_subscription_cohorts`) recompute without the phantom future-month renewals.
