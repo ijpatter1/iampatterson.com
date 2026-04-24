@@ -193,6 +193,8 @@ bq --project_id=iampatterson query --use_legacy_sql=false \
 
 Then trigger a Dataform workflow run so `mart_lead_funnel` recomputes the last row.
 
+**Closure 2026-04-24 ~16:50 UTC (handoff time):** Residual flushed and re-applied via the retry command above (`Number of affected rows: 1`). Dataform workflow `1777046851-d1d77581` triggered. **Final state: 0 cat-named rows across all three surfaces (`ad_platform_raw`, `events_raw.company_name`, `mart_lead_funnel.company_name`).**
+
 ## Out of scope
 
 - Scrubbing GA4 historical data (cat labels in GA4 reports are immutable; GA4 is not the source of truth for this site's analytics).
