@@ -24,10 +24,10 @@ function installMatchMedia(initial: boolean): MockMediaQueryList {
   let listener: Listener | null = null;
   const mql: MockMediaQueryList = {
     matches: initial,
-    addEventListener: jest.fn((_event, cb) => {
+    addEventListener: jest.fn((_event: string, cb: Listener) => {
       listener = cb;
     }),
-    removeEventListener: jest.fn(() => {
+    removeEventListener: jest.fn((_event: string, _cb: Listener) => {
       listener = null;
     }),
     __fire: (matches: boolean) => {

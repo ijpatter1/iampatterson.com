@@ -1,10 +1,10 @@
 'use client';
 
-import { forwardRef, useEffect, useRef, useState } from 'react';
+import { forwardRef, useRef, useState } from 'react';
 
 import { useSessionState } from '@/components/session-state-provider';
 import { useDataLayerEvents } from '@/hooks/useDataLayerEvents';
-import { getSessionId } from '@/lib/events/session';
+import { useSessionId } from '@/hooks/useSessionId';
 import { trackSessionPulseHover } from '@/lib/events/track';
 
 interface SessionPulseProps {
@@ -36,15 +36,11 @@ export const SessionPulse = forwardRef<HTMLElement, SessionPulseProps>(function 
   { onClick },
   ref,
 ) {
-  const [sessionId, setSessionId] = useState('');
+  const sessionId = useSessionId();
   const [isHovered, setIsHovered] = useState(false);
   const { events } = useDataLayerEvents();
   const sessionState = useSessionState();
   const lastHoverEmitRef = useRef<number>(0);
-
-  useEffect(() => {
-    setSessionId(getSessionId());
-  }, []);
 
   const shortId = sessionId ? sessionId.slice(-6) : '······';
   // Event count reads from the persisted SessionState blob so the

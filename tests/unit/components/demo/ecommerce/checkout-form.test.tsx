@@ -192,8 +192,11 @@ describe('CheckoutForm (Phase 9F D8)', () => {
     await user.click(screen.getByRole('button', { name: /place order/i }));
     // Diagnostic dialog should be mounted
     expect(document.querySelector('[role="dialog"]')).not.toBeNull();
-    // Let the full 4.5s sequence complete (UAT r1 item 14, bumped
-    // from 1.9s so readers have time to read each line).
+    // Let the full diagnostic sequence complete. Current
+    // DEFAULT_DURATION_MS is 3200ms (UAT r1 item 14 → Pass-1 eval
+    // correction: 1900ms too fast, 4500ms too slow, 3200ms landed);
+    // advanceTimersByTime covers that plus the 500ms pre-diagnostic
+    // begin_checkout toast delay.
     act(() => {
       jest.advanceTimersByTime(3300);
     });

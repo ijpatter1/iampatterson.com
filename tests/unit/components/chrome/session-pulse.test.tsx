@@ -28,6 +28,12 @@ jest.mock('@/hooks/useDataLayerEvents', () => ({
 
 jest.mock('@/lib/events/session', () => ({
   getSessionId: () => 'abcdef-xyz123456',
+  // Phase 10a D3: useSessionId (via session-pulse + live-strip)
+  // reads via readSessionCookie and subscribes to cookie-change
+  // notifications. Mocks must supply the full API surface.
+  readSessionCookie: () => 'abcdef-xyz123456',
+  subscribeSessionCookie: () => () => {},
+  notifySessionCookieChange: () => {},
 }));
 
 jest.mock('@/lib/events/track', () => ({

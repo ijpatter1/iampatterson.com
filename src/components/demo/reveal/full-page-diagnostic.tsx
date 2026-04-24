@@ -110,8 +110,9 @@ export function FullPageDiagnostic({
 
   // On mount: capture the previously-focused element + move focus to the
   // dialog. On unmount: restore focus to the captured element. Without this,
-  // a Tab during the 1.9s window could land focus on an element hidden
-  // behind the portal (e.g. a form input on the checkout page).
+  // a Tab during the diagnostic window (DEFAULT_DURATION_MS, currently
+  // 3.2s) could land focus on an element hidden behind the portal (e.g.
+  // a form input on the checkout page).
   useEffect(() => {
     if (reduced || !mounted) return;
     previousFocusRef.current = (document.activeElement as HTMLElement) ?? null;
