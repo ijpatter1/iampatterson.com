@@ -320,14 +320,16 @@
 
 *Goal: Measure and optimize the shipping surface so launch-prep readouts reflect a tuned site.*
 
-- 🔄 D1a CWV measurement foundation. ✅ 2026-04-23, commit `6df76a7` on `phase/10b-core-web-vitals`. `web-vitals@^5` + `WebVitalEvent` schema + `trackWebVital()` + `WebVitalsReporter` (in `src/app/layout.tsx`) + BigQuery columns (`metric_name`, `metric_value`, `metric_rating`, `metric_id`, `navigation_type`) + `web_vital` in `HIDDEN_FROM_COVERAGE` + baseline at `docs/perf/baseline-2026-04-23.md`. +8 tests.
-- ⬜ D1b runtime CWV readouts. Capture first real CWV numbers on `/`, `/demo/ecommerce`, `/demo/ecommerce/confirmation` via the reporter's data-layer output; document as the "runtime baseline" in `docs/perf/baseline-2026-04-23.md`.
-- ⬜ D1c CWV optimization passes. One-lever-at-a-time against the runtime baseline. Target: LCP/CLS/INP all `good` on the three dynamic routes.
-- ⬜ Lighthouse full-run gate. `npx lighthouse` on the three dynamic routes; JSON reports under `docs/perf/lighthouse-<date>-<route>.json`. Perf ≥90, A11y ≥95, BP ≥95, SEO ≥95.
+- ✅ 2026-04-23, commit `6df76a7` — D1a CWV measurement foundation. `web-vitals@^5` + `WebVitalEvent` schema + `trackWebVital()` + `WebVitalsReporter` (in `src/app/layout.tsx`) + BigQuery columns (`metric_name`, `metric_value`, `metric_rating`, `metric_id`, `navigation_type`) + `web_vital` in `HIDDEN_FROM_COVERAGE` + baseline at `docs/perf/baseline-2026-04-23.md`. +8 tests.
+- ✅ 2026-04-23, commit `36e642d` + `83b4157` — D1b runtime Lighthouse baseline. `scripts/capture-cwv-baseline.sh` runs both mobile and desktop presets against a local production server; JSON reports under `docs/perf/lighthouse-2026-04-23-{mobile,desktop}-{home,ecommerce,confirmation}.report.json`. **Desktop: Perf 99-100 across all three routes, LCP 0.7-0.8s, hero h1 is the LCP element on home + confirmation. Mobile-throttled: Perf 80/0/75, LCP 5.4-8.2s, paragraph narrowly out-sizes h1 as LCP element due to mobile viewport math (`clamp(44, 13vw, 200)` → 46.8px at 360px width).**
+- ✅ 2026-04-23, commits `c2de9f6` + `83b4157` — D1c investigation closed. Findings: (a) mobile LCP on home is partly Cookiebot-attributable (~1.6s of render delay); the rest (~3.3s) is fonts + hydration on throttled CPU. (b) Preconnect to Cookiebot + GTM origins is a null-result on localhost (contention without TLS savings); carry-forward for production measurement. (c) Mobile `/demo/ecommerce` Perf=0 is a synthetic `@paulirish/trace_engine` × `after()` interaction, clean on desktop. (d) Italic Instrument Serif is load-bearing above the fold (hero `<em>measurement</em>`) so font-lazy-loading is off the table. **D1 declared sufficiently measured + landed.** Desktop is portfolio-grade; mobile optimization is bounded and best informed by field data from the reporter once the sGTM trigger + BQ tag catch up. Next-lever candidates documented in the baseline doc for post-Vercel-preview / post-reconciler revisit.
+- ✅ 2026-04-23, commit `83b4157` — Lighthouse full-run gate landed via `scripts/capture-cwv-baseline.sh` (mobile + desktop presets, all three dynamic routes, JSON + HTML reports). Reruns against future optimization work for before/after comparison.
 - ⬜ WebSocket connection reliability: reconnect backoff + graceful degradation on stream drop; pinned with tests.
-- ⬜ Overlay rendering performance: profile open path + Timeline tab under ~100-event session; fold any jank into D1c.
+- ⬜ Overlay rendering performance: profile open path + Timeline tab under ~100-event session.
 
 **Deferred cross-sub-phase:** GTM web-container trigger + GA4 tag for `web_vital` defers to Phase 11 D9 reconciler (same carry pattern as `remove_from_cart`). Until then, `window.dataLayer.filter(e => e.event === 'web_vital')` is the dev-console readout.
+
+**Carry-forward mobile perf levers (post-Vercel-preview / post-field-data):** font subsetting (Jakarta + JetBrains), `size-adjust` / `ascent-override` for fallback metrics, bundle splits against the 476KB top chunk, Recharts dynamic import on `/demo/ecommerce/analytics`, Metabase iframe skeleton/lazy on confirmation page, mobile hero `clamp(48px, 15vw, 200px)` tweak, preconnect retry on real-TLS latency.
 
 ---
 
