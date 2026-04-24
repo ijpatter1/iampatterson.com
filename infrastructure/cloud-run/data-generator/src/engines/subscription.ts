@@ -87,6 +87,7 @@ export function generateSubscriptionLifecycle(
   startDate: Date,
   months: number,
   rng: SeededRandom,
+  endDate?: Date,
 ): SyntheticEvent[] {
   const events: SyntheticEvent[] = [];
 
@@ -94,7 +95,10 @@ export function generateSubscriptionLifecycle(
   if (!rng.chance(profile.trialConversionRate)) {
     // Trial churned — generate a churn event at month 1
     const churnDate = new Date(startDate);
-    churnDate.setMonth(churnDate.getMonth() + 1);
+    churnDate.setUTCMonth(churnDate.getUTCMonth() + 1);
+    if (endDate && churnDate > endDate) {
+      return events;
+    }
     const churnCtx = { ...ctx, timestamp: churnDate };
     const churn: SubscriptionChurnEvent = {
       ...createBaseEvent(churnCtx, 'subscription_churn', 0),
@@ -114,7 +118,10 @@ export function generateSubscriptionLifecycle(
   let currentPlan = plan;
   for (let month = 1; month <= months; month++) {
     const eventDate = new Date(startDate);
-    eventDate.setMonth(eventDate.getMonth() + month);
+    eventDate.setUTCMonth(eventDate.getUTCMonth() + month);
+    if (endDate && eventDate > endDate) {
+      break;
+    }
     const monthCtx = { ...ctx, timestamp: eventDate };
 
     // Check churn

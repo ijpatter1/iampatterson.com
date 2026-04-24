@@ -50,7 +50,7 @@ export interface GenerationStats {
  */
 export function generateBackfill(config: GeneratorConfig, endDate: Date): GenerationResult {
   const startDate = new Date(endDate);
-  startDate.setMonth(startDate.getMonth() - config.backfillMonths);
+  startDate.setUTCMonth(startDate.getUTCMonth() - config.backfillMonths);
 
   return generateDateRange(config, startDate, endDate);
 }
@@ -60,9 +60,9 @@ export function generateBackfill(config: GeneratorConfig, endDate: Date): Genera
  */
 export function generateDay(config: GeneratorConfig, date: Date): GenerationResult {
   const dayStart = new Date(date);
-  dayStart.setHours(0, 0, 0, 0);
+  dayStart.setUTCHours(0, 0, 0, 0);
   const dayEnd = new Date(date);
-  dayEnd.setHours(23, 59, 59, 999);
+  dayEnd.setUTCHours(23, 59, 59, 999);
 
   return generateDateRange(config, dayStart, dayEnd);
 }
@@ -94,10 +94,10 @@ export function generateDateRange(
       const second = rng.int(0, 59);
 
       const sessionTime = new Date(current);
-      sessionTime.setHours(hour, minute, second, 0);
+      sessionTime.setUTCHours(hour, minute, second, 0);
 
       const ctx = createSessionContext(config, sessionTime, rng, clientPool);
-      const sessionEvents = generateSessionForModel(config, ctx, rng);
+      const sessionEvents = generateSessionForModel(config, ctx, rng, endDate);
 
       for (const event of sessionEvents) {
         events.push(event);
@@ -107,7 +107,7 @@ export function generateDateRange(
       totalSessions++;
     }
 
-    current.setDate(current.getDate() + 1);
+    current.setUTCDate(current.getUTCDate() + 1);
   }
 
   // Generate ad platform data
@@ -133,12 +133,16 @@ export function generateDateRange(
  * Generate events for a single session based on the business model.
  *
  * For subscriptions, also generates lifecycle events (renewals, churn)
- * if the visitor signed up for a trial.
+ * if the visitor signed up for a trial. The optional `endDate` clamps
+ * the lifecycle projection so a signup near the backfill horizon
+ * doesn't emit renewals past it; without it, lifecycle defaults to
+ * 12 months forward from signup unconditionally.
  */
 function generateSessionForModel(
   config: GeneratorConfig,
   ctx: ReturnType<typeof createSessionContext>,
   rng: SeededRandom,
+  endDate?: Date,
 ): SyntheticEvent[] {
   switch (config.profile.model) {
     case 'ecommerce':
@@ -152,7 +156,9 @@ function generateSessionForModel(
       if (signup) {
         const planId = (signup as { plan_id: string }).plan_id;
         const plan = profile.plans.find((p) => p.id === planId) || profile.plans[0];
-        // Generate up to 12 months of lifecycle from the signup date
+        // Generate up to 12 months of lifecycle from the signup date,
+        // clamped to endDate so a signup near the backfill horizon
+        // doesn't project renewals past it.
         const lifecycleEvents = generateSubscriptionLifecycle(
           ctx,
           profile,
@@ -160,6 +166,7 @@ function generateSessionForModel(
           ctx.timestamp,
           12,
           rng,
+          endDate,
         );
         return [...sessionEvents, ...lifecycleEvents];
       }
@@ -211,7 +218,7 @@ export async function streamingBackfill(
   onAdRecords?: (records: AdPlatformRecord[]) => Promise<{ inserted: number; failed: number }>,
 ): Promise<StreamingBackfillResult> {
   const startDate = new Date(endDate);
-  startDate.setMonth(startDate.getMonth() - config.backfillMonths);
+  startDate.setUTCMonth(startDate.getUTCMonth() - config.backfillMonths);
 
   const rng = new SeededRandom(config.seed ?? Date.now());
   const clientPool = new ClientPool(0.3); // 30% returning visitors
@@ -243,10 +250,10 @@ export async function streamingBackfill(
       const second = rng.int(0, 59);
 
       const sessionTime = new Date(current);
-      sessionTime.setHours(hour, minute, second, 0);
+      sessionTime.setUTCHours(hour, minute, second, 0);
 
       const ctx = createSessionContext(config, sessionTime, rng, clientPool);
-      const sessionEvents = generateSessionForModel(config, ctx, rng);
+      const sessionEvents = generateSessionForModel(config, ctx, rng, endDate);
 
       for (const event of sessionEvents) {
         dayEvents.push(event);
@@ -283,7 +290,7 @@ export async function streamingBackfill(
       onProgress(current.toISOString().split('T')[0], dayEvents.length, sendResult.sent);
     }
 
-    current.setDate(current.getDate() + 1);
+    current.setUTCDate(current.getUTCDate() + 1);
   }
 
   return { stats, sendResult, adInsertResult };

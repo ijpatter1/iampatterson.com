@@ -93,6 +93,13 @@ app.post('/generate', async (req, res) => {
       // Insert ad platform records into BigQuery
       if (result.adPlatformRecords.length > 0) {
         adInsertResult = await insertAdPlatformRecords(result.adPlatformRecords);
+        state.totalErrors += adInsertResult.failed;
+        if (adInsertResult.failed > 0) {
+          console.error(
+            `[ad-insert] ${adInsertResult.failed}/${result.adPlatformRecords.length} rows failed`,
+            { errors: adInsertResult.errors.slice(0, 3) },
+          );
+        }
       }
     }
 
@@ -153,6 +160,12 @@ app.post('/backfill', async (req, res) => {
       // Insert ad platform records into BigQuery
       async (records) => {
         const bqResult = await insertAdPlatformRecords(records);
+        state.totalErrors += bqResult.failed;
+        if (bqResult.failed > 0) {
+          console.error(`[ad-insert] ${bqResult.failed}/${records.length} rows failed`, {
+            errors: bqResult.errors.slice(0, 3),
+          });
+        }
         return { inserted: bqResult.inserted, failed: bqResult.failed };
       },
     );

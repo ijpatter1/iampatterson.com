@@ -4,6 +4,7 @@ import {
   createSubscriptionConfig,
   createLeadgenConfig,
 } from './profiles';
+import { COMPANY_NAMES } from './engines/leadgen';
 import type { EcommerceProfile, SubscriptionProfile, LeadGenProfile } from './types';
 
 describe('profiles', () => {
@@ -19,7 +20,14 @@ describe('profiles', () => {
       const profile = config.profile as EcommerceProfile;
       expect(profile.products).toHaveLength(6);
       expect(profile.products.map((p) => p.id)).toEqual(
-        expect.arrayContaining(['tuna-plush', 'tuna-calendar', 'tuna-pin-set', 'tuna-tote', 'tuna-ornament', 'tuna-mug'])
+        expect.arrayContaining([
+          'tuna-plush',
+          'tuna-calendar',
+          'tuna-pin-set',
+          'tuna-tote',
+          'tuna-ornament',
+          'tuna-mug',
+        ]),
       );
     });
 
@@ -97,7 +105,9 @@ describe('profiles', () => {
       const config = createSubscriptionConfig();
       const profile = config.profile as SubscriptionProfile;
       // First month churn should be higher than last month
-      expect(profile.churnCurve[0]).toBeGreaterThan(profile.churnCurve[profile.churnCurve.length - 1]);
+      expect(profile.churnCurve[0]).toBeGreaterThan(
+        profile.churnCurve[profile.churnCurve.length - 1],
+      );
     });
   });
 
@@ -112,7 +122,13 @@ describe('profiles', () => {
       const config = createLeadgenConfig();
       const profile = config.profile as LeadGenProfile;
       expect(Object.keys(profile.partnershipDistribution)).toEqual(
-        expect.arrayContaining(['sponsored_content', 'product_collaboration', 'event_sponsorship', 'licensing', 'not_sure'])
+        expect.arrayContaining([
+          'sponsored_content',
+          'product_collaboration',
+          'event_sponsorship',
+          'licensing',
+          'not_sure',
+        ]),
       );
     });
 
@@ -120,7 +136,7 @@ describe('profiles', () => {
       const config = createLeadgenConfig();
       const profile = config.profile as LeadGenProfile;
       expect(Object.keys(profile.budgetDistribution)).toEqual(
-        expect.arrayContaining(['under_5k', '5k_15k', '15k_50k', '50k_plus', 'prefer_to_discuss'])
+        expect.arrayContaining(['under_5k', '5k_15k', '15k_50k', '50k_plus', 'prefer_to_discuss']),
       );
     });
 
@@ -150,6 +166,68 @@ describe('profiles', () => {
     it('passes overrides through', () => {
       const config = createConfig('ecommerce', { dailySessions: 999 });
       expect(config.dailySessions).toBe(999);
+    });
+  });
+
+  // Phase 10c D1: Tuna is a chiweenie, not a cat. Earlier LLM-assisted
+  // generator content drifted into off-brand audience labels ("Cat Lovers",
+  // "Cat Content", "Cat Subscription Box") that shipped to BigQuery before
+  // anyone noticed. This pin walks every campaign + UTM variant + product
+  // + plan name across all three configs and bans the off-brand vocabulary
+  // so that class of drift can't silently recur.
+  describe('brand vocabulary pin', () => {
+    // Substring match (case-insensitive) rather than word-boundary, so the
+    // snake_case + ALL_CAPS UTM variants (e.g. `google_prosp_catlovers`,
+    // `META_BROAD_CAT`) are caught too. The label dataset is small and
+    // author-controlled, so false positives (`category`, `catalog`) would
+    // require a real off-brand intent to land here, not an English-word
+    // accident. Add other off-brand vocabulary here as it surfaces.
+    const FORBIDDEN = ['cat', 'feline', 'kitten'];
+
+    function collectLabels(config: ReturnType<typeof createConfig>): string[] {
+      const labels: string[] = [];
+      for (const channel of config.channels) {
+        for (const campaign of channel.campaigns) {
+          labels.push(campaign.name);
+          labels.push(...campaign.utmVariants);
+        }
+      }
+      const profile = config.profile;
+      if (profile.model === 'ecommerce') {
+        labels.push(...profile.products.map((p) => p.name));
+        labels.push(...profile.products.map((p) => p.id));
+      } else if (profile.model === 'subscription') {
+        labels.push(...profile.plans.map((p) => p.name));
+        labels.push(...profile.plans.map((p) => p.id));
+      }
+      return labels;
+    }
+
+    it.each(['ecommerce', 'subscription', 'leadgen'] as const)(
+      '%s config has no cat/feline vocabulary in campaign or product labels',
+      (model) => {
+        const config = createConfig(model);
+        const labels = collectLabels(config);
+        const offenders = labels.filter((label) => {
+          const lower = label.toLowerCase();
+          return FORBIDDEN.some((token) => lower.includes(token));
+        });
+        expect(offenders).toEqual([]);
+      },
+    );
+
+    // Phase 10c Pass-1 fix: extend the pin to walk COMPANY_NAMES in
+    // engines/leadgen.ts. Previously this pin only walked profiles.ts
+    // and silently exempted the leadgen B2B-partner-company list, where
+    // the same LLM hallucination class shipped 'Feline First',
+    // 'Catitude Brands', and 'Purrfect Partners' to events_raw via the
+    // form_complete.company_name field.
+    it('engines/leadgen.ts COMPANY_NAMES has no cat/feline vocabulary', () => {
+      const offenders = COMPANY_NAMES.filter((name) => {
+        const lower = name.toLowerCase();
+        return FORBIDDEN.some((token) => lower.includes(token));
+      });
+      expect(offenders).toEqual([]);
     });
   });
 });

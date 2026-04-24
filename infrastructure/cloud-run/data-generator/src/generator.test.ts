@@ -46,12 +46,25 @@ describe('generator orchestrator', () => {
       expect(result.stats.eventBreakdown['add_to_cart']).toBeGreaterThan(0);
     });
 
-    it('subscription events include plan_select and lifecycle events', () => {
+    it('subscription events include plan_select on day-of generation', () => {
       const config = createSubscriptionConfig({ seed: 42, dailySessions: 100 });
       const result = generateDay(config, new Date('2025-06-15'));
 
       expect(result.stats.eventBreakdown['plan_select']).toBeGreaterThan(0);
-      // With 100 sessions, ~15% sign up, and we generate lifecycle events for them
+      // Note: subscription lifecycle events (renewal, churn) are
+      // monthly cadence and only appear in multi-day backfills, not
+      // single-day generation, since renewals project +1mo from signup
+      // and would fall past the day's endDate.
+    });
+
+    it('subscription backfill produces lifecycle events (renewal/churn)', () => {
+      const config = createSubscriptionConfig({
+        seed: 42,
+        dailySessions: 100,
+        backfillMonths: 6,
+      });
+      const result = generateBackfill(config, new Date('2025-06-15'));
+
       const hasLifecycle =
         (result.stats.eventBreakdown['subscription_renewal'] || 0) > 0 ||
         (result.stats.eventBreakdown['subscription_churn'] || 0) > 0;
@@ -130,9 +143,9 @@ describe('generator orchestrator', () => {
       const latest = new Date(Math.max(...timestamps.map((t) => t.getTime())));
 
       // Earliest should be around April 15
-      expect(earliest.getMonth()).toBeLessThanOrEqual(3); // April (0-indexed)
+      expect(earliest.getUTCMonth()).toBeLessThanOrEqual(3); // April (0-indexed)
       // Latest should be around June 15
-      expect(latest.getMonth()).toBeGreaterThanOrEqual(5); // June
+      expect(latest.getUTCMonth()).toBeGreaterThanOrEqual(5); // June
     });
 
     it('ad platform records span the full date range', () => {
@@ -147,6 +160,38 @@ describe('generator orchestrator', () => {
       expect(dates[0]).toBe('2025-04-15');
       expect(dates[dates.length - 1]).toBe('2025-06-15');
     });
+
+    // Phase 10c follow-up: previously the subscription engine projected up
+    // to 12 months of renewal/churn events forward from each trial signup
+    // with no endDate clamp, so a backfill ending 2026-04-24 produced
+    // renewals through 2027-04-24. Pin: events may spill within ~1 day of
+    // endDate (intra-session events that start near midnight realistically
+    // cross into the next day) but must not project further forward.
+    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+    it.each(['ecommerce', 'subscription', 'leadgen'] as const)(
+      'no %s event lands more than 1 day past endDate',
+      (model) => {
+        const factory = {
+          ecommerce: createEcommerceConfig,
+          subscription: createSubscriptionConfig,
+          leadgen: createLeadgenConfig,
+        }[model];
+        const config = factory({
+          seed: 42,
+          dailySessions: 50,
+          backfillMonths: 3,
+        });
+        const endDate = new Date('2025-06-15T23:59:59.999Z');
+        const cutoff = new Date(endDate.getTime() + ONE_DAY_MS);
+        const result = generateBackfill(config, endDate);
+
+        const offenders = result.events
+          .map((e) => ({ event: e.event, ts: new Date(e.timestamp as string) }))
+          .filter((o) => o.ts > cutoff);
+
+        expect(offenders).toEqual([]);
+      },
+    );
   });
 
   describe('growth over time', () => {

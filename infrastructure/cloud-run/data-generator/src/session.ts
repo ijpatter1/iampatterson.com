@@ -135,9 +135,11 @@ function platformToUtmMedium(platform: string): string {
  * Used for intra-day distribution weighting, not for daily session counts.
  */
 export function getSeasonalityMultiplier(date: Date, seasonality: SeasonalityConfig): number {
-  const month = date.getMonth();
-  const dayOfWeek = date.getDay();
-  const hour = date.getHours();
+  // UTC-based to match production (Cloud Run runs UTC) and so tests
+  // pass on local dev machines regardless of system timezone.
+  const month = date.getUTCMonth();
+  const dayOfWeek = date.getUTCDay();
+  const hour = date.getUTCHours();
   return (
     seasonality.monthly[month] * seasonality.dayOfWeek[dayOfWeek] * seasonality.hourOfDay[hour]
   );
@@ -149,8 +151,8 @@ export function getSeasonalityMultiplier(date: Date, seasonality: SeasonalityCon
  * is handled separately by pickHour in the generator.
  */
 export function getDailySeasonalityMultiplier(date: Date, seasonality: SeasonalityConfig): number {
-  const month = date.getMonth();
-  const dayOfWeek = date.getDay();
+  const month = date.getUTCMonth();
+  const dayOfWeek = date.getUTCDay();
   return seasonality.monthly[month] * seasonality.dayOfWeek[dayOfWeek];
 }
 
@@ -164,8 +166,8 @@ export function getSessionCountForDate(
   referenceDate: Date,
 ): number {
   const monthsElapsed =
-    (date.getFullYear() - referenceDate.getFullYear()) * 12 +
-    (date.getMonth() - referenceDate.getMonth());
+    (date.getUTCFullYear() - referenceDate.getUTCFullYear()) * 12 +
+    (date.getUTCMonth() - referenceDate.getUTCMonth());
 
   const growthMultiplier = Math.pow(1 + config.monthlyGrowthRate, monthsElapsed);
   const seasonalMultiplier = getDailySeasonalityMultiplier(date, config.seasonality);
