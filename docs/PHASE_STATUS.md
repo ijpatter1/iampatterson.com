@@ -1,6 +1,6 @@
 # Phase Status Tracker
 
-> **Current Phase: 10, Polish, Performance & Launch Prep — IN PROGRESS. Branch `phase/10-polish-performance-launch` cut from `main@8e902c5` on 2026-04-23. D1a (CWV measurement foundation) in flight: `WebVitalEvent` schema + `trackWebVital()` helper + `WebVitalsReporter` client component subscribing to `web-vitals@^5` (onLCP/onCLS/onINP/onFCP/onTTFB) + BigQuery schema extension (`metric_name`, `metric_value`, `metric_rating`, `metric_id`, `navigation_type`) + baseline doc at `docs/perf/baseline-2026-04-23.md`. `web_vital` added to `HIDDEN_FROM_COVERAGE` (CWV telemetry, not user behaviour; would pollute the Overview chip grid). +8 tests for D1a; run `npm test` for current count. D1b (actual CWV optimization against the baseline) opens next. Phase 10a, Framework Currency (Next 14 → 16) SHIPPED 2026-04-23 as PR #40 (`1a00490`). All 7 Phase 10a deliverables ✅ including D6 full smoke gate: automated 11-of-13 Playwright UAT scenarios green, + S4 [prod-cold] Metabase embed durability verified against production after ≥30-min idle. Phase 10a summary preserved in Phase 10a block below. Test suite 1164 → 1187 (+23 net, 10a close). Last updated: 2026-04-23, Phase 10 D1a in flight.** **Phase 9E + 9F shipped to main as PR #37 (`136a664`) before this session.** Joint ship per the 9E release-coupling. 9E side: all 9 deliverables shipped (D1–D9), UAT performed, eight-block close-out landed, three user-reported follow-ups resolved (`af3a7ad` refresh-persistence audit, `0751a34` hydration-error revert, `c53f924` threshold + dismissal-mode fixes), four full dual-evaluator cycles during F8, test suite 820 → 863 (+43 net). 9F side: branch `phase/9f-ecommerce-native-reveal` cut from current `phase/9e-nav-overlay-pivot` HEAD; doc pass complete (REQUIREMENTS Phase 9F block + ARCHITECTURE Phase 9F section + this PHASE_STATUS Phase 9F block) reconciling canonical `docs/UX_PIVOT_SPEC.md` §3.5 against the hi-fi prototype at `docs/input_artifacts/design_handoff_ecommerce/`. 12 deliverables drafted (4 pattern primitives, 5 per-page rebuilds, component cleanup, SessionPulse reachability verification, palette-token harmony + Tuna Shop brand treatment). Confirmation-page embed-shape decision locked: **one full-dashboard Metabase embed** (user-confirmed 2026-04-21). Cold-start ship-gate upgraded to binary release blocker. **Original 9E status (preserved as historical context):** All 9 deliverables (D1–D9) shipped. UAT performed, eight-block close-out landed, then three user-reported browser-only issues resolved in follow-up commits: full refresh-persistence audit (`af3a7ad`, every SSR'd consumer of session data now reads from the persisted blob + a new timeline ring buffer), hydration-error revert (`0751a34`, eager-loads caused SSR/CSR text-content mismatches; reverted to post-mount useEffect loading with brief flash as trade-off), and threshold + dismissal-mode fixes (`c53f924`, restored threshold CTA `EVENT_TYPE_THRESHOLD` from 5 → 10 per spec after user reported 5 triggered too easily; removed `click_session_pulse` from `NavHintDismissedEvent.dismissal_mode` union because SessionPulse clicks are conversions tracked by `click_cta`, not dismissals). Four full dual-evaluator cycles during F8; final fixes were focused user-directed changes with direct regression pins. Test suite 820 → 863 (+43 net). Branch `phase/9e-nav-overlay-pivot` is shippable as the 9E half of the joint 9E+9F release cut. D8 contact-form transport stub carried to Phase 10 as documented. UAT artifacts: `docs/uat/phase-9e-uat.sh` + `phase-9e-uat-output.md` + `phase-9e-uat-feedback.md`. Session handoffs: `docs/sessions/session-2026-04-21-001.md` (UAT close-out + follow-ups).
+> **Current Phase: 10, Polish, Performance & Launch Prep — IN PROGRESS, restructured into four sub-phases 2026-04-23 after UAT r1 surfaced ~12 content/polish items (two substantial enough to warrant dedicated sessions).** Sub-phases: **10a Framework Currency** ✅ shipped 2026-04-23 as PR #40 (`1a00490`; Next 14→16, React 18→19, ESLint 9 flat, `after()` migration, React-Compiler preflight; test suite 1164 → 1187); **10b Core Web Vitals & Performance** 🔄 in flight on branch `phase/10b-core-web-vitals` (cut from `main@8e902c5`; D1a CWV measurement foundation ✅ commit `6df76a7` — `web-vitals@^5` dep + `WebVitalEvent` schema + `WebVitalsReporter` in `src/app/layout.tsx` + BigQuery columns + baseline doc; D1b runtime readouts + D1c optimization passes + Lighthouse + WebSocket reliability + overlay render perf open); **10c Voice & Data Honesty** ⬜ (voice audit across whole site + cat-content generator scrub + BigQuery backfill; substantial, two PRs inside one sub-phase; 10d-scrub-first then voice); **10d Launch Prep** ⬜ (mobile testing, error handling, site analytics remainder, SEO, security review, load testing, anonymous_id cookie, UX polish bundle of 10 UAT items). Sequencing: finish 10b first (perf measurement groundwork shouldn't churn under 10c/10d surface edits), then 10c, then 10d. Last updated: 2026-04-23, post-restructure.  **Phase 9E + 9F shipped to main as PR #37 (`136a664`) before this session.** Joint ship per the 9E release-coupling. 9E side: all 9 deliverables shipped (D1–D9), UAT performed, eight-block close-out landed, three user-reported follow-ups resolved (`af3a7ad` refresh-persistence audit, `0751a34` hydration-error revert, `c53f924` threshold + dismissal-mode fixes), four full dual-evaluator cycles during F8, test suite 820 → 863 (+43 net). 9F side: branch `phase/9f-ecommerce-native-reveal` cut from current `phase/9e-nav-overlay-pivot` HEAD; doc pass complete (REQUIREMENTS Phase 9F block + ARCHITECTURE Phase 9F section + this PHASE_STATUS Phase 9F block) reconciling canonical `docs/UX_PIVOT_SPEC.md` §3.5 against the hi-fi prototype at `docs/input_artifacts/design_handoff_ecommerce/`. 12 deliverables drafted (4 pattern primitives, 5 per-page rebuilds, component cleanup, SessionPulse reachability verification, palette-token harmony + Tuna Shop brand treatment). Confirmation-page embed-shape decision locked: **one full-dashboard Metabase embed** (user-confirmed 2026-04-21). Cold-start ship-gate upgraded to binary release blocker. **Original 9E status (preserved as historical context):** All 9 deliverables (D1–D9) shipped. UAT performed, eight-block close-out landed, then three user-reported browser-only issues resolved in follow-up commits: full refresh-persistence audit (`af3a7ad`, every SSR'd consumer of session data now reads from the persisted blob + a new timeline ring buffer), hydration-error revert (`0751a34`, eager-loads caused SSR/CSR text-content mismatches; reverted to post-mount useEffect loading with brief flash as trade-off), and threshold + dismissal-mode fixes (`c53f924`, restored threshold CTA `EVENT_TYPE_THRESHOLD` from 5 → 10 per spec after user reported 5 triggered too easily; removed `click_session_pulse` from `NavHintDismissedEvent.dismissal_mode` union because SessionPulse clicks are conversions tracked by `click_cta`, not dismissals). Four full dual-evaluator cycles during F8; final fixes were focused user-directed changes with direct regression pins. Test suite 820 → 863 (+43 net). Branch `phase/9e-nav-overlay-pivot` is shippable as the 9E half of the joint 9E+9F release cut. D8 contact-form transport stub carried to Phase 10 as documented. UAT artifacts: `docs/uat/phase-9e-uat.sh` + `phase-9e-uat-output.md` + `phase-9e-uat-feedback.md`. Session handoffs: `docs/sessions/session-2026-04-21-001.md` (UAT close-out + follow-ups).
 >
 > **Deferred to Phase 10 (from F8 product review):**
 > 1. Mobile overlay swipe-down close gesture (Product Major #1), Escape-key close is a desktop affordance; iOS-native swipe-down would complement "← Back to site" on mobile. Net-new feature, not UAT close-out scope.
@@ -316,19 +316,57 @@
 
 ---
 
-## Phase 10, Polish, Performance & Launch Prep
+## Phase 10b, Core Web Vitals & Performance
 
-*Goal: Optimize the full experience for production readiness.*
+*Goal: Measure and optimize the shipping surface so launch-prep readouts reflect a tuned site.*
 
-- 🔄 Performance optimization: Core Web Vitals, Lighthouse scores, WebSocket connection reliability, overlay rendering performance. **D1a landed 2026-04-23:** CWV measurement foundation — `web-vitals@^5` dep, `WebVitalEvent` schema + `trackWebVital()` helper + `WebVitalsReporter` client component in `src/app/layout.tsx`, BigQuery schema columns (`metric_name`, `metric_value`, `metric_rating`, `metric_id`, `navigation_type`), baseline at `docs/perf/baseline-2026-04-23.md`. `web_vital` added to `HIDDEN_FROM_COVERAGE` (telemetry, not user behaviour). +8 tests. **D1b open:** runtime CWV readouts on `/`, `/demo/ecommerce`, `/demo/ecommerce/confirmation`, then image priority / chunk splits / overlay render-timing work against the baseline. GTM web-container trigger + GA4 tag for `web_vital` deferred to Phase 11 D9 reconciler (same pattern as `remove_from_cart` carry)
-- ⬜ Mobile testing across devices and screen sizes
-- ⬜ Error handling: graceful degradation if WebSocket drops, BigQuery is slow, or Pub/Sub has latency spikes
-- ⬜ Analytics on the site itself: demo interaction patterns, funnel reach, time-on-site / scroll-depth distribution, contact-form conversion signal. *Nav-specific + Session State analytics moved into Phase 9E deliverable 9, see rationale there.*
-- ⬜ Copy and content refinement across all consulting pages
-- ⬜ SEO: meta tags, structured data, sitemap, content strategy for organic discoverability
-- ⬜ Security review: ensure demo interactions can't expose real data, service accounts properly scoped, no PII leakage in event stream
-- ⬜ Load testing on background data generator and WebSocket service
-- ⬜ Anonymous ID first-party cookie (`_iap_aid`, 365-day) threaded as `anonymous_id` alongside session_id; surfaced in Overview tab + ecommerce live sidebars. *Added 2026-04-21 from UAT r2 item 15, honest cross-session identity without PII.*
+- 🔄 D1a CWV measurement foundation. ✅ 2026-04-23, commit `6df76a7` on `phase/10b-core-web-vitals`. `web-vitals@^5` + `WebVitalEvent` schema + `trackWebVital()` + `WebVitalsReporter` (in `src/app/layout.tsx`) + BigQuery columns (`metric_name`, `metric_value`, `metric_rating`, `metric_id`, `navigation_type`) + `web_vital` in `HIDDEN_FROM_COVERAGE` + baseline at `docs/perf/baseline-2026-04-23.md`. +8 tests.
+- ⬜ D1b runtime CWV readouts. Capture first real CWV numbers on `/`, `/demo/ecommerce`, `/demo/ecommerce/confirmation` via the reporter's data-layer output; document as the "runtime baseline" in `docs/perf/baseline-2026-04-23.md`.
+- ⬜ D1c CWV optimization passes. One-lever-at-a-time against the runtime baseline. Target: LCP/CLS/INP all `good` on the three dynamic routes.
+- ⬜ Lighthouse full-run gate. `npx lighthouse` on the three dynamic routes; JSON reports under `docs/perf/lighthouse-<date>-<route>.json`. Perf ≥90, A11y ≥95, BP ≥95, SEO ≥95.
+- ⬜ WebSocket connection reliability: reconnect backoff + graceful degradation on stream drop; pinned with tests.
+- ⬜ Overlay rendering performance: profile open path + Timeline tab under ~100-event session; fold any jank into D1c.
+
+**Deferred cross-sub-phase:** GTM web-container trigger + GA4 tag for `web_vital` defers to Phase 11 D9 reconciler (same carry pattern as `remove_from_cart`). Until then, `window.dataLayer.filter(e => e.event === 'web_vital')` is the dev-console readout.
+
+---
+
+## Phase 10c, Voice & Data Honesty
+
+*Goal: Correct user-visible voice drift + LLM-hallucinated generator data in one sub-phase. The site has been lying on both axes; correct the record.*
+
+- ⬜ D1 Data generator honesty — code fix. Audit `services/data-generator/` for LLM-hallucinated labels ("Cat Content" and kin; Tuna is a chiweenie, not a cat). Replace with canonical Tuna-brand label set; pin the set via integration test so drift can't silently recur.
+- ⬜ D2 Data generator honesty — BigQuery scrub. Backfill `iampatterson_raw.events_raw` + Dataform staging/marts affected by the hallucinated labels. Scrub SQL + remap documented at `infrastructure/bigquery/backfills/10c-cat-content-scrub-<date>.md`.
+- ⬜ D3 Voice audit — flag pass. Walk every user-visible string on `/`, `/services`, `/about`, `/contact`, `/demo/ecommerce/*`, overlay (Overview, Timeline, Consent) against `docs/voice-and-style-guide.md`. Present flagged list to user before rewriting.
+- ⬜ D4 Voice audit — rewrite pass. Apply approved rewrites. Absorbs UAT r1 item 8 (About-page AI/martech bridging paragraph).
+- ⬜ D5 Voice-guide update. Extend `docs/voice-and-style-guide.md` with any patterns surfaced in the audit that weren't already codified.
+
+**Sequencing:** D1 → D2 → D3 → D4 → D5. Scrub (D2) before voice audit (D3) so the audit reads honest generator output.
+
+---
+
+## Phase 10d, Launch Prep
+
+*Goal: Punch-list of remaining items before launch. Original Phase 10 D2/D3/D4/D6/D7/D8/D9 + UAT r1 UX polish bundle. Original D5 (copy/content) absorbed into 10c.*
+
+- ⬜ D1 Mobile testing across devices + screens. Real-device iPhone SE verification (carry from Phase 9E F8 Product Minor #5); Android small-viewport; tablet portrait/landscape. Matrix at `docs/perf/mobile-matrix-<date>.md`.
+- ⬜ D2 Error handling: graceful degradation on WebSocket drop, BigQuery slow, Pub/Sub latency spikes; regression tests per path.
+- ⬜ D3 Site-self analytics remainder. Demo interaction patterns, time/scroll distribution beyond milestones, funnel reach into ecommerce, contact-form conversion signal, cross-event funnel reporting. *Nav + Session State portion shipped in 9E D9.*
+- ⬜ D4 SEO: per-route meta + Open Graph + Twitter cards; JSON-LD (`Organization` + `Person`); sitemap freshness; content plan sketch at `docs/seo/content-plan-<date>.md`.
+- ⬜ D5 Security review: demo-data exposure paths, SA/IAP/JWT scope, PII audit across `DataLayerEvent` union, `npm audit`. Report at `docs/security/review-<date>.md`.
+- ⬜ D6 Load testing: data generator + WebSocket service under synthetic load; Pub/Sub throughput profile. Report at `docs/perf/load-test-<date>.md`.
+- ⬜ D7 Anonymous ID first-party cookie (`_iap_aid`, 365d, SameSite=Lax, Secure in prod) threaded as `anonymous_id` alongside `session_id`; surfaced in Overview portals-and-state + ecommerce live sidebars. *Added 2026-04-21 from UAT r2 item 15.*
+- ⬜ D8 UX polish bundle (UAT r1 2026-04-23):
+  - a. Hero `p-meta` font/size to match body copy; fix desktop spacing
+  - b. "Explore the demos" → singular (only ecommerce remains post-9E)
+  - c. Pipeline CTA button → persimmon base colour, not only during bleed effect
+  - d. Tier cards → deep-link to `/services#tier-NN` instead of `/services`
+  - e. Cut "Evidence · What the infrastructure has done" section
+  - f. Shop product images: wire the 7 `.webp` at `docs/shop_images/` to the catalogue
+  - g. Ecommerce demo bar → add "back to homepage" link
+  - h. Overlay Overview tab → add directive blurb (parity with Timeline/Consent tabs)
+  - i. Overlay Consent tab → directive pointing at consent widget (bottom-left corner)
+  - j. Overlay tabs → red/green accents for accepted/denied states + text variety
 
 ---
 

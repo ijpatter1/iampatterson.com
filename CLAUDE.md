@@ -18,7 +18,17 @@ This is the consulting website for Patterson Consulting **and** a live, interact
 
 ## Current Phase
 
-**Phase 10, Polish, Performance & Launch Prep — IN PROGRESS.** Branch `phase/10-polish-performance-launch` cut from `main@8e902c5` on 2026-04-23. D1a (CWV measurement foundation) in flight: added `WebVitalEvent` to the event schema + `trackWebVital()` helper + `WebVitalsReporter` client component subscribing to `web-vitals@^5` (onLCP/onCLS/onINP/onFCP/onTTFB) + BigQuery schema extension (`metric_name`, `metric_value`, `metric_rating`, `metric_id`, `navigation_type`) + baseline doc at `docs/perf/baseline-2026-04-23.md`. `web_vital` added to `HIDDEN_FROM_COVERAGE` so CWV telemetry doesn't pollute the Overview chip grid. Test suite 1187 → `npm test` for current count (+8 net for D1a). D1b (actual CWV optimization informed by the baseline) opens next. **Prior sub-phase:** Phase 10a (Framework Currency) shipped 2026-04-23 as PR #40 (`1a00490`) — Next.js 16.2.4 + React 19.2.5 + Node 20.9+ + ESLint 9 flat config, D2 `after()` migration, all 31 `eslint-plugin-react-hooks@7` React-Compiler violations cleared via 3 shared hooks (`useClientMount`, `usePrefersReducedMotion`, `useSessionId`) + ref→state conversions + lazy init patterns + justified disables at default severity (error).
+**Phase 10, Polish, Performance & Launch Prep — IN PROGRESS, restructured into four sub-phases 2026-04-23.** UAT r1 (2026-04-23) surfaced ~12 content/polish items on top of the original launch-prep scope; two were substantial enough to warrant dedicated sessions. The sub-phase structure follows the 9A-redesign / 9B-infra / 10a convention.
+
+- **10a Framework Currency** ✅ shipped 2026-04-23 as PR #40 (`1a00490`). Next.js 14→16, React 18→19, Node 20.9+, ESLint 9 flat, `after()` migration, React-Compiler preflight (31 `eslint-plugin-react-hooks@7` violations cleared via 3 shared hooks — `useClientMount`, `usePrefersReducedMotion`, `useSessionId` — plus ref→state conversions, lazy init patterns, justified disables). Test suite 1164 → 1187.
+
+- **10b Core Web Vitals & Performance** 🔄 on branch `phase/10b-core-web-vitals` cut from `main@8e902c5`. D1a ✅ CWV measurement foundation (commit `6df76a7`): `web-vitals@^5` + `WebVitalEvent` schema + `trackWebVital()` + `WebVitalsReporter` in `src/app/layout.tsx` + BigQuery columns (`metric_name`, `metric_value`, `metric_rating`, `metric_id`, `navigation_type`) + baseline at `docs/perf/baseline-2026-04-23.md`. +8 tests. **D1b next:** runtime CWV readouts on `/`, `/demo/ecommerce`, `/demo/ecommerce/confirmation`. Remaining: D1c optimization passes, Lighthouse gate, WebSocket reliability, overlay render perf.
+
+- **10c Voice & Data Honesty** ⬜ — voice audit against `docs/voice-and-style-guide.md` across the whole site + LLM-hallucinated "Cat Content" generator scrub + BigQuery backfill. Substantial; two PRs inside one sub-phase (scrub first, voice second, so the audit reads honest data).
+
+- **10d Launch Prep** ⬜ — punch list: mobile testing, error handling, site analytics remainder, SEO, security review, load testing, anonymous_id cookie, plus UAT r1 UX polish bundle (hero `p-meta` typography, tier deep-links, singular demo CTA, persimmon pipeline CTA, cut Evidence section, shop images at `docs/shop_images/*.webp`, demo-bar back-link, Overview + Consent directives, red-green accepted/denied accents).
+
+Sequencing: finish 10b first (perf measurement groundwork shouldn't churn under 10c/10d surface edits), then 10c, then 10d.
 
 **Prior phase state:** Phase 9B is dev-complete on branch `phase/9b-ecommerce-tiers-2-3` (673 tests passing, Pass 5 dual-eval PASS). 9B is the baseline the 9E branch will be cut from. Phase 9A-redesign merged to main (`d8ae8f2`).
 
