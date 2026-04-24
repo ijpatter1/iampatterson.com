@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 
 import type { Product } from '@/lib/demo/products';
@@ -10,7 +11,6 @@ interface ProductCardProps {
 }
 
 function ProductCard({ product, onAddToCart }: ProductCardProps) {
-  const [c1, c2, c3] = product.palette;
   return (
     <article
       data-product-card=""
@@ -19,14 +19,16 @@ function ProductCard({ product, onAddToCart }: ProductCardProps) {
       <Link href={`/demo/ecommerce/${product.id}`} className="flex flex-col gap-3">
         <div
           className="relative aspect-[4/5] w-full overflow-hidden rounded"
-          style={{ background: c1 }}
+          style={{ background: product.palette[0] }}
         >
-          <div
-            className="absolute inset-x-6 top-1/2 h-1/2 -translate-y-1/2"
-            style={{ background: c2 }}
+          <Image
+            src={product.image.src}
+            alt={product.image.alt}
+            fill
+            sizes="(min-width: 1024px) 320px, (min-width: 640px) 50vw, 78vw"
+            className="object-cover"
           />
-          <div className="absolute right-4 top-4 h-6 w-6 rounded-full" style={{ background: c3 }} />
-          <div className="absolute bottom-2 left-2 font-mono text-[10px] uppercase tracking-[0.1em] text-white/70">
+          <div className="absolute bottom-2 left-2 rounded bg-black/45 px-2 py-[1px] font-mono text-[10px] uppercase tracking-[0.1em] text-white/90">
             {product.imageLabel}
           </div>
           {product.tag ? (

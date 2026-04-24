@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 
 import { useCart, type CartItem } from './cart-context';
@@ -146,13 +147,15 @@ export function CartView() {
                     <div className="flex min-w-0 items-center gap-3">
                       {p ? (
                         <div
-                          className="h-12 w-12 shrink-0 rounded"
+                          className="relative h-12 w-12 shrink-0 overflow-hidden rounded"
                           style={{ background: p.palette[0] }}
-                          aria-hidden="true"
                         >
-                          <div
-                            className="mx-auto mt-2 h-8 w-8 rounded"
-                            style={{ background: p.palette[1] }}
+                          <Image
+                            src={p.image.src}
+                            alt=""
+                            fill
+                            sizes="48px"
+                            className="object-cover"
                           />
                         </div>
                       ) : null}
