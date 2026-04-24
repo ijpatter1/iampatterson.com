@@ -39,12 +39,21 @@ export function _getSessionCookieListenerCountForTests(): number {
   return cookieChangeListeners.size;
 }
 
-/** Write the session cookie and notify any useSessionId subscribers. */
+/**
+ * Write the session cookie and notify subscribers when the value
+ * changed. Notify is suppressed on same-value writes (max-age refresh
+ * with an existing cookie) — `getSessionId` funnels every event
+ * emission through here, which would otherwise fire ~20 notifies per
+ * 20-event session for identical values. `useSyncExternalStore` would
+ * bail via `Object.is`, but "writer fired" should not blur into "value
+ * changed" at the source.
+ */
 export function setSessionCookie(id: string): void {
   if (typeof document === 'undefined') return;
+  const previous = readSessionCookie();
   const secure = globalThis.location?.protocol === 'https:' ? '; Secure' : '';
   document.cookie = `${SESSION_COOKIE_NAME}=${encodeURIComponent(id)}; Path=/; SameSite=Lax; Max-Age=${SESSION_COOKIE_MAX_AGE}${secure}`;
-  notifySessionCookieChange();
+  if (previous !== id) notifySessionCookieChange();
 }
 
 /** Read the session ID from the cookie, or null if not set. */

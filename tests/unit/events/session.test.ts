@@ -7,6 +7,9 @@ import {
   getSessionId,
   setSessionCookie,
   readSessionCookie,
+  subscribeSessionCookie,
+  notifySessionCookieChange,
+  _getSessionCookieListenerCountForTests,
 } from '@/lib/events/session';
 
 // Mock crypto.randomUUID for deterministic session IDs
@@ -92,5 +95,89 @@ describe('getSessionId', () => {
     const first = getSessionId();
     const second = getSessionId();
     expect(first).toBe(second);
+  });
+});
+
+// Phase 10a D3: subscribe/notify channel that `useSessionId` +
+// `useSessionContext` use to observe cookie changes. Owned here so
+// every writer (setSessionCookie is the only one today; future
+// logout/rotation paths would also land here) participates.
+describe('subscribeSessionCookie / notifySessionCookieChange', () => {
+  it('fires every subscribed callback exactly once per notifySessionCookieChange call', () => {
+    const a = jest.fn();
+    const b = jest.fn();
+    const unsubA = subscribeSessionCookie(a);
+    const unsubB = subscribeSessionCookie(b);
+
+    notifySessionCookieChange();
+    expect(a).toHaveBeenCalledTimes(1);
+    expect(b).toHaveBeenCalledTimes(1);
+
+    notifySessionCookieChange();
+    expect(a).toHaveBeenCalledTimes(2);
+    expect(b).toHaveBeenCalledTimes(2);
+
+    unsubA();
+    unsubB();
+  });
+
+  it('unsubscribe removes the callback from future notify calls', () => {
+    const cb = jest.fn();
+    const unsub = subscribeSessionCookie(cb);
+
+    notifySessionCookieChange();
+    expect(cb).toHaveBeenCalledTimes(1);
+
+    unsub();
+    notifySessionCookieChange();
+    expect(cb).toHaveBeenCalledTimes(1);
+  });
+
+  it('listener set count via _getSessionCookieListenerCountForTests tracks add + remove', () => {
+    const baseline = _getSessionCookieListenerCountForTests();
+    const unsub1 = subscribeSessionCookie(() => {});
+    expect(_getSessionCookieListenerCountForTests()).toBe(baseline + 1);
+    const unsub2 = subscribeSessionCookie(() => {});
+    expect(_getSessionCookieListenerCountForTests()).toBe(baseline + 2);
+    unsub1();
+    expect(_getSessionCookieListenerCountForTests()).toBe(baseline + 1);
+    unsub2();
+    expect(_getSessionCookieListenerCountForTests()).toBe(baseline);
+  });
+});
+
+// Phase 10a D3 Pass-3: setSessionCookie fires notify only on value
+// change, not on max-age refresh. Keeps "writer fired" from
+// blurring into "value changed" at the source — getSessionId
+// passes through setSessionCookie on every event emission and
+// would otherwise fire a notify cascade per event for identical
+// cookie values.
+describe('setSessionCookie change-detection', () => {
+  it('notifies on first-time write (no prior cookie)', () => {
+    const cb = jest.fn();
+    const unsub = subscribeSessionCookie(cb);
+    setSessionCookie('first-id');
+    expect(cb).toHaveBeenCalledTimes(1);
+    unsub();
+  });
+
+  it('notifies on value change (rotation)', () => {
+    setSessionCookie('first-id');
+    const cb = jest.fn();
+    const unsub = subscribeSessionCookie(cb);
+    setSessionCookie('second-id');
+    expect(cb).toHaveBeenCalledTimes(1);
+    unsub();
+  });
+
+  it('does NOT notify on same-value writes (max-age refresh)', () => {
+    setSessionCookie('same-id');
+    const cb = jest.fn();
+    const unsub = subscribeSessionCookie(cb);
+    setSessionCookie('same-id');
+    setSessionCookie('same-id');
+    setSessionCookie('same-id');
+    expect(cb).not.toHaveBeenCalled();
+    unsub();
   });
 });

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
 
-import { readSessionCookie } from '@/lib/events/session';
+import { readSessionCookie, subscribeSessionCookie } from '@/lib/events/session';
 
 import { useLiveEvents } from './useLiveEvents';
 
@@ -11,7 +11,10 @@ import { useLiveEvents } from './useLiveEvents';
 // creates a session cookie; this hook OBSERVES an existing session and
 // returns '' when none is set, per the SessionContext.session_id
 // contract above ("empty string on SSR / first client render").
-const subscribeSessionCookie = () => () => {};
+// Subscribes to the same cookie-change channel as useSessionId so
+// rotations (or the initial mint from any other caller) propagate on
+// the same render tick instead of waiting for the 5s tick or a live-
+// event fan-out.
 const getSessionCookieSnapshot = () => readSessionCookie() ?? '';
 const getSessionCookieServerSnapshot = () => '';
 
