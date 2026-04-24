@@ -41,6 +41,7 @@
     "google-auth-library": "^10.6.2",
     "jest": "^30.3.0",
     "jest-environment-jsdom": "^30.3.0",
+    "lighthouse": "^12.8.2",
     "postcss": "^8.5.8",
     "prettier": "^3.8.1",
     "tailwindcss": "^3.4.19",
