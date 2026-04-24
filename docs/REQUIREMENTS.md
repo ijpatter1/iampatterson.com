@@ -623,7 +623,7 @@ Originally a single-block 9-deliverable phase. Restructured 2026-04-23 after UAT
 
 **Deliverables:**
 
-1. **D1a, CWV measurement foundation [shipped 2026-04-23, `6df76a7`].** `web-vitals@^5` dep; `WebVitalEvent` in `src/lib/events/schema.ts`; `trackWebVital()` in `src/lib/events/track.ts`; `WebVitalsReporter` client component wired into `src/app/layout.tsx`; BigQuery schema extended with `metric_name`, `metric_value`, `metric_rating`, `metric_id`, `navigation_type`; baseline at `docs/perf/baseline-2026-04-23.md`; `web_vital` added to `HIDDEN_FROM_COVERAGE`. +8 tests.
+1. **D1a, CWV measurement foundation [shipped 2026-04-23, `6df76a7`].** `web-vitals@^5` dep; `WebVitalEvent` in `src/lib/events/schema.ts`; `trackWebVital()` in `src/lib/events/track.ts`; `WebVitalsReporter` client component wired into `src/app/layout.tsx`; BigQuery schema extended with `metric_name`, `metric_value`, `metric_rating`, `metric_id`, `navigation_type`; baseline at `docs/perf/baseline-2026-04-23.md`. +8 tests. (Initially added `web_vital` to `HIDDEN_FROM_COVERAGE` on the premise that it was performance telemetry, not visitor behaviour; reversed post-10c-merge per user direction — the session is everything that flows through the stack during the visitor's time, not only events the visitor triggers explicitly.)
 
 2. **D1b, runtime CWV readouts.** Capture first real CWV numbers for `/`, `/demo/ecommerce`, `/demo/ecommerce/confirmation` via the reporter's data-layer output from a local Chromium run (and a Vercel preview if needed). Document the runtime numbers in `docs/perf/baseline-2026-04-23.md` as the "runtime baseline" alongside the build-surface data. This is the measurement gate — every later optimization in D1c compares against numbers captured here.
 

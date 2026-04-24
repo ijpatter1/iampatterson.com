@@ -353,14 +353,20 @@ describe('Event schema types', () => {
     expect(Object.keys(allEventNames).sort()).toEqual([...DATA_LAYER_EVENT_NAMES].sort());
   });
 
-  it('RENDERABLE_EVENT_NAMES excludes sub/leadgen events and web_vital telemetry', () => {
-    // Sub/leadgen set is the F2 hide (un-triggerable chips); web_vital is the
-    // Phase 10 D1 hide (telemetry, not user behaviour — would light every
-    // chip trivially and drown the depth-of-exploration signal).
-    const hidden = ['plan_select', 'trial_signup', 'form_complete', 'lead_qualify', 'web_vital'];
+  it('RENDERABLE_EVENT_NAMES excludes sub/leadgen events', () => {
+    // F2 hide: chips for events no current demo surface can trigger (the
+    // subscription + lead-gen demos were removed in 9E). Re-introducing
+    // those demos re-renders the chips without any schema change. `web_vital`
+    // was in this hidden set through 10b + 10c; unhidden post-merge per
+    // user direction — the session is everything that flows through the
+    // stack during the visitor's time on the site, not only interaction
+    // events (nav hints, coverage milestones, and overview tab views all
+    // render without explicit participation).
+    const hidden = ['plan_select', 'trial_signup', 'form_complete', 'lead_qualify'];
     for (const name of hidden) {
       expect(RENDERABLE_EVENT_NAMES).not.toContain(name);
     }
+    expect(RENDERABLE_EVENT_NAMES).toContain('web_vital');
     const expected = DATA_LAYER_EVENT_NAMES.filter(
       (n) => !hidden.includes(n as (typeof hidden)[number]),
     );

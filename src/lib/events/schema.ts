@@ -313,10 +313,12 @@ export interface CoverageMilestoneEvent extends BaseEvent {
  * defer the bucket to the library rather than re-deriving it so the
  * cutoffs track upstream when Google moves them.
  *
- * Excluded from `RENDERABLE_EVENT_NAMES` via `HIDDEN_FROM_COVERAGE`:
- * this is performance telemetry, not user behaviour, so showing it as
- * an Overview coverage chip would light trivially on every page view
- * and drown the depth-of-exploration signal the meter is for.
+ * Rendered as a coverage chip on the Overview tab like any other session
+ * event, not hidden. The session is everything that flows through the
+ * stack during the visitor's time on the site, not only events the
+ * visitor triggers explicitly — nav hints render without participation
+ * too. Hiding `web_vital` would contradict the "making the invisible
+ * visible" thesis the overlay exists to demonstrate.
  */
 export interface WebVitalEvent extends BaseEvent {
   event: 'web_vital';
@@ -423,12 +425,6 @@ export const HIDDEN_FROM_COVERAGE: ReadonlySet<DataLayerEventName> = new Set<Dat
   'trial_signup',
   'form_complete',
   'lead_qualify',
-  // `web_vital` is Phase 10 D1 CWV telemetry, not a user-interaction event.
-  // It fires on every page view (5 metrics per load), so a renderable chip
-  // would light trivially and pollute the Overview depth-of-exploration
-  // signal. The event still flows through the standard pipeline and lands
-  // in BigQuery; the hide is purely a visitor-surface concern.
-  'web_vital',
 ]);
 
 export const RENDERABLE_EVENT_NAMES: readonly DataLayerEventName[] = DATA_LAYER_EVENT_NAMES.filter(
