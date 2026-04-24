@@ -143,9 +143,9 @@ describe('generator orchestrator', () => {
       const latest = new Date(Math.max(...timestamps.map((t) => t.getTime())));
 
       // Earliest should be around April 15
-      expect(earliest.getMonth()).toBeLessThanOrEqual(3); // April (0-indexed)
+      expect(earliest.getUTCMonth()).toBeLessThanOrEqual(3); // April (0-indexed)
       // Latest should be around June 15
-      expect(latest.getMonth()).toBeGreaterThanOrEqual(5); // June
+      expect(latest.getUTCMonth()).toBeGreaterThanOrEqual(5); // June
     });
 
     it('ad platform records span the full date range', () => {

@@ -672,6 +672,8 @@ Originally a single-block 9-deliverable phase. Restructured 2026-04-23 after UAT
 - UX micro-fixes and launch-prep items (→ 10d)
 - Broader data-quality pins beyond the cat-content scrub (→ Phase 11 ops / data quality if surfaced)
 
+**Scope amendment 2026-04-24 (D2 ops follow-ups absorbed into 10c):** During D2 verification, three operational defects surfaced that were thematically inseparable from the "correct the record" spine: (1) `generateSubscriptionLifecycle` projecting up to 12 months of phantom future renewals/churns into `events_raw` with no `endDate` clamp (3,262 future-dated rows on apply); (2) Cloud Run `data-generator` IAM gap silently freezing `ad_platform_raw` at the deploy-day backfill since 2026-03-29 (visible 26-day step-down on the daily ad-spend chart); (3) hourly schedule re-emitting same-day rows via streaming insertAll, accumulating 9× duplicate `ad_platform_raw` rows per (date, platform, business_model, campaign_name) tuple. Decided in-session to absorb all three into 10c rather than defer to Phase 11, because each manifests as a *visibly dishonest* number on the demo dashboard prospects see, which is the literal failure mode 10c exists to prevent. Deferring to Phase 11 would have shipped a "voice & data honesty" sub-phase whose data is still observably wrong. Voice work (D3-D5) explicitly remains scoped for a separate session per the original plan.
+
 ---
 
 ## Phase 10d, Launch Prep
@@ -766,7 +768,10 @@ Items that surface during earlier phases as "carry-forward pending a Phase 11 ca
 
 5. **`window.__iapWebVitals()` dev-console helper (minor, optional).** Added 2026-04-24 by Phase 10b Pass-1 product reviewer (Minor #6). Pre-formatted five-metric readout replacing the manual `window.dataLayer.filter(e => e.event === 'web_vital')` pattern. **Unblocks:** developer ergonomics; nice-to-have, not blocking. **Depends on:** nothing.
 
-**Resolved:** (empty at 2026-04-24; items move here from "Pending" as their dependencies land)
+**Resolved:**
+
+- ~~Data generator future-date bug~~ — closed by Phase 10c follow-up (commits `9d93915` + `6bc9da9`). Subscription lifecycle endDate clamp + UTC date math + 3,262-row scrub. 2026-04-24.
+- ~~Re-run 18mo ad_platform_raw backfill~~ — closed by Phase 10c follow-up (`./backfill.sh --months 1` per model 2026-04-24). 26-day IAM-outage gap filled; 6-day overlap spike subsequently deduped via Pass-1 commit `a10759b`. Hourly schedule keeps the table fresh going forward via the MERGE-based idempotent inserts (`448e470`–`9911f58`).
 
 ---
 

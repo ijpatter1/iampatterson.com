@@ -133,7 +133,10 @@ export function generateDateRange(
  * Generate events for a single session based on the business model.
  *
  * For subscriptions, also generates lifecycle events (renewals, churn)
- * if the visitor signed up for a trial.
+ * if the visitor signed up for a trial. The optional `endDate` clamps
+ * the lifecycle projection so a signup near the backfill horizon
+ * doesn't emit renewals past it; without it, lifecycle defaults to
+ * 12 months forward from signup unconditionally.
  */
 function generateSessionForModel(
   config: GeneratorConfig,

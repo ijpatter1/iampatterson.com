@@ -158,6 +158,26 @@ This is the deterministic remap. Generator code, scrub SQL, and any future rollb
 | `Google Search - Cat Subscription Box` | `Google Search - Dog Subscription Box` |
 | `g_srch_cat_sub_box` | `g_srch_dog_sub_box` |
 
+## Pass-1 supplement — `events_raw.company_name` (deferred apply)
+
+Pass-1 evaluator surfaced that the brand-vocabulary pin in `profiles.test.ts` only walked `profiles.ts` and silently exempted `engines/leadgen.ts:COMPANY_NAMES`. Three off-brand company names ('Feline First', 'Catitude Brands', 'Purrfect Partners') had already shipped to `events_raw` via `form_complete.company_name`. The code fix (commit `94ef994`) replaces them with 'Hound House' / 'Pawsitive Brands' / 'Pawfect Partners' and exports COMPANY_NAMES so the pin walks it. Step 4 of the SQL companion handles the historical row scrub (form-urlencoded form, 56 rows total).
+
+**Apply attempted 2026-04-24 ~14:25 UTC + ~14:42 UTC: rejected by BQ streaming buffer.** The legacy company_name rows are sGTM-streamed (real visitor + recent backfill traffic) and live in BQ's streaming buffer for ~30-90 min before becoming DML-eligible. Re-apply Step 4 standalone after the buffer flushes:
+
+```bash
+bq --project_id=iampatterson query --use_legacy_sql=false \
+  'UPDATE `iampatterson.iampatterson_raw.events_raw`
+   SET company_name = CASE company_name
+       WHEN "Feline+First"      THEN "Hound+House"
+       WHEN "Catitude+Brands"   THEN "Pawsitive+Brands"
+       WHEN "Purrfect+Partners" THEN "Pawfect+Partners"
+       ELSE company_name
+     END
+   WHERE company_name IN ("Feline+First", "Catitude+Brands", "Purrfect+Partners")'
+```
+
+Then trigger a Dataform workflow run so `mart_lead_funnel` recomputes. Until then, that mart still surfaces 56 rows with legacy cat company names.
+
 ## Out of scope
 
 - Scrubbing GA4 historical data (cat labels in GA4 reports are immutable; GA4 is not the source of truth for this site's analytics).
