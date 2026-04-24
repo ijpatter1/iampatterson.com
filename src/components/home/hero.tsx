@@ -48,10 +48,8 @@ export function HeroEditorial() {
           </p>
           <div>
             <p className="max-w-[52ch] text-[15px] leading-[1.65] text-ink-2 md:text-base md:leading-[1.7]">
-              Most consultants describe what they build. I&apos;d rather you watch it run. Every
-              scroll, every click on this page flows through a real server-side tag manager, into a
-              real warehouse, through a real transformation pipeline, live on your session, right
-              now. The instrumentation is the portfolio.
+              Every scroll, every click on this page is flowing through it right now. The
+              instrumentation is the portfolio.
             </p>
             <div className="mt-5 flex flex-wrap gap-3 md:mt-7">
               <EditorialButton variant="accent" onClick={handleOpen}>

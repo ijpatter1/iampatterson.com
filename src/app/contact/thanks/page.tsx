@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: 'Message Sent',
+  title: 'Message sent',
   description: 'Thanks for reaching out. I will respond within 24 hours.',
 };
 

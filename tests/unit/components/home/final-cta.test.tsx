@@ -50,7 +50,7 @@ describe('FinalCta', () => {
   it('renders the sub-headline copy', () => {
     renderCta();
     expect(
-      screen.getByText(/Every event it fires, every destination it reaches/i),
+      screen.getByText(/See yours in full\. Then tell me what you'd want running in your stack/i),
     ).toBeInTheDocument();
   });
 

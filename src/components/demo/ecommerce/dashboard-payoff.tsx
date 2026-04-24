@@ -59,7 +59,7 @@ export function DashboardPayoff({
       <div className="w-full">
         <iframe
           src={dashboardUrl}
-          title="E-Commerce Executive dashboard"
+          title="E-commerce executive dashboard"
           loading="lazy"
           className="block h-[1400px] w-full rounded border-0 bg-white md:h-[1100px]"
           allow="fullscreen"

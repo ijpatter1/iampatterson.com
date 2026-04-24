@@ -21,7 +21,7 @@ export const TIERS: Tier[] = [
     num: '01',
     title: 'Measurement Foundation',
     subtitle: 'Get the data right at the source.',
-    lede: 'Server-side GTM is the backbone of modern measurement. It moves your tracking from the browser to a server you control, longer cookie life, higher match rates, immunity to ad blockers, proper consent enforcement.',
+    lede: 'Server-side GTM moves your tracking from the browser to a server you control, longer cookie life, higher match rates, immunity to ad blockers, proper consent enforcement.',
     core: [
       {
         title: 'Tag Audit & Data Layer Spec',
@@ -63,7 +63,7 @@ export const TIERS: Tier[] = [
     num: '02',
     title: 'Data Infrastructure',
     subtitle: 'Turn raw events into a source of truth.',
-    lede: 'Raw event data in a warehouse is a start, not a finish. Tier 2 transforms that data into a structured, documented, AI-enriched analytics layer that your team and your tools can actually work with.',
+    lede: 'Raw event data in a warehouse is a start, not a finish. Tier 2 transforms it into a structured, documented, AI-enriched analytics layer.',
     core: [
       {
         title: 'Warehouse Configuration',
@@ -154,7 +154,7 @@ export const TIERS: Tier[] = [
       {
         title: 'Media Mix Modeling',
         description:
-          'Bayesian MMM using Google\'s open-source Meridian framework, running on BigQuery. Answers "how should I allocate my budget" with statistical rigor and AI-assisted interpretation.',
+          "Bayesian MMM using Google's open-source Meridian framework, running on BigQuery. A budget-allocation model with its assumptions out in the open.",
       },
       {
         title: 'Measurement Strategy & Roadmap',
@@ -163,6 +163,6 @@ export const TIERS: Tier[] = [
       },
     ],
     summary:
-      'An honest answer to the hardest question in marketing. Attribution you own, methodology you can defend to your CFO, a testing roadmap that gets smarter over time.',
+      "An honest answer to the hardest question in marketing. Attribution you own, methodology you can defend to your CFO, a testing roadmap that compounds what you've learned.",
   },
 ];

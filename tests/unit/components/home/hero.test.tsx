@@ -53,7 +53,9 @@ describe('HeroEditorial', () => {
 
   it('renders the long-form deck body', () => {
     renderHero();
-    expect(screen.getByText(/Most consultants describe what they build/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Every scroll, every click on this page is flowing through it right now/i),
+    ).toBeInTheDocument();
     expect(screen.getByText(/instrumentation is the portfolio/i)).toBeInTheDocument();
   });
 
