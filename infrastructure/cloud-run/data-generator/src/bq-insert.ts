@@ -65,7 +65,11 @@ export async function insertAdPlatformRecords(
         types: {
           records: [
             {
-              date: 'DATE',
+              // BQ's STRUCT param plumbing doesn't reliably auto-cast
+              // "YYYY-MM-DD" strings to DATE; pass as STRING and
+              // PARSE_DATE in the MERGE so the resolved type is
+              // explicit at SQL-eval time.
+              date: 'STRING',
               platform: 'STRING',
               business_model: 'STRING',
               campaign_name: 'STRING',
@@ -97,7 +101,20 @@ function buildMergeQuery(target: string): string {
   // INSERT (cols) VALUES (S.col, ...) explicitly instead.
   return `
     MERGE ${target} T
-    USING UNNEST(@records) S
+    USING (
+      SELECT
+        PARSE_DATE('%Y-%m-%d', date) AS date,
+        platform,
+        business_model,
+        campaign_name,
+        campaign_name_raw,
+        impressions,
+        clicks,
+        spend,
+        cpc,
+        ctr
+      FROM UNNEST(@records)
+    ) S
     ON T.date = S.date
        AND T.platform = S.platform
        AND T.business_model = S.business_model
