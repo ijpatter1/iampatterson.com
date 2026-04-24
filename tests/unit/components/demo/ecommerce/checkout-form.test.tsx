@@ -57,6 +57,34 @@ function Seed({ product_id }: { product_id: string }) {
   return null;
 }
 
+/**
+ * Test-only cart mutator. Exposes a data-testid button that adds a
+ * different product to the cart on each click, re-rendering the
+ * CheckoutForm with updated `total` / `itemCount`. Used by the
+ * orderId-stability regression pin — if the pre-10a
+ * `useMemo([total, itemCount])` regression ever returned, cart
+ * mutations here would re-mint `ORD-${Date.now()...}` mid-checkout.
+ */
+function CartMutator() {
+  const { addItem } = useCart();
+  return (
+    <button
+      data-testid="mutate-cart"
+      type="button"
+      onClick={() =>
+        addItem({
+          product_id: 'bonus-add',
+          product_name: 'Bonus',
+          product_price: 1,
+          quantity: 1,
+        })
+      }
+    >
+      mutate cart
+    </button>
+  );
+}
+
 function renderCheckout(seeded = true) {
   return render(
     <ToastProvider>
@@ -174,6 +202,53 @@ describe('CheckoutForm (Phase 9F D8)', () => {
     expect(pushedUrl).toContain('/demo/ecommerce/confirmation');
     expect(pushedUrl).toContain('total=26.00');
     expect(pushedUrl).toContain('items=1');
+  });
+
+  // Phase 10a D3 regression pin: the previous
+  // `useMemo([total, itemCount], () => Date.now()...)` order-ID
+  // computation was surfaced by `react-hooks/purity` as a re-mint
+  // bug — a visitor editing their cart mid-checkout would see the
+  // order ID regenerate on each cart change, producing a different
+  // `order_id=` query param on the confirmation URL than was active
+  // during `begin_checkout`. The fix was to use `useState` lazy-init
+  // so the ID is minted exactly once per mount. This test pins the
+  // fix: two cart mutations (adding items) between mount and submit
+  // must not change the order ID in the pushed confirmation URL.
+  it('orderId is stable across cart edits mid-checkout (regression pin for useMemo→useState fix)', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const startMs = 1_700_000_000_000;
+    jest.setSystemTime(new Date(startMs));
+    const expectedOrderId = `ORD-${startMs.toString(36).toUpperCase()}`;
+
+    render(
+      <ToastProvider>
+        <CartProvider>
+          <Seed product_id="tuna-plush-classic" />
+          <CartMutator />
+          <CheckoutForm />
+        </CartProvider>
+      </ToastProvider>,
+    );
+
+    // Advance wall-clock time so any re-mint (if the bug returns) would
+    // produce a different Date.now()-derived ID than expectedOrderId.
+    jest.setSystemTime(new Date(startMs + 10_000));
+    await user.click(screen.getByTestId('mutate-cart'));
+    jest.setSystemTime(new Date(startMs + 20_000));
+    await user.click(screen.getByTestId('mutate-cart'));
+
+    await user.click(screen.getByRole('button', { name: /place order/i }));
+    act(() => {
+      jest.advanceTimersByTime(3300);
+    });
+
+    expect(mockPush).toHaveBeenCalledTimes(1);
+    const pushedUrl = mockPush.mock.calls[0][0] as string;
+    expect(pushedUrl).toContain(`order_id=${expectedOrderId}`);
+    // And trackPurchase got the same (stable) ID
+    expect(mockPurchase).toHaveBeenCalledWith(
+      expect.objectContaining({ order_id: expectedOrderId }),
+    );
   });
 
   it('diagnostic sequence includes the BQ raw table reference', async () => {

@@ -7,6 +7,10 @@ import type { PipelineEvent } from '@/lib/events/pipeline-schema';
 
 jest.mock('@/lib/events/session', () => ({
   getSessionId: () => 'aaaaaaaa-12345678',
+  // Phase 10a D3: useSessionId's getSnapshot uses the passive
+  // readSessionCookie (pure — never writes cookies) so mocks must
+  // supply BOTH the mint function and the reader.
+  readSessionCookie: () => 'aaaaaaaa-12345678',
 }));
 
 let mockEvents: PipelineEvent[] = [];

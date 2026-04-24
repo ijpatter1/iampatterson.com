@@ -57,14 +57,14 @@ export function FullPageDiagnostic({
     onComplete();
   }, [onComplete]);
 
-  // Reduced-motion: skip outright on mount.
+  // Reduced-motion: skip outright on mount. `reduced` comes from
+  // usePrefersReducedMotion (above) so this effect reads the already-
+  // resolved render-time value instead of re-calling matchMedia inline.
   useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      complete();
-    }
-    // Intentionally empty deps: this only ever runs once per mount; complete
-    // is stable enough (memoized via useCallback against onComplete).
+    if (reduced) complete();
+    // Intentionally scoped to mount-resolution of `reduced`: flipping
+    // to reduced-motion mid-animation doesn't retroactively "complete"
+    // an in-flight reveal.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

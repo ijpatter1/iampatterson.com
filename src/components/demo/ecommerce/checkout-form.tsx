@@ -24,6 +24,14 @@ import { classifyUtm, resolveUtmMeta } from '@/lib/demo/reveal/campaign-taxonomy
 // matches, and the populated values apply on the first post-mount render
 // without a setState-in-effect cascade. Module-level cache keeps the
 // snapshot reference stable across re-renders (required by the hook).
+//
+// Known limitation: `pageLocation` is captured at first mount and
+// doesn't refresh on SPA navigation. This is acceptable for the current
+// surface (checkout-form mounts on /demo/ecommerce/checkout only, where
+// the URL is stable for the duration of the mount). If this hook is
+// ever adopted on a route that sees SPA-navigation changes mid-mount,
+// the cache needs an invalidation hook (listen to next/navigation's
+// router events and `clientMetaCache = null`).
 interface ClientMeta {
   pageLocation: string;
   pageReferrer: string;
