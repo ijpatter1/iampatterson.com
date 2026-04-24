@@ -38,7 +38,8 @@ export default function AboutPage() {
                     I spent a decade working across marketing, data, and technology. Starting in the
                     hospitality industry, moving into social media and influencer marketing, then
                     into full-stack engineering, and eventually leading data and technology as VP at
-                    Allied Global Marketing, a major entertainment marketing agency.
+                    Allied Global Marketing, a full-service integrated marketing agency for
+                    entertainment, consumer, and lifestyle brands.
                   </p>
                   <p>
                     That non-linear path is the point. I&apos;ve sat in the creative meetings and
