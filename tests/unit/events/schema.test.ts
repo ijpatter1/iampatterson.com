@@ -115,6 +115,37 @@ describe('Event schema types', () => {
     expect(Object.keys(navAdjacent)).toHaveLength(7);
   });
 
+  it('CtaLocation covers the editorial closed enum', () => {
+    // Parallel sentinel to the nav-adjacent one above. Guards the editorial /
+    // page-specific side of the CtaLocation union against silent drop or rename.
+    // Template-literal `services_tier_${N}` values are enumerated explicitly as
+    // their four concrete strings so the Extract<> evaluates correctly.
+    type Editorial = Extract<
+      CtaLocation,
+      | 'hero'
+      | 'services_closer'
+      | 'services_tier_01'
+      | 'services_tier_02'
+      | 'services_tier_03'
+      | 'services_tier_04'
+      | 'final_cta'
+      | 'about_closer'
+      | 'demo_card_ecommerce'
+    >;
+    const editorial: Record<Editorial, true> = {
+      hero: true,
+      services_closer: true,
+      services_tier_01: true,
+      services_tier_02: true,
+      services_tier_03: true,
+      services_tier_04: true,
+      final_cta: true,
+      about_closer: true,
+      demo_card_ecommerce: true,
+    };
+    expect(Object.keys(editorial)).toHaveLength(9);
+  });
+
   it('defines FormFieldFocusEvent with form and field name', () => {
     const event: FormFieldFocusEvent = {
       ...baseFields,

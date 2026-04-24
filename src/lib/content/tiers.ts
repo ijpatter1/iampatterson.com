@@ -63,7 +63,7 @@ export const TIERS: Tier[] = [
     num: '02',
     title: 'Data Infrastructure',
     subtitle: 'Turn raw events into a source of truth.',
-    lede: 'Raw event data in a warehouse is a start, not a finish. Tier 2 transforms it into a structured, documented, AI-enriched analytics layer.',
+    lede: 'Raw event data in a warehouse is a start, not a finish. Tier 2 transforms it into a structured, documented analytics layer.',
     core: [
       {
         title: 'Warehouse Configuration',
@@ -163,6 +163,6 @@ export const TIERS: Tier[] = [
       },
     ],
     summary:
-      "An honest answer to the hardest question in marketing. Attribution you own, methodology you can defend to your CFO, a testing roadmap that compounds what you've learned.",
+      "Attribution you own, methodology you can defend to your CFO, a testing roadmap that compounds what you've learned.",
   },
 ];
