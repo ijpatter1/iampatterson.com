@@ -6,7 +6,9 @@ import { TIERS } from '@/lib/content/tiers';
 import { trackClickNav } from '@/lib/events/track';
 
 /**
- * Homepage teaser for the Services page. Each tier row links to /services.
+ * Homepage teaser for the Services page. Each tier row deep-links to the
+ * matching `/services#tier-NN` anchor (Phase 10d D8.d) so visitors land on
+ * the tier they clicked rather than at the top of the services page.
  * Uses the first sentence of the tier lede as the row description.
  */
 export function ServicesTeaser() {
@@ -34,11 +36,12 @@ export function ServicesTeaser() {
         <ul className="mt-12 border-t border-ink">
           {TIERS.map((t) => {
             const firstSentence = t.lede.split('.')[0] + '.';
+            const href = `/services#tier-${t.num}`;
             return (
               <li key={t.num} className="border-b border-rule-soft">
                 <Link
-                  href="/services"
-                  onClick={() => trackClickNav(`Tier ${t.num} ${t.title}`, '/services')}
+                  href={href}
+                  onClick={() => trackClickNav(`Tier ${t.num} ${t.title}`, href)}
                   className="group grid grid-cols-[auto_1fr_auto] items-baseline gap-4 py-6 md:grid-cols-[120px_220px_1fr_auto] md:gap-8 md:py-8"
                 >
                   <span className="font-mono text-[11px] uppercase tracking-widest text-ink-3">

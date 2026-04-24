@@ -32,11 +32,14 @@ describe('ServicesTeaser', () => {
     expect(em.tagName).toBe('EM');
   });
 
-  it('renders all four tier rows linking to /services', () => {
+  it('renders all four tier rows deep-linking to /services#tier-NN', () => {
     render(<ServicesTeaser />);
     const rows = screen.getAllByRole('link');
     expect(rows).toHaveLength(4);
-    rows.forEach((r) => expect(r).toHaveAttribute('href', '/services'));
+    expect(rows[0]).toHaveAttribute('href', '/services#tier-01');
+    expect(rows[1]).toHaveAttribute('href', '/services#tier-02');
+    expect(rows[2]).toHaveAttribute('href', '/services#tier-03');
+    expect(rows[3]).toHaveAttribute('href', '/services#tier-04');
   });
 
   it('shows each tier number and title', () => {
@@ -47,10 +50,13 @@ describe('ServicesTeaser', () => {
     expect(screen.getByText('Business Intelligence')).toBeInTheDocument();
   });
 
-  it('fires trackClickNav when a tier row is clicked', async () => {
+  it('fires trackClickNav with the tier-deep-link URL when a row is clicked', async () => {
     const user = userEvent.setup();
     render(<ServicesTeaser />);
     await user.click(screen.getAllByRole('link')[0]);
-    expect(trackClickNav).toHaveBeenCalledWith('Tier 01 Measurement Foundation', '/services');
+    expect(trackClickNav).toHaveBeenCalledWith(
+      'Tier 01 Measurement Foundation',
+      '/services#tier-01',
+    );
   });
 });
