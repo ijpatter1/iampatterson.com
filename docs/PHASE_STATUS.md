@@ -403,4 +403,4 @@ Carry-forward items from earlier phases that need a Phase 11 capability to unblo
 **Resolved:**
 
 - ~~Data generator future-date bug~~ — closed by Phase 10c follow-up commits `9d93915` (generator endDate clamp + UTC fix) + `6bc9da9` (3,262-row scrub). 2026-04-24.
-- ~~Re-run 18mo ad_platform_raw backfill~~ — partial: 26-day IAM-outage gap filled via `./backfill.sh --months 1` per model on 2026-04-24. Full 18mo extension is portfolio-density nice-to-have; the hourly business-hours schedule will keep the table fresh going forward without it.
+- ~~Re-run 18mo ad_platform_raw backfill~~ — partial: 26-day IAM-outage gap filled via `./backfill.sh --months 1` per model on 2026-04-24 (ecommerce 13:22-13:29 UTC, subscription 13:45-13:48, leadgen 13:48-13:51). Final shape: uniform 15 rows/day × 3 models from 2026-03-30 → 2026-04-24; 30 rows/day on 2026-03-24 → 2026-03-29 (6-day overlap with the original deploy-day backfill — visible 2x spike on daily ad-spend chart). Full 18mo extension is portfolio-density nice-to-have; hourly schedule keeps it fresh going forward.
