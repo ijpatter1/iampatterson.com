@@ -14,6 +14,15 @@ jest.mock('./transport', () => ({
   },
 }));
 
+// Mock bq-insert so /generate's non-dryRun ad-insert path is testable
+// without hitting BigQuery. mockInsertAdPlatformRecords is `mock`-prefixed
+// so jest.mock factory hoisting accepts the reference.
+const mockInsertAdPlatformRecords = jest.fn();
+jest.mock('./bq-insert', () => ({
+  insertAdPlatformRecords: (...args: unknown[]) => mockInsertAdPlatformRecords(...args),
+  DEFAULT_BQ_CONFIG: { projectId: 'test', dataset: 'test', table: 'test' },
+}));
+
 describe('server endpoints', () => {
   describe('GET /health', () => {
     it('returns ok status', async () => {
@@ -74,6 +83,43 @@ describe('server endpoints', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.model).toBe('ecommerce');
+    });
+
+    // Phase 10c Pass-2: Tech Important #1 — surface ad-insert failures.
+    // Pin the outer-handler plumbing that bumps state.totalErrors and
+    // logs to stderr so any future refactor that drops the += or swaps
+    // console.error for a no-op is caught locally, not in production.
+    it('bumps state.totalErrors + logs when ad-insert fails (non-dryRun)', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      mockInsertAdPlatformRecords.mockResolvedValueOnce({
+        inserted: 0,
+        failed: 7,
+        errors: ['streaming buffer collision', 'schema mismatch', 'permission denied'],
+      });
+
+      const statsBefore = await request(app).get('/stats');
+      const errorsBefore = statsBefore.body.totalErrors;
+
+      const res = await request(app)
+        .post('/generate')
+        .send({ model: 'ecommerce', date: '2025-06-15', dryRun: false });
+
+      expect(res.status).toBe(200);
+      expect(res.body.adInsertResult).toEqual({
+        inserted: 0,
+        failed: 7,
+        errors: ['streaming buffer collision', 'schema mismatch', 'permission denied'],
+      });
+
+      const statsAfter = await request(app).get('/stats');
+      expect(statsAfter.body.totalErrors).toBe(errorsBefore + 7);
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringMatching(/\[ad-insert\] 7\/\d+ rows failed/),
+        expect.objectContaining({ errors: expect.any(Array) }),
+      );
+
+      consoleErrorSpy.mockRestore();
     });
   });
 

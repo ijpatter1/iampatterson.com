@@ -20,6 +20,12 @@ import { SeededRandom } from '../random';
 
 // Exported so the brand-vocabulary regression pin in profiles.test.ts
 // can walk it alongside the campaign + product label sets.
+//
+// 'Whisker Works' is intentionally kept despite cat-adjacent vibe:
+// chiweenies have whiskers (vibrissae) too, the term isn't cat-exclusive,
+// and a fictional B2B partner brand name doesn't need to be 100% dog-coded.
+// The Pass-2 product reviewer flagged this as borderline; documented
+// decision rather than an unstated judgment call.
 export const COMPANY_NAMES = [
   'Acme Pet Co',
   'Pawsome Brands',
