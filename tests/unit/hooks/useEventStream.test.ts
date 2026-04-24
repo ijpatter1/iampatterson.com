@@ -387,3 +387,127 @@ describe('useEventStream session scoping', () => {
     expect(result.current.status).toBe('disconnected');
   });
 });
+
+// ---------------------------------------------------------------------------
+// D5 — Reliability polish: backoff jitter, online-event recovery, manual retry
+// ---------------------------------------------------------------------------
+
+describe('useEventStream reconnect backoff — jitter (D5)', () => {
+  it('applies ±20% jitter to the reconnect delay so concurrent clients do not thundering-herd the server', () => {
+    jest.useFakeTimers();
+    // Pin Math.random to a known value so we can compute the expected delay
+    // deterministically. jitter formula: delay * (0.8 + random * 0.4), so
+    // random=0 → 0.8x, random=1 → 1.2x, random=0.5 → 1.0x (no shift).
+    const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0); // → 0.8x factor
+    try {
+      renderHook(() => useEventStream({ url: 'http://localhost:8080/events', maxRetries: 3 }));
+      act(() => {
+        MockEventSource.instances[0].simulateError();
+      });
+      // First retry: base 1000ms × 0.8 = 800ms. Advancing 799ms should NOT
+      // have opened a new EventSource; 800ms should.
+      const beforeCount = MockEventSource.instances.length;
+      act(() => {
+        jest.advanceTimersByTime(799);
+      });
+      expect(MockEventSource.instances.length).toBe(beforeCount);
+      act(() => {
+        jest.advanceTimersByTime(1);
+      });
+      expect(MockEventSource.instances.length).toBe(beforeCount + 1);
+    } finally {
+      randomSpy.mockRestore();
+      jest.useRealTimers();
+    }
+  });
+});
+
+describe('useEventStream online-event recovery (D5)', () => {
+  it('reconnects when navigator.onLine transitions to true after exhausting retries', () => {
+    jest.useFakeTimers();
+    // Pin Math.random so jitter is deterministic (0.5 → factor 1.0).
+    const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.5);
+    try {
+      const { result } = renderHook(() =>
+        useEventStream({ url: 'http://localhost:8080/events', maxRetries: 1 }),
+      );
+
+      // Burn through max retries to land in disconnected state
+      act(() => {
+        MockEventSource.instances[0].simulateError();
+      });
+      act(() => {
+        jest.advanceTimersByTime(1000);
+      });
+      act(() => {
+        MockEventSource.instances[MockEventSource.instances.length - 1].simulateError();
+      });
+      expect(result.current.status).toBe('disconnected');
+
+      const instanceCountBeforeOnline = MockEventSource.instances.length;
+
+      // Browser fires `online` — hook should respond by opening a fresh EventSource
+      act(() => {
+        window.dispatchEvent(new Event('online'));
+      });
+
+      expect(MockEventSource.instances.length).toBe(instanceCountBeforeOnline + 1);
+      // Status transitions back out of 'disconnected'
+      expect(result.current.status).not.toBe('disconnected');
+    } finally {
+      randomSpy.mockRestore();
+      jest.useRealTimers();
+    }
+  });
+
+  it('does not reconnect on online event when already connected (avoids unnecessary churn)', () => {
+    const { result } = renderHook(() => useEventStream({ url: 'http://localhost:8080/events' }));
+    act(() => {
+      MockEventSource.instances[0].simulateOpen();
+    });
+    expect(result.current.status).toBe('connected');
+
+    const instanceCountBeforeOnline = MockEventSource.instances.length;
+    act(() => {
+      window.dispatchEvent(new Event('online'));
+    });
+    // No new EventSource opened because we're already connected
+    expect(MockEventSource.instances.length).toBe(instanceCountBeforeOnline);
+  });
+});
+
+describe('useEventStream manual retry (D5)', () => {
+  it('exposes a retry() function that reconnects after max-retries exhaustion', () => {
+    jest.useFakeTimers();
+    const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.5);
+    try {
+      const { result } = renderHook(() =>
+        useEventStream({ url: 'http://localhost:8080/events', maxRetries: 1 }),
+      );
+
+      act(() => {
+        MockEventSource.instances[0].simulateError();
+      });
+      act(() => {
+        jest.advanceTimersByTime(1000);
+      });
+      act(() => {
+        MockEventSource.instances[MockEventSource.instances.length - 1].simulateError();
+      });
+      expect(result.current.status).toBe('disconnected');
+
+      const instanceCountBeforeRetry = MockEventSource.instances.length;
+
+      act(() => {
+        result.current.retry();
+      });
+
+      expect(MockEventSource.instances.length).toBe(instanceCountBeforeRetry + 1);
+      expect(result.current.status).not.toBe('disconnected');
+      expect(result.current.error).toBeNull();
+    } finally {
+      randomSpy.mockRestore();
+      jest.useRealTimers();
+    }
+  });
+});
