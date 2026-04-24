@@ -84,10 +84,14 @@ delve, tapestry (figurative), landscape (figurative), pivotal, crucial, vibrant,
 - serves as / stands as / marks / represents [a] (when "is" works)
 - highlighting / underscoring / emphasizing / reflecting / symbolizing / contributing to / cultivating / fostering / ensuring
 - independent coverage, active social media presence, profiled in
+- delivers [abstract noun] (delivers value, delivers outcomes, delivers results); "stands alone" or "standalone value" as a positive; "partner with clients", "drive outcomes", "unlock value", "align stakeholders"
+- "with AI-assisted / AI-powered / AI-enabled [noun]" appended to a claim. LLM copy defaults to name-dropping "AI" near the end of a sentence to inflate it. If AI is doing concrete work, name the work; if it isn't, cut the tail.
 
 ### Structural habits to break
 
 **Significance puffing.** Don't bolt on sentences about how something "represents a broader shift" or "contributes to a larger trend." If the significance isn't obvious from the facts, adding a sentence asserting it won't help.
+
+**Self-grading prose.** A subtype of significance puffing: sentences that grade your own work for the reader. "...in a way that's rare and genuinely useful," "an honest answer to the hardest question in marketing," "this is exactly why most teams fail." The facts preceding the grade either support the judgment or they don't. If they support it, the reader reaches the conclusion without being told; if they don't, the self-grade doesn't rescue them. Cut the grade.
 
 **Trailing -ing analysis.** Don't end sentences with present participle clauses that editorialize: "...highlighting its importance in the region," "...underscoring the need for reform." Cut the clause. If the analysis matters, give it its own sentence with actual evidence.
 
@@ -100,6 +104,10 @@ delve, tapestry (figurative), landscape (figurative), pivotal, crucial, vibrant,
 **Copula avoidance.** Don't replace every "is" and "are" with "serves as," "stands as," "holds the distinction of being," or "represents." Sometimes things just are things.
 
 **The "not just X, but Y" tic.** Occasional use is fine. Using it more than once per piece, or as the central rhetorical move, is a flag.
+
+**Cross-surface echoes.** Two linked pages using the same construction read as restatement to a reader who traverses both. The hero and the final CTA, an About-page closer and a Contact page opener, a services page italic lede and a homepage teaser. If surface A uses "what's broken, what's missing, what you're trying to answer," surface B can't use the same tripartite without the second feeling derivative. Vary the construction on one of the two surfaces, or accept that one becomes the canonical version and the other references it without mimicking it.
+
+**Generalization tics across surfaces.** One "most companies" opener is a practitioner's observation. Three "most X" openers across the same site (most consultants / most companies / most teams) becomes a verbal tic, even when each instance is individually defensible. Audit across surfaces, not just within each paragraph.
 
 ### Tone
 

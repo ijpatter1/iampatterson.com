@@ -145,10 +145,10 @@ function stubSectionGeometry(rectTop: number, vh = 800, h = 1600) {
 }
 
 describe('PipelineSection, content', () => {
-  it('renders the editorial heading with measurement emphasis', () => {
+  it('renders the editorial heading with running emphasis', () => {
     renderSection();
     const h2 = screen.getByRole('heading', { level: 2 });
-    expect(h2.textContent).toMatch(/Your session is[\s\S]*being[\s\S]*measured[\s\S]*right now/);
+    expect(h2.textContent).toMatch(/The pipeline[\s\S]*running/);
   });
 
   it('renders all five pipeline stages via the editorial schematic', () => {

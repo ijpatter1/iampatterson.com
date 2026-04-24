@@ -1,11 +1,13 @@
 'use client';
 
+import { EditorialLink } from '@/components/chrome/editorial-button';
 import { ScrollReveal } from '@/components/scroll-reveal';
+import { trackClickCta } from '@/lib/events/track';
 
 const beliefs = [
   {
     title: 'Measurement infrastructure is not a project. It\u2019s a capability.',
-    body: 'Most companies treat tracking and analytics as a one-time setup. Then the data drifts, the tracking breaks, and nobody notices until a budget decision goes wrong. I build systems that monitor themselves, document themselves, and get smarter over time.',
+    body: 'When companies treat tracking and analytics as a one-time setup, the data drifts, the tracking breaks, and nobody notices until a budget decision goes wrong. I build systems that monitor themselves, document themselves, and get smarter over time.',
   },
   {
     title: 'AI should be infrastructure, not an afterthought.',
@@ -36,17 +38,15 @@ export default function AboutPage() {
                     I spent a decade working across marketing, data, and technology. Starting in the
                     hospitality industry, moving into social media and influencer marketing, then
                     into full-stack engineering, and eventually leading data and technology as VP at
-                    Allied Global Marketing, a major entertainment marketing agency.
+                    Allied Global Marketing, a full-service integrated marketing agency for
+                    entertainment, consumer, and lifestyle brands.
                   </p>
                   <p>
                     That non-linear path is the point. I&apos;ve sat in the creative meetings and
                     the engineering standups. I&apos;ve presented attribution models to CMOs and
                     debugged data layer implementations at midnight before a launch. I&apos;ve built
                     the dashboards that executives use to make budget decisions and the pipelines
-                    that feed them. Most consultants in this space come from one side: either the
-                    marketing strategy side or the data engineering side. I come from both, which
-                    means I can translate between the two in a way that&apos;s rare and genuinely
-                    useful.
+                    that feed them. I don&apos;t hand off between the strategy and the build.
                   </p>
                 </div>
               </ScrollReveal>
@@ -56,17 +56,11 @@ export default function AboutPage() {
                 <div className="rounded-card bg-surface-alt p-8">
                   <p className="text-lg leading-relaxed text-content-secondary">
                     In parallel with consulting, I run{' '}
-                    <strong className="text-content">Tuna Melts My Heart</strong>, a major pet
-                    influencer brand built around Tuna, a Chiweenie with an exaggerated overbite and
-                    2 million Instagram followers. It&apos;s a real business with multiple revenue
-                    streams (merchandise, brand partnerships, licensed content, and live events) and
-                    it serves as a live testing ground for everything I build.
-                  </p>
-                  <p className="mt-4 text-lg leading-relaxed text-content-secondary">
-                    The 2025 and 2026 Tuna calendars were produced using AI-generated imagery from
-                    fine-tuned FLUX models. 5,000 units sold, substantial profit, on a creative
-                    production cost of $400. That&apos;s not a case study I wrote. That&apos;s a
-                    case study I lived.
+                    <strong className="text-content">Tuna Melts My Heart</strong>, built around
+                    Tuna, a Chiweenie with an exaggerated overbite and 2 million Instagram
+                    followers. It&apos;s a real business with multiple revenue streams (merchandise,
+                    brand partnerships, licensed content, and live events), and it&apos;s a live
+                    testing ground for everything I build.
                   </p>
                   <p className="mt-4 text-sm text-content-muted">
                     Based in Atlanta. Working with clients across the US and UK.
@@ -78,12 +72,12 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* What I Believe */}
-      <section className="bg-white px-6 py-section">
+      {/* What I believe */}
+      <section className="bg-white px-6 pb-section">
         <div className="section-container">
           <ScrollReveal>
             <h2 className="font-display text-display-sm font-bold tracking-tight text-black">
-              What I Believe
+              What I believe
             </h2>
           </ScrollReveal>
           <div className="mt-12 grid gap-8 md:grid-cols-3">
@@ -96,6 +90,30 @@ export default function AboutPage() {
               </ScrollReveal>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Closer, link to /contact */}
+      <section className="border-t border-rule-soft px-6 py-section-sm">
+        <div className="section-container">
+          <ScrollReveal>
+            <h2 className="font-display text-display-sm font-bold tracking-tight text-content sm:text-display-md">
+              Want to work together?
+            </h2>
+            <p className="mt-5 max-w-[52ch] text-lg leading-relaxed text-content-secondary">
+              Tell me what you&apos;re measuring, what&apos;s breaking, and where the numbers stop
+              making sense.
+            </p>
+            <div className="mt-8">
+              <EditorialLink
+                href="/contact"
+                variant="accent"
+                onClick={() => trackClickCta('Start a conversation', 'about_closer')}
+              >
+                Start a conversation →
+              </EditorialLink>
+            </div>
+          </ScrollReveal>
         </div>
       </section>
     </main>

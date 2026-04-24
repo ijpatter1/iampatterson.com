@@ -53,8 +53,13 @@ describe('HeroEditorial', () => {
 
   it('renders the long-form deck body', () => {
     renderHero();
-    expect(screen.getByText(/Most consultants describe what they build/i)).toBeInTheDocument();
-    expect(screen.getByText(/instrumentation is the portfolio/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Every scroll, every click in your session is flowing through the stack right now/i,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Measurement is usually invisible/i)).toBeInTheDocument();
+    expect(screen.getByText(/Your session is the portfolio/i)).toBeInTheDocument();
   });
 
   it('primary CTA opens the overlay and fires click_cta', async () => {
