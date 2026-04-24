@@ -51,8 +51,8 @@ describe('ListingView (Phase 9F D5, product listing)', () => {
     expect(screen.getByText(/the tuna shop · 6 things/i)).toBeInTheDocument();
     // Headline fragment: "the underdog with the overbite.", correcting
     // the hi-fi prototype, which got this wrong. Chiweenies have
-    // overbites (upper jaw past the lower); the about page and
-    // proof-section already render the correct phrase.
+    // overbites (upper jaw past the lower); the about page already
+    // renders the correct phrase.
     expect(screen.getByText(/underdog/i)).toBeInTheDocument();
     expect(screen.getByText(/overbite/i)).toBeInTheDocument();
   });
