@@ -476,38 +476,10 @@ describe('useEventStream online-event recovery (D5)', () => {
   });
 });
 
-describe('useEventStream manual retry (D5)', () => {
-  it('exposes a retry() function that reconnects after max-retries exhaustion', () => {
-    jest.useFakeTimers();
-    const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.5);
-    try {
-      const { result } = renderHook(() =>
-        useEventStream({ url: 'http://localhost:8080/events', maxRetries: 1 }),
-      );
-
-      act(() => {
-        MockEventSource.instances[0].simulateError();
-      });
-      act(() => {
-        jest.advanceTimersByTime(1000);
-      });
-      act(() => {
-        MockEventSource.instances[MockEventSource.instances.length - 1].simulateError();
-      });
-      expect(result.current.status).toBe('disconnected');
-
-      const instanceCountBeforeRetry = MockEventSource.instances.length;
-
-      act(() => {
-        result.current.retry();
-      });
-
-      expect(MockEventSource.instances.length).toBe(instanceCountBeforeRetry + 1);
-      expect(result.current.status).not.toBe('disconnected');
-      expect(result.current.error).toBeNull();
-    } finally {
-      randomSpy.mockRestore();
-      jest.useRealTimers();
-    }
-  });
-});
+// Manual retry() API was removed in the Pass-1 evaluator fix-pack.
+// Dual-eval found the retry function was exported with a user-facing
+// rationale but no consumer destructured it — `useLiveEvents`'s native
+// dataLayer fallback already handles degradation without a retry
+// affordance, so the retry() was dead API surface. If a future consumer
+// needs direct SSE-only reconnect control (bypassing the fallback), add
+// retry() back with a co-landed consumer.

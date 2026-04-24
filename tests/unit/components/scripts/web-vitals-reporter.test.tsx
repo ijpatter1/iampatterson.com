@@ -130,7 +130,12 @@ describe('WebVitalsReporter', () => {
     expect(mockTrackWebVital).toHaveBeenCalledTimes(3);
   });
 
-  it('does not subscribe after unmount (cancels the pending dynamic import)', async () => {
+  it('cancels a pending dynamic import when unmount precedes module resolution', async () => {
+    // Scope: this test pins the cancelled-before-subscribe path. The
+    // reporter is root-layout-scoped so a post-subscribe unmount isn't
+    // a real-world path; if that ever changes (e.g. the reporter moves
+    // under a conditional route boundary), add a separate test covering
+    // unsubscribe after web-vitals has registered its listeners.
     const WebVitalsReporter = getComponent();
     const { unmount } = render(<WebVitalsReporter />);
     unmount();
@@ -141,4 +146,13 @@ describe('WebVitalsReporter', () => {
     expect(callbacks.FCP).toBeUndefined();
     expect(callbacks.TTFB).toBeUndefined();
   });
+
+  // Note: the reporter's import('web-vitals').catch(...) handler swallows
+  // CDN / adblock / integrity failures silently. Not pinned by a jest
+  // test here because jest.resetModules + jest.doMock for a throwing
+  // web-vitals mock also resets React and breaks the hook dispatcher.
+  // The try-at-call-site is the guard; if jest's test infrastructure
+  // later supports per-test module-graph overrides that preserve React,
+  // add an assertion that no unhandled rejection surfaces on import
+  // failure.
 });

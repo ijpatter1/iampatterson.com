@@ -51,14 +51,23 @@ function reportMetric(metric: WebVitalsMetric): void {
 export function WebVitalsReporter() {
   useEffect(() => {
     let cancelled = false;
-    import('web-vitals').then((mod: WebVitalsModule) => {
-      if (cancelled) return;
-      mod.onLCP(reportMetric);
-      mod.onCLS(reportMetric);
-      mod.onINP(reportMetric);
-      mod.onFCP(reportMetric);
-      mod.onTTFB(reportMetric);
-    });
+    // CWV is nice-to-have telemetry; a failed import (CDN hiccup,
+    // integrity mismatch, adblock interference) shouldn't surface as an
+    // unhandled promise rejection. Swallow silently — the site runs
+    // fine without the reporter, it just skips this session's web_vital
+    // events.
+    import('web-vitals')
+      .then((mod: WebVitalsModule) => {
+        if (cancelled) return;
+        mod.onLCP(reportMetric);
+        mod.onCLS(reportMetric);
+        mod.onINP(reportMetric);
+        mod.onFCP(reportMetric);
+        mod.onTTFB(reportMetric);
+      })
+      .catch(() => {
+        // silent — see comment above
+      });
     return () => {
       cancelled = true;
     };

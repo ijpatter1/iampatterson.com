@@ -28,12 +28,6 @@ export interface UseEventStreamReturn {
   error: string | null;
   /** Clear the event buffer. */
   clearEvents: () => void;
-  /**
-   * Force a fresh reconnect, resetting retryCount to 0. Safe to call
-   * from any connection state; useful for surfacing a manual "retry"
-   * affordance to the user after max-retries exhaustion.
-   */
-  retry: () => void;
 }
 
 export function useEventStream({
@@ -45,10 +39,10 @@ export function useEventStream({
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [events, setEvents] = useState<PipelineEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
-  // Incremented by `retry()` and the `online` event listener. Included
-  // in the connect-effect's dep array so a bump forces a fresh
-  // reconnect (existing cleanup closes the prior EventSource + clears
-  // the pending retry timer, so the new effect run starts clean).
+  // Incremented by the `online` event listener to force a fresh reconnect
+  // after an offline period. Included in the connect-effect's dep array
+  // so a bump triggers the effect's cleanup (closes prior EventSource,
+  // clears pending retry timer) + a fresh connect.
   const [retryTrigger, setRetryTrigger] = useState(0);
   // Mirror `maxBufferSize` into a ref so the long-lived EventSource
   // onmessage callback reads the latest value without the outer effect
@@ -66,7 +60,6 @@ export function useEventStream({
   }, [status]);
 
   const clearEvents = useCallback(() => setEvents([]), []);
-  const retry = useCallback(() => setRetryTrigger((n) => n + 1), []);
 
   // D5 — Online-event recovery. When the browser transitions offline
   // → online, if we're currently not-connected, bump the retry trigger
@@ -189,5 +182,5 @@ export function useEventStream({
     };
   }, [url, enabled, maxRetries, retryTrigger]);
 
-  return { status, events, error, clearEvents, retry };
+  return { status, events, error, clearEvents };
 }
