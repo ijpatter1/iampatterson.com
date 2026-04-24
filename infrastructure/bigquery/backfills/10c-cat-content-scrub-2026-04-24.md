@@ -60,19 +60,19 @@ bq --project_id=iampatterson query --dry_run --use_legacy_sql=false \
    WHERE LOWER(utm_campaign) LIKE "%cat%" GROUP BY utm_campaign'
 
 bq --project_id=iampatterson query --use_legacy_sql=false \
-  'SELECT utm_campaign, COUNT(*) AS rows
+  'SELECT utm_campaign, COUNT(*) AS row_count
    FROM `iampatterson.iampatterson_raw.events_raw`
    WHERE LOWER(utm_campaign) LIKE "%cat%"
-   GROUP BY utm_campaign ORDER BY rows DESC'
+   GROUP BY utm_campaign ORDER BY row_count DESC'
 
 bq --project_id=iampatterson query --use_legacy_sql=false \
-  'SELECT campaign_name, campaign_name_raw, COUNT(*) AS rows,
+  'SELECT campaign_name, campaign_name_raw, COUNT(*) AS row_count,
           MIN(date) AS first_date, MAX(date) AS last_date,
           SUM(spend) AS total_spend
    FROM `iampatterson.iampatterson_raw.ad_platform_raw`
    WHERE LOWER(campaign_name) LIKE "%cat%"
       OR LOWER(campaign_name_raw) LIKE "%cat%"
-   GROUP BY campaign_name, campaign_name_raw ORDER BY rows DESC'
+   GROUP BY campaign_name, campaign_name_raw ORDER BY row_count DESC'
 ```
 
 If any of the legacy strings have zero rows, the corresponding `WHEN` branch in the SQL is a no-op — safe but informative for the apply log.
