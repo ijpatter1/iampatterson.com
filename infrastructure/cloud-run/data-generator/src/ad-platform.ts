@@ -54,7 +54,7 @@ export function generateAdPlatformData(
       }
     }
 
-    current.setDate(current.getDate() + 1);
+    current.setUTCDate(current.getUTCDate() + 1);
   }
 
   return records;
@@ -70,8 +70,8 @@ function getDailySpend(
   rng: SeededRandom,
 ): number {
   const baseDailySpend = monthlySpend / 30;
-  const monthMultiplier = seasonality.monthly[date.getMonth()];
-  const dayMultiplier = seasonality.dayOfWeek[date.getDay()];
+  const monthMultiplier = seasonality.monthly[date.getUTCMonth()];
+  const dayMultiplier = seasonality.dayOfWeek[date.getUTCDay()];
 
   // Add ±20% daily variance
   const variance = 0.8 + rng.next() * 0.4;
