@@ -1,8 +1,13 @@
 /**
  * BigQuery insert module for ad platform data.
  *
- * Inserts AdPlatformRecord rows into the ad_platform_raw table.
- * Uses the BigQuery Storage Write API for efficient batch inserts.
+ * Upserts AdPlatformRecord rows into the ad_platform_raw table via
+ * MERGE on (date, platform, business_model, campaign_name). Ad-platform
+ * records are inherently per-day-per-campaign aggregates; the hourly
+ * generator schedule re-emits "today's" rows every tick. MERGE keeps
+ * the table at one row per natural key; the latest tick wins on the
+ * non-key fields (impressions, clicks, spend, cpc, ctr,
+ * campaign_name_raw — the random UTM-variant pick).
  */
 
 import { BigQuery } from '@google-cloud/bigquery';
@@ -28,10 +33,12 @@ export interface BqInsertResult {
 }
 
 /**
- * Insert ad platform records into BigQuery.
+ * Upsert ad platform records into BigQuery.
  *
- * Uses insertAll (streaming insert) for simplicity. For very large
- * backfills, consider using the Storage Write API instead.
+ * Uses MERGE so re-running for the same (date, campaign) is idempotent:
+ * the first call inserts, subsequent calls update the metrics in place.
+ * `inserted` counts both INSERT and UPDATE branches as "successfully
+ * applied rows" since both leave the table in the same correct state.
  */
 export async function insertAdPlatformRecords(
   records: AdPlatformRecord[],
@@ -42,46 +49,62 @@ export async function insertAdPlatformRecords(
   }
 
   const bq = new BigQuery({ projectId: config.projectId });
-  const table = bq.dataset(config.dataset).table(config.table);
-
+  const target = `\`${config.projectId}.${config.dataset}.${config.table}\``;
   const result: BqInsertResult = { inserted: 0, failed: 0, errors: [] };
 
-  // Batch inserts in chunks of 500 to stay under API limits
+  // Chunk into 500-row MERGEs to keep query parameter size + slot
+  // pressure modest. Each MERGE is one query job.
   const BATCH_SIZE = 500;
   for (let i = 0; i < records.length; i += BATCH_SIZE) {
     const batch = records.slice(i, i + BATCH_SIZE);
 
     try {
-      await table.insert(batch);
+      const [job] = await bq.createQueryJob({
+        query: buildMergeQuery(target),
+        params: { records: batch },
+        types: {
+          records: [
+            {
+              date: 'DATE',
+              platform: 'STRING',
+              business_model: 'STRING',
+              campaign_name: 'STRING',
+              campaign_name_raw: 'STRING',
+              impressions: 'INT64',
+              clicks: 'INT64',
+              spend: 'FLOAT64',
+              cpc: 'FLOAT64',
+              ctr: 'FLOAT64',
+            },
+          ],
+        },
+      });
+      await job.getQueryResults();
       result.inserted += batch.length;
     } catch (err: unknown) {
-      // BigQuery insert errors include per-row details
-      if (isInsertError(err)) {
-        const partialErrors = err.errors || [];
-        result.failed += partialErrors.length;
-        result.inserted += batch.length - partialErrors.length;
-        for (const rowErr of partialErrors.slice(0, 5)) {
-          result.errors.push(JSON.stringify(rowErr.errors));
-        }
-      } else {
-        result.failed += batch.length;
-        result.errors.push(err instanceof Error ? err.message : String(err));
-      }
+      result.failed += batch.length;
+      result.errors.push(err instanceof Error ? err.message : String(err));
     }
   }
 
   return result;
 }
 
-interface InsertError {
-  errors: Array<{ errors: unknown[] }>;
-}
-
-function isInsertError(err: unknown): err is InsertError {
-  return (
-    typeof err === 'object' &&
-    err !== null &&
-    'errors' in err &&
-    Array.isArray((err as InsertError).errors)
-  );
+function buildMergeQuery(target: string): string {
+  return `
+    MERGE ${target} T
+    USING UNNEST(@records) S
+    ON T.date = S.date
+       AND T.platform = S.platform
+       AND T.business_model = S.business_model
+       AND T.campaign_name = S.campaign_name
+    WHEN MATCHED THEN UPDATE SET
+      campaign_name_raw = S.campaign_name_raw,
+      impressions = S.impressions,
+      clicks = S.clicks,
+      spend = S.spend,
+      cpc = S.cpc,
+      ctr = S.ctr
+    WHEN NOT MATCHED THEN INSERT ROW
+  `;
 }
