@@ -390,11 +390,10 @@ Carry-forward items from earlier phases that need a Phase 11 capability to unblo
 
 **Pending (as of 2026-04-24):**
 
-1. ⬜ `web_vital` sGTM trigger + GA4 event tag — from Phase 10b D1a. Depends on D9.a (GTM reconciler). Unblocks real-user CWV field data → closes the Phase 10b D1c mobile-perf target revision.
-2. ⬜ `remove_from_cart` GTM trigger + GA4 event tag — from Phase 9F UAT r2 (2026-04-21). Depends on D9.a. Ships together with item 1.
-3. ⬜ Mobile perf optimization levers (font subsetting, bundle splits, Recharts dynamic import, Metabase iframe skeleton/lazy, mobile hero font-size tweak, preconnect retry) — from Phase 10b D1c. Depends on item 1 OR a Vercel-preview Lighthouse loop.
-4. ⬜ `WebVitalsReporter` SPA navigation attribution (web-vitals@^5 soft-navigation wiring) — from Phase 10b Pass-1 evaluator. Depends on item 1 (pointless without field data flowing).
-5. ⬜ `useEventStream` statusRef race hardening — from Phase 10b Pass-1 evaluator. Minor; pick up any time.
-6. ⬜ `window.__iapWebVitals()` dev-console helper — from Phase 10b Pass-1 product reviewer. Minor, optional, ergonomics.
+1. ⬜ `web_vital` sGTM trigger + GA4 event tag — from Phase 10b D1a. Depends on D9.a (GTM reconciler). Unblocks real-user CWV field data → closes the Phase 10b D1c mobile-perf target revision. Pattern precedent: the existing `ce - remove_from_cart` + `GA4 - remove_from_cart` pair (pinned at `tests/integration/web-container-spec.test.ts:65-102`) is the exact shape.
+2. ⬜ Mobile perf optimization levers (font subsetting, bundle splits, Recharts dynamic import, Metabase iframe skeleton/lazy, mobile hero font-size tweak, preconnect retry) — from Phase 10b D1c. Depends on item 1 OR a Vercel-preview Lighthouse loop.
+3. ⬜ `WebVitalsReporter` SPA navigation attribution (web-vitals@^5 soft-navigation wiring) — from Phase 10b Pass-1 evaluator. Depends on item 1 (pointless without field data flowing).
+4. ⬜ `useEventStream` statusRef race hardening — from Phase 10b Pass-1 evaluator. Minor; pick up any time.
+5. ⬜ `window.__iapWebVitals()` dev-console helper — from Phase 10b Pass-1 product reviewer. Minor, optional, ergonomics.
 
 **Resolved:** (empty at 2026-04-24)
