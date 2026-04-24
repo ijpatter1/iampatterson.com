@@ -9,6 +9,7 @@ import {
   trackFormStart,
   trackFormSubmit,
   trackConsentUpdate,
+  trackWebVital,
 } from '@/lib/events/track';
 
 // Mock crypto.randomUUID for session ID
@@ -106,6 +107,58 @@ describe('trackConsentUpdate', () => {
       consent_analytics: false,
       consent_marketing: false,
       consent_preferences: false,
+    });
+  });
+});
+
+describe('trackWebVital', () => {
+  it('pushes a web_vital event with metric fields for each of the five CWV metrics', () => {
+    const metrics: Array<{
+      metric_name: 'LCP' | 'CLS' | 'INP' | 'FCP' | 'TTFB';
+      metric_value: number;
+    }> = [
+      { metric_name: 'LCP', metric_value: 1850 },
+      { metric_name: 'CLS', metric_value: 0.08 },
+      { metric_name: 'INP', metric_value: 180 },
+      { metric_name: 'FCP', metric_value: 1200 },
+      { metric_name: 'TTFB', metric_value: 240 },
+    ];
+    for (const m of metrics) {
+      trackWebVital({
+        metric_name: m.metric_name,
+        metric_value: m.metric_value,
+        metric_rating: 'good',
+        metric_id: `v4-${m.metric_name}-test`,
+        navigation_type: 'navigate',
+      });
+    }
+    expect(window.dataLayer).toHaveLength(5);
+    for (let i = 0; i < metrics.length; i++) {
+      expect(window.dataLayer[i]).toMatchObject({
+        event: 'web_vital',
+        metric_name: metrics[i].metric_name,
+        metric_value: metrics[i].metric_value,
+        metric_rating: 'good',
+        navigation_type: 'navigate',
+        iap_source: true,
+        session_id: 'test-session-id',
+      });
+    }
+  });
+
+  it('carries metric_rating bucket and metric_id through the push', () => {
+    trackWebVital({
+      metric_name: 'LCP',
+      metric_value: 4200,
+      metric_rating: 'poor',
+      metric_id: 'v4-LCP-1743000000000-9999',
+      navigation_type: 'back-forward-cache',
+    });
+    expect(window.dataLayer[0]).toMatchObject({
+      event: 'web_vital',
+      metric_rating: 'poor',
+      metric_id: 'v4-LCP-1743000000000-9999',
+      navigation_type: 'back-forward-cache',
     });
   });
 });

@@ -11,6 +11,7 @@ import { ScrollDepthTracker } from '@/components/scroll-depth-tracker';
 import { CookiebotScript } from '@/components/scripts/cookiebot';
 import { CookiebotConsentListener } from '@/components/scripts/cookiebot-consent';
 import { GtmScript, GtmNoscript } from '@/components/scripts/gtm';
+import { WebVitalsReporter } from '@/components/scripts/web-vitals-reporter';
 import { instrumentSerif, plusJakarta, jetbrainsMono } from '@/lib/fonts';
 import '@/styles/globals.css';
 
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <CookiebotConsentListener />
         <RouteTracker />
         <ScrollDepthTracker />
+        <WebVitalsReporter />
         <SessionStateProvider>
           <OverlayProvider>
             <Header />

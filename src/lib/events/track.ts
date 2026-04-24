@@ -4,6 +4,7 @@ import type {
   CtaLocation,
   NavHintDismissedEvent,
   PortalClickEvent,
+  WebVitalEvent,
 } from './schema';
 import { getSessionId } from './session';
 
@@ -228,4 +229,16 @@ export function trackNavHintDismissed(mode: NavHintDismissedEvent['dismissal_mod
 
 export function trackSessionPulseHover(): void {
   pushEvent({ ...baseFields(), event: 'session_pulse_hover' });
+}
+
+// --- Phase 10 D1, Core Web Vitals telemetry ---
+
+export function trackWebVital(params: {
+  metric_name: WebVitalEvent['metric_name'];
+  metric_value: number;
+  metric_rating: WebVitalEvent['metric_rating'];
+  metric_id: string;
+  navigation_type: string;
+}): void {
+  pushEvent({ ...baseFields(), event: 'web_vital', ...params });
 }

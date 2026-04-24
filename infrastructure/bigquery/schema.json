@@ -328,5 +328,36 @@
     "type": "INT64",
     "mode": "NULLABLE",
     "description": "Coverage threshold crossed: 25, 50, 75, 100 (coverage_milestone events, Phase 9E deliverable 9)"
+  },
+
+  {
+    "name": "metric_name",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Core Web Vitals metric name: LCP, CLS, INP, FCP, TTFB (web_vital events, Phase 10 deliverable 1)"
+  },
+  {
+    "name": "metric_value",
+    "type": "FLOAT64",
+    "mode": "NULLABLE",
+    "description": "Core Web Vitals metric value — LCP/FCP/TTFB/INP in milliseconds, CLS as a unitless shift score (web_vital events, Phase 10 deliverable 1)"
+  },
+  {
+    "name": "metric_rating",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Google CWV rating bucket applied by the web-vitals library: good, needs-improvement, poor (web_vital events, Phase 10 deliverable 1)"
+  },
+  {
+    "name": "metric_id",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Per-metric unique ID from the web-vitals library, lets dedupe in BQ if a metric fires twice on the same page visit (web_vital events, Phase 10 deliverable 1)"
+  },
+  {
+    "name": "navigation_type",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Navigation API navigation_type: navigate, reload, back-forward, back-forward-cache, prerender, restore (web_vital events, Phase 10 deliverable 1; used to segment CWV by first-visit vs bfcache restore)"
   }
 ]

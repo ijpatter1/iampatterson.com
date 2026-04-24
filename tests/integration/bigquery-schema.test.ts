@@ -109,6 +109,22 @@ describe('BigQuery schema alignment with sGTM event data', () => {
     expect(thresholdCol?.type).toBe('INT64');
   });
 
+  it('includes Phase 10 D1 WebVitalEvent fields (metric_name, metric_value, metric_rating, metric_id, navigation_type)', () => {
+    // Without these columns, the sGTM "Write to BigQuery" tag silently drops the
+    // Core Web Vitals fields (ignoreUnknownValues: true), and BI can't segment
+    // CWV by metric type / rating bucket / navigation type, or dedupe on metric_id.
+    expect(bqColumnNames).toContain('metric_name');
+    expect(bqColumnNames).toContain('metric_rating');
+    expect(bqColumnNames).toContain('metric_id');
+    expect(bqColumnNames).toContain('navigation_type');
+
+    const metricValueCol = schemaJson.find((c) => c.name === 'metric_value');
+    expect(metricValueCol).toBeDefined();
+    // FLOAT64 because LCP/INP/FCP/TTFB are sub-millisecond floats and CLS is a
+    // unitless shift score like 0.08.
+    expect(metricValueCol?.type).toBe('FLOAT64');
+  });
+
   it('only event_name and received_timestamp are REQUIRED', () => {
     const requiredCols = schemaJson.filter((c) => c.mode === 'REQUIRED');
     const requiredNames = requiredCols.map((c) => c.name).sort();
