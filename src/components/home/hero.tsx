@@ -48,9 +48,9 @@ export function HeroEditorial() {
           </p>
           <div>
             <p className="max-w-[52ch] text-[15px] leading-[1.65] text-ink-2 md:text-base md:leading-[1.7]">
-              Instead of describing it, I built on it. Every scroll, every click of your session is
-              flowing through it right now. Measurement is usually invisible; here, you can watch it
-              live. Your session is the portfolio.
+              Instead of describing it, I built on it. Every scroll, every click in your session is
+              flowing through the stack right now. Measurement is usually invisible; here, you can
+              watch it live. Your session is the portfolio.
             </p>
             <div className="mt-5 flex flex-wrap gap-3 md:mt-7">
               <EditorialButton variant="accent" onClick={handleOpen}>

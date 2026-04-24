@@ -32,7 +32,8 @@ export function FinalCta() {
           <em className="text-accent-current">Then hire me.</em>
         </h2>
         <p className="mt-8 max-w-[52ch] text-base leading-[1.7] text-ink-2">
-          See yours in full. Then tell me what you&apos;d want running in your stack.
+          See every event, every destination, every consent decision. Then tell me what you&apos;d
+          want running in your stack.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <EditorialButton

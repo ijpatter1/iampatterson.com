@@ -55,7 +55,7 @@ describe('HeroEditorial', () => {
     renderHero();
     expect(
       screen.getByText(
-        /Every scroll, every click of your session is flowing through it right now/i,
+        /Every scroll, every click in your session is flowing through the stack right now/i,
       ),
     ).toBeInTheDocument();
     expect(screen.getByText(/Measurement is usually invisible/i)).toBeInTheDocument();

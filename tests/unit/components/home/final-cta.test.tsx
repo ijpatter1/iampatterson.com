@@ -50,8 +50,9 @@ describe('FinalCta', () => {
   it('renders the sub-headline copy', () => {
     renderCta();
     expect(
-      screen.getByText(/See yours in full\. Then tell me what you'd want running in your stack/i),
+      screen.getByText(/See every event, every destination, every consent decision/i),
     ).toBeInTheDocument();
+    expect(screen.getByText(/what you'd want running in your stack/i)).toBeInTheDocument();
   });
 
   it('primary CTA opens the overlay and fires click_cta', async () => {

@@ -234,7 +234,6 @@
      the page's --accent (which OverlayProvider also flips when the overlay
      opens, keeping the accent story continuous across surfaces). */
   .pipeline-section.bleed-layer h2,
-  .pipeline-section.bleed-layer .p-meta,
   .pipeline-section.bleed-layer .pv-edit__fn-list {
     transition:
       color 240ms ease,
@@ -387,7 +386,6 @@
     transform: translate(0.5px, -0.5px);
   }
   .pipeline-section.flick h2,
-  .pipeline-section.flick .p-meta,
   .pipeline-section.flick .pv-edit__fn-list {
     text-shadow:
       -1px 0 rgba(255, 60, 0, 0.6),

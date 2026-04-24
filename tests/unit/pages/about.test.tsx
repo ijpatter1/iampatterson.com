@@ -30,7 +30,7 @@ describe('AboutPage', () => {
     expect(screen.getByText(/tuna melts my heart/i)).toBeInTheDocument();
   });
 
-  it('renders the What I Believe section', () => {
+  it('renders the What I believe section', () => {
     render(<AboutPage />);
     expect(screen.getByText(/measurement infrastructure is not a project/i)).toBeInTheDocument();
     expect(screen.getByText(/ai should be infrastructure/i)).toBeInTheDocument();

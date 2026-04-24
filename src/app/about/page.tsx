@@ -97,11 +97,11 @@ export default function AboutPage() {
         <div className="section-container">
           <ScrollReveal>
             <h2 className="font-display text-display-sm font-bold tracking-tight text-content sm:text-display-md">
-              Let&apos;s talk.
+              Want to work together?
             </h2>
             <p className="mt-5 max-w-[52ch] text-lg leading-relaxed text-content-secondary">
-              Tell me what you&apos;re measuring, what&apos;s breaking, and what you&apos;re trying
-              to answer.
+              Tell me what you&apos;re measuring, what&apos;s breaking, and where the numbers stop
+              making sense.
             </p>
             <div className="mt-8">
               <EditorialLink

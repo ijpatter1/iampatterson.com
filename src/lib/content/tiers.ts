@@ -21,7 +21,7 @@ export const TIERS: Tier[] = [
     num: '01',
     title: 'Measurement Foundation',
     subtitle: 'Get the data right at the source.',
-    lede: 'Server-side GTM moves your tracking from the browser to a server you control, longer cookie life, higher match rates, immunity to ad blockers, proper consent enforcement.',
+    lede: 'Server-side GTM moves your tracking from the browser to a server you control. Longer cookie life, higher match rates, immunity to ad blockers, proper consent enforcement.',
     core: [
       {
         title: 'Tag Audit & Data Layer Spec',
