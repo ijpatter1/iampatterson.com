@@ -82,8 +82,8 @@ export default function ServicesPage() {
             <p className="max-w-[56ch] text-base leading-[1.7] text-ink-2">
               I structure engagements as discrete tiers with decision gates between them. You buy
               what you need, see the results, and decide whether to go further. The first two tiers
-              have non-negotiable components, these are the things that must be done properly or not
-              at all. Everything else is modular and scoped to your specific situation.
+              have non-negotiable components: the things that must be done properly or not at all.
+              Everything else is modular and scoped to your specific situation.
             </p>
           </div>
         </div>
