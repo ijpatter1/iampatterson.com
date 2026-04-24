@@ -299,6 +299,33 @@ export interface CoverageMilestoneEvent extends BaseEvent {
   threshold: 25 | 50 | 75 | 100;
 }
 
+// --- Phase 10 D1, Core Web Vitals telemetry ---
+
+/**
+ * Fired by the `web-vitals` library once per CWV metric per page visit.
+ * LCP, CLS, INP settle on the page-hide / `visibilitychange` tick (the
+ * library folds intermediate updates into one emission); FCP and TTFB
+ * settle earlier in the lifecycle.
+ *
+ * `metric_rating` is Google's `good` / `needs-improvement` / `poor`
+ * bucket applied by the library against the current CWV thresholds — we
+ * defer the bucket to the library rather than re-deriving it so the
+ * cutoffs track upstream when Google moves them.
+ *
+ * Excluded from `RENDERABLE_EVENT_NAMES` via `HIDDEN_FROM_COVERAGE`:
+ * this is performance telemetry, not user behaviour, so showing it as
+ * an Overview coverage chip would light trivially on every page view
+ * and drown the depth-of-exploration signal the meter is for.
+ */
+export interface WebVitalEvent extends BaseEvent {
+  event: 'web_vital';
+  metric_name: 'LCP' | 'CLS' | 'INP' | 'FCP' | 'TTFB';
+  metric_value: number;
+  metric_rating: 'good' | 'needs-improvement' | 'poor';
+  metric_id: string;
+  navigation_type: string;
+}
+
 /** Union of all event types. */
 export type DataLayerEvent =
   | PageViewEvent
@@ -325,7 +352,8 @@ export type DataLayerEvent =
   | TimelineTabViewEvent
   | ConsentTabViewEvent
   | PortalClickEvent
-  | CoverageMilestoneEvent;
+  | CoverageMilestoneEvent
+  | WebVitalEvent;
 
 /**
  * Runtime array of every distinct `event` string literal in the `DataLayerEvent`
@@ -364,6 +392,7 @@ export const DATA_LAYER_EVENT_NAMES = [
   'consent_tab_view',
   'portal_click',
   'coverage_milestone',
+  'web_vital',
 ] as const;
 
 /**
@@ -393,6 +422,12 @@ export const HIDDEN_FROM_COVERAGE: ReadonlySet<DataLayerEventName> = new Set<Dat
   'trial_signup',
   'form_complete',
   'lead_qualify',
+  // `web_vital` is Phase 10 D1 CWV telemetry, not a user-interaction event.
+  // It fires on every page view (5 metrics per load), so a renderable chip
+  // would light trivially and pollute the Overview depth-of-exploration
+  // signal. The event still flows through the standard pipeline and lands
+  // in BigQuery; the hide is purely a visitor-surface concern.
+  'web_vital',
 ]);
 
 export const RENDERABLE_EVENT_NAMES: readonly DataLayerEventName[] = DATA_LAYER_EVENT_NAMES.filter(

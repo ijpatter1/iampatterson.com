@@ -21,6 +21,7 @@ import type {
   OverviewTabViewEvent,
   PortalClickEvent,
   CoverageMilestoneEvent,
+  WebVitalEvent,
 } from '@/lib/events/schema';
 
 const baseFields = {
@@ -219,6 +220,48 @@ describe('Event schema types', () => {
     expect(toContact.destination).toBe('contact');
   });
 
+  // --- Phase 10 D1, Core Web Vitals telemetry ---
+
+  it('defines WebVitalEvent with the five CWV metric names and rating buckets', () => {
+    const lcp: WebVitalEvent = {
+      ...baseFields,
+      event: 'web_vital',
+      metric_name: 'LCP',
+      metric_value: 1850,
+      metric_rating: 'good',
+      metric_id: 'v4-1743000000000-1234567890',
+      navigation_type: 'navigate',
+    };
+    const cls: WebVitalEvent = { ...lcp, metric_name: 'CLS', metric_value: 0.08 };
+    const inp: WebVitalEvent = { ...lcp, metric_name: 'INP', metric_value: 180 };
+    const fcp: WebVitalEvent = { ...lcp, metric_name: 'FCP', metric_value: 1200 };
+    const ttfb: WebVitalEvent = { ...lcp, metric_name: 'TTFB', metric_value: 240 };
+    const poor: WebVitalEvent = {
+      ...lcp,
+      metric_rating: 'poor',
+      metric_value: 5200,
+      metric_name: 'LCP',
+    };
+    const needs: WebVitalEvent = {
+      ...lcp,
+      metric_rating: 'needs-improvement',
+      metric_value: 3000,
+      metric_name: 'LCP',
+    };
+    expect([
+      lcp.metric_name,
+      cls.metric_name,
+      inp.metric_name,
+      fcp.metric_name,
+      ttfb.metric_name,
+    ]).toEqual(['LCP', 'CLS', 'INP', 'FCP', 'TTFB']);
+    expect([lcp.metric_rating, needs.metric_rating, poor.metric_rating]).toEqual([
+      'good',
+      'needs-improvement',
+      'poor',
+    ]);
+  });
+
   it('defines CoverageMilestoneEvent with 25/50/75/100 threshold union', () => {
     const quarter: CoverageMilestoneEvent = {
       ...baseFields,
@@ -270,6 +313,7 @@ describe('Event schema types', () => {
       consent_tab_view: true,
       portal_click: true,
       coverage_milestone: true,
+      web_vital: true,
     };
     // Runtime assertion derives the expected count from the schema's own source of truth,
     // extending DATA_LAYER_EVENT_NAMES is the single edit needed; this test re-derives.
@@ -278,12 +322,14 @@ describe('Event schema types', () => {
     expect(Object.keys(allEventNames).sort()).toEqual([...DATA_LAYER_EVENT_NAMES].sort());
   });
 
-  it('RENDERABLE_EVENT_NAMES excludes sub/leadgen events (F2, hide un-triggerable chips)', () => {
-    const hidden = ['plan_select', 'trial_signup', 'form_complete', 'lead_qualify'];
+  it('RENDERABLE_EVENT_NAMES excludes sub/leadgen events and web_vital telemetry', () => {
+    // Sub/leadgen set is the F2 hide (un-triggerable chips); web_vital is the
+    // Phase 10 D1 hide (telemetry, not user behaviour — would light every
+    // chip trivially and drown the depth-of-exploration signal).
+    const hidden = ['plan_select', 'trial_signup', 'form_complete', 'lead_qualify', 'web_vital'];
     for (const name of hidden) {
       expect(RENDERABLE_EVENT_NAMES).not.toContain(name);
     }
-    // Everything else in the full schema stays renderable.
     const expected = DATA_LAYER_EVENT_NAMES.filter(
       (n) => !hidden.includes(n as (typeof hidden)[number]),
     );
