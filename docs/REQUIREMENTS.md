@@ -604,21 +604,125 @@ The hi-fi prototype was authored after `docs/UX_PIVOT_SPEC.md` §3.5 and resolve
 
 ---
 
-## Phase 10, Polish, Performance & Launch Prep
+## Phase 10, Polish, Performance & Launch Prep — sub-phase index
 
-**Goal:** Optimize the full experience for production readiness.
+Originally a single-block 9-deliverable phase. Restructured 2026-04-23 after UAT r1 surfaced ~12 content/polish items on top of the original launch-prep scope, with two of the items (voice/copy audit, data-generator cat-content scrub) flagged as substantial enough to warrant dedicated sessions. Four sub-phases total:
+
+- **10a** Framework Currency — shipped 2026-04-23 as PR #40 (`1a00490`). Full block below.
+- **10b** Core Web Vitals & Performance — body of original D1; CWV measurement + runtime readouts + optimization. Full block below.
+- **10c** Voice & Data Honesty — substantial. Voice/copy audit across the whole site against the voice guide + cat-content generator scrub + BigQuery backfill. Full block below.
+- **10d** Launch Prep — punch list: original D2 (mobile), D3 (error handling), D4 (site analytics remainder), D6 (SEO), D7 (security), D8 (load testing), D9 (anonymous_id cookie), plus the UX polish bundle from UAT r1. Full block below. Original D5 (copy/content) absorbed into 10c.
+
+---
+
+## Phase 10b, Core Web Vitals & Performance
+
+**Goal:** Measure and optimize the shipping surface's performance so Phase 10's launch-prep readouts reflect a tuned site, not a baseline-state one.
+
+**Context:** Phase 10a (2026-04-23) landed Next.js 16.2.4 + React 19.2.5 so CWV numbers are measured on the target framework. 10b is the body of what was originally Phase 10 deliverable 1 — broken out because 10c and 10d pulled adjacent launch-prep scope into their own sub-phases.
 
 **Deliverables:**
 
-1. Performance optimization: Core Web Vitals, Lighthouse scores, WebSocket connection reliability, overlay rendering performance
-2. Mobile testing across devices and screen sizes
-3. Error handling: graceful degradation if the WebSocket connection drops, if BigQuery is slow, if Pub/Sub has latency spikes
-4. Analytics on the site itself: track which demo visitors engage with, how far into the ecommerce funnel they reach, overall time-on-site / scroll-depth distribution, and conversion-to-contact-form signal. This data informs sales conversations. *Note:* the nav-specific and Session State portion of site-self-analytics was accelerated into Phase 9E deliverable 9 (`nav_hint_shown` / `nav_hint_dismissed`, `session_pulse_hover`, `session_state_tab_view`, `portal_click`, `coverage_milestone`, and the `click_cta` / `cta_location` audit), the rationale is in the 9E block. Phase 10's analytics work is the remaining scope: demo interaction patterns, broader time / scroll / session signal, and any cross-event funnel reporting that wasn't needed to validate the nav bet at ship
-5. Copy and content refinement across all consulting pages
-6. SEO: meta tags, structured data, sitemap, content strategy for organic discoverability
-7. Security review: ensure demo interactions can't expose real data, service accounts are properly scoped, no PII leakage in the event stream
-8. Load testing on the background data generator and WebSocket service
-9. **Anonymous ID first-party cookie for long-term visitor identification.** Mint a first-party cookie (`_iap_aid`, 365-day expiry, `SameSite=Lax`, `Secure` in production) on first visit; thread the value into every data layer push as `anonymous_id` alongside the existing `session_id` (which stays session-scoped). This gives cross-session identity that survives the 30-minute session window without PII. Surface the anonymous ID in the Overview tab's portals-and-state block, and wire it into the ecommerce live sidebars so the BigQuery readout shows the real cross-session identifier rather than an example seed. Rationale: UAT r2 item 15 (2026-04-21, session-2026-04-21-004), prior CDP experience; a first-party cookie is the honest baseline, localStorage is blocked from sGTM read-path and breaks on subdomain hops
+1. **D1a, CWV measurement foundation [shipped 2026-04-23, `6df76a7`].** `web-vitals@^5` dep; `WebVitalEvent` in `src/lib/events/schema.ts`; `trackWebVital()` in `src/lib/events/track.ts`; `WebVitalsReporter` client component wired into `src/app/layout.tsx`; BigQuery schema extended with `metric_name`, `metric_value`, `metric_rating`, `metric_id`, `navigation_type`; baseline at `docs/perf/baseline-2026-04-23.md`; `web_vital` added to `HIDDEN_FROM_COVERAGE`. +8 tests.
+
+2. **D1b, runtime CWV readouts.** Capture first real CWV numbers for `/`, `/demo/ecommerce`, `/demo/ecommerce/confirmation` via the reporter's data-layer output from a local Chromium run (and a Vercel preview if needed). Document the runtime numbers in `docs/perf/baseline-2026-04-23.md` as the "runtime baseline" alongside the build-surface data. This is the measurement gate — every later optimization in D1c compares against numbers captured here.
+
+3. **D1c, CWV optimization passes.** One-lever-at-a-time, measure-before-and-after. Candidates (likely, not prescriptive): image priority/sizing on the hero LCP element, dynamic import for the Recharts surface on `/demo/ecommerce/analytics`, overlay render timing under `useSessionContext`, bundle split evaluation for the ~476KB top chunk surfaced in the baseline. **Target (revised 2026-04-24 after Pass-1 evaluator found the mobile target was not met on branch):** Desktop Perf ≥ 99 and LCP/CLS/INP all rated `good` on the three dynamic routes (met on branch; see `docs/perf/baseline-2026-04-23.md`). Mobile targets (LCP ≤ 2.5s on home + confirmation, Perf ≥ 90) deferred to a later optimization pass that runs against a Vercel-preview Lighthouse loop (to capture real-TLS savings preconnect can provide, invisible on localhost) and/or against field data from the `WebVitalsReporter` once the Phase 11 D9 sGTM trigger + GA4 tag wire `web_vital` through to BigQuery. Carry-forward lever candidates enumerated in the baseline doc's "Next lever candidates" section.
+
+4. **Lighthouse capture script.** `scripts/capture-cwv-baseline.sh` runs `npx lighthouse` against the three dynamic routes for both mobile and desktop presets; JSON + HTML reports under `docs/perf/lighthouse-<date>-<preset>-<route>.{json,html}`. **This is a capture + comparison utility, not a CI gate.** No threshold enforcement, no GitHub Actions workflow, no exit-code-on-fail. Intent: developer reruns before/after an optimization to quantify the delta against the committed baseline; future CI gate (with thresholds matching D1c revised targets) lands with the Phase 11 D3 uptime-checks / monitoring work if we decide per-PR perf regression detection is load-bearing.
+
+5. **WebSocket connection reliability.** The real-time event pipeline (SSE/WebSocket via `useEventStream`) needs reconnect backoff + graceful degradation when the stream drops. Pin behaviour with tests. Originally bundled under the single Phase 10 D1; surfaces here as its own deliverable.
+
+6. **Overlay rendering performance.** Profile the overlay open path + Timeline-tab per-event rendering under a ~100-event session. Any jank folds into D1c optimization work.
+
+**Why this is Phase 10b:** Performance wants a clean gate so measurements don't churn under UAT polish edits. Finishing 10b before 10c/10d means every 10c/10d change is validated against a stable perf baseline.
+
+**Release sequencing:** Branch `phase/10b-core-web-vitals`. D1a already landed on this branch.
+
+**Out of scope for 10b:**
+- Voice/copy edits (→ 10c)
+- Shop images, UX polish, error handling, mobile testing, SEO, security, load testing, anonymous_id cookie (→ 10d)
+
+---
+
+## Phase 10c, Voice & Data Honesty
+
+**Goal:** Correct two classes of drift in one sub-phase: (a) user-visible voice/copy that's drifted from `docs/voice-and-style-guide.md` into industry-generalization-as-filler, and (b) LLM-hallucinated generator output producing mis-classified BigQuery rows. Common spine: **the site has been lying; correct the record.**
+
+**Context:** UAT r1 (2026-04-23) flagged both items as substantial. The voice example — "Most consultants describe what they build" in the hero — is exactly the industry-generalization-as-filler warned against in the voice guide. The data example — campaign labels including "Cat Content" when Tuna is a chiweenie — is an LLM hallucination in the generator that has already shipped to `iampatterson_raw.events_raw`. Bundled because theme + PR shape rhyme: both are correction passes over a surface. Data scrub runs first so the voice audit reads post-scrub strings and the generator-fed surfaces show honest data while the audit is live.
+
+**Deliverables:**
+
+1. **Data generator honesty — code fix.** Audit the generator (current path under `services/data-generator/` or equivalent) for all campaign, product, and audience labels. Replace LLM-hallucinated domain-inappropriate labels ("Cat Content" and any similar non-chiweenie/non-Tuna vocabulary) with brand-accurate replacements. Pin the canonical Tuna-brand label set in an integration test so this class of drift can't silently recur.
+
+2. **Data generator honesty — BigQuery scrub.** Backfill correction: identify every `iampatterson_raw.events_raw` row carrying hallucinated labels plus every downstream Dataform staging/mart that propagated them. Pick between update-in-place with a deterministic remap vs. delete-and-regenerate the affected partition range based on row volume + the Dataform dependency graph. Document the scrub SQL + remap in `infrastructure/bigquery/backfills/10c-cat-content-scrub-<date>.md`.
+
+3. **Voice audit — flag pass.** Walk every user-visible string across `/`, `/services`, `/about`, `/contact`, `/demo/ecommerce/*`, and the overlay surfaces (Overview, Timeline, Consent) against `docs/voice-and-style-guide.md`. Flag every instance of industry-generalization-as-filler, template-consulting tone, and voice-drift. Present the flagged list to the user for review before rewriting — voice work is judgment-heavy and a dry-run is cheaper than churn.
+
+4. **Voice audit — rewrite pass.** Apply the rewrites from D3. Includes the hero "Most consultants describe what they build" family, and — per UAT r1 item 8 — the About page paragraph bridging measurement infrastructure to AI-assisted production (the "in addition to martech expertise, I specialise in…" framing or equivalent). Where existing tests pin specific strings, update the pins; otherwise the changes are text edits with `npm run build` + `npm test` as the regression gates.
+
+5. **Voice guide update.** If the audit surfaces patterns worth codifying that weren't already in `docs/voice-and-style-guide.md`, extend the guide so future authorship has the sharper reference. Closes the drift loop.
+
+**Why this is Phase 10c:** Substantial on both axes (code + live data + editorial judgment). Thematically coherent enough to warrant one sub-phase. Splitting into 10c voice + 10d data added ceremony without cohesion; bundling preserves the "correct the record" spine.
+
+**Release sequencing:** Branch `phase/10c-voice-and-data-honesty`. D1 (generator code fix) → D2 (BQ scrub) → D3 (voice flag pass, user review) → D4 (voice rewrite) → D5 (voice-guide update). Each typically its own commit; the BQ scrub warrants a dedicated commit with the scrub SQL in the message body.
+
+**Out of scope for 10c:**
+- Performance / CWV work (→ 10b)
+- UX micro-fixes and launch-prep items (→ 10d)
+- Broader data-quality pins beyond the cat-content scrub (→ Phase 11 ops / data quality if surfaced)
+
+---
+
+## Phase 10d, Launch Prep
+
+**Goal:** Close the punch list of smaller items required before the site is launch-worthy. Mixes the original Phase 10 launch-prep deliverables (mobile, error handling, site analytics, SEO, security, load, anonymous_id) with UAT r1's UX polish items that don't fit 10b or 10c.
+
+**Deliverables:**
+
+1. **Mobile testing across devices + screen sizes.** Real-device iPhone SE verification carried from Phase 9E F8 Product Minor #5 (CTAs above the fold; Safari chrome leaves ~535px usable against the ~667px math). Android small-viewport spot-check. Tablet portrait/landscape. Document in `docs/perf/mobile-matrix-<date>.md`.
+
+2. **Error handling: graceful degradation.** WebSocket drop → overlay Timeline tab shows last-known-good state, not an infinite spinner. BigQuery slow → confirmation page falls back cleanly. Pub/Sub latency spikes → event stream catches up without losing events. Pin each path with a regression test.
+
+3. **Site-self analytics remainder.** Original Phase 10 D4, minus the portion accelerated into 9E D9 (nav + Session State analytics already shipped). Remaining scope: demo interaction patterns, time-on-site / scroll-depth distribution beyond the bare milestones, funnel reach into the ecommerce demo, contact-form conversion signal, cross-event funnel reporting in Metabase or a lightweight dashboard surface.
+
+4. **SEO: meta, structured data, sitemap, content strategy.** Per-route meta tags + Open Graph + Twitter cards. JSON-LD structured data (`Organization` + `Person`; individual case study structured data where applicable). Review `sitemap.xml` for freshness. Content strategy sketch at `docs/seo/content-plan-<date>.md`.
+
+5. **Security review.** Demo interactions can't expose real data (BQ service account scope review; sGTM container permission review; confirmation-page JWT signer scope review). PII audit on the event stream — every `DataLayerEvent` field reviewed against what's actually emitted client-side. Run `npm audit` + review findings. Document at `docs/security/review-<date>.md`.
+
+6. **Load testing.** Data generator + WebSocket service under synthetic load. Pub/Sub throughput profile. Document in `docs/perf/load-test-<date>.md`.
+
+7. **Anonymous ID first-party cookie (`_iap_aid`, 365-day expiry, `SameSite=Lax`, `Secure` in production).** Original Phase 10 D9, added 2026-04-21 from UAT r2 item 15. Mint on first visit; thread the value into every data layer push as `anonymous_id` alongside the existing `session_id` (which stays session-scoped). Surface the anonymous ID in the Overview tab's portals-and-state block; wire it into the ecommerce live sidebars so the BQ readout shows the real cross-session identifier rather than an example seed. Rationale: prior CDP experience; a first-party cookie is the honest baseline — localStorage is blocked from sGTM's read path and breaks on subdomain hops.
+
+8. **UX polish bundle (UAT r1 2026-04-23).** Numbered checklist; items ship individually or in small groups, tracked via commits on the 10d branch:
+
+   a. Hero `p-meta` paragraph typography + position so font/size matches body copy; fix desktop spacing.
+
+   b. "Explore the demos" CTA → singular ("Explore the demo" or equivalent) now that only the ecommerce demo remains post-9E.
+
+   c. Pipeline section's CTA button → persimmon base colour, not only during the bleed effect.
+
+   d. Tier cards in the services teaser → deep-link to `/services#tier-02`, `/services#tier-03`, `/services#tier-04` instead of landing generically on `/services`.
+
+   e. Cut the "Evidence · What the infrastructure has done" section.
+
+   f. Shop product images: drop the 7 `.webp` files already at `docs/shop_images/` (`COVER.webp`, plus six product shots) into `public/` (path TBD based on ecommerce demo's image conventions) and wire each to the correct product in the catalogue.
+
+   g. Ecommerce demo top bar ("this is a demo · nothing ships from here") → add a "back to homepage" link.
+
+   h. Overlay Overview tab → add a directive blurb on par with the Timeline and Consent tab copy.
+
+   i. Overlay Consent tab → add directive pointing at the consent widget in the bottom-left corner for visitors who want to exercise consent withdrawal/change.
+
+   j. Overlay tabs (all) → add red/green accents for accepted/denied states plus text variety to reduce colour monotony.
+
+**Why this is Phase 10d:** Punch-list by character. Each item small-to-medium on its own; grouping them into one sub-phase keeps per-deliverable tracking without inventing sub-phase headers for every thematic cluster. "Launch Prep" frames the bundle as "last pass before we'd show this to a prospect."
+
+**Release sequencing:** Branch `phase/10d-launch-prep`. Deliverables ship in rough order; D8 sub-items can intermix with D1-D7 as the session rhythm allows. D8 sub-items may bundle 2-4 items per commit to avoid commit-per-line-edit noise.
+
+**Out of scope for 10d:**
+- Tailwind 3 → 4 (still deferred; original Phase 10a out-of-scope note)
+- Phase 11 operational readiness (monitoring, alerting, uptime, runbook, log aggregation, dependency update cadence, infra reconciler)
 
 ---
 

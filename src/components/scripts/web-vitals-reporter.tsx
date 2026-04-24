@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import { trackWebVital } from '@/lib/events/track';
 
 /**
- * Phase 10 D1 — Core Web Vitals reporter.
+ * Phase 10 D1: Core Web Vitals reporter.
  *
  * Subscribes to the `web-vitals` library's five CWV callbacks (LCP, CLS,
  * INP, FCP, TTFB) and pushes each final measurement onto the data layer
@@ -39,6 +39,17 @@ type WebVitalsModule = {
 };
 
 function reportMetric(metric: WebVitalsMetric): void {
+  // Known limitation (Pass-1 evaluator Tech Minor #5): `trackWebVital` →
+  // `baseFields()` reads `window.location.pathname` at emit time. The
+  // web-vitals library fires LCP/CLS/INP on `pagehide` /
+  // `visibilitychange`, which in Next App Router SPA navigation can
+  // fire *after* the pathname has already changed. Real-user LCP data
+  // on sessions with SPA nav will report the destination route's
+  // pathname rather than the route the metric was measured on. The
+  // web-vitals@^5 library supports soft-navigation attribution via a
+  // client-side router integration; wiring that is deferred to the
+  // carry-forward list alongside the Phase 11 D9 GTM trigger work that
+  // has to land before real-user LCP flows to BigQuery.
   trackWebVital({
     metric_name: metric.name,
     metric_value: metric.value,
@@ -51,14 +62,23 @@ function reportMetric(metric: WebVitalsMetric): void {
 export function WebVitalsReporter() {
   useEffect(() => {
     let cancelled = false;
-    import('web-vitals').then((mod: WebVitalsModule) => {
-      if (cancelled) return;
-      mod.onLCP(reportMetric);
-      mod.onCLS(reportMetric);
-      mod.onINP(reportMetric);
-      mod.onFCP(reportMetric);
-      mod.onTTFB(reportMetric);
-    });
+    // CWV is nice-to-have telemetry; a failed import (CDN hiccup,
+    // integrity mismatch, adblock interference) shouldn't surface as an
+    // unhandled promise rejection. Swallow silently , the site runs
+    // fine without the reporter, it just skips this session's web_vital
+    // events.
+    import('web-vitals')
+      .then((mod: WebVitalsModule) => {
+        if (cancelled) return;
+        mod.onLCP(reportMetric);
+        mod.onCLS(reportMetric);
+        mod.onINP(reportMetric);
+        mod.onFCP(reportMetric);
+        mod.onTTFB(reportMetric);
+      })
+      .catch(() => {
+        // silent , see comment above
+      });
     return () => {
       cancelled = true;
     };

@@ -39,6 +39,11 @@ export function useEventStream({
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [events, setEvents] = useState<PipelineEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // Incremented by the `online` event listener to force a fresh reconnect
+  // after an offline period. Included in the connect-effect's dep array
+  // so a bump triggers the effect's cleanup (closes prior EventSource,
+  // clears pending retry timer) + a fresh connect.
+  const [retryTrigger, setRetryTrigger] = useState(0);
   // Mirror `maxBufferSize` into a ref so the long-lived EventSource
   // onmessage callback reads the latest value without the outer effect
   // needing to re-register on every prop change. Ref update runs in
@@ -47,11 +52,41 @@ export function useEventStream({
   useEffect(() => {
     bufferSizeRef.current = maxBufferSize;
   }, [maxBufferSize]);
+  // Mirror `status` into a ref so the `online` listener can read it
+  // without re-registering on every status transition. Known narrow
+  // race acknowledged in Pass-1 Tech Minor #6: between a
+  // `setStatus('disconnected')` inside onerror and this effect flushing
+  // the ref, an `online` event could read the stale ref. In practice
+  // `online` events are browser-triggered and the race window is
+  // microseconds, so collisions are theoretical. A stricter pattern
+  // (inline-setState-and-ref via a wrapper) is a carry-forward if
+  // field data shows the race materializing.
+  const statusRef = useRef<ConnectionStatus>(status);
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
 
   const clearEvents = useCallback(() => setEvents([]), []);
 
+  // D5: Online-event recovery. When the browser transitions offline
+  // → online, if we're currently not-connected, bump the retry trigger
+  // to force a fresh connect. Guarded by status so a healthy connection
+  // doesn't churn on every `online` event (some browsers fire `online`
+  // spuriously on network hand-offs).
+  useEffect(() => {
+    function handleOnline(): void {
+      if (statusRef.current === 'disconnected' || statusRef.current === 'reconnecting') {
+        setRetryTrigger((n) => n + 1);
+      }
+    }
+    window.addEventListener('online', handleOnline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+    };
+  }, []);
+
   // Why the disable: setStatus('disconnected') is an external-signal
-  // sync — reflecting `enabled=false` or missing-session-cookie into
+  // sync , reflecting `enabled=false` or missing-session-cookie into
   // the connection-status state. Both branches are legitimate
   // terminal paths where the effect short-circuits without opening
   // an EventSource; lifting to a derived computation would require
@@ -131,7 +166,16 @@ export function useEventStream({
 
         setStatus('reconnecting');
         setError('Connection lost, retrying...');
-        const delay = Math.min(1000 * Math.pow(2, retryCount - 1), 30000);
+        // D5: ±20% jitter on the exponential backoff. Without jitter a
+        // wave of clients that drop simultaneously (e.g. backend rolling
+        // restart or a shared network blip) would all reconnect at the
+        // same delays and thundering-herd the server on recovery. The
+        // factor range 0.8-1.2 is the standard AWS/Google SRE jitter
+        // band , small enough not to noticeably delay individual
+        // clients, wide enough to spread the reconnect distribution.
+        const baseDelay = Math.min(1000 * Math.pow(2, retryCount - 1), 30000);
+        const jitterFactor = 0.8 + Math.random() * 0.4;
+        const delay = baseDelay * jitterFactor;
         retryTimer = setTimeout(connect, delay);
       };
     }
@@ -143,7 +187,7 @@ export function useEventStream({
       if (retryTimer) clearTimeout(retryTimer);
       es?.close();
     };
-  }, [url, enabled, maxRetries]);
+  }, [url, enabled, maxRetries, retryTrigger]);
 
   return { status, events, error, clearEvents };
 }

@@ -93,6 +93,10 @@ venv/
 docs/tag_assistant_*.json
 docs/input_artifacts/
 
+# Lighthouse HTML reports — the JSON is the machine-diffable artifact we
+# commit; HTML is the human view and adds ~800KB per route per run.
+docs/perf/lighthouse-*.report.html
+
 # Claude subagent memory — per-machine, not project artifact
 .claude/agent-memory/
 .claude/settings.local.json
