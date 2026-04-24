@@ -389,7 +389,9 @@ describe('useEventStream session scoping', () => {
 });
 
 // ---------------------------------------------------------------------------
-// D5 — Reliability polish: backoff jitter, online-event recovery, manual retry
+// D5 reliability polish: backoff jitter + online-event recovery
+// (manual retry() was dropped in the Pass-1 fix-pack — see the comment
+// block below where the retry test used to live).
 // ---------------------------------------------------------------------------
 
 describe('useEventStream reconnect backoff — jitter (D5)', () => {

@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import { trackWebVital } from '@/lib/events/track';
 
 /**
- * Phase 10 D1 — Core Web Vitals reporter.
+ * Phase 10 D1: Core Web Vitals reporter.
  *
  * Subscribes to the `web-vitals` library's five CWV callbacks (LCP, CLS,
  * INP, FCP, TTFB) and pushes each final measurement onto the data layer
@@ -64,7 +64,7 @@ export function WebVitalsReporter() {
     let cancelled = false;
     // CWV is nice-to-have telemetry; a failed import (CDN hiccup,
     // integrity mismatch, adblock interference) shouldn't surface as an
-    // unhandled promise rejection. Swallow silently — the site runs
+    // unhandled promise rejection. Swallow silently , the site runs
     // fine without the reporter, it just skips this session's web_vital
     // events.
     import('web-vitals')
@@ -77,7 +77,7 @@ export function WebVitalsReporter() {
         mod.onTTFB(reportMetric);
       })
       .catch(() => {
-        // silent — see comment above
+        // silent , see comment above
       });
     return () => {
       cancelled = true;

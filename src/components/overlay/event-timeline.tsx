@@ -33,7 +33,7 @@ function RoutingBadge({ route }: { route: RoutingResult }) {
 }
 
 /**
- * Phase 10b D6 — memoized row. Extracted so the 100-row buffer doesn't
+ * Phase 10b D6: memoized row. Extracted so the 100-row buffer doesn't
  * re-execute every row's render function when a single new event is
  * prepended. React.memo's shallow-compare short-circuits when
  * `event` (ref), `isSelected`, and `onSelect` all match; `onSelect` is
@@ -67,10 +67,17 @@ const EventTimelineRow = memo(function EventTimelineRow({
   // React.memo's short-circuit still prevents this effect from firing on
   // prop-unchanged renders (because memo prevents the component function
   // from running at all, so useEffect also doesn't schedule). Empty
-  // dep intentionally omitted — we want the effect to fire on every
-  // committed render of this component, not just on mount.
+  // deps omitted, we want the effect to fire on every committed render,
+  // not just on mount. In production the `process.env.NODE_ENV` check
+  // constant-folds to `false` at build time (Next.js inlines it) so the
+  // effect body is dead code. The useEffect itself still registers in
+  // production, but an empty-body effect is a microsecond-scale overhead
+  // that's acceptable for the D6 memo pin's value.
   useEffect(() => {
-    if (typeof globalThis.__eventTimelineRowRenderCount__ === 'number') {
+    if (
+      process.env.NODE_ENV !== 'production' &&
+      typeof globalThis.__eventTimelineRowRenderCount__ === 'number'
+    ) {
       globalThis.__eventTimelineRowRenderCount__++;
     }
   });
@@ -125,7 +132,7 @@ export function EventTimeline({ events, onSelectEvent, selectedEventId }: EventT
   // Stable handler for the memoized row. Without this, a fresh closure
   // per render would break React.memo's shallow prop-compare on
   // `onSelect`, defeating the D6 optimization. `onSelectEvent` comes
-  // from the parent via props — we normalize it into a defined callable
+  // from the parent via props , we normalize it into a defined callable
   // and memoize against its reference.
   const handleSelect = useCallback(
     (event: PipelineEvent) => {

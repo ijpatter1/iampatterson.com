@@ -32,6 +32,15 @@ function makeEvent(overrides: Partial<PipelineEvent> = {}): PipelineEvent {
   });
 }
 
+// Guard the global-state counter so no test leaks it into another.
+// Pass-2 evaluator Tech Minor #6 flagged this as benign-but-fragile;
+// the explicit reset before + delete after makes the invariant
+// test-ordering-independent.
+afterEach(() => {
+  delete (globalThis as { __eventTimelineRowRenderCount__?: number })
+    .__eventTimelineRowRenderCount__;
+});
+
 describe('EventTimeline', () => {
   it('renders an empty state when no events', () => {
     render(<EventTimeline events={[]} />);
