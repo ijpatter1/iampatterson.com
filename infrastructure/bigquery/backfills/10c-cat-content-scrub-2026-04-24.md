@@ -158,11 +158,26 @@ This is the deterministic remap. Generator code, scrub SQL, and any future rollb
 | `Google Search - Cat Subscription Box` | `Google Search - Dog Subscription Box` |
 | `g_srch_cat_sub_box` | `g_srch_dog_sub_box` |
 
-## Pass-1 supplement — `events_raw.company_name` (deferred apply)
+## Pass-1 + Pass-2 supplement — `events_raw.company_name` (55/56 applied; 1-row residual)
 
 Pass-1 evaluator surfaced that the brand-vocabulary pin in `profiles.test.ts` only walked `profiles.ts` and silently exempted `engines/leadgen.ts:COMPANY_NAMES`. Three off-brand company names ('Feline First', 'Catitude Brands', 'Purrfect Partners') had already shipped to `events_raw` via `form_complete.company_name`. The code fix (commit `94ef994`) replaces them with 'Hound House' / 'Pawsitive Brands' / 'Pawfect Partners' and exports COMPANY_NAMES so the pin walks it. Step 4 of the SQL companion handles the historical row scrub (form-urlencoded form, 56 rows total).
 
-**Apply attempted 2026-04-24 ~14:25 UTC + ~14:42 UTC: rejected by BQ streaming buffer.** The legacy company_name rows are sGTM-streamed (real visitor + recent backfill traffic) and live in BQ's streaming buffer for ~30-90 min before becoming DML-eligible. Re-apply Step 4 standalone after the buffer flushes:
+**Apply progression:**
+
+- **Pass-1, ~14:25 UTC + ~14:42 UTC:** rejected by BQ streaming buffer — every row in the matched set was within the 30-90 min flush window because real-visitor traffic + recent backfill kept the buffer warm.
+- **Pass-2, ~15:00 UTC, time-filtered first run (`received_timestamp < NOW - INTERVAL 2 HOUR`):** **25 rows scrubbed.** Rows older than 2 hours had flushed; rows newer were still in buffer.
+- **Pass-2, immediately after, second run (`received_timestamp < NOW - INTERVAL 1 HOUR`):** **30 more rows scrubbed.** Buffer for the 1-2 hour band had moved on.
+- **Pass-2 residual: 1 row** within the recent 1-hour window. Will flush organically; no further action required unless the residual persists past ~16:30 UTC.
+
+**Empirical state post-Pass-2 (verified 2026-04-24 ~15:05 UTC):**
+
+| Surface | Cat-named rows |
+|---|---:|
+| `iampatterson_raw.ad_platform_raw` (full sweep) | 0 |
+| `iampatterson_raw.events_raw.company_name` | 1 |
+| `iampatterson_marts.mart_lead_funnel.company_name` | 1 (post Dataform refresh `1777042918-610b9b2c`) |
+
+**If the 1-row residual persists past ~16:30 UTC, retry standalone:**
 
 ```bash
 bq --project_id=iampatterson query --use_legacy_sql=false \
@@ -176,7 +191,7 @@ bq --project_id=iampatterson query --use_legacy_sql=false \
    WHERE company_name IN ("Feline+First", "Catitude+Brands", "Purrfect+Partners")'
 ```
 
-Then trigger a Dataform workflow run so `mart_lead_funnel` recomputes. Until then, that mart still surfaces 56 rows with legacy cat company names.
+Then trigger a Dataform workflow run so `mart_lead_funnel` recomputes the last row.
 
 ## Out of scope
 
