@@ -653,7 +653,7 @@ Originally a single-block 9-deliverable phase. Restructured 2026-04-23 after UAT
 
 **Deliverables:**
 
-1. **Data generator honesty — code fix.** Audit the generator (current path under `services/data-generator/` or equivalent) for all campaign, product, and audience labels. Replace LLM-hallucinated domain-inappropriate labels ("Cat Content" and any similar non-chiweenie/non-Tuna vocabulary) with brand-accurate replacements. Pin the canonical Tuna-brand label set in an integration test so this class of drift can't silently recur.
+1. **Data generator honesty — code fix.** Audit the generator at `infrastructure/cloud-run/data-generator/src/profiles.ts` for all campaign, product, and audience labels. Replace LLM-hallucinated domain-inappropriate labels ("Cat Content" and any similar non-chiweenie/non-Tuna vocabulary) with brand-accurate replacements. Pin the canonical Tuna-brand label set in an integration test so this class of drift can't silently recur.
 
 2. **Data generator honesty — BigQuery scrub.** Backfill correction: identify every `iampatterson_raw.events_raw` row carrying hallucinated labels plus every downstream Dataform staging/mart that propagated them. Pick between update-in-place with a deterministic remap vs. delete-and-regenerate the affected partition range based on row volume + the Dataform dependency graph. Document the scrub SQL + remap in `infrastructure/bigquery/backfills/10c-cat-content-scrub-<date>.md`.
 

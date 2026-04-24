@@ -335,7 +335,7 @@
 
 *Goal: Correct user-visible voice drift + LLM-hallucinated generator data in one sub-phase. The site has been lying on both axes; correct the record.*
 
-- ⬜ D1 Data generator honesty — code fix. Audit `services/data-generator/` for LLM-hallucinated labels ("Cat Content" and kin; Tuna is a chiweenie, not a cat). Replace with canonical Tuna-brand label set; pin the set via integration test so drift can't silently recur.
+- ⬜ D1 Data generator honesty — code fix. Audit `infrastructure/cloud-run/data-generator/src/profiles.ts` for LLM-hallucinated labels ("Cat Content" and kin; Tuna is a chiweenie, not a cat). Replace with canonical Tuna-brand label set; pin the set via integration test so drift can't silently recur.
 - ⬜ D2 Data generator honesty — BigQuery scrub. Backfill `iampatterson_raw.events_raw` + Dataform staging/marts affected by the hallucinated labels. Scrub SQL + remap documented at `infrastructure/bigquery/backfills/10c-cat-content-scrub-<date>.md`.
 - ⬜ D3 Voice audit — flag pass. Walk every user-visible string on `/`, `/services`, `/about`, `/contact`, `/demo/ecommerce/*`, overlay (Overview, Timeline, Consent) against `docs/voice-and-style-guide.md`. Present flagged list to user before rewriting.
 - ⬜ D4 Voice audit — rewrite pass. Apply approved rewrites. Absorbs UAT r1 item 8 (About-page AI/martech bridging paragraph).
