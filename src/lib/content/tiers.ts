@@ -43,12 +43,12 @@ export const TIERS: Tier[] = [
       {
         title: 'Consent Management Implementation',
         description:
-          'CMP deployment integrated with GTM consent mode, enforced server-side. Cookiebot by default; OneTrust or Didomi for enterprise.',
+          'CMP deployment integrated with GTM consent mode, enforced server-side. Cookiebot by default, or bring your own.',
       },
       {
         title: 'Event Delivery Configuration',
         description:
-          'GA4, Meta CAPI, Google Ads EC standard. TikTok, LinkedIn, Pinterest, Snap scoped to your channel mix.',
+          'GA4, Meta CAPI, Google Ads EC standard. Additional platforms like TikTok, LinkedIn, Pinterest, or Snap, scoped to your channel mix.',
       },
       {
         title: 'Real-Time Event Architecture',
@@ -111,7 +111,7 @@ export const TIERS: Tier[] = [
     num: '03',
     title: 'Business Intelligence',
     subtitle: 'Answers, not dashboards.',
-    lede: 'Dashboards are a means to an end. The end is your team being able to answer questions about performance without filing a ticket, without waiting three days, and without second-guessing the numbers.',
+    lede: 'Dashboards are a means to an end. The end is your team answering their own questions, in their tools, on their timeline.',
     core: [],
     optional: [
       {
@@ -138,7 +138,7 @@ export const TIERS: Tier[] = [
     num: '04',
     title: 'Attribution & Advanced',
     subtitle: 'Finally answering "what\u2019s actually working."',
-    lede: 'Only available to clients who have completed Tiers 1 and 2 with me. Not because of a commercial requirement, because the models are only as good as the data feeding them, and I need to know the data is right.',
+    lede: 'Only available to clients who have completed Tiers 1 and 2 with me. Attribution models inherit the assumptions of the pipeline feeding them, and I need to understand those assumptions deeply to stand behind the model.',
     core: [],
     optional: [
       {

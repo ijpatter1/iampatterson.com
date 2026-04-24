@@ -1,6 +1,8 @@
 'use client';
 
+import { EditorialLink } from '@/components/chrome/editorial-button';
 import { ScrollReveal } from '@/components/scroll-reveal';
+import { trackClickCta } from '@/lib/events/track';
 
 const beliefs = [
   {
@@ -70,7 +72,7 @@ export default function AboutPage() {
       </section>
 
       {/* What I believe */}
-      <section className="bg-white px-6 py-section">
+      <section className="bg-white px-6 pb-section">
         <div className="section-container">
           <ScrollReveal>
             <h2 className="font-display text-display-sm font-bold tracking-tight text-black">
@@ -87,6 +89,30 @@ export default function AboutPage() {
               </ScrollReveal>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Closer, link to /contact */}
+      <section className="border-t border-rule-soft px-6 py-section-sm">
+        <div className="section-container">
+          <ScrollReveal>
+            <h2 className="font-display text-display-sm font-bold tracking-tight text-content sm:text-display-md">
+              Let&apos;s talk.
+            </h2>
+            <p className="mt-5 max-w-[52ch] text-lg leading-relaxed text-content-secondary">
+              Tell me what you&apos;re measuring, what&apos;s breaking, and what you&apos;re trying
+              to answer.
+            </p>
+            <div className="mt-8">
+              <EditorialLink
+                href="/contact"
+                variant="accent"
+                onClick={() => trackClickCta('Start a conversation', 'about_closer')}
+              >
+                Start a conversation →
+              </EditorialLink>
+            </div>
+          </ScrollReveal>
         </div>
       </section>
     </main>

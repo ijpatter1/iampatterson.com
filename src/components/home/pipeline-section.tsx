@@ -236,31 +236,20 @@ export function PipelineSection() {
       <div data-bleed-layer="rgb" className="bleed-rgb" aria-hidden="true" />
 
       <div className="pipeline-shell relative z-[2] mx-auto max-w-content px-5 md:px-10">
-        <div className="grid gap-5 md:grid-cols-[2fr_1fr] md:items-end md:gap-[60px]">
-          <h2
-            className="font-display font-normal text-ink"
-            style={{
-              // F6 follow-up, mobile floor 36px → 28px so the 3-line
-              // display reflows at ~84px on 360px (was ~108px).
-              fontSize: 'clamp(28px, 5.5vw, 72px)',
-              lineHeight: 1,
-              letterSpacing: '-0.02em',
-            }}
-          >
-            Your session is
-            <br />
-            being <em className="text-accent-current italic">measured</em>
-            <br />
-            right now.
-          </h2>
-          <p className="p-meta max-w-[42ch] font-mono text-[12px] leading-[1.5] text-ink-2 md:pb-3 md:leading-[1.6]">
-            Every scroll, click, and page view on this site flows through the same measurement
-            pipeline I deploy for clients.
-            <br />
-            <br />
-            The events aren&apos;t simulated. The warehouse is real. The dashboards are running.
-          </p>
-        </div>
+        <h2
+          className="font-display font-normal text-ink"
+          style={{
+            // F6 follow-up, mobile floor 36px → 28px so the 3-line
+            // display reflows at ~84px on 360px (was ~108px).
+            fontSize: 'clamp(28px, 5.5vw, 72px)',
+            lineHeight: 1,
+            letterSpacing: '-0.02em',
+          }}
+        >
+          The pipeline,
+          <br />
+          <em className="text-accent-current italic">running</em>.
+        </h2>
 
         <div className="pv-host relative z-[1] mb-6 mt-8 md:mb-10 md:mt-12">
           <PipelineEditorial />

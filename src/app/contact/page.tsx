@@ -40,9 +40,8 @@ export default function ContactPage() {
             <ScrollReveal delay={0.1}>
               <div className="mt-8 space-y-5 text-lg leading-relaxed text-content-secondary">
                 <p>
-                  I work with e-commerce brands, SaaS companies, marketing agencies, and mobile app
-                  companies that know their measurement infrastructure needs work but don&apos;t
-                  have the in-house expertise to fix it.
+                  I work with marketing teams that know their measurement infrastructure needs work
+                  but don&apos;t have the in-house expertise to fix it.
                 </p>
                 <p>
                   If you&apos;re not sure where to start, that&apos;s fine. Most engagements begin

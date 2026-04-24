@@ -59,7 +59,9 @@ describe('ContactPage', () => {
 
   it('renders the introductory copy', () => {
     render(<ContactPage />);
-    expect(screen.getByText(/e-commerce brands, saas companies/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/marketing teams that know their measurement infrastructure needs work/i),
+    ).toBeInTheDocument();
   });
 
   it('renders the email address', () => {

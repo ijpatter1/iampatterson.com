@@ -77,6 +77,7 @@ export type CtaLocation =
   | 'services_closer'
   | `services_tier_${'01' | '02' | '03' | '04'}`
   | 'final_cta'
+  | 'about_closer'
   // Homepage Demos section, single ecommerce entry after D6's rebuild. Name
   // retained across the card→section refactor so the analytics time series
   // stays continuous (no split series from a rename).

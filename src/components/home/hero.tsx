@@ -43,13 +43,14 @@ export function HeroEditorial() {
               lineHeight: '1.25',
             }}
           >
-            This site runs on the same stack I sell, consent, sGTM, BigQuery, Dataform, live
-            dashboards. Instead of describing it, I built on it.
+            This site runs on the same stack I sell: consent, sGTM, BigQuery, Dataform, live
+            dashboards.
           </p>
           <div>
             <p className="max-w-[52ch] text-[15px] leading-[1.65] text-ink-2 md:text-base md:leading-[1.7]">
-              Every scroll, every click on this page is flowing through it right now. The
-              instrumentation is the portfolio.
+              Instead of describing it, I built on it. Every scroll, every click of your session is
+              flowing through it right now. Measurement is usually invisible; here, you can watch it
+              live. Your session is the portfolio.
             </p>
             <div className="mt-5 flex flex-wrap gap-3 md:mt-7">
               <EditorialButton variant="accent" onClick={handleOpen}>

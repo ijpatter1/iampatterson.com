@@ -54,9 +54,12 @@ describe('HeroEditorial', () => {
   it('renders the long-form deck body', () => {
     renderHero();
     expect(
-      screen.getByText(/Every scroll, every click on this page is flowing through it right now/i),
+      screen.getByText(
+        /Every scroll, every click of your session is flowing through it right now/i,
+      ),
     ).toBeInTheDocument();
-    expect(screen.getByText(/instrumentation is the portfolio/i)).toBeInTheDocument();
+    expect(screen.getByText(/Measurement is usually invisible/i)).toBeInTheDocument();
+    expect(screen.getByText(/Your session is the portfolio/i)).toBeInTheDocument();
   });
 
   it('primary CTA opens the overlay and fires click_cta', async () => {
