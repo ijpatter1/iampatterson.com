@@ -50,11 +50,11 @@ describe('CtaLink', () => {
     const user = userEvent.setup();
     render(
       <CtaLink href="/services" ctaLocation="hero">
-        <span>Explore</span> the demos
+        <span>Explore</span> the demo
       </CtaLink>,
     );
     await user.click(screen.getByRole('link'));
-    expect(mockTrackClickCta).toHaveBeenCalledWith('Explore the demos', 'hero');
+    expect(mockTrackClickCta).toHaveBeenCalledWith('Explore the demo', 'hero');
   });
 
   it('renders disabled state as span with aria-disabled', () => {
