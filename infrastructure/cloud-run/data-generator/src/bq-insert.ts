@@ -91,6 +91,10 @@ export async function insertAdPlatformRecords(
 }
 
 function buildMergeQuery(target: string): string {
+  // INSERT ROW (the implicit-columns shorthand) doesn't work when the
+  // MERGE source is UNNEST(struct array) — BQ sees the source as one
+  // STRUCT-typed column rather than 10 flat columns. Spell out the
+  // INSERT (cols) VALUES (S.col, ...) explicitly instead.
   return `
     MERGE ${target} T
     USING UNNEST(@records) S
@@ -105,6 +109,14 @@ function buildMergeQuery(target: string): string {
       spend = S.spend,
       cpc = S.cpc,
       ctr = S.ctr
-    WHEN NOT MATCHED THEN INSERT ROW
+    WHEN NOT MATCHED THEN INSERT (
+      date, platform, business_model,
+      campaign_name, campaign_name_raw,
+      impressions, clicks, spend, cpc, ctr
+    ) VALUES (
+      S.date, S.platform, S.business_model,
+      S.campaign_name, S.campaign_name_raw,
+      S.impressions, S.clicks, S.spend, S.cpc, S.ctr
+    )
   `;
 }
