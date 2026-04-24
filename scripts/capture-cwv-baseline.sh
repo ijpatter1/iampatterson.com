@@ -58,38 +58,52 @@ fi
 run_lighthouse() {
   local route_url="$1"
   local route_label="$2"
-  local out_base="${OUT_DIR}/lighthouse-${DATE}-${route_label}"
-  echo "== Lighthouse: ${route_label} (${route_url}) =="
+  local preset="$3"            # 'mobile' or 'desktop'
+  local out_base="${OUT_DIR}/lighthouse-${DATE}-${preset}-${route_label}"
+  echo "== Lighthouse (${preset}): ${route_label} (${route_url}) =="
+  # Lighthouse default preset is mobile (360×640, Slow 4G, 4x CPU throttle).
+  # Pass --preset=desktop explicitly for the desktop run (1350×940, no
+  # throttling). Keeping both preserves the real-user distribution — most
+  # visitors arrive on mobile, but the desktop number is the portfolio
+  # number prospects will see.
   # trace_engine errors surface on stderr; non-fatal — JSON/HTML outputs still
   # land. Don't fail the whole script on a single route's trace_engine issue.
-  npx lighthouse "${route_url}" \
+  local preset_flag=""
+  if [ "${preset}" = "desktop" ]; then preset_flag="--preset=desktop"; fi
+  npx lighthouse "${route_url}" ${preset_flag} \
     --output=json --output=html \
     --output-path="${out_base}" \
     --only-categories=performance,accessibility,best-practices,seo \
     --chrome-flags="--headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage" \
-    --quiet || echo "(route ${route_label} had a non-fatal issue — check ${out_base}.report.json)"
+    --quiet || echo "(route ${route_label} [${preset}] had a non-fatal issue — check ${out_base}.report.json)"
 }
 
-run_lighthouse "${BASE_URL}/" home
-run_lighthouse "${BASE_URL}/demo/ecommerce" ecommerce
-run_lighthouse "${BASE_URL}/demo/ecommerce/confirmation?order_id=BASELINE-10b&total=44.98&items=2" confirmation
+for preset in mobile desktop; do
+  run_lighthouse "${BASE_URL}/" home "${preset}"
+  run_lighthouse "${BASE_URL}/demo/ecommerce" ecommerce "${preset}"
+  run_lighthouse "${BASE_URL}/demo/ecommerce/confirmation?order_id=BASELINE-10b&total=44.98&items=2" confirmation "${preset}"
+done
 
 echo "== Summary =="
 node --input-type=module -e "
 import fs from 'node:fs';
-const routes = [['home','home'],['ecommerce','ecommerce'],['confirmation','confirmation']];
-const audits = ['largest-contentful-paint','cumulative-layout-shift','total-blocking-time','first-contentful-paint','speed-index','interactive','server-response-time'];
-for (const [label, slug] of routes) {
-  const f = \`${OUT_DIR}/lighthouse-${DATE}-\${slug}.report.json\`;
-  if (!fs.existsSync(f)) { console.log(\`\n## \${label}: no report\`); continue; }
-  const r = JSON.parse(fs.readFileSync(f, 'utf8'));
-  const c = r.categories;
-  console.log(\`\n## \${label}\`);
-  console.log('perf', Math.round((c.performance?.score ?? 0)*100), '| a11y', Math.round((c.accessibility?.score ?? 0)*100), '| bp', Math.round((c['best-practices']?.score ?? 0)*100), '| seo', Math.round((c.seo?.score ?? 0)*100));
-  for (const k of audits) {
-    const a = r.audits[k];
-    if (!a) continue;
-    console.log(' ', k + ':', a.displayValue ?? a.numericValue);
+const presets = ['mobile','desktop'];
+const routes = ['home','ecommerce','confirmation'];
+const audits = ['largest-contentful-paint','cumulative-layout-shift','total-blocking-time','first-contentful-paint','speed-index','interactive'];
+for (const p of presets) {
+  console.log(\`\n=== \${p.toUpperCase()} preset ===\`);
+  for (const r of routes) {
+    const f = \`${OUT_DIR}/lighthouse-${DATE}-\${p}-\${r}.report.json\`;
+    if (!fs.existsSync(f)) { console.log(\`## \${r}: no report\`); continue; }
+    const rep = JSON.parse(fs.readFileSync(f, 'utf8'));
+    const c = rep.categories;
+    console.log(\`## \${r}\`);
+    console.log('  perf', Math.round((c.performance?.score ?? 0)*100), '| a11y', Math.round((c.accessibility?.score ?? 0)*100), '| bp', Math.round((c['best-practices']?.score ?? 0)*100), '| seo', Math.round((c.seo?.score ?? 0)*100));
+    for (const k of audits) {
+      const a = rep.audits[k];
+      if (!a) continue;
+      console.log('   ', k + ':', a.displayValue ?? a.numericValue);
+    }
   }
 }
 "
