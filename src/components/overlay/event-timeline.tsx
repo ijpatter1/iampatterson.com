@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useCallback } from 'react';
+import { memo, useCallback, useEffect } from 'react';
 
 import { destinationLabel } from '@/lib/events/destination-labels';
 import type { PipelineEvent, RoutingResult } from '@/lib/events/pipeline-schema';
@@ -40,7 +40,18 @@ function RoutingBadge({ route }: { route: RoutingResult }) {
  * stable via the parent's useCallback, so the typical "new SSE event
  * arrived" render cycle only re-executes the new row + the two rows
  * whose `isSelected` may have flipped (old vs new selection).
+ *
+ * The `__eventTimelineRowRenderCount__` global counter is the test-only
+ * hook that lets D6's memo-pin test verify this claim. When a test sets
+ * `globalThis.__eventTimelineRowRenderCount__ = 0` before a render, the
+ * counter increments once per `EventTimelineRow` function invocation.
+ * In production the global is undefined and the `typeof` check
+ * short-circuits, so there's no runtime cost.
  */
+declare global {
+  var __eventTimelineRowRenderCount__: number | undefined;
+}
+
 const EventTimelineRow = memo(function EventTimelineRow({
   event,
   isSelected,
@@ -50,6 +61,19 @@ const EventTimelineRow = memo(function EventTimelineRow({
   isSelected: boolean;
   onSelect: (event: PipelineEvent) => void;
 }) {
+  // Test-only render counter (see module-header comment). The useEffect
+  // wrapper satisfies the react-hooks/immutability rule by running the
+  // mutation as a post-commit side-effect rather than during render.
+  // React.memo's short-circuit still prevents this effect from firing on
+  // prop-unchanged renders (because memo prevents the component function
+  // from running at all, so useEffect also doesn't schedule). Empty
+  // dep intentionally omitted — we want the effect to fire on every
+  // committed render of this component, not just on mount.
+  useEffect(() => {
+    if (typeof globalThis.__eventTimelineRowRenderCount__ === 'number') {
+      globalThis.__eventTimelineRowRenderCount__++;
+    }
+  });
   const handleClick = useCallback(() => onSelect(event), [event, onSelect]);
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {

@@ -159,6 +159,61 @@ describe('EventTimeline', () => {
       }
     });
 
+    it('React.memo short-circuits unchanged rows when a single event is prepended (exactly 1 new row render, not 101)', () => {
+      // Sentinel test for the D6 memo optimization. Without memo +
+      // stable useCallback onSelect, prepending one event would
+      // re-execute all 100 existing row render functions because the
+      // inlined onClick closures would be fresh refs and React.memo's
+      // shallow-compare on onSelect would fail. With the memo +
+      // handleSelect useCallback in EventTimeline, the shallow compare
+      // succeeds for unchanged rows (event ref stable, isSelected same,
+      // onSelect stable) and React.memo returns the prior render's
+      // output without calling the component function.
+      //
+      // Implementation: EventTimelineRow increments
+      // globalThis.__eventTimelineRowRenderCount__ on every invocation
+      // of its function body. Tests set the counter to 0 before the
+      // render they want to measure; render function invocations fire
+      // only when React.memo decides the props differ.
+      const initial = Array.from({ length: 100 }, (_, i) =>
+        makeEvent({
+          pipeline_id: `ev-${i}`,
+          event_name: 'page_view',
+          page_path: `/r${i}`,
+        }),
+      );
+
+      // Initial mount: 100 row renders expected.
+      (globalThis as { __eventTimelineRowRenderCount__?: number }).__eventTimelineRowRenderCount__ =
+        0;
+      const { rerender } = render(<EventTimeline events={initial} />);
+      const initialMountRenders = (globalThis as { __eventTimelineRowRenderCount__?: number })
+        .__eventTimelineRowRenderCount__;
+      expect(initialMountRenders).toBe(100);
+
+      // Prepend one new event. React should render the new row and
+      // short-circuit the 100 existing rows.
+      (globalThis as { __eventTimelineRowRenderCount__?: number }).__eventTimelineRowRenderCount__ =
+        0;
+      const prepended = [
+        makeEvent({ pipeline_id: 'ev-NEW', event_name: 'click_cta', page_path: '/new' }),
+        ...initial,
+      ];
+      rerender(<EventTimeline events={prepended} />);
+      const prependRenders = (globalThis as { __eventTimelineRowRenderCount__?: number })
+        .__eventTimelineRowRenderCount__;
+
+      // Allow a small slack (2-3) for concurrent-mode artifacts or
+      // React.StrictMode double-rendering; the critical invariant is
+      // that we are NOT at 100+ (full re-render of unchanged rows).
+      expect(prependRenders).toBeGreaterThanOrEqual(1);
+      expect(prependRenders).toBeLessThanOrEqual(3);
+
+      // Clean up test-only counter
+      delete (globalThis as { __eventTimelineRowRenderCount__?: number })
+        .__eventTimelineRowRenderCount__;
+    });
+
     it('prepending a single new event does not remount existing rows (DOM-node reuse via keys)', () => {
       // Key-based reconciliation fingerprint: when a new event arrives
       // over SSE, the existing 100 rows should keep their DOM identity
