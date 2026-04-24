@@ -4,6 +4,7 @@ import {
   createSubscriptionConfig,
   createLeadgenConfig,
 } from './profiles';
+import { COMPANY_NAMES } from './engines/leadgen';
 import type { EcommerceProfile, SubscriptionProfile, LeadGenProfile } from './types';
 
 describe('profiles', () => {
@@ -214,5 +215,19 @@ describe('profiles', () => {
         expect(offenders).toEqual([]);
       },
     );
+
+    // Phase 10c Pass-1 fix: extend the pin to walk COMPANY_NAMES in
+    // engines/leadgen.ts. Previously this pin only walked profiles.ts
+    // and silently exempted the leadgen B2B-partner-company list, where
+    // the same LLM hallucination class shipped 'Feline First',
+    // 'Catitude Brands', and 'Purrfect Partners' to events_raw via the
+    // form_complete.company_name field.
+    it('engines/leadgen.ts COMPANY_NAMES has no cat/feline vocabulary', () => {
+      const offenders = COMPANY_NAMES.filter((name) => {
+        const lower = name.toLowerCase();
+        return FORBIDDEN.some((token) => lower.includes(token));
+      });
+      expect(offenders).toEqual([]);
+    });
   });
 });

@@ -103,3 +103,27 @@ WHERE campaign_name_raw IN (
     'Google Search - Cat Subscription Box',
     'g_srch_cat_sub_box'
   );
+
+-- ============================================================================
+-- Step 4 (Pass-1 evaluator supplement) — events_raw.company_name
+-- ============================================================================
+-- Tech-evaluator Important #3: brand-vocabulary pin missed COMPANY_NAMES in
+-- engines/leadgen.ts. Three off-brand names ('Feline First',
+-- 'Catitude Brands', 'Purrfect Partners') had already shipped to events_raw
+-- via form_complete events. Code fix in same Pass-1 batch swaps them for
+-- 'Hound House' / 'Pawsitive Brands' / 'Pawfect Partners' and exports
+-- COMPANY_NAMES so the pin walks it.
+--
+-- Form-urlencoded (sGTM forwards /g/collect params without decoding; spaces → '+').
+UPDATE `iampatterson.iampatterson_raw.events_raw`
+SET company_name = CASE company_name
+    WHEN 'Feline+First'      THEN 'Hound+House'
+    WHEN 'Catitude+Brands'   THEN 'Pawsitive+Brands'
+    WHEN 'Purrfect+Partners' THEN 'Pawfect+Partners'
+    ELSE company_name
+  END
+WHERE company_name IN (
+    'Feline+First',
+    'Catitude+Brands',
+    'Purrfect+Partners'
+  );

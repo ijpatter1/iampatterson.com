@@ -18,24 +18,26 @@ import type { SessionContext } from '../session';
 import { createBaseEvent } from '../session';
 import { SeededRandom } from '../random';
 
-const COMPANY_NAMES = [
+// Exported so the brand-vocabulary regression pin in profiles.test.ts
+// can walk it alongside the campaign + product label sets.
+export const COMPANY_NAMES = [
   'Acme Pet Co',
   'Pawsome Brands',
   'FurEver Friends',
   'Whisker Works',
   'PetVenture Inc',
   'Animal House Media',
-  'Purrfect Partners',
+  'Pawfect Partners',
   'Wild Side Co',
   'Tail Waggers Ltd',
   'Happy Paws Studio',
   'Critter Creative',
   'BarkBox Media',
-  'Feline First',
+  'Hound House',
   'Pet Planet Group',
   'Zoologic Digital',
   'Woof & Co',
-  'Catitude Brands',
+  'Pawsitive Brands',
   'PetPro Marketing',
   'Fur & Feather Co',
   'PawPrint Media',
