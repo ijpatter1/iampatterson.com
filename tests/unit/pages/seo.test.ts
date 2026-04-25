@@ -92,16 +92,24 @@ describe('Phase 10d D4 — SEO', () => {
       const entries = (sitemap as () => MetadataRoute.Sitemap)();
       const urls = entries.map((e) => e.url);
 
-      // Canonical inclusions
-      expect(urls).toEqual(
-        expect.arrayContaining([
-          'https://iampatterson.com',
-          'https://iampatterson.com/services',
-          'https://iampatterson.com/about',
-          'https://iampatterson.com/contact',
-          'https://iampatterson.com/demo/ecommerce',
-        ]),
-      );
+      // Canonical static inclusions — six entries (`/`, `/services`,
+      // `/about`, `/contact`, `/demo`, `/demo/ecommerce`). Tightened
+      // beyond `arrayContaining` so a future drop of e.g. `/demo`
+      // can't silently slip past the test (mirrors the product-URL
+      // tightness fix-pack applied at line 111-114 below).
+      const expectedStatic = [
+        'https://iampatterson.com',
+        'https://iampatterson.com/services',
+        'https://iampatterson.com/about',
+        'https://iampatterson.com/contact',
+        'https://iampatterson.com/demo',
+        'https://iampatterson.com/demo/ecommerce',
+      ];
+      const staticUrls = urls.filter((u) => !/\/demo\/ecommerce\/[a-z0-9-]+$/.test(u));
+      expect(staticUrls.length).toBe(expectedStatic.length);
+      for (const u of expectedStatic) {
+        expect(urls).toContain(u);
+      }
 
       // Product detail pages — every catalog product must be present
       // (subset-invariant `>= 1` would let the sitemap silently drop

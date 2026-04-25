@@ -21,8 +21,14 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
+// Single source of truth for the site's one-line offer + thesis.
+// Used by `metadata.description`, `openGraph.description`, and
+// `twitter.description` — keep this in sync with the JSON-LD
+// Organization description in `src/lib/seo/json-ld.ts` so SERP
+// snippet, social cards, and Knowledge Graph all carry the same
+// line.
 const SITE_DESCRIPTION =
-  'Measurement infrastructure for marketing teams that need to trust their data.';
+  'Measurement infrastructure for marketing teams. The site itself runs on the same stack I sell.';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://iampatterson.com'),

@@ -86,7 +86,6 @@ function Tabs({
   return (
     <div
       data-testid="overlay-tabs"
-      role="tablist"
       className="overlay-chrome flex gap-1 overflow-x-auto border-b border-u-rule-soft bg-u-paper-alt px-2 md:px-4"
     >
       {tabs.map((t) => {
