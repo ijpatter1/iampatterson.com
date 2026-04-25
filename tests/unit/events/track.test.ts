@@ -20,8 +20,10 @@ Object.defineProperty(globalThis, 'crypto', {
 
 beforeEach(() => {
   window.dataLayer = [];
-  // Clear session cookie
+  // Clear session + anonymous cookies between tests so each one starts from
+  // a deterministic empty-cookie state.
   document.cookie = '_iap_sid=; Max-Age=0; Path=/';
+  document.cookie = '_iap_aid=; Max-Age=0; Path=/';
 });
 
 describe('trackPageView', () => {
@@ -33,6 +35,29 @@ describe('trackPageView', () => {
       page_referrer: '/about',
       session_id: 'test-session-id',
     });
+  });
+
+  // Phase 10d D7: every event carries `anonymous_id` from the `_iap_aid`
+  // first-party cookie alongside the session-scoped `session_id`. The base
+  // fields helper threads it through automatically, so this regression
+  // pin on page_view also covers every other tracker that uses baseFields().
+  it('threads anonymous_id from the _iap_aid cookie into the data-layer push', () => {
+    document.cookie = '_iap_aid=test-anon-uuid; Path=/';
+    trackPageView('/');
+    expect(window.dataLayer[0]).toMatchObject({
+      event: 'page_view',
+      anonymous_id: 'test-anon-uuid',
+    });
+  });
+
+  it('mints a fresh anonymous_id on first call when the _iap_aid cookie is empty', () => {
+    // Cookie cleared by beforeEach. The file-level crypto.randomUUID mock returns
+    // 'test-session-id' for every call, so the freshly-minted anonymous_id ends
+    // up as that same value — the assertion proves "mint happened" rather than
+    // pinning a real UUID format.
+    trackPageView('/');
+    const event = window.dataLayer[0] as { anonymous_id: string };
+    expect(event.anonymous_id).toBe('test-session-id');
   });
 });
 

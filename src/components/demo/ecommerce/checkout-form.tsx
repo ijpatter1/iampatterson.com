@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { trackBeginCheckout, trackPurchase } from '@/lib/events/track';
+import { getAnonymousId } from '@/lib/identity/anonymous-id';
 import { useCart } from './cart-context';
 import { useToast } from '@/components/demo/reveal/toast-provider';
 import { LiveSidebar } from '@/components/demo/reveal/live-sidebar';
@@ -36,8 +37,15 @@ interface ClientMeta {
   pageLocation: string;
   pageReferrer: string;
   deviceCategory: 'mobile' | 'tablet' | 'desktop' | '';
+  /** Phase 10d D7: real `_iap_aid` value for the BQ row's user_pseudo_id. */
+  anonymousId: string;
 }
-const EMPTY_CLIENT_META: ClientMeta = { pageLocation: '', pageReferrer: '', deviceCategory: '' };
+const EMPTY_CLIENT_META: ClientMeta = {
+  pageLocation: '',
+  pageReferrer: '',
+  deviceCategory: '',
+  anonymousId: '',
+};
 let clientMetaCache: ClientMeta | null = null;
 function deviceCategoryFromUA(ua: string): ClientMeta['deviceCategory'] {
   // Conservative UA-based classifier matching GA4's device_category
@@ -57,6 +65,7 @@ function getClientMetaSnapshot(): ClientMeta {
     pageLocation: window.location.href,
     pageReferrer: typeof document !== 'undefined' ? document.referrer : '',
     deviceCategory: deviceCategoryFromUA(navigator.userAgent),
+    anonymousId: getAnonymousId(),
   };
   return clientMetaCache;
 }
@@ -90,7 +99,7 @@ export function CheckoutForm() {
     [searchParams],
   );
   const utmClassification = useMemo(() => classifyUtm(utmMeta.value), [utmMeta.value]);
-  const { pageLocation, pageReferrer, deviceCategory } = useSyncExternalStore(
+  const { pageLocation, pageReferrer, deviceCategory, anonymousId } = useSyncExternalStore(
     subscribeClientMeta,
     getClientMetaSnapshot,
     getClientMetaServerSnapshot,
@@ -359,6 +368,7 @@ export function CheckoutForm() {
               uniqueItems={items.length}
               live={{
                 sessionId: session.session_id,
+                anonymousId: anonymousId || undefined,
                 eventTimestamp: session.last_event_at || undefined,
                 // Consent flags only substitute once at least one event
                 // has landed, before that we don't know the real state.

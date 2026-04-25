@@ -84,6 +84,42 @@ describe('bqRowForCart', () => {
       expect(rows.find((c) => c.k === 'consent_marketing')?.v).toBe('"denied"');
     });
 
+    // Phase 10d D7: user_pseudo_id (the ~equivalent of GA4's anonymous client id)
+    // substitutes from the visitor's `_iap_aid` cookie when present, instead of
+    // showing seed `NULL`. Truncated to first 8 chars + ellipsis to keep the
+    // sidebar narrow (same convention as session_id).
+    it('substitutes user_pseudo_id with the real anonymous_id (truncated 8 chars + ellipsis)', () => {
+      const rows = bqRowForCart({
+        total: 0,
+        itemCount: 0,
+        uniqueItems: 0,
+        live: { anonymousId: 'aid12345-6789-4def-8abc-feedfacefeed' },
+      });
+      expect(rows.find((c) => c.k === 'user_pseudo_id')?.v).toBe('"aid12345…"');
+    });
+
+    it('user_pseudo_id falls back to NULL seed when no anonymous_id is supplied', () => {
+      const rows = bqRowForCart({
+        total: 0,
+        itemCount: 0,
+        uniqueItems: 0,
+        live: { sessionId: 'x'.repeat(36) },
+      });
+      expect(rows.find((c) => c.k === 'user_pseudo_id')?.v).toBe('NULL');
+    });
+
+    it('user_pseudo_id falls back to NULL seed when anonymousId is empty string', () => {
+      // SSR / pre-mount paths return '' from getAnonymousId; treat that as
+      // "not yet known" rather than substituting an empty quoted string.
+      const rows = bqRowForCart({
+        total: 0,
+        itemCount: 0,
+        uniqueItems: 0,
+        live: { anonymousId: '' },
+      });
+      expect(rows.find((c) => c.k === 'user_pseudo_id')?.v).toBe('NULL');
+    });
+
     it('consent columns fall back to seed when no live consent is supplied', () => {
       const rows = bqRowForCart({
         total: 0,

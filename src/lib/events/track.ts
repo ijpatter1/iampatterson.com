@@ -1,3 +1,4 @@
+import { getAnonymousId } from '@/lib/identity/anonymous-id';
 import { pushEvent } from './push';
 import type {
   CoverageMilestoneEvent,
@@ -96,6 +97,7 @@ function baseFields(): {
   timestamp: string;
   session_id: string;
   iap_session_id: string;
+  anonymous_id: string;
   page_path: string;
   page_title: string;
   consent_analytics: boolean;
@@ -108,6 +110,7 @@ function baseFields(): {
     timestamp: new Date().toISOString(),
     session_id: sid,
     iap_session_id: sid,
+    anonymous_id: getAnonymousId(),
     page_path: window.location.pathname,
     page_title: document.title,
     ...currentConsent,
