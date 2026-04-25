@@ -147,6 +147,44 @@ describe('NavHint, first-session pulse ring', () => {
       expect(screen.queryByTestId('nav-hint')).not.toBeInTheDocument();
     });
 
+    // Bug fix 2026-04-25: clicking SessionPulse during the pre-show idle
+    // window IS a discovery signal (the visitor proved they found the
+    // affordance). The hint must never fire after this in the same
+    // session. The previous behaviour was to fall through to `resetIdle`
+    // — same path as any other click — which kept the timer running and
+    // the hint fired ~3s of inactivity later (confirmed in the wild via
+    // a Timeline showing nav_hint_shown 10s AFTER click_cta on
+    // SessionPulse, then nav_hint_dismissed 10s after that). The
+    // session-storage gate must also be set so a subsequent homepage
+    // visit in the same session doesn't re-arm the hint.
+    it('cancels the pending hint timer when SessionPulse is clicked before show', () => {
+      render(<Harness />);
+      const pulse = screen.getByTestId('fake-session-pulse');
+      act(() => {
+        jest.advanceTimersByTime(1500);
+        fireEvent.click(pulse);
+        // After the SessionPulse click, advance through the original
+        // 3s window AND the auto-clear window — the hint must never
+        // appear and the dismissal event must never fire.
+        jest.advanceTimersByTime(15000);
+      });
+      expect(screen.queryByTestId('nav-hint')).not.toBeInTheDocument();
+      expect(mockShown).not.toHaveBeenCalled();
+      expect(mockDismissed).not.toHaveBeenCalled();
+    });
+
+    it('writes the sessionStorage gate when SessionPulse is clicked before show', () => {
+      render(<Harness />);
+      const pulse = screen.getByTestId('fake-session-pulse');
+      act(() => {
+        jest.advanceTimersByTime(1500);
+        fireEvent.click(pulse);
+      });
+      // Gate set so a subsequent homepage visit in the same session
+      // doesn't re-trigger the hint timer.
+      expect(window.sessionStorage.getItem('iampatterson.nav_hint.shown')).toBe('1');
+    });
+
     it('resets on keydown', () => {
       render(<Harness />);
       act(() => {

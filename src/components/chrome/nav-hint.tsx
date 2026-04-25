@@ -124,11 +124,11 @@ export function NavHint({ sessionPulseRef }: NavHintProps) {
     };
 
     const onClick = (e: MouseEvent) => {
+      const target = e.target as Node | null;
+      const insidePulse = Boolean(
+        target && sessionPulseRef.current && sessionPulseRef.current.contains(target),
+      );
       if (stateRef.current === 'showing') {
-        const target = e.target as Node | null;
-        const insidePulse = Boolean(
-          target && sessionPulseRef.current && sessionPulseRef.current.contains(target),
-        );
         if (insidePulse) {
           // Conversion, not a dismissal. Hide the hint visually but
           // don't fire nav_hint_dismissed, the click_cta(session_pulse)
@@ -141,6 +141,23 @@ export function NavHint({ sessionPulseRef }: NavHintProps) {
         } else {
           dismiss('click_outside');
         }
+      } else if (insidePulse) {
+        // Pre-show SessionPulse click is the same discovery signal as
+        // the showing-state SessionPulse click — the visitor proved
+        // they found the affordance. Cancel the pending idle timer and
+        // mark the session-storage gate so the hint never fires this
+        // session, including on subsequent homepage visits within the
+        // tab lifetime. Without this branch the click would fall to
+        // resetIdle below, which restarts the 3s timer and then fires
+        // the hint after the visitor stops clicking inside the overlay
+        // — observed in the wild as nav_hint_shown ~10s AFTER
+        // click_cta(session_pulse), then nav_hint_dismissed ~10s after
+        // that. No emissions here: the conversion is captured by
+        // click_cta(session_pulse) and there's nothing to dismiss
+        // because the hint hadn't shown yet.
+        if (idleTimer !== null) window.clearTimeout(idleTimer);
+        setPhase('dismissed');
+        markShownThisSession();
       } else {
         resetIdle();
       }
