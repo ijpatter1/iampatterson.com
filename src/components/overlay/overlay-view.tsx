@@ -84,7 +84,11 @@ function Tabs({
   // on a single line; if the row still exceeds viewport width, the
   // visitor can scroll the tab bar horizontally.
   return (
-    <div className="overlay-chrome flex gap-1 overflow-x-auto border-b border-u-rule-soft bg-u-paper-alt px-2 md:px-4">
+    <div
+      data-testid="overlay-tabs"
+      role="tablist"
+      className="overlay-chrome flex gap-1 overflow-x-auto border-b border-u-rule-soft bg-u-paper-alt px-2 md:px-4"
+    >
       {tabs.map((t) => {
         const isActive = active === t.mode;
         // Terminal-style bracket framing on the active tab label is the

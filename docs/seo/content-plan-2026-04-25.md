@@ -193,12 +193,25 @@ publishable post.
 
 ## Part 4 — Operator pre-launch checklist
 
-Before launching:
+Before launching, in priority order:
 
+- [ ] **Configure Vercel domain redirects FIRST.** `www.iampatterson.com`
+      → `iampatterson.com` (or vice versa, decide the canonical) so
+      duplicate-content signals don't fork. **Promoted to top of
+      checklist** because the per-route `alternates.canonical` values
+      shipped in D4 are literal `https://iampatterson.com/...`. If the
+      Vercel-side canonical disagrees (e.g., domain serves on `www.`
+      without redirect), every page emits a canonical pointing at a
+      different origin than the one that resolved the request — the
+      single most common SEO-launch foot-gun.
 - [ ] **Verify Open Graph rendering.** Use `https://www.opengraph.xyz/`
       or LinkedIn / Twitter / Facebook debuggers against
       `https://iampatterson.com/` to confirm the `/opengraph-image`
-      route renders correctly on each platform.
+      route renders correctly on each platform. Verify Instrument
+      Serif loads (regular + italic on the accent word) — the OG
+      image deliberately ships its own font assets via
+      `ImageResponse({ fonts: [...] })`; if the rendering shows a
+      generic serif, the asset fetch failed.
 - [ ] **Submit sitemap to Google Search Console.** Verify ownership
       via DNS TXT (preferred over meta-tag verification so it persists
       across re-deploys).
@@ -212,9 +225,6 @@ Before launching:
       score 100. Already at 99-100 desktop per the Phase 10b D1b
       baseline, but the SEO sub-score specifically gates on metadata
       presence — re-verify after these changes ship.
-- [ ] **Configure Vercel domain redirects.** `www.iampatterson.com` →
-      `iampatterson.com` (or vice versa, decide the canonical) so
-      duplicate-content signals don't fork.
 - [ ] **Verify HSTS** is set on the apex domain. Vercel's default
       should cover it; confirm via `curl -I https://iampatterson.com`.
 

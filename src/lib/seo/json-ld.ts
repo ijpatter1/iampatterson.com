@@ -25,7 +25,8 @@ export function organizationJsonLd(): Record<string, unknown> {
     '@type': 'Organization',
     name: ORG_NAME,
     url: SITE_URL,
-    description: 'Measurement infrastructure for marketing teams that need to trust their data.',
+    description:
+      'Measurement infrastructure for marketing teams. The site itself runs on the same stack I sell.',
     founder: {
       '@type': 'Person',
       name: PERSON_NAME,
@@ -46,7 +47,7 @@ export function personJsonLd(): Record<string, unknown> {
     '@type': 'Person',
     name: PERSON_NAME,
     url: SITE_URL,
-    jobTitle: 'Marketing Measurement Consultant',
+    jobTitle: 'Measurement Infrastructure Consultant',
     worksFor: {
       '@type': 'Organization',
       name: ORG_NAME,
@@ -55,9 +56,11 @@ export function personJsonLd(): Record<string, unknown> {
     knowsAbout: [
       'Marketing measurement infrastructure',
       'Server-side tagging (sGTM)',
-      'BigQuery analytics warehousing',
+      'BigQuery data warehouse',
       'Dataform',
       'Google Analytics 4',
+      'Consent Mode v2 and Cookiebot',
+      'Metabase BI',
       'Marketing attribution modeling',
     ],
   };

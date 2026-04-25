@@ -65,7 +65,14 @@ describe('Phase 10d D4 — SEO', () => {
       expect(org['@type']).toBe('Organization');
       expect(org.name).toBe('Patterson Consulting');
       expect(org.url).toBe('https://iampatterson.com');
-      expect(org.founder).toBeDefined();
+      // Founder must be a real Person sub-object, not just truthy.
+      // A future edit that flips `founder` to a bare string or `{}`
+      // would pass `toBeDefined` but break Google's Knowledge Graph
+      // resolution — pin both the @type and the name.
+      const founder = org.founder as Record<string, unknown>;
+      expect(founder).toBeDefined();
+      expect(founder['@type']).toBe('Person');
+      expect(founder.name).toBe('Ian Patterson');
     });
 
     it('exposes Person JSON-LD via @/lib/seo/json-ld', async () => {
@@ -96,9 +103,15 @@ describe('Phase 10d D4 — SEO', () => {
         ]),
       );
 
-      // Product detail pages — at least one should be present
+      // Product detail pages — every catalog product must be present
+      // (subset-invariant `>= 1` would let the sitemap silently drop
+      // products if `products.ts` regresses or the iterator truncates).
+      const { products } = await import('@/lib/demo/products');
       const productUrls = urls.filter((u) => /\/demo\/ecommerce\/[a-z0-9-]+$/.test(u));
-      expect(productUrls.length).toBeGreaterThanOrEqual(1);
+      expect(productUrls.length).toBe(products.length);
+      for (const p of products) {
+        expect(urls).toContain(`https://iampatterson.com/demo/ecommerce/${p.id}`);
+      }
 
       // Non-canonical exclusions
       expect(urls).not.toContain('https://iampatterson.com/demo/ecommerce/cart');

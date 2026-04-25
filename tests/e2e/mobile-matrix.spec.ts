@@ -207,6 +207,20 @@ test.describe('Phase 10d D1, mobile matrix', () => {
             type: ctaBottom <= usableHeight ? 'fold-check-pass' : 'fold-check-soft-fail',
             description: message,
           });
+          // Hard ceiling on the soft path: even iPhone-SE has a real
+          // limit. Today the CTA bottom is 562px; the chrome-aware
+          // usable is 535px (worst case). After URL-bar collapse on
+          // first scroll the visitor recovers ~50px (587px usable),
+          // so a 30px slack is reachable. A regression past ~565px
+          // (usableHeight + 30 = 565) means the CTA isn't reachable
+          // even with the URL-bar-collapse mitigation, which the
+          // matrix doc records as the load-bearing fold-line claim.
+          // See `docs/perf/mobile-matrix-2026-04-25.md` §"Soft-fail".
+          const SOFT_CEILING = usableHeight + 30;
+          expect(
+            ctaBottom,
+            `${message} (hard ceiling: ${SOFT_CEILING}px = usable + 30px URL-bar-collapse slack)`,
+          ).toBeLessThanOrEqual(SOFT_CEILING);
         }
       }
 
@@ -235,16 +249,19 @@ test.describe('Phase 10d D1, mobile matrix', () => {
 
       // Tab row should not horizontally scroll OFF-SCREEN — the
       // overlay's own overflow-x-auto handles the in-row scroll, but
-      // the row itself must fit the overlay panel width.
-      const tabsContainer = page.locator('.overlay-chrome.flex.gap-1').first();
-      if ((await tabsContainer.count()) > 0) {
-        const tabBox = await tabsContainer.boundingBox();
-        expect(tabBox, 'overlay: tab-row boundingBox readable').not.toBeNull();
-        expect(
-          tabBox!.x + tabBox!.width,
-          `overlay tab row right edge fits within viewport width on ${mobileLabel}`,
-        ).toBeLessThanOrEqual(vp.width + 1);
-      }
+      // the row itself must fit the overlay panel width. Anchor on
+      // `data-testid="overlay-tabs"` (added Pass-1 fix-pack) rather
+      // than the brittle Tailwind class set; class reorders or
+      // wrapper extractions would silently make the assertion a
+      // no-op via the count==0 branch.
+      const tabsContainer = page.getByTestId('overlay-tabs');
+      await expect(tabsContainer, `overlay tabs container present on ${mobileLabel}`).toBeVisible();
+      const tabBox = await tabsContainer.boundingBox();
+      expect(tabBox, 'overlay: tab-row boundingBox readable').not.toBeNull();
+      expect(
+        tabBox!.x + tabBox!.width,
+        `overlay tab row right edge fits within viewport width on ${mobileLabel}`,
+      ).toBeLessThanOrEqual(vp.width + 1);
 
       await captureScreenshot(page, testInfo, route.label, '02-overlay-overview');
 
