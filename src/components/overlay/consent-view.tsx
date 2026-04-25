@@ -27,9 +27,8 @@ export function ConsentView({ events }: ConsentViewProps) {
         </h3>
         <p className="max-w-[62ch] text-sm leading-relaxed text-u-ink-2">
           In server-side GTM, consent state determines tag firing. Interact with the page to
-          populate the timeline, we&apos;ll show your live consent decisions here. To withdraw or
-          change consent, use the Cookiebot dialog via the badge in the bottom-left corner of the
-          page.
+          populate the timeline, we&apos;ll show your live consent decisions here. To change
+          consent, click the Cookiebot badge in the bottom-left corner of the page.
         </p>
       </div>
     );
@@ -51,9 +50,9 @@ export function ConsentView({ events }: ConsentViewProps) {
         What happens when you <em className="text-accent-current">deny</em> consent.
       </h3>
       <p className="mt-3 max-w-[62ch] text-sm leading-relaxed text-u-ink-2">
-        In server-side GTM, consent state determines tag firing. Here&apos;s what&apos;s firing and
-        what&apos;s blocked for your session right now. To withdraw or change consent, use the
-        Cookiebot dialog via the badge in the bottom-left corner of the page.
+        In server-side GTM, consent state determines tag firing. Here&apos;s what was sent and what
+        was blocked for your session right now. To change consent, click the Cookiebot badge in the
+        bottom-left corner of the page.
       </p>
 
       {/* Phase 10d D8.j: red/green accents replace the persimmon + muted
@@ -90,17 +89,19 @@ export function ConsentView({ events }: ConsentViewProps) {
         })}
       </div>
 
-      {/* Active destinations — firing, green accent */}
+      {/* Sent destinations — green accent. Verb pairs with `sent` on the
+          routing schema and with "Blocked" below (both past-tense state
+          verbs), swapping the earlier "Firing / Blocked" tense mismatch. */}
       {activeRoutes.length > 0 && (
         <div className="mt-8">
           <h4 className="font-mono text-[10px] uppercase tracking-widest text-u-accept">
-            Firing destinations
+            Sent destinations
           </h4>
           <div className="mt-3 flex flex-wrap gap-2">
             {activeRoutes.map((route, i) => (
               <span
                 key={`active-${i}`}
-                data-destination-state="firing"
+                data-destination-state="sent"
                 className="flex items-center gap-2 border border-u-accept/40 bg-u-paper-alt px-3 py-1.5 font-mono text-[11px] text-u-ink"
               >
                 <span
@@ -114,7 +115,11 @@ export function ConsentView({ events }: ConsentViewProps) {
         </div>
       )}
 
-      {/* Suppressed destinations — blocked, red accent */}
+      {/* Blocked destinations — red accent + strike-through. The earlier
+          `×` glyph prefix was dropped here (line-through + red + `×`
+          stacked three redundant markers; strike + colour alone reads
+          clearly, the glyph still carries the consent-row status tag
+          above where it's the only non-colour signal). */}
       {suppressedRoutes.length > 0 && (
         <div className="mt-6">
           <h4 className="font-mono text-[10px] uppercase tracking-widest text-u-deny">
@@ -127,9 +132,6 @@ export function ConsentView({ events }: ConsentViewProps) {
                 data-destination-state="blocked"
                 className="flex items-center gap-2 border border-u-deny/40 bg-u-paper-deep px-3 py-1.5 font-mono text-[11px] text-u-deny line-through"
               >
-                <span aria-hidden="true" className="no-underline">
-                  ×
-                </span>
                 {destinationLabel(route.destination)}
               </span>
             ))}

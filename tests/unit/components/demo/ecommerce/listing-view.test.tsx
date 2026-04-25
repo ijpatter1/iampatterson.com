@@ -106,6 +106,35 @@ describe('ListingView (Phase 9F D5, product listing)', () => {
     });
   });
 
+  // Phase 10d D8.f Pass-1 fix: listing cards render real product
+  // photography (not the pre-D8.f palette-tile placeholder). A regression
+  // dropping `Product.image` back to palette-only, or breaking the
+  // `next/image` thread through `product-listing.tsx`, would take the grid
+  // back to solid-colour rects without any existing test failing. Pin the
+  // 6 images + per-card src/alt.
+  describe('Phase 10d D8.f, product photography on listing cards', () => {
+    it('renders one image per product card with a product-scoped src and descriptive alt', () => {
+      renderView();
+      const cards = document.querySelectorAll('[data-product-card]');
+      expect(cards.length).toBe(6);
+      cards.forEach((card) => {
+        const img = card.querySelector('img');
+        expect(img).not.toBeNull();
+        // `next/image` emits its optimizer URL (`/_next/image?url=...`)
+        // with the public path URL-encoded in the query string. Decode
+        // before asserting so the test is agnostic to the optimizer
+        // wrapper.
+        const src = decodeURIComponent(img!.getAttribute('src') ?? '');
+        expect(src).toContain('/shop/');
+        expect(src).toContain('.webp');
+        // Alt is descriptive, not empty (decorative alt would be wrong
+        // on the listing grid — the photo carries the primary visual
+        // identity of each card).
+        expect(img!.getAttribute('alt')?.length ?? 0).toBeGreaterThan(10);
+      });
+    });
+  });
+
   // UAT r2 item 12, every demo screen needs a "what am I looking at"
   // walkthrough blurb so visitors don't bounce off the data surfaces.
   describe('UAT r2 item 12, walkthrough blurb', () => {

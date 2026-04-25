@@ -710,7 +710,7 @@ Originally a single-block 9-deliverable phase. Restructured 2026-04-23 after UAT
 
    e. Cut the "Evidence · What the infrastructure has done" section.
 
-   f. Shop product images: drop the 7 `.webp` files already at `docs/shop_images/` (`COVER.webp`, plus six product shots) into `public/` (path TBD based on ecommerce demo's image conventions) and wire each to the correct product in the catalogue.
+   f. Shop product images: wire the 6 `.webp` files already at `docs/input_artifacts/shop_images/` (1 cover + 5 product shots) to the six catalogue SKUs via a new required `Product.image: { src, alt }` field. Copy into `public/shop/` with stable kebab-case filenames matching the SKU id. (Earlier draft said "7 files at `docs/shop_images/`" — the actual inventory was 6 files at the `docs/input_artifacts/shop_images/` subpath, including a `COVER.webp` that doubled as the `tuna-calendar-2026` image and a combined plush+calendar shot that covered the bundle SKU.) Shipped 2026-04-24.
 
    g. Ecommerce demo top bar ("this is a demo · nothing ships from here") → add a "back to homepage" link.
 

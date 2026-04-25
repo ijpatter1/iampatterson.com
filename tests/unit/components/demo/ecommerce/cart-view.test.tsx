@@ -146,6 +146,31 @@ describe('CartView (Phase 9F D7)', () => {
     expect(screen.getAllByText('$52.00').length).toBeGreaterThanOrEqual(1);
   });
 
+  // Phase 10d D8.f Pass-1 fix: cart-line thumbnail now renders a real
+  // product photograph via `next/image` with `alt=""` (decorative, because
+  // the adjacent product name + remove button already carry the line's
+  // accessible identity). Pin the `src` thread so a regression that flips
+  // the thumbnail back to the palette-only placeholder (or breaks the
+  // `product.image.src` lookup) fails.
+  it('cart-line thumbnail renders the product photograph with decorative alt (D8.f)', () => {
+    const { container } = renderWithCart([
+      {
+        product_id: 'tuna-plush-classic',
+        product_name: 'Tuna Plush',
+        product_price: 26,
+        quantity: 1,
+      },
+    ]);
+    const line = container.querySelector('[data-cart-line]');
+    expect(line).not.toBeNull();
+    const img = line!.querySelector('img');
+    expect(img).not.toBeNull();
+    expect(img!.getAttribute('src')).toContain('tuna-plush-classic');
+    // Decorative alt — the product name + remove button carry the a11y
+    // identity of the line, the thumbnail is visual emphasis only.
+    expect(img!.getAttribute('alt')).toBe('');
+  });
+
   it('renders a summary block with subtotal, total, and checkout link when items present', () => {
     renderWithCart([
       {

@@ -219,7 +219,8 @@ export function OverviewTab() {
           Where you are in your session.
         </h3>
         <p className="mt-3 max-w-[62ch] text-sm leading-relaxed text-u-ink-2">
-          Event coverage, consent state, and ecommerce-demo progress for this session.
+          Your session as the stack sees it: which events fired, what consent allowed, where you are
+          in the funnel.
         </p>
       </section>
 

@@ -25,7 +25,11 @@ function ProductCard({ product, onAddToCart }: ProductCardProps) {
             src={product.image.src}
             alt={product.image.alt}
             fill
-            sizes="(min-width: 1024px) 320px, (min-width: 640px) 50vw, 78vw"
+            // Cards in the lg+ 3-column grid (`max-w-content` ~1152px,
+            // `gap-5`) render at ~370px, not the 320px the initial sizes
+            // attribute implied. Slight overshoot to 400px to avoid
+            // browser upscaling cost.
+            sizes="(min-width: 1024px) 400px, (min-width: 640px) 50vw, 78vw"
             className="object-cover"
           />
           <div className="absolute bottom-2 left-2 rounded bg-black/45 px-2 py-[1px] font-mono text-[10px] uppercase tracking-[0.1em] text-white/90">

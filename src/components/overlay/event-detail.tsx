@@ -4,9 +4,15 @@ import { destinationLabel } from '@/lib/events/destination-labels';
 import type { PipelineEvent, RoutingResult, ConsentState } from '@/lib/events/pipeline-schema';
 
 function StatusBadge({ status }: { status: RoutingResult['status'] }) {
+  // Phase 10d D8.j Pass-1 fix: the routing badges inside EventDetail are the
+  // Timeline-tab counterpart to the Consent tab's destination pills. Same
+  // `u-accept`/`u-deny` semantics applied so clicking into an event row
+  // doesn't lose the green/red accent the rest of D8.j carries. `sent`
+  // picks up `u-accept`; `blocked_consent` picks up `u-deny` + strike;
+  // `error` stays on persimmon (distinct failure mode).
   const tone = {
-    sent: 'border-accent-current/40 text-accent-current',
-    blocked_consent: 'border-u-rule-soft text-u-ink-4 line-through',
+    sent: 'border-u-accept/40 text-u-accept',
+    blocked_consent: 'border-u-deny/40 text-u-deny line-through',
     error: 'border-accent-current/60 text-accent-current',
   }[status];
   const labels = {
@@ -16,6 +22,7 @@ function StatusBadge({ status }: { status: RoutingResult['status'] }) {
   };
   return (
     <span
+      data-routing-state={status}
       className={`inline-flex items-center border bg-u-paper-deep px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest ${tone}`}
     >
       {labels[status]}
@@ -36,14 +43,22 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function ConsentRow({ signal, value }: { signal: string; value: string }) {
   const granted = value === 'granted';
+  // Phase 10d D8.j Pass-1 fix: same recolour the Overview tab and Consent
+  // tab already carry. Persimmon → green for granted, muted grey → red for
+  // denied, with ✓/× glyph for colour-blind redundancy.
   return (
-    <div className="flex items-center justify-between py-1 text-xs">
+    <div
+      data-consent-row
+      data-consent-state={granted ? 'granted' : 'denied'}
+      className="flex items-center justify-between py-1 text-xs"
+    >
       <span className="font-mono text-u-ink-2">{signal}</span>
       <span
-        className={`font-mono text-[10px] uppercase tracking-widest ${
-          granted ? 'text-accent-current' : 'text-u-ink-4'
+        className={`flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest ${
+          granted ? 'text-u-accept' : 'text-u-deny'
         }`}
       >
+        <span aria-hidden="true">{granted ? '✓' : '×'}</span>
         {value}
       </span>
     </div>

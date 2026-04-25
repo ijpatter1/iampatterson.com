@@ -14,11 +14,13 @@ import { trackClickNav } from '@/lib/events/track';
  * to the top ensures the framing is the first thing they see on every
  * demo page load.
  *
- * Phase 10d D8.g added a left-edge "back to homepage" link so visitors
- * can leave the demo without scrolling to the footer. Layout is a
- * 3-column grid (`1fr_auto_1fr`) so the centre message stays centred
- * regardless of the side content; the trailing spacer keeps visual
- * balance on wide viewports.
+ * Phase 10d D8.g added a "back to homepage" link. On mobile (<md) the
+ * layout stacks vertically (link row + message row) so the full
+ * "nothing ships from here" honesty clause is preserved — dropping the
+ * tail on small viewports would lose the brand-promise at the exact
+ * moment a distracted first-touch visitor needs it most. On md+ the
+ * layout collapses to a 3-column grid (`auto_1fr_auto`) with the link
+ * on the left, message centred, and a balancing spacer on the right.
  *
  * Terminal palette (amber on near-black) deliberately matches the
  * under-the-hood reveal surfaces, the visible demo-scaffolding at the
@@ -34,23 +36,22 @@ export function EcomDemoBanner({ className, ...props }: HTMLAttributes<HTMLDivEl
   const composed = className ? `${palette} ${className}` : palette;
   return (
     <div data-ecom-demo-banner="" className={composed} {...props}>
-      <div className="mx-auto grid max-w-content grid-cols-[auto_1fr_auto] items-center gap-3 px-6 py-2 font-mono text-[10px] uppercase tracking-[0.2em] text-[#F3C769]">
+      <div className="mx-auto flex max-w-content flex-col items-stretch gap-1 px-6 py-2 font-mono text-[10px] uppercase tracking-[0.2em] text-[#F3C769] md:grid md:grid-cols-[auto_1fr_auto] md:items-center md:gap-3">
         <Link
           href="/"
           onClick={() => trackClickNav('back to homepage', '/')}
-          className="justify-self-start text-[#F3C769]/75 transition-colors hover:text-[#F3C769]"
+          className="self-start text-[#F3C769]/75 transition-colors hover:text-[#F3C769] md:justify-self-start"
         >
           ← back to homepage
         </Link>
-        <span className="flex items-center justify-center gap-2">
+        <span className="flex items-center gap-2 md:justify-center">
           <span
             aria-hidden="true"
             className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[#8FBF7A]"
           />
-          <span className="hidden md:inline">this is a demo · nothing ships from here</span>
-          <span className="md:hidden">this is a demo</span>
+          <span>this is a demo · nothing ships from here</span>
         </span>
-        <span aria-hidden="true" className="justify-self-end" />
+        <span aria-hidden="true" className="hidden md:block md:justify-self-end" />
       </div>
     </div>
   );

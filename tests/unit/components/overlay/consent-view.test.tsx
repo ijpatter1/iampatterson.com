@@ -47,14 +47,14 @@ describe('ConsentView', () => {
   // dropping the pointer fails.
   it('directs visitors to the bottom-left Cookiebot widget (empty state)', () => {
     render(<ConsentView events={[]} />);
-    const body = screen.getByText(/withdraw or change consent/i);
+    const body = screen.getByText(/click the Cookiebot badge/i);
     expect(body.textContent).toMatch(/bottom-left/i);
     expect(body.textContent).toMatch(/cookiebot/i);
   });
 
   it('directs visitors to the bottom-left Cookiebot widget (populated state)', () => {
     render(<ConsentView events={[makeEvent()]} />);
-    const body = screen.getByText(/withdraw or change consent/i);
+    const body = screen.getByText(/click the Cookiebot badge/i);
     expect(body.textContent).toMatch(/bottom-left/i);
     expect(body.textContent).toMatch(/cookiebot/i);
   });
@@ -76,11 +76,11 @@ describe('ConsentView', () => {
     expect(denied.className).toContain('border-u-deny');
   });
 
-  it('labels destination lists with firing/blocked green/red headers', () => {
+  it('labels destination lists with sent/blocked green/red headers', () => {
     render(<ConsentView events={[makeEvent()]} />);
-    const firingHeader = screen.getByText(/firing destinations/i);
+    const sentHeader = screen.getByText(/sent destinations/i);
     const blockedHeader = screen.getByText(/blocked destinations/i);
-    expect(firingHeader.className).toContain('text-u-accept');
+    expect(sentHeader.className).toContain('text-u-accept');
     expect(blockedHeader.className).toContain('text-u-deny');
   });
 
@@ -104,13 +104,15 @@ describe('ConsentView', () => {
     expect(adRow!.textContent).toContain('denied');
   });
 
-  it('shows firing destinations (not blocked by consent)', () => {
+  it('shows sent destinations (not blocked by consent)', () => {
     render(<ConsentView events={[makeEvent()]} />);
-    // Phase 10d D8.j renamed "Active destinations" → "Firing destinations"
-    // (matches the verb the timeline's RoutingBadge uses for non-blocked
-    // status; "active" read as stale/metric, "firing" reads as "is flowing
-    // right now").
-    expect(screen.getByText(/firing destinations/i)).toBeInTheDocument();
+    // Phase 10d D8.j Pass-1 fix: renamed "Firing destinations" →
+    // "Sent destinations" for verb-tense symmetry with "Blocked"
+    // destinations (both past-tense state verbs, both matching the
+    // routing schema's `sent` / `blocked_consent` terms). Earlier
+    // "Firing" was present-participle against "Blocked"'s past-
+    // participle, a readability snag the Pass-1 product reviewer flagged.
+    expect(screen.getByText(/sent destinations/i)).toBeInTheDocument();
     expect(screen.getByText('GA4', { exact: false })).toBeInTheDocument();
     expect(screen.getByText('BigQuery', { exact: false })).toBeInTheDocument();
   });

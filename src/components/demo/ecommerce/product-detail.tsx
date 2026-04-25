@@ -199,9 +199,13 @@ export function ProductDetail({ product }: ProductDetailProps) {
                   className="relative aspect-[4/5] w-full overflow-hidden rounded"
                   style={{ background: p.palette[0] }}
                 >
+                  {/* Decorative alt: the surrounding <Link>'s accessible
+                      name already includes the product name + price, so
+                      a descriptive alt would double-announce to screen
+                      readers. The thumbnail is visual emphasis only. */}
                   <Image
                     src={p.image.src}
-                    alt={p.image.alt}
+                    alt=""
                     fill
                     sizes="(min-width: 1024px) 200px, 33vw"
                     className="object-cover"

@@ -491,6 +491,14 @@
     background: color-mix(in oklab, #ffa400 22%, var(--accent));
   }
   .pipeline-section.peak .bleed-cta {
+    /* Peak deliberately snaps to the absolute `#ffa400` / ink block
+       rather than following `var(--accent)`. Reason: the peak frame is
+       the "bleed took over" moment — the CTA is meant to look like the
+       CRT-bleed layer invaded the button, not like a themed accent.
+       If a future subsurface overrides `--accent` (e.g. Tuna Shop
+       terracotta), the peak should still read as the bleed colour, not
+       the subsurface's theme. Base + hot follow `var(--accent)` (see
+       rules above); peak is the one intentional exception. */
     background: #ffa400;
     color: #0d0b0a;
     border-color: #ffa400;

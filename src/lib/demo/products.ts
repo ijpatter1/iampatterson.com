@@ -95,7 +95,7 @@ const productSeeds: Product[] = [
     palette: ['#EADBBF', '#A87145', '#C4703A'],
     image: {
       src: '/shop/tuna-plush-pi.webp',
-      alt: 'A Perfectly Imperfect Tuna plush in full studio-shot view, blue cardigan with red inner shirt and heart bowtie.',
+      alt: 'A Perfectly Imperfect Tuna plush with a slightly skewed face and crooked smile, in blue cardigan with red inner shirt and heart bowtie.',
     },
     imageLabel: 'PRODUCT · PI plush · variant #0247',
   },
