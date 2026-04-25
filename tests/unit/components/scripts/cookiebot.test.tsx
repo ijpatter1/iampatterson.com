@@ -40,7 +40,12 @@ describe('CookiebotScript', () => {
     expect(script).not.toBeNull();
     expect(script?.getAttribute('src')).toBe('https://consent.cookiebot.com/uc.js');
     expect(script?.getAttribute('data-cbid')).toBe('test-cbid-123');
-    expect(script?.getAttribute('data-blockingmode')).toBe('auto');
+    // Phase 1 D3 architectural amendment (2026-04-25): blockingmode is
+    // "manual" so Cookiebot doesn't rewrite <script> tags in <head>;
+    // gating delegates to GTM Consent Mode v2 + the explicit gtag bridge
+    // in src/lib/events/track.ts. See docs/ARCHITECTURE.md "Cookiebot +
+    // GTM Consent Mode".
+    expect(script?.getAttribute('data-blockingmode')).toBe('manual');
   });
 
   it('renders nothing when NEXT_PUBLIC_COOKIEBOT_ID is not set', () => {

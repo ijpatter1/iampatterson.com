@@ -123,22 +123,31 @@ export function pushEvent(event: BaseEvent & Record<string, unknown>): void {
 - Collecting and storing consent preferences
 - Communicating consent state to GTM via Google Consent Mode v2
 
+**Cookiebot blocking mode: `manual`, with explicit gtag bridge.** Cookiebot is loaded with `data-blockingmode="manual"` (not `"auto"`). Auto mode rewrites `<script>` tags in `<head>` to gate execution; this is the older belt-and-suspenders pattern from before Consent Mode v2 was widely supported. With manual mode, Cookiebot does not modify the DOM — gating is delegated entirely to the GTM container's per-tag `consentSettings` (every analytics tag carries `analytics_storage: required`; every marketing tag carries `ad_storage: required`). The CookiebotConsentListener (`src/components/scripts/cookiebot-consent.tsx`) listens for `CookiebotOnAccept`/`CookiebotOnDecline` events and calls `trackConsentUpdate`/`initConsentState` in `src/lib/events/track.ts`, which both (a) push a `consent_update` event to the data layer for the under-the-hood visualization, and (b) explicitly call `window.gtag('consent', 'update', { ... })` with the Cookiebot-to-gtag signal mapping below. The explicit bridge is what auto-mode used to do implicitly. Manual mode also resolves a React-19/Next-16 hydration mismatch in dev: auto mode's DOM rewrite during script execution runs before React can hydrate, leaving the head DOM out of sync with React's tree (commit `b2147da` attempted to suppress at the React layer; suppression at the head element is one DOM-element deep and doesn't catch the mismatches on the rewritten script tags below).
+
 **Integration sequence:**
 
-1. Cookiebot script loads in `layout.tsx` (before GTM)
-2. Cookiebot fires `consent_default` on page load with region-appropriate defaults
-3. GTM loads and reads consent state
-4. When a visitor updates preferences, Cookiebot fires `consent_update` which GTM picks up
-5. Tags in GTM that require consent (analytics, marketing) only fire when the relevant consent category is granted
+1. Cookiebot script loads in `layout.tsx` `<head>` (before GTM) via `next/script` with `strategy="beforeInteractive"` and `data-blockingmode="manual"`
+2. The inline `consent-defaults` script (also `beforeInteractive`) runs first, setting all Consent Mode v2 signals to `denied` defaults via `gtag('consent', 'default', {...})`
+3. GTM loads (`afterInteractive`) and reads the denied defaults; per-tag `consentSettings` keep all analytics/marketing tags gated
+4. Cookiebot's banner renders; the visitor accepts or declines categories
+5. CookiebotConsentListener catches `CookiebotOnAccept`/`CookiebotOnDecline`, calls `trackConsentUpdate` which:
+   - Updates the module-level `currentConsent` snapshot used by every subsequent data-layer push (so under-the-hood routing shows the post-update consent state)
+   - Pushes a `consent_update` event to the data layer
+   - **Calls `window.gtag('consent', 'update', { ... })`** with the explicit Cookiebot→gtag mapping below — this is the bridge that ungates GTM tags for the granted categories
+6. Tags in GTM that require consent now read the updated state and either fire or stay gated
 
-**GTM Consent Mode v2 mapping:**
+**Cookiebot → gtag('consent', 'update') signal mapping:**
 
-| Cookiebot Category | Consent Mode Signal | Controls |
+| Cookiebot Category | gtag Signal(s) | Controls |
 |---|---|---|
-| Necessary | (always granted) | sGTM base event routing |
+| Necessary | (always granted; not bridged) | sGTM base event routing |
 | Statistics | `analytics_storage` | GA4, BigQuery event sink |
 | Marketing | `ad_storage`, `ad_user_data`, `ad_personalization` | Meta CAPI, Google Ads (simulated) |
-| Preferences | `functionality_storage` | Personalization features |
+| Preferences | `functionality_storage`, `personalization_storage` | Personalization features |
+| (no Cookiebot mapping) | `security_storage` | Always granted; covers fraud-prevention / security-essential storage that doesn't carry tracking |
+
+The mapping is implemented in `src/lib/events/track.ts` as a pure helper called from both `initConsentState` (for returning visitors who already have Cookiebot consent set when the page loads) and `trackConsentUpdate` (for new accept/decline events).
 
 ### GTM Configuration
 

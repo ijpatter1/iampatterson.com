@@ -14,7 +14,7 @@ iampatterson.com is simultaneously a consulting site for Patterson Consulting an
 
 1. Next.js project scaffolded with TypeScript (strict) and Tailwind CSS
 2. Site structure: homepage, services overview (the four tiers), about/background, contact
-3. Cookiebot deployed and integrated with GTM consent mode
+3. Cookiebot deployed and integrated with GTM consent mode. **Architecture amended 2026-04-25 (during Phase 10d):** Cookiebot loaded with `data-blockingmode="manual"` rather than `"auto"`; consent gating delegated entirely to GTM Consent Mode v2 (per-tag `consentSettings: { analytics_storage: required }`/etc. in `infrastructure/gtm/web-container.json`); explicit `gtag('consent', 'update', {...})` bridge in `src/lib/events/track.ts` replaces what auto-mode used to do implicitly. Resolves a React-19/Next-16 hydration mismatch caused by auto-mode's pre-hydration DOM rewrite. See `docs/ARCHITECTURE.md` "Cookiebot + GTM Consent Mode" for the full integration sequence + signal mapping.
 4. Client-side GTM container configured with a clean data layer specification
 5. sGTM container on Stape with custom domain and same-origin setup
 6. GA4 configured via sGTM
