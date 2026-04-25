@@ -467,6 +467,12 @@
   }
 
   .pipeline-section .bleed-cta {
+    /* Phase 10d D8.c, persimmon base: the button element's Tailwind classes
+       (`bg-accent-current border-accent-current text-paper`) supply the
+       at-rest palette. Scoped rules below drive the bleed-reactive ramp:
+       the border warms from persimmon to the hotter `#ffa400` as `--bleed`
+       grows, the glow picks up at mid-ramp, and `.peak` snaps to the bold
+       #ffa400 block with dark text. */
     position: relative;
     transition:
       transform 200ms ease,
@@ -474,7 +480,7 @@
       box-shadow 220ms ease,
       background 200ms ease,
       color 200ms ease;
-    border-color: color-mix(in oklab, #ffa400 calc(var(--bleed, 0) * 80%), #111111);
+    border-color: color-mix(in oklab, #ffa400 calc(var(--bleed, 0) * 80%), var(--accent));
     box-shadow:
       0 0 0 calc(var(--bleed, 0) * 1px)
         color-mix(in oklab, #ffa400 calc(var(--bleed, 0) * 70%), transparent),
@@ -482,9 +488,17 @@
         color-mix(in oklab, #ffa400 calc(var(--bleed, 0) * 55%), transparent);
   }
   .pipeline-section.hot .bleed-cta {
-    background: color-mix(in oklab, #ffa400 14%, #ffffff);
+    background: color-mix(in oklab, #ffa400 22%, var(--accent));
   }
   .pipeline-section.peak .bleed-cta {
+    /* Peak deliberately snaps to the absolute `#ffa400` / ink block
+       rather than following `var(--accent)`. Reason: the peak frame is
+       the "bleed took over" moment — the CTA is meant to look like the
+       CRT-bleed layer invaded the button, not like a themed accent.
+       If a future subsurface overrides `--accent` (e.g. Tuna Shop
+       terracotta), the peak should still read as the bleed colour, not
+       the subsurface's theme. Base + hot follow `var(--accent)` (see
+       rules above); peak is the one intentional exception. */
     background: #ffa400;
     color: #0d0b0a;
     border-color: #ffa400;

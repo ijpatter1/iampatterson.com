@@ -5,13 +5,38 @@ import { render } from '@testing-library/react';
 
 import { EcomDemoBanner } from '@/components/demo/ecommerce/ecom-demo-banner';
 
+// Phase 10d D8.g: banner gets a "back to homepage" link so visitors can
+// leave the demo without scrolling to the footer. Two pins added:
+// link presence + href + emission on click.
+jest.mock('@/lib/events/track', () => ({
+  trackClickNav: jest.fn(),
+}));
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const userEvent = require('@testing-library/user-event').default;
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { trackClickNav } = require('@/lib/events/track');
+
 describe('EcomDemoBanner (UAT r2 item 7)', () => {
+  beforeEach(() => {
+    (trackClickNav as jest.Mock).mockClear();
+  });
+
   it('renders the "this is a demo · nothing ships from here" reminder', () => {
     const { container } = render(<EcomDemoBanner />);
     const banner = container.querySelector('[data-ecom-demo-banner]');
     expect(banner).not.toBeNull();
     expect(banner?.textContent).toMatch(/this is a demo/i);
     expect(banner?.textContent).toMatch(/nothing ships from here/i);
+  });
+
+  // Phase 10d D8.g
+  it('renders a "back to homepage" link to / and fires click_nav on click', async () => {
+    const user = userEvent.setup();
+    const { getByRole } = render(<EcomDemoBanner />);
+    const link = getByRole('link', { name: /back to homepage/i });
+    expect(link).toHaveAttribute('href', '/');
+    await user.click(link);
+    expect(trackClickNav).toHaveBeenCalledWith('back to homepage', '/');
   });
 
   it('uses the terminal amber-on-near-black palette', () => {

@@ -59,9 +59,9 @@ export function HeroEditorial() {
               <EditorialLink
                 href="/#demos"
                 variant="ghost"
-                onClick={() => trackClickCta('Explore the demos', 'hero')}
+                onClick={() => trackClickCta('Explore the demo', 'hero')}
               >
-                Explore the demos
+                Explore the demo
               </EditorialLink>
             </div>
           </div>

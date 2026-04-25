@@ -74,9 +74,9 @@ describe('HeroEditorial', () => {
   it('ghost CTA links to the demos anchor and fires click_cta', async () => {
     const user = userEvent.setup();
     renderHero();
-    const link = screen.getByRole('link', { name: /explore the demos/i });
+    const link = screen.getByRole('link', { name: /explore the demo$/i });
     expect(link).toHaveAttribute('href', '/#demos');
     await user.click(link);
-    expect(trackClickCta).toHaveBeenCalledWith('Explore the demos', 'hero');
+    expect(trackClickCta).toHaveBeenCalledWith('Explore the demo', 'hero');
   });
 });

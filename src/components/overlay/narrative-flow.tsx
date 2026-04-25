@@ -46,16 +46,28 @@ function StageCard({
   description: string;
   variant?: 'default' | 'action' | 'blocked' | 'error';
 }) {
+  // Phase 10d D8.j Pass-1 fix: the `blocked` variant is the consent-
+  // suppression card that renders under Stage 4 "Destinations" when a
+  // routing outcome was `blocked_consent`. Prior styling (grey border,
+  // grey-deep bg, grey title) didn't distinguish it from any other
+  // neutral stage card; recoloured to `u-deny` red border + title tone
+  // + the `×` glyph prefix so the "this was blocked" moment reads in
+  // the same language as the Consent tab's "Blocked destinations"
+  // pills and the Timeline row badge.
   const tone = {
     default: 'border-u-rule-soft bg-u-paper-alt',
     action: 'border-accent-current bg-u-paper-alt',
-    blocked: 'border-u-rule-soft bg-u-paper-deep',
+    blocked: 'border-u-deny bg-u-paper-deep',
     error: 'border-accent-current/60 bg-u-paper-alt',
   }[variant];
-  const titleTone = variant === 'blocked' ? 'text-u-ink-3' : 'text-u-ink';
+  const titleTone = variant === 'blocked' ? 'text-u-deny' : 'text-u-ink';
+  const titlePrefix = variant === 'blocked' ? '× ' : '';
   return (
-    <div className={`border-l-2 px-4 py-2 ${tone}`}>
-      <p className={`font-mono text-[11px] uppercase tracking-widest ${titleTone}`}>{title}</p>
+    <div data-stage-variant={variant} className={`border-l-2 px-4 py-2 ${tone}`}>
+      <p className={`font-mono text-[11px] uppercase tracking-widest ${titleTone}`}>
+        {titlePrefix}
+        {title}
+      </p>
       <p className="mt-1 text-xs leading-relaxed text-u-ink-2">{description}</p>
     </div>
   );

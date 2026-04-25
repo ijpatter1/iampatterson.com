@@ -78,6 +78,40 @@ describe('EventDetail', () => {
     expect(metaRow!.textContent).toContain('blocked');
   });
 
+  // Phase 10d D8.j Pass-1 fix: EventDetail renders inside the Timeline tab
+  // when a visitor clicks any event row, so the `u-accept`/`u-deny`
+  // recolour has to reach the routing badges here too. Pin on the
+  // data-routing-state attribute + the class-presence on sent/blocked
+  // states so a regression that flips them back to accent-current /
+  // u-ink-4 fails.
+  it('routing badges carry u-accept/u-deny semantic colours (D8.j)', () => {
+    const { container } = render(<EventDetail event={makeEvent()} />);
+    const sent = container.querySelector('[data-routing-state="sent"]') as HTMLElement;
+    const blocked = container.querySelector(
+      '[data-routing-state="blocked_consent"]',
+    ) as HTMLElement;
+    expect(sent).not.toBeNull();
+    expect(blocked).not.toBeNull();
+    expect(sent.className).toContain('text-u-accept');
+    expect(blocked.className).toContain('text-u-deny');
+  });
+
+  it('consent rows use u-accept/u-deny + ✓/× glyph (D8.j)', () => {
+    const { container } = render(<EventDetail event={makeEvent()} />);
+    const granted = container.querySelector(
+      '[data-consent-row][data-consent-state="granted"]',
+    ) as HTMLElement;
+    const denied = container.querySelector(
+      '[data-consent-row][data-consent-state="denied"]',
+    ) as HTMLElement;
+    expect(granted).not.toBeNull();
+    expect(denied).not.toBeNull();
+    expect(granted.textContent).toContain('✓');
+    expect(denied.textContent).toContain('×');
+    expect(granted.querySelector('.text-u-accept')).not.toBeNull();
+    expect(denied.querySelector('.text-u-deny')).not.toBeNull();
+  });
+
   it('calls onClose when close button is clicked', async () => {
     const user = userEvent.setup();
     const onClose = jest.fn();

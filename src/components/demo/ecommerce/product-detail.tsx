@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 
 import type { Product } from '@/lib/demo/products';
@@ -80,7 +81,6 @@ export function ProductDetail({ product }: ProductDetailProps) {
   }
 
   const related = getRelatedProducts(product.id, 3);
-  const [c1, c2, c3] = product.palette;
 
   return (
     <div className="flex flex-col gap-10">
@@ -102,17 +102,17 @@ export function ProductDetail({ product }: ProductDetailProps) {
         <article className="flex flex-col gap-6">
           <div
             className="relative aspect-square w-full overflow-hidden rounded-lg"
-            style={{ background: c1 }}
+            style={{ background: product.palette[0] }}
           >
-            <div
-              className="absolute inset-x-12 top-1/2 h-1/2 -translate-y-1/2 rounded"
-              style={{ background: c2 }}
+            <Image
+              src={product.image.src}
+              alt={product.image.alt}
+              fill
+              priority
+              sizes="(min-width: 1024px) 480px, 100vw"
+              className="object-cover"
             />
-            <div
-              className="absolute right-8 top-8 h-14 w-14 rounded-full"
-              style={{ background: c3 }}
-            />
-            <div className="absolute bottom-4 left-4 font-mono text-[10px] uppercase tracking-[0.1em] text-white/70">
+            <div className="absolute bottom-4 left-4 rounded bg-black/45 px-2 py-[2px] font-mono text-[10px] uppercase tracking-[0.1em] text-white/90">
               {product.imageLabel}
             </div>
             {product.tag ? (
@@ -195,10 +195,20 @@ export function ProductDetail({ product }: ProductDetailProps) {
                 href={`/demo/ecommerce/${p.id}`}
                 className="flex flex-col gap-2 rounded border border-[var(--shop-warm-brown,#5C4A3D)]/12 p-3 transition-shadow hover:shadow-sm"
               >
-                <div className="aspect-[4/5] w-full rounded" style={{ background: p.palette[0] }}>
-                  <div
-                    className="mx-auto mt-8 h-1/2 w-3/4 rounded"
-                    style={{ background: p.palette[1] }}
+                <div
+                  className="relative aspect-[4/5] w-full overflow-hidden rounded"
+                  style={{ background: p.palette[0] }}
+                >
+                  {/* Decorative alt: the surrounding <Link>'s accessible
+                      name already includes the product name + price, so
+                      a descriptive alt would double-announce to screen
+                      readers. The thumbnail is visual emphasis only. */}
+                  <Image
+                    src={p.image.src}
+                    alt=""
+                    fill
+                    sizes="(min-width: 1024px) 200px, 33vw"
+                    className="object-cover"
                   />
                 </div>
                 <div className="font-display text-sm text-[var(--shop-warm-brown,#5C4A3D)]">

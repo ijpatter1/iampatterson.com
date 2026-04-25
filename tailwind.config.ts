@@ -121,6 +121,13 @@ const config: Config = {
           soft: 'rgba(245, 239, 227, 0.1)',
           faint: 'rgba(245, 239, 227, 0.05)',
         },
+        // Semantic accept/deny tokens for the overlay (Phase 10d D8.j).
+        // Match the site-wide green `#8FBF7A` and red-amber `#D9725B`
+        // already used by the data-quality readout + demo banner pulse
+        // dot, so "this flowed" vs "this was blocked" reads the same way
+        // across the ecommerce demo reveal and the overlay tabs.
+        'u-accept': '#8FBF7A',
+        'u-deny': '#D9725B',
 
         // Demo accent palettes — all neutral for now
         demo: {

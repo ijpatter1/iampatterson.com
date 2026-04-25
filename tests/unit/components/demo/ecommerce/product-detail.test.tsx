@@ -72,6 +72,16 @@ describe('ProductDetail (Phase 9F D6)', () => {
     expect(screen.getByText(/moldable body, bendable legs/i)).toBeInTheDocument();
   });
 
+  // Phase 10d D8.f: product hero renders real photography (not the pre-D8.f
+  // palette-tile placeholder). Pins the product's image alt against the
+  // DOM so a future regression dropping `image` back to palette-only fails.
+  it('renders the product photograph with descriptive alt text', () => {
+    renderDetail();
+    const hero = screen.getByAltText(/retail tag visible/i);
+    expect(hero.tagName).toBe('IMG');
+    expect(hero.getAttribute('src')).toContain('tuna-plush-classic');
+  });
+
   it('fires trackProductView once on mount', () => {
     renderDetail();
     expect(mockProductView).toHaveBeenCalledTimes(1);

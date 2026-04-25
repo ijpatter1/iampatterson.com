@@ -652,4 +652,21 @@ describe('PipelineSection, See your session CTA', () => {
     expect(cta.tagName).toBe('BUTTON');
     expect(cta.getAttribute('type')).toBe('button');
   });
+
+  // Phase 10d D8.c: the pipeline CTA reads as a primary persimmon button
+  // at rest so it is legible as "the CTA" before the bleed-reveal animation
+  // arms. Prior behaviour rendered a white button that only turned persimmon
+  // during peak. This pin guards the base-state palette (classes are the
+  // load-bearing source of truth since jsdom cannot compute CSS transitions
+  // driven by the `--bleed` CSS variable).
+  it('renders at base with persimmon accent classes (not paper/ink)', () => {
+    renderSection();
+    const cta = screen.getByRole('button', { name: /see your session/i });
+    expect(cta.className).toContain('bg-accent-current');
+    expect(cta.className).toContain('text-paper');
+    expect(cta.className).toContain('border-accent-current');
+    expect(cta.className).not.toContain('bg-paper');
+    expect(cta.className).not.toContain('text-ink');
+    expect(cta.className).not.toContain('border-ink');
+  });
 });

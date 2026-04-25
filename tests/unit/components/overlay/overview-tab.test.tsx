@@ -455,26 +455,71 @@ describe('OverviewTab', () => {
     expect(portal!.destination).toBe('contact');
   });
 
-  // --- F2 structural pins (UAT feedback) ---
-
-  it('renders the portals section at the TOP of the tab body (F2 reorder)', () => {
+  // Phase 10d D8.h: tab-level directive block at the top, matching the
+  // Timeline and Consent tabs' kicker + headline + body pattern.
+  it('renders the D8.h directive block above the portals section', () => {
     useSessionState.mockReturnValue(makeState());
-    const { container } = render(
+    render(
       <Wrapper>
         <OverviewTab />
       </Wrapper>,
     );
-    // Direct children of the overview-tab root, in render order.
-    const tabRoot = container.querySelector('[data-testid="overview-tab"]');
-    expect(tabRoot).not.toBeNull();
-    const firstChild = tabRoot!.firstElementChild;
-    // The first child IS the portals section (or has it as its immediate
-    // content). Before F2 it was the session-header; a regression would
-    // flip the order and push portals below.
-    const portalsIsFirst =
-      firstChild?.getAttribute('data-testid') === 'overview-portals' ||
-      firstChild?.querySelector('[data-testid="overview-portals"]') !== null;
-    expect(portalsIsFirst).toBe(true);
+    const directive = screen.getByTestId('overview-directive');
+    const portals = screen.getByTestId('overview-portals');
+    expect(directive.textContent).toMatch(/session overview · live/i);
+    expect(directive.textContent).toMatch(/where you are in your session/i);
+    // Phase 10d D8.h Pass-2 fix: also pin the body sentence so a
+    // regression reverting to the Pass-1 flattened-list body ("Event
+    // coverage, consent state, and ecommerce-demo progress for this
+    // session.") fails. The Pass-1 evaluator fix-pack rewrote the body
+    // to a claim-led shape parallel to Consent's directive.
+    expect(directive.textContent).toMatch(/your session as the stack sees it/i);
+    expect(directive.textContent).toMatch(/which events fired, what consent allowed/i);
+    expect(directive.compareDocumentPosition(portals)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  // Phase 10d D8.j: consent rows on the Overview tab pick up the semantic
+  // green/red tokens + ✓/× glyphs.
+  it('applies `u-accept` to granted consent rows and `u-deny` to denied ones', () => {
+    useSessionState.mockReturnValue(
+      makeState({
+        consent_snapshot: { analytics: 'granted', marketing: 'denied', preferences: 'granted' },
+      }),
+    );
+    render(
+      <Wrapper>
+        <OverviewTab />
+      </Wrapper>,
+    );
+    const grantedValue = screen.getByTestId('consent-row-analytics').querySelector('dd');
+    const deniedValue = screen.getByTestId('consent-row-marketing').querySelector('dd');
+    expect(grantedValue).not.toBeNull();
+    expect(deniedValue).not.toBeNull();
+    expect(grantedValue!.className).toContain('text-u-accept');
+    expect(deniedValue!.className).toContain('text-u-deny');
+    expect(grantedValue!.textContent).toContain('✓');
+    expect(deniedValue!.textContent).toContain('×');
+  });
+
+  // --- F2 structural pins (UAT feedback) ---
+
+  it('renders the portals section above session/consent/coverage/funnel (F2 reorder)', () => {
+    useSessionState.mockReturnValue(makeState());
+    render(
+      <Wrapper>
+        <OverviewTab />
+      </Wrapper>,
+    );
+    // Phase 10d D8.h added a tab-level directive block above the portals
+    // (matching Timeline + Consent tabs' intro pattern), so portals is
+    // no longer literally the first child. The F2 intent is that portals
+    // + the threshold CTA land *above* the session/consent/coverage/
+    // funnel blocks — the directive is a short header, not a section
+    // that competes for "above the fold." Assert the document-order
+    // invariant directly.
+    const portals = screen.getByTestId('overview-portals');
+    const analyticsRow = screen.getByTestId('consent-row-analytics');
+    expect(portals.compareDocumentPosition(analyticsRow)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
   it('renders the threshold CTA inside the top portals block (F2 reorder)', () => {
