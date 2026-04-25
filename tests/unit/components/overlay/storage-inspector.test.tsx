@@ -56,6 +56,30 @@ describe('StorageInspector', () => {
     expect(analyticsGroup.querySelectorAll('[data-testid^="storage-row-"]')).toHaveLength(1);
   });
 
+  // Bug fix 2026-04-25 (mobile spill): on iPhone-SE-width viewports the
+  // single-row layout `flex items-baseline gap-3` could not fit name +
+  // source + 40-char-truncated value + reveal button, so `flex-1 min-w-0
+  // break-all` on the value column squeezed to ~1 char and the value
+  // rendered one character per line vertically. The responsive layout
+  // stacks name+source on row 1 / value+reveal on row 2 on mobile and
+  // restores the single horizontal row on sm+. This pin asserts the
+  // class string contains the responsive breakpoint shape so a future
+  // cleanup pass that "matches the rest of the overlay" doesn't strip
+  // it again — the content shape (long opaque cookie/JSON values) is
+  // genuinely different from consent labels or destination-chip names.
+  it('uses a flex-col → sm:flex-row responsive stack so long values do not spill on mobile', () => {
+    render(
+      <StorageInspector
+        snapshot={snap([
+          { name: '_iap_aid', value: 'short', source: 'cookie', category: 'app-identity' },
+        ])}
+      />,
+    );
+    const row = screen.getByTestId('storage-row-cookie-_iap_aid');
+    expect(row.className).toContain('flex-col');
+    expect(row.className).toContain('sm:flex-row');
+  });
+
   it('row carries name + source badge + data attributes', () => {
     render(
       <StorageInspector

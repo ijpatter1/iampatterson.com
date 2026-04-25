@@ -29,33 +29,48 @@ function StorageRow({ entry }: { entry: StorageEntry }) {
   const isLong = entry.value.length > TRUNCATE_AT;
   const visible = revealed || !isLong ? entry.value : truncate(entry.value);
 
+  // Responsive layout: stack name+source on row 1 / value+reveal on row 2
+  // on mobile; single horizontal row on sm+. Most overlay surfaces use a
+  // single horizontal layout because their content is short (consent
+  // labels, destination chip names). Storage values are uniquely long
+  // (full UUIDs, JSON blobs, encoded consent strings) so an iPhone-SE-
+  // width row can't fit name + source + 40-char-truncated value + reveal
+  // button on a single line. Without the breakpoint, `flex-1 min-w-0
+  // break-all` on the value column squeezes to 1-char width and the
+  // value renders one character per line. Don't "fix" this back to a
+  // single horizontal row to match the other surfaces — the content
+  // shape is genuinely different here.
   return (
     <li
       data-testid={`storage-row-${entry.source}-${entry.name}`}
       data-storage-source={entry.source}
       data-storage-category={entry.category}
-      className="flex items-baseline gap-3 px-3 py-2"
+      className="flex flex-col gap-1 px-3 py-2 sm:flex-row sm:items-baseline sm:gap-3"
     >
-      <span className="shrink-0 font-mono text-[11px] text-u-ink">{entry.name}</span>
-      <span className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-u-ink-3">
-        {SOURCE_LABEL[entry.source]}
-      </span>
-      <span
-        data-testid="storage-value"
-        className="min-w-0 flex-1 break-all font-mono text-[11px] text-u-ink-2"
-      >
-        {visible || <span className="text-u-ink-3">(empty)</span>}
-      </span>
-      {isLong && (
-        <button
-          type="button"
-          data-testid="storage-row-reveal"
-          onClick={() => setRevealed((r) => !r)}
-          className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-accent-current hover:underline"
+      <div className="flex shrink-0 items-baseline gap-3">
+        <span className="font-mono text-[11px] text-u-ink">{entry.name}</span>
+        <span className="font-mono text-[10px] uppercase tracking-widest text-u-ink-3">
+          {SOURCE_LABEL[entry.source]}
+        </span>
+      </div>
+      <div className="flex min-w-0 flex-1 items-baseline gap-3">
+        <span
+          data-testid="storage-value"
+          className="min-w-0 flex-1 break-all font-mono text-[11px] text-u-ink-2"
         >
-          {revealed ? 'truncate' : 'reveal'}
-        </button>
-      )}
+          {visible || <span className="text-u-ink-3">(empty)</span>}
+        </span>
+        {isLong && (
+          <button
+            type="button"
+            data-testid="storage-row-reveal"
+            onClick={() => setRevealed((r) => !r)}
+            className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-accent-current hover:underline"
+          >
+            {revealed ? 'truncate' : 'reveal'}
+          </button>
+        )}
+      </div>
     </li>
   );
 }
