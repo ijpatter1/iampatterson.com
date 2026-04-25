@@ -5,13 +5,9 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
 import { useOverlay } from '@/components/overlay/overlay-context';
-import { StorageSummary } from '@/components/overlay/overview/storage-summary';
 import { useSessionState } from '@/components/session-state-provider';
 import { RENDERABLE_EVENT_NAMES } from '@/lib/events/schema';
 import { trackClickCta, trackPortalClick } from '@/lib/events/track';
-import type { StorageSnapshot } from '@/lib/identity/storage-inspector';
-
-const EMPTY_STORAGE: StorageSnapshot = { entries: [], takenAt: 0 };
 import {
   ECOMMERCE_FUNNEL_SEQUENCE,
   type EcommerceStage,
@@ -166,7 +162,7 @@ function SectionKicker({ children }: { children: string }) {
   );
 }
 
-export function OverviewTab({ storage = EMPTY_STORAGE }: { storage?: StorageSnapshot } = {}) {
+export function OverviewTab() {
   const state = useSessionState();
   const pathname = usePathname() ?? '/';
   const { close } = useOverlay();
@@ -314,9 +310,6 @@ export function OverviewTab({ storage = EMPTY_STORAGE }: { storage?: StorageSnap
           </dl>
         </section>
       </div>
-
-      {/* --- Browser storage summary (Phase 10d D9) --- */}
-      <StorageSummary snapshot={storage} />
 
       {/* --- Event coverage (full width) --- */}
       <section>

@@ -1,11 +1,7 @@
 'use client';
 
-import { StorageInspector } from '@/components/overlay/consent/storage-inspector';
 import { destinationLabel } from '@/lib/events/destination-labels';
 import type { PipelineEvent, ConsentState } from '@/lib/events/pipeline-schema';
-import type { StorageSnapshot } from '@/lib/identity/storage-inspector';
-
-const EMPTY_STORAGE: StorageSnapshot = { entries: [], takenAt: 0 };
 
 const CONSENT_DESCRIPTIONS: Record<keyof ConsentState, string> = {
   analytics_storage: 'Analytics cookies and data collection',
@@ -17,10 +13,9 @@ const CONSENT_DESCRIPTIONS: Record<keyof ConsentState, string> = {
 
 interface ConsentViewProps {
   events: PipelineEvent[];
-  storage?: StorageSnapshot;
 }
 
-export function ConsentView({ events, storage = EMPTY_STORAGE }: ConsentViewProps) {
+export function ConsentView({ events }: ConsentViewProps) {
   if (events.length === 0) {
     return (
       <div className="space-y-4">
@@ -35,7 +30,6 @@ export function ConsentView({ events, storage = EMPTY_STORAGE }: ConsentViewProp
           populate the timeline, we&apos;ll show your live consent decisions here. To change
           consent, click the Cookiebot badge in the bottom-left corner of the page.
         </p>
-        <StorageInspector snapshot={storage} />
       </div>
     );
   }
@@ -144,8 +138,6 @@ export function ConsentView({ events, storage = EMPTY_STORAGE }: ConsentViewProp
           </div>
         </div>
       )}
-
-      <StorageInspector snapshot={storage} />
     </div>
   );
 }
