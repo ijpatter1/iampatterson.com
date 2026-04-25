@@ -163,9 +163,16 @@ describe('NavHint, first-session pulse ring', () => {
       act(() => {
         jest.advanceTimersByTime(1500);
         fireEvent.click(pulse);
-        // After the SessionPulse click, advance through the original
-        // 3s window AND the auto-clear window — the hint must never
-        // appear and the dismissal event must never fire.
+        // After the SessionPulse click, simulate the visitor doing what
+        // they actually did in the wild — interacting inside the now-open
+        // overlay, which dispatches document-level pointermove/click/
+        // keydown events. If the fix only cancelled the timer but left
+        // state at 'idle', resetIdle would re-arm via these listeners.
+        // Asserting the hint stays absent across both pure time-advance
+        // AND idle-reset events proves state advanced to 'dismissed'.
+        document.dispatchEvent(new Event('pointermove'));
+        document.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }));
         jest.advanceTimersByTime(15000);
       });
       expect(screen.queryByTestId('nav-hint')).not.toBeInTheDocument();
@@ -182,7 +189,36 @@ describe('NavHint, first-session pulse ring', () => {
       });
       // Gate set so a subsequent homepage visit in the same session
       // doesn't re-trigger the hint timer.
-      expect(window.sessionStorage.getItem('iampatterson.nav_hint.shown')).toBe('1');
+      expect(window.sessionStorage.getItem(NAV_HINT_STORAGE_KEY)).toBe('1');
+    });
+
+    it('still terminates the state machine when sessionStorage.setItem throws on pre-show SessionPulse click', () => {
+      // Strict-privacy fallback for the new pre-show branch: setting
+      // the gate is allowed to fail silently (storage disabled). The
+      // state machine must still advance to 'dismissed' so the hint
+      // doesn't fire after the visitor has clicked SessionPulse.
+      // Sibling test at line ~295 covers the render-time gate write
+      // path; this one covers the pre-show path.
+      const originalSetItem = Storage.prototype.setItem;
+      Storage.prototype.setItem = jest.fn(() => {
+        throw new Error('QuotaExceededError: sessionStorage disabled');
+      });
+
+      try {
+        render(<Harness />);
+        const pulse = screen.getByTestId('fake-session-pulse');
+        act(() => {
+          jest.advanceTimersByTime(1500);
+          fireEvent.click(pulse);
+          document.dispatchEvent(new Event('pointermove'));
+          jest.advanceTimersByTime(15000);
+        });
+        expect(screen.queryByTestId('nav-hint')).not.toBeInTheDocument();
+        expect(mockShown).not.toHaveBeenCalled();
+        expect(mockDismissed).not.toHaveBeenCalled();
+      } finally {
+        Storage.prototype.setItem = originalSetItem;
+      }
     });
 
     it('resets on keydown', () => {
