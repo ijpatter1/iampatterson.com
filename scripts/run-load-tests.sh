@@ -8,7 +8,11 @@
 #
 # Pre-reqs: `npm install` already run inside both service directories.
 # Without that, the load tests fail at TypeScript module resolution
-# rather than at runtime.
+# rather than at runtime. The runner installs deps automatically if
+# the service dir's `node_modules/` is missing — convenient for
+# developer machines, but means a CI invocation will silently
+# network-install dependencies. Use a CI workflow that pre-installs
+# both service dirs before calling this script if that's a concern.
 #
 # Usage:
 #   ./scripts/run-load-tests.sh

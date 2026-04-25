@@ -10,11 +10,13 @@ import { METABASE_BASE_URL } from '@/lib/metabase/embed';
  * Secret Manager entry if the canonical dashboard moves. */
 const FALLBACK_DASHBOARD_ID = 2;
 
-/** Phase 10d D2: load-timeout budget for the Metabase iframe. 15s sits
- * well under the ~60s JVM cold-start envelope documented in 9B follow-up
- * #1 (`cpu-throttling=true`) but is long enough that a typical warm load
- * — single-digit seconds — clears the timer cleanly. If the Cloud Run
- * service is later switched to `--no-cpu-throttling`, drop this to 8-10s.
+/** Phase 10d D2: load-timeout budget for the Metabase iframe. 15s is a
+ * conservative upper bound on warm-load latency (single-digit seconds in
+ * practice) and a soft floor against the cold-start envelope inferred
+ * from 9B follow-up #1 (`cpu-throttling=true` JVM warmup, observed
+ * anecdotally at ~60s, not measured against the current Cloud Run
+ * service). If the service is later switched to `--no-cpu-throttling`,
+ * or once a real cold-start measurement lands, this can drop to 8-10s.
  * See docs/perf/error-handling-audit-2026-04-25.md path B. */
 const IFRAME_LOAD_TIMEOUT_MS = 15_000;
 
@@ -94,14 +96,14 @@ export function DashboardPayoff({
           >
             bi.iampatterson.com/dashboard/{dashboardId}
           </a>{' '}
-          behind Google SSO — open it directly to see the same view that would have rendered here.
+          behind Google SSO.
         </p>
       </InlineDiagnostic>
     );
   }
 
   return (
-    <InlineDiagnostic tag="DASHBOARDS · LIVE" title="here's what your team sees, right now.">
+    <InlineDiagnostic tag="DASHBOARDS · LIVE" title="here's what your team sees, right now">
       <div className="w-full">
         <iframe
           src={dashboardUrl}

@@ -76,6 +76,23 @@ describe('NarrativeFlow', () => {
     expect(screen.getByText(/sGTM/i)).toBeInTheDocument();
   });
 
+  it('describes page_engagement firings with the threshold + max scroll (Phase 10d D3)', () => {
+    render(
+      <NarrativeFlow
+        event={makeEvent({
+          event_name: 'page_engagement',
+          page_path: '/demo/ecommerce',
+          parameters: { engagement_seconds: 60, max_scroll_pct: 87 },
+        })}
+      />,
+    );
+    // Threshold + scroll high-water-mark surface in the row description
+    // so the visitor can distinguish the 15s / 60s / 180s firings from
+    // each other without inspecting the raw payload.
+    expect(screen.getByText(/spent 60s engaged on \/demo\/ecommerce/i)).toBeInTheDocument();
+    expect(screen.getByText(/scrolled 87%/i)).toBeInTheDocument();
+  });
+
   it('shows destination names from routing', () => {
     render(
       <NarrativeFlow

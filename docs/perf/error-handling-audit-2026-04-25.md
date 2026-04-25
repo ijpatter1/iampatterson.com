@@ -121,10 +121,10 @@ Two failure modes need graceful degradation:
 
 ### What protects this path today
 
-- **Null-signer fallback** in `DashboardPayoff` (lines 35-55).
-  When `dashboardUrl` is null, the iframe is not mounted and the
-  visitor sees prose with a deep-link to `bi.iampatterson.com/dashboard/2`
-  behind Google SSO. Pinned by
+- **Null-signer fallback** in `DashboardPayoff` (lines 64-83 after
+  the D2 + Pass-1 fix-pack edits). When `dashboardUrl` is null, the
+  iframe is not mounted and the visitor sees prose with a deep-link
+  to `bi.iampatterson.com/dashboard/2` behind Google SSO. Pinned by
   `tests/unit/components/demo/ecommerce/dashboard-payoff.test.tsx:26`.
 
 ### Gap (closed in this session)
@@ -208,13 +208,18 @@ prevents redelivery from inflating the counts.
   (`maxBufferSize=2`) and `:289` (default 100 with 110 events).
 
 `Cloud Run SSE service` (out of scope for this audit, but for
-completeness): the push subscription's ack deadline determines how
-fast Pub/Sub will redeliver an unacked message. The service acks
-on Pub/Sub message receipt before fanning out to SSE listeners, so
-slow listeners can't trigger redelivery. (This is the right
-trade-off because the events are visible-on-this-visit only —
-non-delivery to a listener that disconnected mid-flight is
-acceptable.)
+completeness): the push subscription's ack deadline (default 600s)
+determines how fast Pub/Sub will redeliver an unacked message. The
+service's `POST /pubsub/push` handler at `infrastructure/cloud-run/
+event-stream/src/server.ts:74-83` calls `routeMessage` (which writes
+to the matching SSE Response via `res.write`) and then responds
+`200` to acknowledge the Pub/Sub push. `res.write` is non-blocking,
+so the fanout adds microseconds to the ack response, well under
+the deadline; an SSE listener that disconnected mid-flight just
+fails the write silently and the Pub/Sub message is still acked.
+This is the right trade-off because the events are
+visible-on-this-visit only, non-delivery to a listener that
+disconnected mid-flight is acceptable.
 
 ### Gap
 

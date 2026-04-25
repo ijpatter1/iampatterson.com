@@ -224,6 +224,8 @@ describe('Mart models', () => {
     'definitions/marts/mart_customer_ltv.sqlx',
     'definitions/marts/mart_subscription_cohorts.sqlx',
     'definitions/marts/mart_lead_funnel.sqlx',
+    // Phase 10d D3: cross-event funnel reach into the ecommerce demo.
+    'definitions/marts/mart_ecommerce_funnel.sqlx',
   ];
 
   test.each(martModels)('%s exists', (modelPath) => {
@@ -273,6 +275,24 @@ describe('Mart models', () => {
     expect(sql).toContain('form_complete');
     expect(sql).toContain('lead_qualify');
     expect(sql).toContain('qualification_tier');
+  });
+
+  test('mart_ecommerce_funnel pivots ecommerce events into per-session funnel rows', () => {
+    const sql = readSqlx('definitions/marts/mart_ecommerce_funnel.sqlx');
+    // Per-stage flag columns drive the binary funnel reach signal.
+    expect(sql).toContain('has_demo_page_view');
+    expect(sql).toContain('has_product_view');
+    expect(sql).toContain('has_add_to_cart');
+    expect(sql).toContain('has_begin_checkout');
+    expect(sql).toContain('has_purchase');
+    // Furthest-stage CASE label drives the cluster key + drop-off chart.
+    expect(sql).toContain('furthest_stage');
+    // Step-to-step conversion times in seconds for cohort latency analysis.
+    expect(sql).toContain('seconds_total_funnel');
+    // Demo-entry scoping must filter to the ecommerce surface specifically.
+    expect(sql).toContain("page_path LIKE '/demo/ecommerce");
+    // Forward-compatible column for the page_engagement event (Phase 10d D3).
+    expect(sql).toContain('demo_engagement_pings');
   });
 
   test('all mart models target iampatterson_marts schema', () => {
