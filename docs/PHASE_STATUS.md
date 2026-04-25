@@ -361,7 +361,8 @@
 - ⬜ D4 SEO: per-route meta + Open Graph + Twitter cards; JSON-LD (`Organization` + `Person`); sitemap freshness; content plan sketch at `docs/seo/content-plan-<date>.md`.
 - ⬜ D5 Security review: demo-data exposure paths, SA/IAP/JWT scope, PII audit across `DataLayerEvent` union, `npm audit`. Report at `docs/security/review-<date>.md`.
 - ⬜ D6 Load testing: data generator + WebSocket service under synthetic load; Pub/Sub throughput profile. Report at `docs/perf/load-test-<date>.md`.
-- ⬜ D7 Anonymous ID first-party cookie (`_iap_aid`, 365d, SameSite=Lax, Secure in prod) threaded as `anonymous_id` alongside `session_id`; surfaced in Overview portals-and-state + ecommerce live sidebars. *Added 2026-04-21 from UAT r2 item 15.*
+- ⬜ D7 Anonymous ID first-party cookie (`_iap_aid`, 365d, SameSite=Lax, Secure in prod) threaded as `anonymous_id` alongside `session_id`; surfaces via the D9 storage inspector (Overview summary chip + Consent per-key row); ecommerce live sidebars wired to the real value rather than seed. *Added 2026-04-21 from UAT r2 item 15. Sequencing 2026-04-25: D9 first, D7 consumes the existing surface.*
+- ⬜ D9 Browser storage inspector — categorized cookie + localStorage + sessionStorage view, live-subscribed via 1s tick (overlay-open-gated) + native `storage` event. Overview summary chips per category; Consent tab full per-key inspector with truncate-on-long + click-to-reveal; read-only by design. *Added 2026-04-25 from session-007 user observation: D7 surfaces one cookie, the "make invisible visible" thesis demands all of them.*
 - ✅ D8 UX polish bundle (UAT r1 2026-04-23) — all 10 sub-items shipped 2026-04-24:
   - ✅ a. Hero `p-meta` typography — closed 2026-04-24 by 10c D4 + Pass-1 fix-pack (element + orphaned selectors cut).
   - ✅ b. "Explore the demos" → "Explore the demo" on hero ghost CTA + its `trackClickCta` label (commit `152391c`).

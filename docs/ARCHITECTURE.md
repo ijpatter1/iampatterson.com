@@ -567,6 +567,33 @@ Assign explicit z-index tokens in `tailwind.config.ts` (`z-cookiebot`, `z-overla
 
 **What's deliberately unchanged in 9F.** Event schemas (`src/lib/events/schema.ts`), 9F consumes existing events, does not add new ones (nav-analytics events are scoped to 9E deliverable 9). SSE Cloud Run service, `_iap_sid` cookie, GTM, sGTM, Pub/Sub, BigQuery, Dataform, Metabase deployment. The 9B-infra IAP / backend-direct URL-map split. The `MB_EMBEDDING_SECRET_KEY` / `METABASE_EMBED_CONFIG` Vercel env contract.
 
+### Phase 10d, Browser Storage Inspector (deliverable 9)
+
+Adds a read-only inspector for cookies + localStorage + sessionStorage to the Session overlay. Categorized (not raw dump) and live-subscribed (1s polling tick gated to `overlayOpen`, plus the native `storage` event for cross-tab localStorage writes). Two surfaces: per-category summary chips in the Overview tab; per-key collapsible detail list in the Consent tab. The Consent tab is the chosen home for full detail because storage IS the durable artifact of consent decisions — keys appearing or disappearing are what visitors see *change* when they grant/deny consent in the Cookiebot widget.
+
+**Module topology.**
+
+```
+src/lib/identity/
+├── storage-inspector.ts          # readAllStorage(), diffSnapshot(prev, next)
+└── storage-categories.ts         # regex-based classifier; one-line entries per known key
+src/hooks/
+└── useStorageInspector.ts        # 1s tick + storage event subscription, gated by overlay-open
+src/components/overlay/
+├── overview/storage-summary.tsx  # per-category chips with data-storage-category + data-key-count
+└── consent/storage-inspector.tsx # per-category collapsible list, per-row truncate-on-long
+```
+
+**Categorization.** First-party app keys (`_iap_aid` from D7, `_iap_sid`, `iampatterson.*`), first-party analytics (`_ga`, `_ga_*`, sGTM FPID/FPLC), CMP (Cookiebot), third-party (everything else), uncategorized fallback. The regex classifier resolves each key once on read; new known keys are added as one-line entries in `storage-categories.ts`.
+
+**Live-subscription model.** The inspector reads the cookie jar + localStorage + sessionStorage on a 1s tick **only while the overlay is open** (the `overlayOpen` context stops the tick when closed, so there's zero cost on closed-overlay sessions). Cross-tab localStorage writes also flow through the native `storage` event for same-second response without waiting for the next tick. Same-tab `localStorage.setItem` calls don't fire `storage` events (documented platform quirk), so the polling tick covers that case. Monkey-patching `localStorage.setItem` globally was considered and rejected: the global side-effect surface risks breaking consumer code (Cookiebot, GTM both write to localStorage), and the 1s cadence is fast enough for "live" feel.
+
+**Read-only by design.** No write or delete affordances in the inspector UI. Consent changes flow through the Cookiebot widget (per D8.i directive); identity cookie rotation flows through natural cookie expiry. The inspector's job is to show, not control. Values are not redacted — visitor inspects their own browser state on their own visit; redacting would defeat the thesis. Long opaque tracker values (Cookiebot consent string, GA `_ga` UUID) get truncate-with-reveal treatment for layout, not for privacy.
+
+**D7 dependency inversion.** Original D7 spec required a one-off `_iap_aid` surface in the Overview portals-and-state block. With D9 in place, D7 reduces to: mint the cookie, classify it under "App identity" via a one-line entry in `storage-categories.ts`, thread `anonymous_id` into `BaseEvent`/`buildBaseEvent`. The Overview chip + Consent row appear automatically because the inspector reads the cookie jar generically.
+
+**What's deliberately unchanged.** Existing Overview portals-and-state block layout (a new section is appended), existing Consent destination chips + headers (a new section is appended below them), the `u-accept` / `u-deny` semantic-token palette from D8.j (the inspector reuses `u-accept` for newly-written-key highlight). The SSE pipeline + event schema are unchanged — the inspector is a new client-side surface with no event-pipeline integration; it doesn't push events of its own (read-only by design also means observer-only — visitor watching their own storage shouldn't fire telemetry).
+
 ### Phase 8, Attribution
 Shapley value MTA in Dataform. Comparison views against last-click and platform-reported.
 
