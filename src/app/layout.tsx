@@ -34,18 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       lang="en"
       className={`${instrumentSerif.variable} ${plusJakarta.variable} ${jetbrainsMono.variable}`}
     >
-      {/*
-       * `suppressHydrationWarning` on <head> is the React-documented escape hatch for
-       * third-party scripts that modify the DOM before hydration. Cookiebot's
-       * `data-blockingmode="auto"` injects child <script> tags into <head> during
-       * its own bootstrap (the consentcdn.cookiebot.com/consentconfig/<cbid> URL),
-       * which rewrites the head DOM out from under React. Without this, every page
-       * load logs a hydration mismatch on the Cookiebot loader and the GTM
-       * consent-defaults block. Suppression is one level deep — it covers the
-       * direct script-tag children of <head> without affecting any other surface
-       * on the page.
-       */}
-      <head suppressHydrationWarning>
+      <head>
         <CookiebotScript />
         <GtmScript />
       </head>
