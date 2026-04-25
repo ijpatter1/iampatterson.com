@@ -108,7 +108,14 @@ export function CartView() {
         integrity) against the events as they flow through.
       </WalkthroughBlurb>
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_320px] lg:gap-10">
+      {/* Sidebar slot is sized to fit the LiveSidebar's intrinsic
+          `lg:w-[360px]`. A 320px slot let the 360px sidebar overflow
+          its cell by 40px, which extended the document scrollWidth on
+          iPad-Mini-landscape (1024×768) and produced a 16px horizontal
+          scroll. `minmax(0,1fr)` on the article column prevents
+          unbreakable min-content from re-inflating the column past
+          its fr-share. Phase 10d D1 mobile-matrix regression pin. */}
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-10">
         <article className="flex flex-col gap-4">
           {isEmpty ? (
             <div className="flex flex-col items-start gap-3 rounded border border-[var(--shop-warm-brown,#5C4A3D)]/12 bg-[var(--shop-cream-2,#F5EEDB)] p-6">
