@@ -219,9 +219,7 @@ export function OverviewTab() {
           Where you are in your session.
         </h3>
         <p className="mt-3 max-w-[62ch] text-sm leading-relaxed text-u-ink-2">
-          Event coverage, consent state, and how far you&apos;ve gone in the ecommerce demo — all in
-          one place. Jump into /services, /about, or /contact from the portals below, or drop into
-          Timeline for the full event trail.
+          Event coverage, consent state, and ecommerce-demo progress for this session.
         </p>
       </section>
 
