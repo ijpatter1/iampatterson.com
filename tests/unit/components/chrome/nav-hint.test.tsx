@@ -7,7 +7,9 @@
  *  - Dismissal modes: scroll, click_outside, timeout, three values post-
  *    UAT (click_session_pulse removed: SessionPulse click is a
  *    conversion tracked via click_cta(session_pulse), not a dismissal)
- *  - Once-per-session via sessionStorage gate (set on render, not mount)
+ *  - Once-per-session via sessionStorage gate (set on either of two paths:
+ *    idle → showing render OR pre-show SessionPulse-click discovery signal
+ *    per bug fix 2026-04-25 `5f1ab1f`; not set on mount)
  *  - Homepage-entry-scoped (only fires on `/`)
  *  - Reduced-motion: static text "← your session" instead of ring
  *  - nav_hint_shown emits on render; nav_hint_dismissed emits on dismiss
@@ -157,7 +159,7 @@ describe('NavHint, first-session pulse ring', () => {
     // SessionPulse, then nav_hint_dismissed 10s after that). The
     // session-storage gate must also be set so a subsequent homepage
     // visit in the same session doesn't re-arm the hint.
-    it('cancels the pending hint timer when SessionPulse is clicked before show', () => {
+    it('cancels the pending hint timer AND advances state to dismissed when SessionPulse is clicked before show', () => {
       render(<Harness />);
       const pulse = screen.getByTestId('fake-session-pulse');
       act(() => {
