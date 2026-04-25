@@ -130,8 +130,16 @@ describe('ConsentView', () => {
     // "Firing" was present-participle against "Blocked"'s past-
     // participle, a readability snag the Pass-1 product reviewer flagged.
     expect(screen.getByText(/sent destinations/i)).toBeInTheDocument();
-    expect(screen.getByText('GA4', { exact: false })).toBeInTheDocument();
-    expect(screen.getByText('BigQuery', { exact: false })).toBeInTheDocument();
+    // Phase 10d D9: scope to the routing destination chips so the assertion doesn't
+    // collide with the storage-inspector category descriptions / footnote text that
+    // also reference these vendor names ("GA4 / sGTM / Google Ads" in the analytics
+    // category description; "metadata" in the cookie-API limitation footnote).
+    const sentChips = document.querySelectorAll('[data-destination-state="sent"]');
+    const sentText = Array.from(sentChips)
+      .map((el) => el.textContent ?? '')
+      .join(' ');
+    expect(sentText).toContain('GA4');
+    expect(sentText).toContain('BigQuery');
   });
 
   it('shows blocked destinations (blocked by consent)', () => {
@@ -140,8 +148,13 @@ describe('ConsentView', () => {
     // destinations" (keeps the semantic pairing with the `blocked_consent`
     // routing status in the schema).
     expect(screen.getByText(/blocked destinations/i)).toBeInTheDocument();
-    expect(screen.getByText('Meta', { exact: false })).toBeInTheDocument();
-    expect(screen.getByText('Google Ads', { exact: false })).toBeInTheDocument();
+    // Phase 10d D9: scope to the routing destination chips (see sibling test above).
+    const blockedChips = document.querySelectorAll('[data-destination-state="blocked"]');
+    const blockedText = Array.from(blockedChips)
+      .map((el) => el.textContent ?? '')
+      .join(' ');
+    expect(blockedText).toContain('Meta');
+    expect(blockedText).toContain('Google Ads');
   });
 
   it('updates when events change (uses latest consent state)', () => {
