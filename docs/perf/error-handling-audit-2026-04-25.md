@@ -151,12 +151,15 @@ chrome, prose explaining the situation honestly ("dashboard didn't
 load — Metabase may be in cold-start"), and the same deep-link CTA
 to `bi.iampatterson.com/dashboard/<id>`.
 
-The 15-second budget is chosen against the 9B follow-up #1's
-observation that JVM warmup can take ~60s with `cpu-throttling=true`.
-15s is well under that cold-start envelope, but it's also long
-enough that a typical warm load (single-digit seconds at most)
-cleanly clears the timer. If we later set `--no-cpu-throttling`
-(per 9B follow-up #1), the budget can drop to 8-10s.
+The 15-second budget is a conservative upper bound on warm-load
+latency (single-digit seconds in practice) and a soft floor against
+the cold-start envelope inferred from 9B follow-up #1: anecdotal
+~60s JVM warmup with `cpu-throttling=true`, not measured against
+the current Cloud Run service. 15s sits well under that inferred
+envelope while staying long enough that a typical warm load clears
+the timer cleanly. If the service is later switched to
+`--no-cpu-throttling` (per 9B follow-up #1), or once a real
+cold-start measurement lands, the budget can drop to 8-10s.
 
 ### New regression pins
 

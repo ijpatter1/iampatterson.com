@@ -128,6 +128,17 @@ already-documented carry-forward pattern from Phase 10b D1c (`web_vital`)
 > - data-generator + sGTM Cloud Run runtime SA bindings (10d D5)
 > - `bridgeToGtagConsent` ↔ web-container `consentSettings` parity test (10d D5)
 
+The BigQuery raw-schema columns for `page_engagement` (`engagement_seconds`
+INT64 + `max_scroll_pct` INT64) **are** landed in
+`infrastructure/bigquery/schema.json` as part of the Pass-2 fix-pack,
+mirroring the `web_vital` precedent's "schema lands with the event,
+trigger lands later" sequencing. This avoids the silent-payload-drop
+failure mode that would otherwise occur when Phase 11 D9 wires the
+sGTM trigger against an `events_raw` table that doesn't have the
+columns (sGTM's `ignoreUnknownValues: true` setting drops unknown
+fields without erroring). Pinned by
+`tests/integration/bigquery-schema.test.ts`.
+
 Without the GTM wiring, `page_engagement` flows to `window.dataLayer`
 + the SSE pipeline (visible in the Session overlay's Timeline tab) but
 does not reach `iampatterson_raw.events_raw` — so the

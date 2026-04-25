@@ -359,5 +359,18 @@
     "type": "STRING",
     "mode": "NULLABLE",
     "description": "Navigation API navigation_type: navigate, reload, back-forward, back-forward-cache, prerender, restore (web_vital events, Phase 10 deliverable 1; used to segment CWV by first-visit vs bfcache restore)"
+  },
+
+  {
+    "name": "engagement_seconds",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "Page-level engagement threshold crossed: 15, 60, or 180 seconds of foreground-tab engaged time (page_engagement events, Phase 10d D3). Counter pauses on document.hidden and resumes on visible, so this is real engaged time, not wall-clock time-on-page."
+  },
+  {
+    "name": "max_scroll_pct",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "High-water-mark scroll percentage at the moment of firing, 0-100, unbucketed (page_engagement events, Phase 10d D3). Closes scroll_depth's milestone-bucket information loss: a session that scrolled to 87% on a long page records 87 here, not the 75% milestone bucket."
   }
 ]
