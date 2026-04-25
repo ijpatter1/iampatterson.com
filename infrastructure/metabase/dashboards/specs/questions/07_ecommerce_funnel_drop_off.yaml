@@ -1,0 +1,45 @@
+name: 'Ecommerce funnel drop-off (Phase 10d D3)'
+description: |
+  Cross-event funnel reach into the ecommerce demo. Reads
+  mart_ecommerce_funnel and surfaces the per-stage session count plus the
+  step-to-step conversion rate. Last 30 days. Phase 10d D3 cross-event
+  funnel reporting deliverable; the mart already pivots events_raw into
+  per-session rows so the visualization is a simple aggregate over flag
+  columns.
+display: bar
+enable_embedding: false
+visualization_settings:
+  graph.dimensions:
+    - stage
+  graph.metrics:
+    - sessions
+  graph.x_axis.title_text: 'Funnel stage'
+  graph.y_axis.title_text: 'Sessions reaching stage'
+  graph.x_axis.scale: 'ordinal'
+  graph.show_values: true
+query: |
+  SELECT
+    stage,
+    sessions
+  FROM (
+    SELECT 'entered_demo' AS stage, COUNTIF(has_demo_page_view = 1) AS sessions, 1 AS sort_order
+    FROM `iampatterson.iampatterson_marts.mart_ecommerce_funnel`
+    WHERE DATE(session_start) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
+    UNION ALL
+    SELECT 'viewed_product', COUNTIF(has_product_view = 1), 2
+    FROM `iampatterson.iampatterson_marts.mart_ecommerce_funnel`
+    WHERE DATE(session_start) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
+    UNION ALL
+    SELECT 'added_to_cart', COUNTIF(has_add_to_cart = 1), 3
+    FROM `iampatterson.iampatterson_marts.mart_ecommerce_funnel`
+    WHERE DATE(session_start) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
+    UNION ALL
+    SELECT 'reached_checkout', COUNTIF(has_begin_checkout = 1), 4
+    FROM `iampatterson.iampatterson_marts.mart_ecommerce_funnel`
+    WHERE DATE(session_start) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
+    UNION ALL
+    SELECT 'purchased', COUNTIF(has_purchase = 1), 5
+    FROM `iampatterson.iampatterson_marts.mart_ecommerce_funnel`
+    WHERE DATE(session_start) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
+  )
+  ORDER BY sort_order

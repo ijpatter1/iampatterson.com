@@ -1,0 +1,118 @@
+config {
+  type: "table",
+  schema: "iampatterson_marts",
+  description: "E-commerce demo funnel mart. Pivots events_raw into per-session funnel rows: page_view at /demo/ecommerce → product_view → add_to_cart → begin_checkout → purchase. Step counts, drop-off rates, and step-to-step conversion times. Phase 10d D3.",
+  bigquery: {
+    partitionBy: "DATE(session_start)",
+    clusterBy: ["utm_source", "furthest_stage"]
+  }
+}
+
+WITH ecommerce_sessions AS (
+  SELECT
+    s.session_id,
+    s.session_start,
+    s.utm_source,
+    s.utm_medium,
+    s.utm_campaign,
+    DATE_TRUNC(DATE(s.session_start), MONTH) AS report_month,
+
+    -- Funnel stage flags. MAX(IF) collapses every event in the session to a
+    -- single row with a 0/1 marker per stage. Page-view scoping is the demo
+    -- entry, page_path LIKE '/demo/ecommerce%' rather than every page_view
+    -- in the session, since the funnel measures reach INTO the ecommerce
+    -- demo specifically. Sessions with only consulting-page traffic are
+    -- excluded by the WHERE business_model filter below.
+    MAX(IF(e.event_name = 'page_view'
+           AND e.page_path LIKE '/demo/ecommerce%', 1, 0)) AS has_demo_page_view,
+    MAX(IF(e.event_name = 'product_view', 1, 0)) AS has_product_view,
+    MAX(IF(e.event_name = 'add_to_cart', 1, 0)) AS has_add_to_cart,
+    MAX(IF(e.event_name = 'begin_checkout', 1, 0)) AS has_begin_checkout,
+    MAX(IF(e.event_name = 'purchase', 1, 0)) AS has_purchase,
+
+    -- First/last timestamps per stage drive step-to-step conversion time
+    -- analysis. Step gap = first(stage N+1) - first(stage N). NULL when
+    -- the session never reached stage N.
+    MIN(IF(e.event_name = 'page_view'
+           AND e.page_path LIKE '/demo/ecommerce%', e.event_timestamp, NULL))
+      AS first_demo_page_view_at,
+    MIN(IF(e.event_name = 'product_view', e.event_timestamp, NULL))
+      AS first_product_view_at,
+    MIN(IF(e.event_name = 'add_to_cart', e.event_timestamp, NULL))
+      AS first_add_to_cart_at,
+    MIN(IF(e.event_name = 'begin_checkout', e.event_timestamp, NULL))
+      AS first_begin_checkout_at,
+    MIN(IF(e.event_name = 'purchase', e.event_timestamp, NULL))
+      AS first_purchase_at,
+
+    -- Order details from the purchase event (if any).
+    MAX(IF(e.event_name = 'purchase', e.order_id, NULL)) AS order_id,
+    MAX(IF(e.event_name = 'purchase', e.order_total, NULL)) AS order_total,
+    MAX(IF(e.event_name = 'purchase', e.item_count, NULL)) AS purchased_item_count,
+
+    -- Engagement context. Distinct product_view count is the breadth of
+    -- the catalogue the visitor browsed; page_engagement events (Phase 10d
+    -- D3) carry the actual time-on-demo signal.
+    COUNT(DISTINCT IF(e.event_name = 'product_view', e.product_id, NULL))
+      AS distinct_products_viewed,
+    COUNTIF(e.event_name = 'page_engagement'
+            AND e.page_path LIKE '/demo/ecommerce%') AS demo_engagement_pings
+
+  FROM ${ref("stg_sessions")} s
+  JOIN ${ref("stg_events")} e USING (session_id)
+  WHERE s.business_model = 'ecommerce'
+  GROUP BY 1, 2, 3, 4, 5, 6
+)
+
+SELECT
+  session_id,
+  session_start,
+  report_month,
+  utm_source,
+  utm_medium,
+  utm_campaign,
+
+  -- Funnel progression flags (binary).
+  has_demo_page_view,
+  has_product_view,
+  has_add_to_cart,
+  has_begin_checkout,
+  has_purchase,
+
+  -- Furthest funnel stage reached. The CASE walks deepest-to-shallowest
+  -- so a session that completed the funnel reads 'purchased' regardless
+  -- of any backwards drop-offs. Cluster key for partition pruning.
+  CASE
+    WHEN has_purchase = 1 THEN 'purchased'
+    WHEN has_begin_checkout = 1 THEN 'reached_checkout'
+    WHEN has_add_to_cart = 1 THEN 'added_to_cart'
+    WHEN has_product_view = 1 THEN 'viewed_product'
+    WHEN has_demo_page_view = 1 THEN 'entered_demo'
+    ELSE 'no_demo_traffic'
+  END AS furthest_stage,
+
+  -- Step-to-step conversion time, in seconds. NULL when the session
+  -- never reached the prerequisite stage. These compose for cohort
+  -- analysis: median time-from-page-view-to-purchase, p90 cart-to-
+  -- checkout latency, etc.
+  TIMESTAMP_DIFF(first_product_view_at, first_demo_page_view_at, SECOND)
+    AS seconds_page_view_to_product_view,
+  TIMESTAMP_DIFF(first_add_to_cart_at, first_product_view_at, SECOND)
+    AS seconds_product_view_to_add_to_cart,
+  TIMESTAMP_DIFF(first_begin_checkout_at, first_add_to_cart_at, SECOND)
+    AS seconds_add_to_cart_to_checkout,
+  TIMESTAMP_DIFF(first_purchase_at, first_begin_checkout_at, SECOND)
+    AS seconds_checkout_to_purchase,
+  TIMESTAMP_DIFF(first_purchase_at, first_demo_page_view_at, SECOND)
+    AS seconds_total_funnel,
+
+  -- Order details (NULL outside the converted set).
+  order_id,
+  order_total,
+  purchased_item_count,
+
+  -- Engagement.
+  distinct_products_viewed,
+  demo_engagement_pings
+
+FROM ecommerce_sessions

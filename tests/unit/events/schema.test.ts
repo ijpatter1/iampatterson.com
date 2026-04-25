@@ -347,6 +347,7 @@ describe('Event schema types', () => {
       portal_click: true,
       coverage_milestone: true,
       web_vital: true,
+      page_engagement: true,
     };
     // Runtime assertion derives the expected count from the schema's own source of truth,
     // extending DATA_LAYER_EVENT_NAMES is the single edit needed; this test re-derives.
@@ -378,6 +379,15 @@ describe('Event schema types', () => {
   it('RENDERABLE_EVENT_NAMES includes the timeline_tab_view and consent_tab_view additions (F2)', () => {
     expect(RENDERABLE_EVENT_NAMES).toContain('timeline_tab_view');
     expect(RENDERABLE_EVENT_NAMES).toContain('consent_tab_view');
+  });
+
+  it('page_engagement (Phase 10d D3) is in DATA_LAYER_EVENT_NAMES and renders in the coverage chip grid', () => {
+    expect(DATA_LAYER_EVENT_NAMES).toContain('page_engagement');
+    // Visible signal — the session IS the visitor's time on the site, so
+    // the engagement event belongs in the coverage denominator alongside
+    // page_view + scroll_depth + web_vital. It is NOT a sub/leadgen-style
+    // hidden event.
+    expect(RENDERABLE_EVENT_NAMES).toContain('page_engagement');
   });
 
   it('RENDERABLE_EVENT_NAMES is a strict subset of DATA_LAYER_EVENT_NAMES', () => {

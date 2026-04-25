@@ -6,6 +6,7 @@ import { AmbientBubblesWrapper } from '@/components/ambient-bubbles-wrapper';
 import { OverlayProvider } from '@/components/overlay/overlay-context';
 import { OverlayView } from '@/components/overlay/overlay-view';
 import { SessionStateProvider } from '@/components/session-state-provider';
+import { PageEngagementTracker } from '@/components/page-engagement-tracker';
 import { RouteTracker } from '@/components/route-tracker';
 import { ScrollDepthTracker } from '@/components/scroll-depth-tracker';
 import { CookiebotScript } from '@/components/scripts/cookiebot';
@@ -106,6 +107,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <CookiebotConsentListener />
         <RouteTracker />
         <ScrollDepthTracker />
+        <PageEngagementTracker />
         <WebVitalsReporter />
         <SessionStateProvider>
           <OverlayProvider>

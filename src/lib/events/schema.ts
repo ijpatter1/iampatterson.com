@@ -42,6 +42,32 @@ export interface ScrollDepthEvent extends BaseEvent {
   depth_pixels: number;
 }
 
+/**
+ * Phase 10d D3: page-level engagement signal.
+ *
+ * Fires at 15s, 60s, 180s of *engaged* time on a page. "Engaged" means the
+ * tab is foregrounded and the page is visible — the tracker pauses its
+ * counter when `document.hidden` flips true (Page Visibility API) and
+ * resumes when the tab returns. The 1s tick that drives the counter only
+ * runs when the page is mounted, so SPA route changes reset the
+ * threshold-fired set.
+ *
+ * Closes the gap left by `scroll_depth`: milestone-bucket scroll signals
+ * (25/50/75/100) lose information about the actual high-water-mark scroll
+ * percentage and tell us nothing about time spent. `page_engagement`
+ * carries the real `max_scroll_pct` at the moment of firing so a per-page
+ * scroll-distribution analysis can use the unbucketed value, and the
+ * `engagement_seconds` threshold is the time-on-page distribution we
+ * couldn't compute from `page_view` alone (no end-of-engagement signal).
+ */
+export interface PageEngagementEvent extends BaseEvent {
+  event: 'page_engagement';
+  /** Threshold the firing crossed: 15, 60, or 180 seconds of engaged time. */
+  engagement_seconds: 15 | 60 | 180;
+  /** High-water-mark scroll percentage at firing, 0-100, unbucketed. */
+  max_scroll_pct: number;
+}
+
 /** Fired when a navigation link is clicked. */
 export interface ClickNavEvent extends BaseEvent {
   event: 'click_nav';
@@ -364,7 +390,8 @@ export type DataLayerEvent =
   | ConsentTabViewEvent
   | PortalClickEvent
   | CoverageMilestoneEvent
-  | WebVitalEvent;
+  | WebVitalEvent
+  | PageEngagementEvent;
 
 /**
  * Runtime array of every distinct `event` string literal in the `DataLayerEvent`
@@ -404,6 +431,7 @@ export const DATA_LAYER_EVENT_NAMES = [
   'portal_click',
   'coverage_milestone',
   'web_vital',
+  'page_engagement',
 ] as const;
 
 /**
