@@ -34,15 +34,15 @@ function StorageRow({ entry }: { entry: StorageEntry }) {
       data-testid={`storage-row-${entry.source}-${entry.name}`}
       data-storage-source={entry.source}
       data-storage-category={entry.category}
-      className="flex flex-col gap-1 border-l border-u-rule-soft px-3 py-2 sm:flex-row sm:items-baseline sm:gap-3"
+      className="flex items-baseline gap-3 px-3 py-2"
     >
-      <span className="font-mono text-[11px] text-u-ink">{entry.name}</span>
-      <span className="font-mono text-[10px] uppercase tracking-widest text-u-ink-3">
+      <span className="shrink-0 font-mono text-[11px] text-u-ink">{entry.name}</span>
+      <span className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-u-ink-3">
         {SOURCE_LABEL[entry.source]}
       </span>
       <span
         data-testid="storage-value"
-        className="break-all font-mono text-[11px] text-u-ink-2 sm:flex-1"
+        className="min-w-0 flex-1 break-all font-mono text-[11px] text-u-ink-2"
       >
         {visible || <span className="text-u-ink-3">(empty)</span>}
       </span>
@@ -51,7 +51,7 @@ function StorageRow({ entry }: { entry: StorageEntry }) {
           type="button"
           data-testid="storage-row-reveal"
           onClick={() => setRevealed((r) => !r)}
-          className="self-start font-mono text-[10px] uppercase tracking-widest text-accent-current hover:underline sm:self-auto"
+          className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-accent-current hover:underline"
         >
           {revealed ? 'truncate' : 'reveal'}
         </button>
@@ -73,30 +73,29 @@ function StorageGroup({
 }) {
   const count = entries.length;
   return (
-    <details
+    <div
       data-testid={`storage-group-${category}`}
       data-storage-category={category}
       data-key-count={String(count)}
-      open={count > 0}
-      className="group border border-u-rule-soft bg-u-paper-alt"
+      className="mt-6"
     >
-      <summary className="flex cursor-pointer items-baseline justify-between gap-3 px-4 py-3 font-mono text-xs uppercase tracking-widest text-u-ink hover:text-accent-current">
-        <span>
-          {label}
-          <span className="ml-2 text-u-ink-3 normal-case">{description}</span>
+      <div className="flex items-baseline justify-between gap-3">
+        <h5 className="font-mono text-[10px] uppercase tracking-widest text-u-ink">{label}</h5>
+        <span className="font-mono text-[10px] text-u-ink-3">
+          {count === 1 ? '1 key' : `${count} keys`}
         </span>
-        <span className="text-u-ink-3">{count === 1 ? '1 key' : `${count} keys`}</span>
-      </summary>
+      </div>
+      <p className="mt-1 max-w-[62ch] text-xs text-u-ink-3">{description}</p>
       {count === 0 ? (
-        <p className="px-4 pb-3 font-mono text-xs text-u-ink-3">— none yet</p>
+        <p className="mt-2 font-mono text-xs text-u-ink-3">— none yet</p>
       ) : (
-        <ul className="space-y-0">
+        <ul className="mt-2 divide-y divide-u-rule-soft border border-u-rule-soft bg-u-paper-alt">
           {entries.map((entry) => (
             <StorageRow key={`${entry.source}::${entry.name}`} entry={entry} />
           ))}
         </ul>
       )}
-    </details>
+    </div>
   );
 }
 
@@ -117,27 +116,24 @@ export function StorageInspector({ snapshot }: { snapshot: StorageSnapshot }) {
   return (
     <section data-testid="consent-storage-inspector" className="mt-8">
       <h4 className="font-mono text-[10px] uppercase tracking-widest text-u-ink">
-        Browser storage · what consent actually wrote
+        Browser storage
       </h4>
       <p className="mt-2 max-w-[62ch] text-xs leading-relaxed text-u-ink-3">
-        Every cookie, localStorage, and sessionStorage key your browser is holding for this site
-        right now. An empty third-party group is the payoff — proof your consent denial held.
+        Every cookie, localStorage, and sessionStorage key your browser is holding for this site,
+        right now.
       </p>
-      <div className="mt-3 space-y-2">
-        {visibleCategories.map((cat) => (
-          <StorageGroup
-            key={cat.id}
-            category={cat.id}
-            label={cat.label}
-            description={cat.description}
-            entries={grouped[cat.id]}
-          />
-        ))}
-      </div>
-      <p className="mt-3 max-w-[62ch] font-mono text-[10px] leading-relaxed text-u-ink-3">
-        Note: browsers expose only cookie names and values to JavaScript. Expiry, domain, and path
-        metadata are written by the tag that set the cookie but cannot be read back — the keys
-        themselves are the visible signal.
+      {visibleCategories.map((cat) => (
+        <StorageGroup
+          key={cat.id}
+          category={cat.id}
+          label={cat.label}
+          description={cat.description}
+          entries={grouped[cat.id]}
+        />
+      ))}
+      <p className="mt-6 max-w-[62ch] font-mono text-[10px] leading-relaxed text-u-ink-3">
+        Browsers expose only cookie names and values to JavaScript. Expiry, domain, and path
+        metadata are written by the tag that set the cookie but can&apos;t be read back.
       </p>
     </section>
   );

@@ -22,23 +22,22 @@ export const STORAGE_CATEGORIES: readonly CategoryDef[] = [
   {
     id: 'analytics',
     label: 'analytics',
-    description: 'first-party measurement cookies set by GA4 / sGTM / Google Ads',
+    description: 'first-party measurement cookies set by GA4, sGTM, and Google Ads',
   },
   {
     id: 'consent',
     label: 'consent',
-    description: 'Cookiebot CMP state — the record of what was granted or denied',
+    description: "Cookiebot's consent state",
   },
   {
     id: 'third-party',
     label: 'third-party',
-    description:
-      'recognized tracker keys from non-first-party tags; should be empty when consent is denied',
+    description: 'tracker keys placed by non-first-party tags. Empty when consent is denied.',
   },
   {
     id: 'uncategorized',
     label: 'uncategorized',
-    description: 'present in your browser but no classification rule matched yet',
+    description: 'no classification rule matched these',
   },
 ] as const;
 
