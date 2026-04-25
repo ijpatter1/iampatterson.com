@@ -56,17 +56,18 @@ describe('StorageInspector', () => {
     expect(analyticsGroup.querySelectorAll('[data-testid^="storage-row-"]')).toHaveLength(1);
   });
 
-  // Bug fix 2026-04-25 (mobile spill): on iPhone-SE-width viewports the
-  // single-row layout `flex items-baseline gap-3` could not fit name +
-  // source + 40-char-truncated value + reveal button, so `flex-1 min-w-0
-  // break-all` on the value column squeezed to ~1 char and the value
-  // rendered one character per line vertically. The responsive layout
-  // stacks name+source on row 1 / value+reveal on row 2 on mobile and
-  // restores the single horizontal row on sm+. This pin asserts the
-  // class string contains the responsive breakpoint shape so a future
-  // cleanup pass that "matches the rest of the overlay" doesn't strip
-  // it again — the content shape (long opaque cookie/JSON values) is
-  // genuinely different from consent labels or destination-chip names.
+  // Bug fix 2026-04-25 (mobile spill, take 1): on iPhone-SE-width
+  // viewports the single-row layout `flex items-baseline gap-3` could
+  // not fit name + source + 40-char-truncated value + reveal button, so
+  // `flex-1 min-w-0 break-all` on the value column squeezed to ~1 char
+  // and the value rendered one character per line vertically. The
+  // responsive layout stacks atoms on mobile and restores the single
+  // horizontal row on sm+. This pin asserts the class string contains
+  // the responsive breakpoint shape so a future cleanup pass that
+  // "matches the rest of the overlay" doesn't strip it again — the
+  // content shape (long opaque cookie/JSON values + long source labels)
+  // is genuinely different from consent labels or destination-chip
+  // names.
   it('uses a flex-col → sm:flex-row responsive stack so long values do not spill on mobile', () => {
     render(
       <StorageInspector
@@ -78,6 +79,45 @@ describe('StorageInspector', () => {
     const row = screen.getByTestId('storage-row-cookie-_iap_aid');
     expect(row.className).toContain('flex-col');
     expect(row.className).toContain('sm:flex-row');
+  });
+
+  // Bug fix 2026-04-25 (mobile spill, take 2): the take-1 fix grouped
+  // name+source in an inner div with `shrink-0`, which prevented the
+  // SESSIONSTORAGE source label from wrapping when name+source combined
+  // exceeded the ~290px viewport content width on iPhone-SE
+  // (`iampatterson.session_state` 24 chars + `SESSIONSTORAGE` 14 chars
+  // uppercase tracking-widest). The label overflowed horizontally rather
+  // than wrapping. Take-2 makes name + source + value-group direct
+  // children of the <li> so the outer `flex-col` stacks them on mobile
+  // (3 rows: name → source → value+reveal), and `sm:shrink-0` /
+  // `sm:flex-1` collapses them back into a single row on sm+. This pin
+  // asserts no inner wrapper div sits between the <li> and the source
+  // span — a structural property that catches a regression to the
+  // grouped-with-shrink-0 shape.
+  it('renders name and source as direct children of the <li> (no inner shrink-0 wrapper)', () => {
+    render(
+      <StorageInspector
+        snapshot={snap([
+          {
+            name: 'iampatterson.session_state',
+            value: 'short',
+            source: 'sessionStorage',
+            category: 'app-identity',
+          },
+        ])}
+      />,
+    );
+    const row = screen.getByTestId('storage-row-sessionStorage-iampatterson.session_state');
+    // Direct children of the <li>: name span, source span, value-group div.
+    // 3 children total. A regression to the grouped-with-shrink-0 shape
+    // would collapse this to 2 children (the name+source wrapper div + the
+    // value-group div).
+    expect(row.children).toHaveLength(3);
+    // Name and source are <span>s; the value group is a <div>. Direct
+    // structural pin.
+    expect(row.children[0].tagName).toBe('SPAN');
+    expect(row.children[1].tagName).toBe('SPAN');
+    expect(row.children[2].tagName).toBe('DIV');
   });
 
   it('row carries name + source badge + data attributes', () => {

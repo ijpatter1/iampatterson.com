@@ -29,16 +29,24 @@ function StorageRow({ entry }: { entry: StorageEntry }) {
   const isLong = entry.value.length > TRUNCATE_AT;
   const visible = revealed || !isLong ? entry.value : truncate(entry.value);
 
-  // Responsive layout: stack name+source on row 1 / value+reveal on row 2
-  // on mobile; single horizontal row on sm+. Most overlay surfaces use a
-  // single horizontal layout because their content is short (consent
-  // labels, destination chip names). Storage values are uniquely long
-  // (full UUIDs, JSON blobs, encoded consent strings) so an iPhone-SE-
-  // width row can't fit name + source + 40-char-truncated value + reveal
-  // button on a single line. Without the breakpoint, `flex-1 min-w-0
-  // break-all` on the value column squeezes to 1-char width and the
-  // value renders one character per line. Don't "fix" this back to a
-  // single horizontal row to match the other surfaces — the content
+  // Responsive layout: each atom (name, source label, value+reveal) on
+  // its own row on mobile; single horizontal row on sm+. Most overlay
+  // surfaces use a single horizontal layout because their content is
+  // short (consent labels, destination chip names). Storage atoms here
+  // are individually long: long key names like `iampatterson.session_state`
+  // (24 chars), long source labels like `SESSIONSTORAGE` (14 chars
+  // uppercase tracking-widest), and long values (full UUIDs, JSON blobs,
+  // encoded consent strings). Two prior attempts at this shape failed:
+  // (1) the original `flex items-baseline gap-3` squeezed the value
+  // column to 1-char width and rendered values one character per line
+  // vertically; (2) the followup `flex flex-col` outer + inner-div
+  // wrappers grouped name+source on one row but `shrink-0` on the wrapper
+  // overflowed horizontally on iPhone-SE width when name+source combined
+  // exceeded the ~290px viewport content width. This shape — direct
+  // children of <li>, each with `sm:shrink-0` (mobile shrinks; desktop
+  // doesn't) — lets each atom claim its own line on mobile and collapse
+  // into a single row on sm+. Don't "fix" this back to nested wrappers
+  // or a single horizontal row to match other surfaces — the content
   // shape is genuinely different here.
   return (
     <li
@@ -47,13 +55,11 @@ function StorageRow({ entry }: { entry: StorageEntry }) {
       data-storage-category={entry.category}
       className="flex flex-col gap-1 px-3 py-2 sm:flex-row sm:items-baseline sm:gap-3"
     >
-      <div className="flex shrink-0 items-baseline gap-3">
-        <span className="font-mono text-[11px] text-u-ink">{entry.name}</span>
-        <span className="font-mono text-[10px] uppercase tracking-widest text-u-ink-3">
-          {SOURCE_LABEL[entry.source]}
-        </span>
-      </div>
-      <div className="flex min-w-0 flex-1 items-baseline gap-3">
+      <span className="font-mono text-[11px] text-u-ink sm:shrink-0">{entry.name}</span>
+      <span className="font-mono text-[10px] uppercase tracking-widest text-u-ink-3 sm:shrink-0">
+        {SOURCE_LABEL[entry.source]}
+      </span>
+      <div className="flex min-w-0 items-baseline gap-3 sm:flex-1">
         <span
           data-testid="storage-value"
           className="min-w-0 flex-1 break-all font-mono text-[11px] text-u-ink-2"
