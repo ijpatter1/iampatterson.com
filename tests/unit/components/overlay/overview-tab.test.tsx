@@ -468,6 +468,13 @@ describe('OverviewTab', () => {
     const portals = screen.getByTestId('overview-portals');
     expect(directive.textContent).toMatch(/session overview · live/i);
     expect(directive.textContent).toMatch(/where you are in your session/i);
+    // Phase 10d D8.h Pass-2 fix: also pin the body sentence so a
+    // regression reverting to the Pass-1 flattened-list body ("Event
+    // coverage, consent state, and ecommerce-demo progress for this
+    // session.") fails. The Pass-1 evaluator fix-pack rewrote the body
+    // to a claim-led shape parallel to Consent's directive.
+    expect(directive.textContent).toMatch(/your session as the stack sees it/i);
+    expect(directive.textContent).toMatch(/which events fired, what consent allowed/i);
     expect(directive.compareDocumentPosition(portals)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 

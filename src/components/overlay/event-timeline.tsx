@@ -17,11 +17,17 @@ function formatTime(iso: string): string {
 function RoutingBadge({ route }: { route: RoutingResult }) {
   const blocked = route.status === 'blocked_consent';
   const errored = route.status === 'error';
-  // Phase 10d D8.j: blocked_consent badges now pick up the overlay's
+  // Phase 10d D8.j: blocked_consent badges pick up the overlay's
   // `u-deny` red so the "this was blocked" state reads semantically in
   // the Timeline tab, matching the Consent tab's "Blocked destinations"
-  // pills. Errored stays persimmon (it's a distinct failure mode, not
-  // a consent block). Sent (default) stays neutral.
+  // pills. Errored stays persimmon (a distinct failure mode, not a
+  // consent block). Sent keeps neutral body text + a u-accept-tinted
+  // border — deliberately quieter than EventDetail's StatusBadge (which
+  // uses `text-u-accept`) because the Timeline row badge is one of many
+  // elements in a dense row, and a fully-green tone would pull the eye
+  // away from the event_name + page_path that carry the row's identity.
+  // The detail-panel badge can afford to be louder since it's the page's
+  // primary content when selected.
   return (
     <span
       data-routing-state={route.status}

@@ -84,6 +84,23 @@ describe('ConsentView', () => {
     expect(blockedHeader.className).toContain('text-u-deny');
   });
 
+  // Pass-2 evaluator Tech Minor #4: pin the destination-pill
+  // `data-destination-state` attributes so a rename regression fails.
+  // Before this pin the attributes were inert metadata with no test
+  // consumer — the rename from "firing" to "sent" was load-bearing (it
+  // matches the routing schema's `sent` term) so the attribute is
+  // actually semantic scaffolding, not decoration.
+  it('destination pills carry data-destination-state="sent"/"blocked" attributes', () => {
+    const { container } = render(<ConsentView events={[makeEvent()]} />);
+    const sentPills = container.querySelectorAll('[data-destination-state="sent"]');
+    const blockedPills = container.querySelectorAll('[data-destination-state="blocked"]');
+    // The test fixture has 2 sent (ga4, bigquery) + 2 blocked (meta_capi,
+    // google_ads) routes; pin both at >=1 so a topology change that
+    // reshuffles but preserves the kind-split still passes.
+    expect(sentPills.length).toBeGreaterThanOrEqual(1);
+    expect(blockedPills.length).toBeGreaterThanOrEqual(1);
+  });
+
   it('shows consent state from the most recent event', () => {
     render(<ConsentView events={[makeEvent()]} />);
     expect(screen.getByText('analytics_storage')).toBeInTheDocument();

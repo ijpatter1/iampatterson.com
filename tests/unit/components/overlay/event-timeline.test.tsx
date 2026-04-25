@@ -103,6 +103,38 @@ describe('EventTimeline', () => {
     expect(metaBadge.className).toContain('line-through');
   });
 
+  // Phase 10d D8.j Pass-2 fix: row-level RoutingBadge is the counterpart
+  // to the EventDetail + NarrativeFlow recolour; visible before the
+  // visitor drills into a row. Pins the `data-routing-state` attribute +
+  // the `u-accept`/`u-deny` tone classes so a regression flipping the
+  // row chip back to pre-D8.j palette fails. (The broader "line-through
+  // on blocked" assertion above still holds; this adds the token-level
+  // pin the Pass-1 fix-pack added for EventDetail but missed here.)
+  it('routing badges carry data-routing-state + u-accept/u-deny tone (D8.j)', () => {
+    const events = [
+      makeEvent({
+        routing: [
+          { destination: 'ga4', status: 'sent', timestamp: '2026-03-27T10:00:01Z' },
+          {
+            destination: 'meta_capi',
+            status: 'blocked_consent',
+            timestamp: '2026-03-27T10:00:01Z',
+          },
+        ],
+      }),
+    ];
+    const { container } = render(<EventTimeline events={events} />);
+    const sent = container.querySelector('[data-routing-state="sent"]') as HTMLElement;
+    const blocked = container.querySelector(
+      '[data-routing-state="blocked_consent"]',
+    ) as HTMLElement;
+    expect(sent).not.toBeNull();
+    expect(blocked).not.toBeNull();
+    expect(sent.className).toContain('border-u-accept');
+    expect(blocked.className).toContain('text-u-deny');
+    expect(blocked.className).toContain('border-u-deny');
+  });
+
   it('shows page path for each event', () => {
     const events = [makeEvent({ page_path: '/about' })];
     render(<EventTimeline events={events} />);
