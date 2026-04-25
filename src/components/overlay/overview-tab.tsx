@@ -207,6 +207,24 @@ export function OverviewTab() {
 
   return (
     <div data-testid="overview-tab" className="space-y-10 text-ink">
+      {/* Phase 10d D8.h: directive block at the top of the tab, matching the
+          Timeline and Consent tabs' pattern (eyebrow + headline + body). Gives
+          the Overview its own tab-level intro instead of jumping straight into
+          the Portals section. */}
+      <section data-testid="overview-directive">
+        <div className="mb-3 font-mono text-[10px] uppercase tracking-widest text-accent-current">
+          Session overview · live
+        </div>
+        <h3 className="font-display text-2xl font-normal leading-tight text-u-ink">
+          Where you are in your session.
+        </h3>
+        <p className="mt-3 max-w-[62ch] text-sm leading-relaxed text-u-ink-2">
+          Event coverage, consent state, and how far you&apos;ve gone in the ecommerce demo — all in
+          one place. Jump into /services, /about, or /contact from the portals below, or drop into
+          Timeline for the full event trail.
+        </p>
+      </section>
+
       {/* --- Portals + threshold CTA (TOP per UAT F1 feedback) --- */}
       <section data-testid="overview-portals">
         <SectionKicker>Explore the site</SectionKicker>
@@ -275,8 +293,17 @@ export function OverviewTab() {
               return (
                 <div key={signal} data-testid={`consent-row-${signal}`} className="flex gap-3">
                   <dt className="w-28 text-xs uppercase tracking-widest text-u-ink-3">{signal}</dt>
-                  <dd className={granted ? 'text-accent-current' : 'text-u-ink-3'}>
-                    {granted ? '[GRANTED]' : '[DENIED]'}
+                  {/* Phase 10d D8.j: red/green accents + glyph for colour-blind
+                      redundancy. Persimmon previously flagged "granted" but
+                      denied fell to muted grey, which read as "unset", not
+                      "blocked". `text-u-accept` (green) + `✓` now pair with
+                      `text-u-deny` (red) + `×` so the binary reads as a
+                      semantic pair, not an accent-vs-absence. */}
+                  <dd
+                    className={`flex items-center gap-1 ${granted ? 'text-u-accept' : 'text-u-deny'}`}
+                  >
+                    <span aria-hidden="true">{granted ? '✓' : '×'}</span>
+                    <span>{granted ? '[GRANTED]' : '[DENIED]'}</span>
                   </dd>
                 </div>
               );

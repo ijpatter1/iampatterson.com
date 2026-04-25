@@ -41,6 +41,49 @@ describe('ConsentView', () => {
     expect(screen.getByText(/What happens when you/i)).toBeInTheDocument();
   });
 
+  // Phase 10d D8.i: directive now points visitors at the bottom-left
+  // Cookiebot widget for consent withdrawal / change. Pin on both the
+  // empty-state and the populated-state directives so a regression
+  // dropping the pointer fails.
+  it('directs visitors to the bottom-left Cookiebot widget (empty state)', () => {
+    render(<ConsentView events={[]} />);
+    const body = screen.getByText(/withdraw or change consent/i);
+    expect(body.textContent).toMatch(/bottom-left/i);
+    expect(body.textContent).toMatch(/cookiebot/i);
+  });
+
+  it('directs visitors to the bottom-left Cookiebot widget (populated state)', () => {
+    render(<ConsentView events={[makeEvent()]} />);
+    const body = screen.getByText(/withdraw or change consent/i);
+    expect(body.textContent).toMatch(/bottom-left/i);
+    expect(body.textContent).toMatch(/cookiebot/i);
+  });
+
+  // Phase 10d D8.j: semantic red/green accents on the consent rows +
+  // destination chips. Class presence is the load-bearing regression guard
+  // since jsdom doesn't render Tailwind colours.
+  it('applies `u-accept` green to granted rows and `u-deny` red to denied rows', () => {
+    const { container } = render(<ConsentView events={[makeEvent()]} />);
+    const granted = container.querySelector(
+      '[data-consent-row][data-consent-state="granted"]',
+    ) as HTMLElement;
+    const denied = container.querySelector(
+      '[data-consent-row][data-consent-state="denied"]',
+    ) as HTMLElement;
+    expect(granted).not.toBeNull();
+    expect(denied).not.toBeNull();
+    expect(granted.className).toContain('border-u-accept');
+    expect(denied.className).toContain('border-u-deny');
+  });
+
+  it('labels destination lists with firing/blocked green/red headers', () => {
+    render(<ConsentView events={[makeEvent()]} />);
+    const firingHeader = screen.getByText(/firing destinations/i);
+    const blockedHeader = screen.getByText(/blocked destinations/i);
+    expect(firingHeader.className).toContain('text-u-accept');
+    expect(blockedHeader.className).toContain('text-u-deny');
+  });
+
   it('shows consent state from the most recent event', () => {
     render(<ConsentView events={[makeEvent()]} />);
     expect(screen.getByText('analytics_storage')).toBeInTheDocument();
@@ -61,16 +104,23 @@ describe('ConsentView', () => {
     expect(adRow!.textContent).toContain('denied');
   });
 
-  it('shows active destinations (not blocked by consent)', () => {
+  it('shows firing destinations (not blocked by consent)', () => {
     render(<ConsentView events={[makeEvent()]} />);
-    expect(screen.getByText(/active destinations/i)).toBeInTheDocument();
+    // Phase 10d D8.j renamed "Active destinations" → "Firing destinations"
+    // (matches the verb the timeline's RoutingBadge uses for non-blocked
+    // status; "active" read as stale/metric, "firing" reads as "is flowing
+    // right now").
+    expect(screen.getByText(/firing destinations/i)).toBeInTheDocument();
     expect(screen.getByText('GA4', { exact: false })).toBeInTheDocument();
     expect(screen.getByText('BigQuery', { exact: false })).toBeInTheDocument();
   });
 
-  it('shows suppressed destinations (blocked by consent)', () => {
+  it('shows blocked destinations (blocked by consent)', () => {
     render(<ConsentView events={[makeEvent()]} />);
-    expect(screen.getByText(/suppressed destinations/i)).toBeInTheDocument();
+    // Phase 10d D8.j renamed "Suppressed destinations" → "Blocked
+    // destinations" (keeps the semantic pairing with the `blocked_consent`
+    // routing status in the schema).
+    expect(screen.getByText(/blocked destinations/i)).toBeInTheDocument();
     expect(screen.getByText('Meta', { exact: false })).toBeInTheDocument();
     expect(screen.getByText('Google Ads', { exact: false })).toBeInTheDocument();
   });

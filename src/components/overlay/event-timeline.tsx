@@ -17,14 +17,20 @@ function formatTime(iso: string): string {
 function RoutingBadge({ route }: { route: RoutingResult }) {
   const blocked = route.status === 'blocked_consent';
   const errored = route.status === 'error';
+  // Phase 10d D8.j: blocked_consent badges now pick up the overlay's
+  // `u-deny` red so the "this was blocked" state reads semantically in
+  // the Timeline tab, matching the Consent tab's "Blocked destinations"
+  // pills. Errored stays persimmon (it's a distinct failure mode, not
+  // a consent block). Sent (default) stays neutral.
   return (
     <span
+      data-routing-state={route.status}
       className={`inline-flex items-center border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest ${
         blocked
-          ? 'border-u-rule-soft bg-u-paper-deep text-u-ink-4 line-through'
+          ? 'border-u-deny/40 bg-u-paper-deep text-u-deny line-through'
           : errored
             ? 'border-accent-current/40 bg-u-paper-alt text-accent-current'
-            : 'border-accent-current/40 bg-u-paper-alt text-u-ink'
+            : 'border-u-accept/40 bg-u-paper-alt text-u-ink'
       }`}
     >
       {destinationLabel(route.destination)}
