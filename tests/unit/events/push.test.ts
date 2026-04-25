@@ -4,6 +4,21 @@
 import { pushEvent } from '@/lib/events/push';
 import type { PageViewEvent } from '@/lib/events/schema';
 
+// Shared base fields for the PageViewEvent literals below. Mirrors the shape
+// of `BaseEvent` so each test only spells out the fields that vary. Keeps
+// the literals in sync as `BaseEvent` evolves (e.g. Phase 10d D7 added
+// `anonymous_id`); previously each literal omitted the base fields and
+// failed strict typecheck even though Jest tolerated the runtime shape.
+const baseEventFields = {
+  iap_source: true as const,
+  session_id: 'test-session',
+  iap_session_id: 'test-session',
+  anonymous_id: 'test-anon-id',
+  consent_analytics: false,
+  consent_marketing: false,
+  consent_preferences: false,
+};
+
 describe('pushEvent', () => {
   beforeEach(() => {
     // Reset dataLayer before each test
@@ -11,11 +26,11 @@ describe('pushEvent', () => {
   });
 
   it('initializes window.dataLayer if it does not exist', () => {
-    delete (window as Record<string, unknown>).dataLayer;
+    delete (window as unknown as Record<string, unknown>).dataLayer;
     const event: PageViewEvent = {
+      ...baseEventFields,
       event: 'page_view',
       timestamp: '2026-03-26T12:00:00.000Z',
-      session_id: 'test-session',
       page_path: '/',
       page_title: 'Home',
       page_referrer: '',
@@ -27,9 +42,9 @@ describe('pushEvent', () => {
 
   it('pushes an event object onto window.dataLayer', () => {
     const event: PageViewEvent = {
+      ...baseEventFields,
       event: 'page_view',
       timestamp: '2026-03-26T12:00:00.000Z',
-      session_id: 'test-session',
       page_path: '/',
       page_title: 'Home',
       page_referrer: '/about',
@@ -42,9 +57,9 @@ describe('pushEvent', () => {
   it('appends to existing dataLayer entries', () => {
     window.dataLayer = [{ event: 'existing_event' }];
     const event: PageViewEvent = {
+      ...baseEventFields,
       event: 'page_view',
       timestamp: '2026-03-26T12:00:00.000Z',
-      session_id: 'test-session',
       page_path: '/',
       page_title: 'Home',
       page_referrer: '',
@@ -56,9 +71,9 @@ describe('pushEvent', () => {
 
   it('preserves all event properties including extra fields', () => {
     const event = {
+      ...baseEventFields,
       event: 'page_view',
       timestamp: '2026-03-26T12:00:00.000Z',
-      session_id: 'test-session',
       page_path: '/',
       page_title: 'Home',
       page_referrer: '',

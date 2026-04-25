@@ -40,6 +40,9 @@ export const BQ_ROW_COLUMNS: BQColumn[] = [
 export interface LiveCheckoutContext {
   /** Real _iap_sid session id. */
   sessionId?: string;
+  /** Real _iap_aid anonymous id (Phase 10d D7). Empty string treated as
+   *  "not yet known" — substitution falls back to the NULL seed. */
+  anonymousId?: string;
   /** ISO timestamp of the most recent live event. */
   eventTimestamp?: string;
   /** Whether analytics consent has been granted in the real consent state. */
@@ -77,6 +80,8 @@ export function bqRowForCart(params: {
 }): BQColumn[] {
   const sid =
     params.live?.sessionId && params.live.sessionId.length > 0 ? params.live.sessionId : null;
+  const aid =
+    params.live?.anonymousId && params.live.anonymousId.length > 0 ? params.live.anonymousId : null;
   const ts =
     params.live?.eventTimestamp && params.live.eventTimestamp.length > 0
       ? params.live.eventTimestamp
@@ -103,6 +108,7 @@ export function bqRowForCart(params: {
     if (c.k === 'cart_item_count') return { ...c, v: String(params.itemCount) };
     if (c.k === 'items') return { ...c, v: `ARRAY<STRUCT>(${params.uniqueItems})` };
     if (c.k === 'session_id' && sid) return { ...c, v: `"${sid.slice(0, 8)}…"` };
+    if (c.k === 'user_pseudo_id' && aid) return { ...c, v: `"${aid.slice(0, 8)}…"` };
     if (c.k === 'event_timestamp' && ts) return { ...c, v: `"${ts}"` };
     if (c.k === 'received_timestamp' && ts) {
       const ms = Date.parse(ts);
@@ -158,7 +164,7 @@ export const FULL_PAGE_DIAGNOSTIC_LINES: Array<{
  * consent state so the diagnostic text matches what would actually
  * happen. When analytics is denied, the consent check line reflects that;
  * when marketing is granted, the Meta CAPI line flips from SKIP to OK
- * ("routed → Meta CAPI · event sent"). Other lines are unconditional, 
+ * ("routed → Meta CAPI · event sent"). Other lines are unconditional,
  * the purchase fires, sGTM receives it, BigQuery inserts the row, the
  * attribution engine and dashboards downstream of BQ both run.
  */

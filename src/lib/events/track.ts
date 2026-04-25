@@ -1,3 +1,4 @@
+import { getAnonymousId } from '@/lib/identity/anonymous-id';
 import { pushEvent } from './push';
 import type {
   CoverageMilestoneEvent,
@@ -15,7 +16,57 @@ let currentConsent = {
   consent_preferences: false,
 };
 
-/** Initialize consent state from Cookiebot (call on page load). */
+type GtagFn = (
+  command: 'consent',
+  action: 'update',
+  payload: Record<string, 'granted' | 'denied'>,
+) => void;
+
+/**
+ * Bridge Cookiebot's three booleans to GTM Consent Mode v2's six gtag signals
+ * and call `gtag('consent', 'update', {...})`. This is the explicit
+ * replacement for what `data-blockingmode="auto"` used to do implicitly —
+ * see `docs/ARCHITECTURE.md` "Cookiebot + GTM Consent Mode" for the full
+ * mapping rationale and the architectural amendment.
+ *
+ * Mapping:
+ *   Cookiebot statistics  → analytics_storage
+ *   Cookiebot marketing   → ad_storage + ad_user_data + ad_personalization
+ *   Cookiebot preferences → functionality_storage + personalization_storage
+ *   security_storage stays granted via the consent-defaults inline script
+ *   (not bridged here — Cookiebot has no corresponding category).
+ *
+ * Silently no-ops when `window.gtag` isn't defined (SSR, or pre-GTM-init
+ * paths) — the gtag stub is created by the consent-defaults inline script
+ * during HTML parse, so by the time CookiebotConsentListener fires this
+ * call gtag should always exist; the guard is defence in depth.
+ */
+function bridgeToGtagConsent(analytics: boolean, marketing: boolean, preferences: boolean): void {
+  if (typeof window === 'undefined') return;
+  const gtag = (window as unknown as { gtag?: GtagFn }).gtag;
+  if (typeof gtag !== 'function') return;
+  const yn = (b: boolean): 'granted' | 'denied' => (b ? 'granted' : 'denied');
+  gtag('consent', 'update', {
+    analytics_storage: yn(analytics),
+    ad_storage: yn(marketing),
+    ad_user_data: yn(marketing),
+    ad_personalization: yn(marketing),
+    functionality_storage: yn(preferences),
+    personalization_storage: yn(preferences),
+  });
+}
+
+/**
+ * Initialize consent state from Cookiebot (call on page load for returning
+ * visitors whose consent choice is already stored). Also bridges to gtag so
+ * GTM Consent Mode v2 sees the returning-visitor state instead of staying
+ * on the denied defaults forever.
+ *
+ * Silent vs trackConsentUpdate — does NOT push a `consent_update` data-
+ * layer event. The under-the-hood Timeline shouldn't show a "consent
+ * changed" event for a returning visitor whose consent didn't actually
+ * change this session; the gtag bridge is the only side effect.
+ */
 export function initConsentState(
   analytics: boolean,
   marketing: boolean,
@@ -26,6 +77,7 @@ export function initConsentState(
     consent_marketing: marketing,
     consent_preferences: preferences,
   };
+  bridgeToGtagConsent(analytics, marketing, preferences);
 }
 
 /**
@@ -45,6 +97,7 @@ function baseFields(): {
   timestamp: string;
   session_id: string;
   iap_session_id: string;
+  anonymous_id: string;
   page_path: string;
   page_title: string;
   consent_analytics: boolean;
@@ -57,6 +110,7 @@ function baseFields(): {
     timestamp: new Date().toISOString(),
     session_id: sid,
     iap_session_id: sid,
+    anonymous_id: getAnonymousId(),
     page_path: window.location.pathname,
     page_title: document.title,
     ...currentConsent,
@@ -115,6 +169,7 @@ export function trackConsentUpdate(
     ...baseFields(),
     event: 'consent_update',
   });
+  bridgeToGtagConsent(analytics, marketing, preferences);
 }
 
 // --- E-commerce demo tracking (Phase 6) ---

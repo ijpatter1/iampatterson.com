@@ -14,7 +14,7 @@ iampatterson.com is simultaneously a consulting site for Patterson Consulting an
 
 1. Next.js project scaffolded with TypeScript (strict) and Tailwind CSS
 2. Site structure: homepage, services overview (the four tiers), about/background, contact
-3. Cookiebot deployed and integrated with GTM consent mode
+3. Cookiebot deployed and integrated with GTM consent mode. **Architecture amended 2026-04-25 (during Phase 10d):** Cookiebot loaded with `data-blockingmode="manual"` rather than `"auto"`; consent gating delegated entirely to GTM Consent Mode v2 (per-tag `consentSettings: { analytics_storage: required }`/etc. in `infrastructure/gtm/web-container.json`); explicit `gtag('consent', 'update', {...})` bridge in `src/lib/events/track.ts` replaces what auto-mode used to do implicitly. Resolves a React-19/Next-16 hydration mismatch caused by auto-mode's pre-hydration DOM rewrite. See `docs/ARCHITECTURE.md` "Cookiebot + GTM Consent Mode" for the full integration sequence + signal mapping.
 4. Client-side GTM container configured with a clean data layer specification
 5. sGTM container on Stape with custom domain and same-origin setup
 6. GA4 configured via sGTM
@@ -696,7 +696,7 @@ Originally a single-block 9-deliverable phase. Restructured 2026-04-23 after UAT
 
 6. **Load testing.** Data generator + WebSocket service under synthetic load. Pub/Sub throughput profile. Document in `docs/perf/load-test-<date>.md`.
 
-7. **Anonymous ID first-party cookie (`_iap_aid`, 365-day expiry, `SameSite=Lax`, `Secure` in production).** Original Phase 10 D9, added 2026-04-21 from UAT r2 item 15. Mint on first visit; thread the value into every data layer push as `anonymous_id` alongside the existing `session_id` (which stays session-scoped). Surface the anonymous ID in the Overview tab's portals-and-state block; wire it into the ecommerce live sidebars so the BQ readout shows the real cross-session identifier rather than an example seed. Rationale: prior CDP experience; a first-party cookie is the honest baseline — localStorage is blocked from sGTM's read path and breaks on subdomain hops.
+7. **Anonymous ID first-party cookie (`_iap_aid`, 365-day expiry, `SameSite=Lax`, `Secure` in production).** Original Phase 10 D9, added 2026-04-21 from UAT r2 item 15. Mint on first visit; thread the value into every data layer push as `anonymous_id` alongside the existing `session_id` (which stays session-scoped). The cookie surfaces automatically in the Overview tab's storage-summary chips and the Consent tab's per-key inspector built by D9 (sequencing 2026-04-25 user direction: D9 first, then D7 consumes the existing surface); the ecommerce live sidebars' BQ readout is wired to show the real cross-session identifier rather than an example seed. Rationale: prior CDP experience; a first-party cookie is the honest baseline — localStorage is blocked from sGTM's read path and breaks on subdomain hops.
 
 8. **UX polish bundle (UAT r1 2026-04-23).** Numbered checklist; items ship individually or in small groups, tracked via commits on the 10d branch:
 
@@ -719,6 +719,29 @@ Originally a single-block 9-deliverable phase. Restructured 2026-04-23 after UAT
    i. Overlay Consent tab → add directive pointing at the consent widget in the bottom-left corner for visitors who want to exercise consent withdrawal/change.
 
    j. Overlay tabs (all) → add red/green accents for accepted/denied states plus text variety to reduce colour monotony.
+
+9. **Browser storage inspector — make every cookie + localStorage + sessionStorage key visible.** Added 2026-04-25 from a session-007 user observation: D7 surfaces *one* cookie (`_iap_aid`) but the project's "make the invisible visible" thesis demands every browser-storage key be inspectable, not just identity scaffolding. New utility + hook + two surfaces.
+
+   **Categorization, not raw dump.** Storage keys classified by who set them and why, not by storage class:
+   - **App identity** — first-party app cookies + namespaced storage we mint (`_iap_aid` from D7, `_iap_sid`, `iampatterson.session_state`, `iampatterson.overlay.booted`, `iampatterson.nav_hint.shown`).
+   - **Analytics (first-party)** — `_ga`, `_ga_*` set by gtag.js; sGTM-set first-party cookies (FPID/FPLC) when present.
+   - **Consent (CMP)** — Cookiebot's `CookieConsent` cookie, `CookieConsentBulkSetting-*`, plus Cookiebot's localStorage equivalents.
+   - **Third-party** — anything else with a non-first-party domain or no recognized prefix; should be empty when consent is denied across the board (an empty third-party section *is* the payoff — visitor sees their consent denial actually held).
+   - **Uncategorized** — recognized as present but no classification rule matched; surfaces honestly as "unknown" rather than silently swept into "Other."
+
+   Categorization lives in `src/lib/identity/storage-categories.ts` as a regex-based classifier; adding a known key is a one-line entry, not a structural change.
+
+   **Live updates (subscribe to writes, not poll-only-on-open).** Cookies have no native change event, so the inspector polls `document.cookie` on a 1s tick **only while the overlay is open** (zero cost when closed; gated by the existing `overlayOpen` context). For localStorage + sessionStorage, the inspector subscribes to the native `storage` event (catches cross-tab writes) and re-reads on the same 1s tick for same-tab writes (the `storage` event does not fire in the originating tab, a documented platform quirk). The polling tick is the simpler honest choice over monkey-patching `localStorage.setItem` globally — patching has a global side-effect surface that risks breaking consumer code (Cookiebot, GTM both write to localStorage), and the 1s cadence is fast enough for "live" feel without those side-effects. Newly-added or value-changed keys briefly highlight via the `u-accept` token from D8.j so the visitor's eye catches the moment a key landed.
+
+   **Overview tab section.** New "Browser storage" section in the Overview tab's portals-and-state block. Summary chips per category: `app identity · 4 keys`, `analytics · 2 keys`, `consent · 1 key`, `third-party · 0 keys`. Each chip carries `data-storage-category="..."` + `data-key-count="N"` for test addressability. Overview is summary only; per-key detail lives in the Consent tab.
+
+   **Consent tab full inspector.** New section below the existing destination chips (consent IS the durable artifact of consent decisions, so the inspector belongs there narratively, not as a separate "Storage" tab). Per-category collapsible list. Each row shows: key name (mono), value (truncated to ~40 chars; click to reveal full), storage class badge (cookie / localStorage / sessionStorage). No values are redacted — visitor inspects their own browser state on their own visit; redacting would defeat the thesis. Long opaque tracker values (Cookiebot consent string, GA `_ga` UUID) get the same truncate-with-reveal treatment as any other long value. **Cookie metadata limitation (discovered during implementation, 2026-04-25):** `document.cookie` exposes only `name=value` pairs to JavaScript. Cookie expiry, domain, path, Secure, and SameSite metadata are NOT readable for cookies set by other tags (Cookie Store API would expose them but is Chrome-only and not yet in Safari/Firefox stable). The inspector surfaces this limitation as a footnote rather than fabricating "expires in 365 days" labels we can't actually verify — itself a "make the invisible visible" moment because visitors learn that JS can't see all cookie state.
+
+   **Test surface.** Categorization map test (every known key resolves to its expected category; unknowns fall to "uncategorized"); storage-inspector hook test (mock cookie writes → state updates within polling interval; cross-tab `storage` event → state updates; same-tab localStorage write → state updates within tick); Overview summary chip render test (`data-storage-category` + count present per category); Consent tab inspector render test (expand/collapse, per-row pin, decoded-on-reveal); empty-state pin (no keys in category renders as `—` or "none yet" rather than vanishing).
+
+   **Out of scope.** Writing or deleting keys from the inspector UI (read-only; consent changes still flow through the Cookiebot widget per D8.i). IndexedDB inspection (no app code uses IndexedDB; not part of "what's actually in your browser right now from this site"). Cross-origin iframes (Cookiebot widget renders cross-origin and its iframe-internal storage is invisible by browser policy — itself an honest signal that we surface only what we can read).
+
+   **Sequencing within 10d:** D9 ships before D7. D7 was originally specced to add a one-off `_iap_aid` surface in the Overview portals-and-state block; with D9 in place, D7 becomes a smaller threading job (mint cookie + classify under "App identity" + thread `anonymous_id` into the schema/track helper) that consumes the inspector surface D9 builds. D7 wording updated above to reflect.
 
 **Why this is Phase 10d:** Punch-list by character. Each item small-to-medium on its own; grouping them into one sub-phase keeps per-deliverable tracking without inventing sub-phase headers for every thematic cluster. "Launch Prep" frames the bundle as "last pass before we'd show this to a prospect."
 

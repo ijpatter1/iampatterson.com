@@ -14,6 +14,14 @@ export interface BaseEvent {
   session_id: string;
   /** Session ID under a name GA4 won't remap (GA4 remaps session_id to ga_session_id). */
   iap_session_id: string;
+  /**
+   * Cross-session identifier minted into `_iap_aid` cookie (365d, SameSite=Lax,
+   * Secure in prod). Phase 10d D7. Threaded into every event so BigQuery has a
+   * stable identifier that survives session expiry, in contrast to `session_id`
+   * which rotates on the 30-min idle window. Empty string during SSR / before
+   * the cookie can be read; the client-side track helpers always set it.
+   */
+  anonymous_id: string;
   page_path: string;
   page_title: string;
   consent_analytics: boolean;
