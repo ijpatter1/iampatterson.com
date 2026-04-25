@@ -360,17 +360,17 @@
 - ⬜ D5 Security review: demo-data exposure paths, SA/IAP/JWT scope, PII audit across `DataLayerEvent` union, `npm audit`. Report at `docs/security/review-<date>.md`.
 - ⬜ D6 Load testing: data generator + WebSocket service under synthetic load; Pub/Sub throughput profile. Report at `docs/perf/load-test-<date>.md`.
 - ⬜ D7 Anonymous ID first-party cookie (`_iap_aid`, 365d, SameSite=Lax, Secure in prod) threaded as `anonymous_id` alongside `session_id`; surfaced in Overview portals-and-state + ecommerce live sidebars. *Added 2026-04-21 from UAT r2 item 15.*
-- 🔄 D8 UX polish bundle (UAT r1 2026-04-23):
+- ✅ D8 UX polish bundle (UAT r1 2026-04-23) — all 10 sub-items shipped 2026-04-24:
   - ✅ a. Hero `p-meta` typography — closed 2026-04-24 by 10c D4 + Pass-1 fix-pack (element + orphaned selectors cut).
   - ✅ b. "Explore the demos" → "Explore the demo" on hero ghost CTA + its `trackClickCta` label (commit `152391c`).
   - ✅ c. Pipeline CTA persimmon base (`bg-accent-current border-accent-current text-paper` + bleed ramp anchored on `var(--accent)` instead of ink; commit `4d72a6d`).
   - ✅ d. Tier cards deep-link to `/services#tier-NN`; `trackClickNav` `linkUrl` parameter also updated to the deep-link form (commit `059ba73`).
   - ✅ e. Cut proof-section ("Evidence · What the infrastructure has done"); -6 tests, -1 suite (commit `e0f237d`).
-  - ⬜ f. Shop product images: wire the 6 `.webp` at `docs/input_artifacts/shop_images/` to the catalogue. **Note:** REQUIREMENTS block and prior handoff both said "7 `.webp` at `docs/shop_images/`"; actual path is `docs/input_artifacts/shop_images/` and there are 6 files (COVER.webp + 5 product shots). Catalogue has 6 products; path + count to be reconciled when this deliverable ships.
-  - ⬜ g. Ecommerce demo bar → add "back to homepage" link
-  - ⬜ h. Overlay Overview tab → add directive blurb (parity with Timeline/Consent tabs)
-  - ⬜ i. Overlay Consent tab → directive pointing at consent widget (bottom-left corner)
-  - ⬜ j. Overlay tabs → red/green accents for accepted/denied states + text variety
+  - ✅ f. Six `.webp` from `docs/input_artifacts/shop_images/` copied to `public/shop/` with stable kebab-case filenames and wired to all six catalogue SKUs via a new required `Product.image: { src, alt }` field; `next/image` rendering on listing cards, product-detail hero, related-products grid, and cart-line thumbnails (commit `b16c7f6`). **Reconciled the path/count discrepancy:** REQUIREMENTS said "7 `.webp` at `docs/shop_images/`"; actual was 6 at `docs/input_artifacts/shop_images/` (1 cover + 5 product shots) — maps cleanly to 6 SKUs since one "shop shot" of Tuna-plush+Calendar together doubles as the bundle image.
+  - ✅ g. `EcomDemoBanner` left-edge "← back to homepage" link; 3-column grid preserves centred message; mobile message shortens to "this is a demo" to fit beside the link at 360px; fires `trackClickNav('back to homepage', '/')` (commit `930e6f2`).
+  - ✅ h. Overview tab directive block (kicker + headline + body) with parity to Timeline/Consent openings (commit `26fc763`).
+  - ✅ i. Consent tab directive now points visitors at the Cookiebot widget in the bottom-left corner for consent withdrawal/change — both empty-state and populated-state directives updated (commit `26fc763`).
+  - ✅ j. Semantic red/green accents across overlay surfaces via new `u-accept` (#8FBF7A) + `u-deny` (#D9725B) tokens + ✓/× glyphs for colour-blind redundancy; applied to Overview consent rows, Consent rows + destination chips + renamed headers (Active→Firing, Suppressed→Blocked), and Event timeline's blocked_consent routing badge (commit `26fc763`).
 
 ---
 
