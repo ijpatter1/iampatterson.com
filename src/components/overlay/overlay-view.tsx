@@ -10,6 +10,7 @@ import { useOverlay } from '@/components/overlay/overlay-context';
 import { OverviewTab } from '@/components/overlay/overview-tab';
 import { useFilteredEvents } from '@/hooks/useFilteredEvents';
 import { useLiveEvents } from '@/hooks/useLiveEvents';
+import { useStorageInspector } from '@/hooks/useStorageInspector';
 import {
   trackConsentTabView,
   trackOverviewTabView,
@@ -124,6 +125,7 @@ export function OverlayView() {
 
   const { events } = useLiveEvents();
   const { filteredEvents } = useFilteredEvents(events, false);
+  const storage = useStorageInspector(isOpen);
 
   const [viewMode, setViewMode] = useState<ViewMode>('overview');
   const [selectedEvent, setSelectedEvent] = useState<PipelineEvent | null>(null);
@@ -369,11 +371,11 @@ export function OverlayView() {
             </>
           ) : (
             <>
-              {viewMode === 'overview' && <OverviewTab />}
+              {viewMode === 'overview' && <OverviewTab storage={storage} />}
               {viewMode === 'timeline' && (
                 <EventTimeline events={filteredEvents} onSelectEvent={setSelectedEvent} />
               )}
-              {viewMode === 'consent' && <ConsentView events={filteredEvents} />}
+              {viewMode === 'consent' && <ConsentView events={filteredEvents} storage={storage} />}
             </>
           )}
         </div>
