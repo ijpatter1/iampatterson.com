@@ -7,7 +7,9 @@
  *  - Dismissal modes: scroll, click_outside, timeout, three values post-
  *    UAT (click_session_pulse removed: SessionPulse click is a
  *    conversion tracked via click_cta(session_pulse), not a dismissal)
- *  - Once-per-session via sessionStorage gate (set on render, not mount)
+ *  - Once-per-session via sessionStorage gate (set on either of two paths:
+ *    idle → showing render OR pre-show SessionPulse-click discovery signal
+ *    per bug fix 2026-04-25 `5f1ab1f`; not set on mount)
  *  - Homepage-entry-scoped (only fires on `/`)
  *  - Reduced-motion: static text "← your session" instead of ring
  *  - nav_hint_shown emits on render; nav_hint_dismissed emits on dismiss
@@ -145,6 +147,80 @@ describe('NavHint, first-session pulse ring', () => {
         jest.advanceTimersByTime(2500);
       });
       expect(screen.queryByTestId('nav-hint')).not.toBeInTheDocument();
+    });
+
+    // Bug fix 2026-04-25: clicking SessionPulse during the pre-show idle
+    // window IS a discovery signal (the visitor proved they found the
+    // affordance). The hint must never fire after this in the same
+    // session. The previous behaviour was to fall through to `resetIdle`
+    // — same path as any other click — which kept the timer running and
+    // the hint fired ~3s of inactivity later (confirmed in the wild via
+    // a Timeline showing nav_hint_shown 10s AFTER click_cta on
+    // SessionPulse, then nav_hint_dismissed 10s after that). The
+    // session-storage gate must also be set so a subsequent homepage
+    // visit in the same session doesn't re-arm the hint.
+    it('cancels the pending hint timer AND advances state to dismissed when SessionPulse is clicked before show', () => {
+      render(<Harness />);
+      const pulse = screen.getByTestId('fake-session-pulse');
+      act(() => {
+        jest.advanceTimersByTime(1500);
+        fireEvent.click(pulse);
+        // After the SessionPulse click, simulate the visitor doing what
+        // they actually did in the wild — interacting inside the now-open
+        // overlay, which dispatches document-level pointermove/click/
+        // keydown events. If the fix only cancelled the timer but left
+        // state at 'idle', resetIdle would re-arm via these listeners.
+        // Asserting the hint stays absent across both pure time-advance
+        // AND idle-reset events proves state advanced to 'dismissed'.
+        document.dispatchEvent(new Event('pointermove'));
+        document.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }));
+        jest.advanceTimersByTime(15000);
+      });
+      expect(screen.queryByTestId('nav-hint')).not.toBeInTheDocument();
+      expect(mockShown).not.toHaveBeenCalled();
+      expect(mockDismissed).not.toHaveBeenCalled();
+    });
+
+    it('writes the sessionStorage gate when SessionPulse is clicked before show', () => {
+      render(<Harness />);
+      const pulse = screen.getByTestId('fake-session-pulse');
+      act(() => {
+        jest.advanceTimersByTime(1500);
+        fireEvent.click(pulse);
+      });
+      // Gate set so a subsequent homepage visit in the same session
+      // doesn't re-trigger the hint timer.
+      expect(window.sessionStorage.getItem(NAV_HINT_STORAGE_KEY)).toBe('1');
+    });
+
+    it('still terminates the state machine when sessionStorage.setItem throws on pre-show SessionPulse click', () => {
+      // Strict-privacy fallback for the new pre-show branch: setting
+      // the gate is allowed to fail silently (storage disabled). The
+      // state machine must still advance to 'dismissed' so the hint
+      // doesn't fire after the visitor has clicked SessionPulse.
+      // Sibling test at line ~295 covers the render-time gate write
+      // path; this one covers the pre-show path.
+      const originalSetItem = Storage.prototype.setItem;
+      Storage.prototype.setItem = jest.fn(() => {
+        throw new Error('QuotaExceededError: sessionStorage disabled');
+      });
+
+      try {
+        render(<Harness />);
+        const pulse = screen.getByTestId('fake-session-pulse');
+        act(() => {
+          jest.advanceTimersByTime(1500);
+          fireEvent.click(pulse);
+          document.dispatchEvent(new Event('pointermove'));
+          jest.advanceTimersByTime(15000);
+        });
+        expect(screen.queryByTestId('nav-hint')).not.toBeInTheDocument();
+        expect(mockShown).not.toHaveBeenCalled();
+        expect(mockDismissed).not.toHaveBeenCalled();
+      } finally {
+        Storage.prototype.setItem = originalSetItem;
+      }
     });
 
     it('resets on keydown', () => {

@@ -16,10 +16,13 @@ import { trackNavHintDismissed, trackNavHintShown } from '@/lib/events/track';
 type DismissalMode = NavHintDismissedEvent['dismissal_mode'];
 type HintState = 'idle' | 'showing' | 'dismissed';
 
-// sessionStorage gate: once-per-session. Set only when the hint actually
-// renders (i.e. on the idle → showing transition), not on mount. A tab
-// that never reaches the 3s idle threshold never sees the hint and the
-// next homepage visit in the same session still gets a chance.
+// sessionStorage gate: once-per-session. Set on either of two paths:
+// (1) the idle → showing transition (hint actually rendered), (2) a
+// SessionPulse click during the idle window (visitor proved discovery
+// of the affordance pre-render — fix 2026-04-25). Not set on mount: a
+// tab that never reaches the 3s idle threshold AND never clicks
+// SessionPulse leaves the gate unset, so the next homepage visit in
+// the same session still gets a chance to fire the hint.
 export const NAV_HINT_STORAGE_KEY = 'iampatterson.nav_hint.shown';
 
 const IDLE_BEFORE_SHOW_MS = 3000;
@@ -124,11 +127,11 @@ export function NavHint({ sessionPulseRef }: NavHintProps) {
     };
 
     const onClick = (e: MouseEvent) => {
+      const target = e.target as Node | null;
+      const insidePulse = Boolean(
+        target && sessionPulseRef.current && sessionPulseRef.current.contains(target),
+      );
       if (stateRef.current === 'showing') {
-        const target = e.target as Node | null;
-        const insidePulse = Boolean(
-          target && sessionPulseRef.current && sessionPulseRef.current.contains(target),
-        );
         if (insidePulse) {
           // Conversion, not a dismissal. Hide the hint visually but
           // don't fire nav_hint_dismissed, the click_cta(session_pulse)
@@ -141,6 +144,28 @@ export function NavHint({ sessionPulseRef }: NavHintProps) {
         } else {
           dismiss('click_outside');
         }
+      } else if (insidePulse) {
+        // Pre-show SessionPulse click is the same discovery signal as
+        // the showing-state SessionPulse click — the visitor proved
+        // they found the affordance. Three things have to happen here
+        // and all three are load-bearing:
+        //   1. Clear the pending idle timer (otherwise it fires `show`
+        //      a few seconds later).
+        //   2. Advance state to `dismissed` (otherwise the next
+        //      pointermove/scroll/keydown re-arms the timer via
+        //      resetIdle, which only early-returns when state !== 'idle').
+        //   3. Mark the session-storage gate (otherwise a subsequent
+        //      homepage visit in the same tab re-arms the whole effect).
+        // Without (1) the timer keeps running. Without (2) the timer
+        // restarts on the next idle-reset event. Without (3) the next
+        // homepage visit re-fires. Observed in the wild as
+        // nav_hint_shown ~10s AFTER click_cta(session_pulse), then
+        // nav_hint_dismissed ~10s after that. No emissions here: the
+        // conversion is captured by click_cta(session_pulse) and there's
+        // nothing to dismiss because the hint hadn't shown yet.
+        if (idleTimer !== null) window.clearTimeout(idleTimer);
+        setPhase('dismissed');
+        markShownThisSession();
       } else {
         resetIdle();
       }
