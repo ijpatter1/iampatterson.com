@@ -29,6 +29,8 @@ const baseFields = {
   timestamp: '2026-03-26T12:00:00.000Z',
   session_id: 'abc-123',
   iap_session_id: 'abc-123',
+  // Phase 10d D7: BaseEvent gained anonymous_id (the _iap_aid cross-session id).
+  anonymous_id: 'aid-deadbeef',
   page_path: '/',
   page_title: 'Home',
   consent_analytics: true,
