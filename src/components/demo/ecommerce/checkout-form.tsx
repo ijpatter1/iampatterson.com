@@ -204,7 +204,12 @@ export function CheckoutForm() {
         your session where we have them.
       </WalkthroughBlurb>
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-10">
+      {/* Sidebar slot sized to LiveSidebar's intrinsic `lg:w-[360px]`,
+          mirrors the cart-view fix. The empty-cart early-return above
+          masked the same overflow on /checkout in the matrix sweep,
+          but a populated cart at iPad-Mini-landscape would surface it.
+          Phase 10d D1 mobile-matrix consistency pass. */}
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-10">
         <form
           onSubmit={handleSubmit}
           autoComplete="off"
