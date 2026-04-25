@@ -97,6 +97,22 @@ docs/input_artifacts/
 # commit; HTML is the human view and adds ~800KB per route per run.
 docs/perf/lighthouse-*.report.html
 
+# Mobile-matrix screenshots — a full sweep is 120 PNGs / ~48MB per run.
+# We commit only the curated evidence subset referenced in the matrix
+# doc (force-add what we want; gitignore the rest). Regenerate the full
+# sweep via `bash scripts/capture-mobile-matrix.sh` when needed.
+docs/perf/mobile-matrix-screenshots/**/*.png
+!docs/perf/mobile-matrix-screenshots/2026-04-25/matrix-iphone-se__home__01-at-rest.png
+!docs/perf/mobile-matrix-screenshots/2026-04-25/matrix-iphone-se__home__02-overlay-overview.png
+!docs/perf/mobile-matrix-screenshots/2026-04-25/matrix-iphone-se__home__03-consent-storage.png
+!docs/perf/mobile-matrix-screenshots/2026-04-25/matrix-iphone-se__ecommerce-catalog__01-at-rest.png
+!docs/perf/mobile-matrix-screenshots/2026-04-25/matrix-iphone-13__home__01-at-rest.png
+!docs/perf/mobile-matrix-screenshots/2026-04-25/matrix-pixel-5__home__01-at-rest.png
+!docs/perf/mobile-matrix-screenshots/2026-04-25/matrix-pixel-5__home__02-overlay-overview.png
+!docs/perf/mobile-matrix-screenshots/2026-04-25/matrix-ipad-mini-portrait__ecommerce-product__01-at-rest.png
+!docs/perf/mobile-matrix-screenshots/2026-04-25/matrix-ipad-mini-landscape__ecommerce-cart__01-at-rest.png
+!docs/perf/mobile-matrix-screenshots/2026-04-25/matrix-ipad-mini-landscape__home__01-at-rest.png
+
 # Claude subagent memory — per-machine, not project artifact
 .claude/agent-memory/
 .claude/settings.local.json
