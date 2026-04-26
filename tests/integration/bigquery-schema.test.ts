@@ -125,6 +125,29 @@ describe('BigQuery schema alignment with sGTM event data', () => {
     expect(metricValueCol?.type).toBe('FLOAT64');
   });
 
+  it('includes Phase 10d D3 PageEngagementEvent fields (engagement_seconds, max_scroll_pct)', () => {
+    // Without these columns, the sGTM "Write to BigQuery" tag silently drops the
+    // page_engagement payload (ignoreUnknownValues: true), and the
+    // mart_ecommerce_funnel.demo_engagement_pings count fires against rows
+    // whose engagement_seconds + max_scroll_pct columns are NULL — defeating
+    // the analytics value of the D3 event entirely. Mirrors the WebVital
+    // precedent above; the schema has to land in lock-step with the event
+    // type, even though the sGTM trigger + GA4 tag wiring carries to Phase 11
+    // D9 separately.
+    expect(bqColumnNames).toContain('engagement_seconds');
+    expect(bqColumnNames).toContain('max_scroll_pct');
+
+    const engagementSecondsCol = schemaJson.find((c) => c.name === 'engagement_seconds');
+    expect(engagementSecondsCol).toBeDefined();
+    // INT64 because the threshold values are integers (15, 60, 180).
+    expect(engagementSecondsCol?.type).toBe('INT64');
+
+    const maxScrollPctCol = schemaJson.find((c) => c.name === 'max_scroll_pct');
+    expect(maxScrollPctCol).toBeDefined();
+    // INT64 because the percentage is rounded to whole numbers in the tracker.
+    expect(maxScrollPctCol?.type).toBe('INT64');
+  });
+
   it('only event_name and received_timestamp are REQUIRED', () => {
     const requiredCols = schemaJson.filter((c) => c.mode === 'REQUIRED');
     const requiredNames = requiredCols.map((c) => c.name).sort();

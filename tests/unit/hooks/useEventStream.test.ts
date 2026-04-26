@@ -485,3 +485,204 @@ describe('useEventStream online-event recovery (D5)', () => {
 // affordance, so the retry() was dead API surface. If a future consumer
 // needs direct SSE-only reconnect control (bypassing the fallback), add
 // retry() back with a co-landed consumer.
+
+// ---------------------------------------------------------------------------
+// D2 graceful degradation: buffer survives connection drops + Pub/Sub backlog
+// catch-up dedupes redeliveries and respects buffer cap.
+//
+// Path A (WebSocket drop → Timeline last-known-good): the events buffer is
+// React state independent of connection status, so a connect → message →
+// error → retry cycle preserves what's been received. The Timeline tab
+// renders purely off `events.length` (`event-timeline.tsx:156`), so as long
+// as the buffer is non-empty the visitor never sees a spinner gate even
+// when status is 'reconnecting' or 'disconnected'.
+//
+// Path C (Pub/Sub latency → catches up without losing events): a backlog
+// burst of mixed unique + redelivered events resolves to exactly the
+// buffer-cap count of unique events because dedupe drops redeliveries on
+// arrival before the cap is even tested.
+// ---------------------------------------------------------------------------
+
+describe('useEventStream graceful degradation (D2)', () => {
+  it('preserves the events buffer through an error → reconnect cycle', () => {
+    jest.useFakeTimers();
+    // Pin Math.random so jitter is deterministic (factor 1.0).
+    const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.5);
+    try {
+      const { result } = renderHook(() =>
+        useEventStream({ url: 'http://localhost:8080/events', maxRetries: 3 }),
+      );
+
+      // Connection 1 opens, one event lands.
+      act(() => {
+        MockEventSource.instances[0].simulateOpen();
+      });
+      const firstEvent = makePipelineEvent({
+        event_name: 'page_view',
+        timestamp: '2026-04-25T10:00:00.000Z',
+        page_path: '/',
+      });
+      act(() => {
+        MockEventSource.instances[0].simulateMessage(JSON.stringify(firstEvent));
+      });
+      expect(result.current.events).toHaveLength(1);
+      expect(result.current.events[0].event_name).toBe('page_view');
+
+      // Connection 1 errors. Status flips to 'reconnecting'; buffer stays.
+      act(() => {
+        MockEventSource.instances[0].simulateError();
+      });
+      expect(result.current.status).toBe('reconnecting');
+      expect(result.current.events).toHaveLength(1);
+      expect(result.current.events[0].event_name).toBe('page_view');
+
+      // Backoff fires; a new EventSource is created.
+      const beforeReconnect = MockEventSource.instances.length;
+      act(() => {
+        jest.advanceTimersByTime(1000);
+      });
+      expect(MockEventSource.instances.length).toBe(beforeReconnect + 1);
+      // Buffer is still preserved across the gap.
+      expect(result.current.events).toHaveLength(1);
+
+      // Connection 2 opens. Status flips to 'connected'; buffer still preserved.
+      act(() => {
+        MockEventSource.instances[MockEventSource.instances.length - 1].simulateOpen();
+      });
+      expect(result.current.status).toBe('connected');
+      expect(result.current.events).toHaveLength(1);
+
+      // A new event delivered post-reconnect prepends to the preserved
+      // buffer (does not start a fresh buffer).
+      const secondEvent = makePipelineEvent({
+        event_name: 'click_cta',
+        timestamp: '2026-04-25T10:00:01.000Z',
+        page_path: '/',
+      });
+      act(() => {
+        MockEventSource.instances[MockEventSource.instances.length - 1].simulateMessage(
+          JSON.stringify(secondEvent),
+        );
+      });
+      expect(result.current.events).toHaveLength(2);
+      expect(result.current.events[0].event_name).toBe('click_cta');
+      expect(result.current.events[1].event_name).toBe('page_view');
+    } finally {
+      randomSpy.mockRestore();
+      jest.useRealTimers();
+    }
+  });
+
+  it('preserves the events buffer through max-retries → disconnected', () => {
+    jest.useFakeTimers();
+    const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.5);
+    try {
+      const { result } = renderHook(() =>
+        useEventStream({ url: 'http://localhost:8080/events', maxRetries: 1 }),
+      );
+
+      act(() => {
+        MockEventSource.instances[0].simulateOpen();
+      });
+      const event = makePipelineEvent({
+        event_name: 'page_view',
+        timestamp: '2026-04-25T10:00:00.000Z',
+        page_path: '/',
+      });
+      act(() => {
+        MockEventSource.instances[0].simulateMessage(JSON.stringify(event));
+      });
+      expect(result.current.events).toHaveLength(1);
+
+      // Burn through max retries → disconnected.
+      act(() => {
+        MockEventSource.instances[0].simulateError();
+      });
+      act(() => {
+        jest.advanceTimersByTime(1000);
+      });
+      act(() => {
+        MockEventSource.instances[MockEventSource.instances.length - 1].simulateError();
+      });
+      expect(result.current.status).toBe('disconnected');
+      // Buffer survives all the way to the disconnected terminal state —
+      // this is what makes "last-known-good" work in the Timeline tab.
+      expect(result.current.events).toHaveLength(1);
+      expect(result.current.events[0].event_name).toBe('page_view');
+    } finally {
+      randomSpy.mockRestore();
+      jest.useRealTimers();
+    }
+  });
+
+  it('absorbs a Pub/Sub backlog burst with redeliveries: dedupes on arrival, caps at maxBufferSize', () => {
+    // Simulate Pub/Sub latency catch-up: a backlog flushes as a burst of
+    // mixed unique + redelivered events. Dedupe drops the redeliveries;
+    // the buffer cap evicts oldest events newest-first.
+    const { result } = renderHook(
+      () => useEventStream({ url: 'http://localhost:8080/events' }), // default maxBufferSize=100
+    );
+
+    act(() => {
+      MockEventSource.instances[0].simulateOpen();
+    });
+
+    // Burst phase 1: 60 unique events.
+    act(() => {
+      for (let i = 0; i < 60; i++) {
+        const event = makePipelineEvent({
+          event_name: `event_${i}`,
+          timestamp: `2026-04-25T10:00:${String(i).padStart(2, '0')}.000Z`,
+          page_path: '/',
+        });
+        MockEventSource.instances[0].simulateMessage(JSON.stringify(event));
+      }
+    });
+    expect(result.current.events).toHaveLength(60);
+
+    // Burst phase 2: 10 redeliveries of events 50-59 (Pub/Sub at-least-once
+    // semantics — same event_name + timestamp + page_path triple). All 10
+    // should be deduped on arrival.
+    act(() => {
+      for (let i = 50; i < 60; i++) {
+        const event = makePipelineEvent({
+          event_name: `event_${i}`,
+          timestamp: `2026-04-25T10:00:${String(i).padStart(2, '0')}.000Z`,
+          page_path: '/',
+        });
+        MockEventSource.instances[0].simulateMessage(JSON.stringify(event));
+      }
+    });
+    // Buffer length unchanged: redeliveries dropped at dedupe.
+    expect(result.current.events).toHaveLength(60);
+
+    // Burst phase 3: 50 more unique events. Now total unique = 110, which
+    // exceeds the default cap of 100.
+    act(() => {
+      for (let i = 60; i < 110; i++) {
+        const event = makePipelineEvent({
+          event_name: `event_${i}`,
+          timestamp: `2026-04-25T10:00:${String(i).padStart(2, '0')}.000Z`,
+          page_path: '/',
+        });
+        MockEventSource.instances[0].simulateMessage(JSON.stringify(event));
+      }
+    });
+
+    // Cap held at 100; oldest 10 events evicted (event_0 through event_9).
+    expect(result.current.events).toHaveLength(100);
+    // Newest event is at index 0 (most-recent-first ordering).
+    expect(result.current.events[0].event_name).toBe('event_109');
+    // Oldest survivor is event_10 (events 0-9 evicted).
+    expect(result.current.events[result.current.events.length - 1].event_name).toBe('event_10');
+    // None of the evicted-or-deduped events appear in the buffer.
+    const names = new Set(result.current.events.map((e) => e.event_name));
+    expect(names.has('event_0')).toBe(false);
+    expect(names.has('event_9')).toBe(false);
+    // Each event_50-59 appears exactly once (no inflation from redelivery).
+    for (let i = 50; i < 60; i++) {
+      const matches = result.current.events.filter((e) => e.event_name === `event_${i}`);
+      expect(matches).toHaveLength(1);
+    }
+  });
+});

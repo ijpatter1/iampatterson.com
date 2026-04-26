@@ -104,9 +104,11 @@ describe('Question specs', () => {
     '04_revenue_share_by_channel.yaml',
     '05_customer_ltv_distribution.yaml',
     '06_daily_revenue_trend.yaml',
+    // Phase 10d D3: cross-event funnel reporting via mart_ecommerce_funnel.
+    '07_ecommerce_funnel_drop_off.yaml',
   ];
 
-  test('all six question specs present', () => {
+  test('all seven question specs present', () => {
     const actual = fs
       .readdirSync(path.join(SPECS_ROOT, 'questions'))
       .filter((f) => f.endsWith('.yaml'))

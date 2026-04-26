@@ -4,6 +4,7 @@ import type {
   CoverageMilestoneEvent,
   CtaLocation,
   NavHintDismissedEvent,
+  PageEngagementEvent,
   PortalClickEvent,
   WebVitalEvent,
 } from './schema';
@@ -296,4 +297,13 @@ export function trackWebVital(params: {
   navigation_type: string;
 }): void {
   pushEvent({ ...baseFields(), event: 'web_vital', ...params });
+}
+
+// --- Phase 10d D3, page-level engagement telemetry ---
+
+export function trackPageEngagement(params: {
+  engagement_seconds: PageEngagementEvent['engagement_seconds'];
+  max_scroll_pct: number;
+}): void {
+  pushEvent({ ...baseFields(), event: 'page_engagement', ...params });
 }

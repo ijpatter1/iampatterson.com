@@ -22,6 +22,16 @@ function describeAction(event: PipelineEvent): string {
       return `You focused on ${params.field_name ?? 'a field'}`;
     case 'consent_update':
       return 'You updated your consent preferences';
+    case 'page_engagement': {
+      // Phase 10d D3: 3-firing event family (15s / 60s / 180s of engaged
+      // time on a page). Surface the threshold + max-scroll high-water
+      // mark in the row description so a visitor expanding any of the
+      // three firings sees what threshold they crossed without inspecting
+      // the raw payload.
+      const seconds = params.engagement_seconds ?? '?';
+      const scroll = params.max_scroll_pct ?? 0;
+      return `You spent ${seconds}s engaged on ${event.page_path} (scrolled ${scroll}%)`;
+    }
     default:
       return `Event: ${event.event_name}`;
   }

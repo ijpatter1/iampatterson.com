@@ -16,6 +16,8 @@ description: |
 #   │  ROAS by campaign        │  Revenue share        │
 #   ├──────────────────┴───────────────────────────────┤ row 18  (size_y=6)
 #   │  Customer LTV distribution                       │
+#   ├──────────────────────────────────────────────────┤ row 24  (size_y=6)
+#   │  Ecommerce funnel drop-off  (Phase 10d D3)       │
 #   └──────────────────────────────────────────────────┘
 cards:
   - card: 'Daily revenue trend (30 days)'
@@ -50,6 +52,15 @@ cards:
 
   - card: 'Customer LTV distribution'
     row: 18
+    col: 0
+    size_x: 24
+    size_y: 6
+
+  # Phase 10d D3: aggregate ecommerce funnel drop-off across all channels.
+  # Companion to "Funnel conversion by channel" — same five stages, no
+  # channel breakdown, reads the new mart_ecommerce_funnel.
+  - card: 'Ecommerce funnel drop-off (Phase 10d D3)'
+    row: 24
     col: 0
     size_x: 24
     size_y: 6

@@ -10,6 +10,7 @@ import {
   trackFormSubmit,
   trackConsentUpdate,
   trackWebVital,
+  trackPageEngagement,
   initConsentState,
 } from '@/lib/events/track';
 
@@ -317,5 +318,28 @@ describe('trackWebVital', () => {
       metric_id: 'v4-LCP-1743000000000-9999',
       navigation_type: 'back-forward-cache',
     });
+  });
+});
+
+describe('trackPageEngagement (Phase 10d D3)', () => {
+  it('pushes a page_engagement event with the threshold + max scroll percentage', () => {
+    trackPageEngagement({ engagement_seconds: 15, max_scroll_pct: 42 });
+    expect(window.dataLayer[0]).toMatchObject({
+      event: 'page_engagement',
+      engagement_seconds: 15,
+      max_scroll_pct: 42,
+      iap_source: true,
+      session_id: 'test-session-id',
+    });
+  });
+
+  it('carries each of the three threshold values through the push', () => {
+    trackPageEngagement({ engagement_seconds: 15, max_scroll_pct: 0 });
+    trackPageEngagement({ engagement_seconds: 60, max_scroll_pct: 50 });
+    trackPageEngagement({ engagement_seconds: 180, max_scroll_pct: 100 });
+    expect(window.dataLayer).toHaveLength(3);
+    expect(
+      (window.dataLayer as Array<{ engagement_seconds: number }>).map((e) => e.engagement_seconds),
+    ).toEqual([15, 60, 180]);
   });
 });
