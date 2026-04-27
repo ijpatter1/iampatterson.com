@@ -106,6 +106,34 @@ describe('ListingView (Phase 9F D5, product listing)', () => {
     });
   });
 
+  // UAT r3 B11: when navigating from the homepage demos section to
+  // /demo/ecommerce, the visitor was landing "halfway down" the
+  // listing — Next.js's default post-push scroll-to-top animates from
+  // the previous scroll position because `html { scroll-behavior:
+  // smooth }` is set globally, and the new page paints mid-animation.
+  // Fix: a `useLayoutEffect` in ListingView snaps `window.scrollTo`
+  // with `behavior: 'instant'` on mount, bypassing the smooth
+  // animation. Pin the call so a future regression that drops the
+  // effect (or changes the behavior to 'auto'/'smooth') fails red.
+  describe('UAT r3 B11, scroll-to-top on mount bypasses smooth-scroll', () => {
+    it('calls window.scrollTo with `behavior: instant` on mount', () => {
+      const scrollSpy = jest.fn();
+      const originalScrollTo = window.scrollTo;
+      // Cast: jsdom's scrollTo signature accepts ScrollToOptions but the
+      // jest.fn() default-typed mock erases the overload. Tests don't
+      // exercise the call signature — only its presence + arguments.
+      (window as { scrollTo: unknown }).scrollTo = scrollSpy;
+      try {
+        renderView();
+        expect(scrollSpy).toHaveBeenCalled();
+        const firstCall = scrollSpy.mock.calls[0][0];
+        expect(firstCall).toMatchObject({ top: 0, behavior: 'instant' });
+      } finally {
+        (window as { scrollTo: unknown }).scrollTo = originalScrollTo;
+      }
+    });
+  });
+
   // Phase 10d D8.f Pass-1 fix: listing cards render real product
   // photography (not the pre-D8.f palette-tile placeholder). A regression
   // dropping `Product.image` back to palette-only, or breaking the

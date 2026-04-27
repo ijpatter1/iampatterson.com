@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import { useOverlay } from '@/components/overlay/overlay-context';
 import { StorageSummary } from '@/components/overlay/overview/storage-summary';
@@ -166,6 +166,55 @@ function SectionKicker({ children }: { children: string }) {
   );
 }
 
+/**
+ * UAT r3 B3: collapsible wrapper for the "Explore the site" portal
+ * list. Default-collapsed on mobile (`< 768px`) and default-expanded
+ * on tablet/desktop. The kicker is the toggle affordance — clicking
+ * it flips the disclosure state. The `+`/`−` glyph mirrors the
+ * `WalkthroughBlurb` collapse pattern so visitors see the same
+ * affordance shape across both surfaces.
+ *
+ * Initial state matches the SSR default (`expanded`) so server and
+ * client render the same DOM. On mount, `useLayoutEffect` reads the
+ * viewport and collapses on mobile *before* the browser paints, so
+ * a mobile visitor never sees a flash of the expanded state.
+ */
+function CollapsiblePortals({ children }: { children: React.ReactNode }) {
+  const [collapsed, setCollapsed] = useState(false);
+
+  // Why useLayoutEffect (not useEffect): runs after DOM commit but
+  // BEFORE the browser paints, so mobile visitors don't see a flash
+  // of the expanded portals list before it collapses. SSR-safe
+  // because the OverviewTab module is `'use client'` — never
+  // executed on the server.
+  useLayoutEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    if (window.matchMedia('(max-width: 767px)').matches) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- viewport-aware initial state (SSR-safe pattern)
+      setCollapsed(true);
+    }
+  }, []);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setCollapsed((c) => !c)}
+        aria-expanded={!collapsed}
+        aria-controls="overview-portals-list"
+        data-testid="overview-portals-toggle"
+        className="mb-3 flex w-full items-center justify-between gap-3 font-mono text-xs uppercase tracking-widest text-accent-current transition-opacity hover:opacity-80"
+      >
+        <span>Explore the site</span>
+        <span aria-hidden="true" className="font-mono text-base leading-none">
+          {collapsed ? '+' : '−'}
+        </span>
+      </button>
+      {!collapsed ? children : null}
+    </>
+  );
+}
+
 export function OverviewTab({ storage = EMPTY_STORAGE }: { storage?: StorageSnapshot } = {}) {
   const state = useSessionState();
   const pathname = usePathname() ?? '/';
@@ -228,24 +277,37 @@ export function OverviewTab({ storage = EMPTY_STORAGE }: { storage?: StorageSnap
         </p>
       </section>
 
-      {/* --- Portals + threshold CTA (TOP per UAT F1 feedback) --- */}
+      {/* --- Portals + threshold CTA (TOP per UAT F1 feedback) ---
+
+          UAT r3 B3: the portal list collapses on mobile to free
+          vertical space for the live data below (consent / event
+          coverage / funnel). The kicker doubles as the toggle
+          affordance so the visitor still has a discoverable path to
+          the other site sections. The threshold CTA lives outside
+          the collapsible region so the "Seen enough?" prompt still
+          surfaces when the portals are hidden. */}
       <section data-testid="overview-portals">
-        <SectionKicker>Explore the site</SectionKicker>
-        <ul className="grid gap-3 sm:grid-cols-3">
-          {PORTAL_LINKS.map((link) => (
-            <li key={link.destination}>
-              <Link
-                href={link.href}
-                data-testid={`portal-${link.destination}`}
-                onClick={() => handlePortalClick(link.destination)}
-                className="flex h-full flex-col gap-1 border border-u-rule-soft bg-u-paper-alt p-4 transition-colors hover:border-accent-current"
-              >
-                <span className="font-mono text-sm text-accent-current">{link.label}</span>
-                <span className="text-sm text-u-ink-2">{link.descriptor}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <CollapsiblePortals>
+          <ul
+            id="overview-portals-list"
+            data-testid="overview-portals-list"
+            className="grid gap-3 sm:grid-cols-3"
+          >
+            {PORTAL_LINKS.map((link) => (
+              <li key={link.destination}>
+                <Link
+                  href={link.href}
+                  data-testid={`portal-${link.destination}`}
+                  onClick={() => handlePortalClick(link.destination)}
+                  className="flex h-full flex-col gap-1 border border-u-rule-soft bg-u-paper-alt p-4 transition-colors hover:border-accent-current"
+                >
+                  <span className="font-mono text-sm text-accent-current">{link.label}</span>
+                  <span className="text-sm text-u-ink-2">{link.descriptor}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </CollapsiblePortals>
 
         {thresholdHit && (
           <div

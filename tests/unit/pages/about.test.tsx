@@ -26,9 +26,26 @@ beforeEach(() => {
 });
 
 describe('AboutPage', () => {
-  it('renders the page heading', () => {
+  it('renders the page heading with the "I am Ian Patterson" opener (UAT r3 B15)', () => {
     render(<AboutPage />);
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/i'm ian patterson/i);
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/i am ian patterson/i);
+  });
+
+  // UAT r3 B16: Tuna sidebar copy update — followers framed across
+  // social platforms (not Instagram alone) + revenue streams shorten
+  // "live events" to "events".
+  it('Tuna sidebar names "across social platforms" with the 2M+ figure (not Instagram alone)', () => {
+    render(<AboutPage />);
+    const text = document.body.textContent ?? '';
+    expect(text).toMatch(/over 2 million followers across social platforms/i);
+    expect(text).not.toMatch(/2 million instagram followers/i);
+  });
+
+  it('Tuna sidebar lists "events" not "live events" in the revenue-stream parenthetical', () => {
+    render(<AboutPage />);
+    const text = document.body.textContent ?? '';
+    expect(text).toMatch(/and events\)/);
+    expect(text).not.toMatch(/and live events\)/);
   });
 
   it('renders the biographical content', () => {

@@ -22,14 +22,24 @@ const beliefs = [
 export default function AboutPage() {
   return (
     <main>
-      {/* Bio section */}
-      <section className="px-6 py-section">
+      {/* Bio section
+          UAT r3 B17: bottom padding reduced on mobile (and trimmed
+          on desktop) to tighten the gap before "What I believe".
+          Mobile pb dropped 96px → 32px; desktop pb dropped 96px →
+          48px. The "What I believe" section keeps `pb-section` for
+          balance below the cards.
+          Site-wide section-spacing tokens live in `tailwind.config.ts`
+          (`section: 6rem`, `section-sm: 4rem`); apply responsively
+          via the `py-12 md:py-section` pattern when establishing new
+          sections so mobile doesn't inherit the desktop value
+          unmodified. */}
+      <section className="px-6 pt-section pb-8 md:pb-12">
         <div className="section-container">
           <div className="grid gap-12 lg:grid-cols-5">
             <div className="lg:col-span-3">
               <ScrollReveal>
                 <h1 className="font-display text-display-sm font-bold tracking-tight text-content sm:text-display-md">
-                  I&apos;m Ian Patterson. I build measurement infrastructure for marketing teams.
+                  I am Ian Patterson. I build measurement infrastructure for marketing teams.
                 </h1>
               </ScrollReveal>
               <ScrollReveal delay={0.1}>
@@ -57,10 +67,10 @@ export default function AboutPage() {
                   <p className="text-lg leading-relaxed text-content-secondary">
                     In parallel with consulting, I run{' '}
                     <strong className="text-content">Tuna Melts My Heart</strong>, built around
-                    Tuna, a Chiweenie with an exaggerated overbite and 2 million Instagram
-                    followers. It&apos;s a real business with multiple revenue streams (merchandise,
-                    brand partnerships, licensed content, and live events), and it&apos;s a live
-                    testing ground for everything I build.
+                    Tuna, a Chiweenie with an exaggerated overbite and over 2 million followers
+                    across social platforms. It&apos;s a real business with multiple revenue streams
+                    (merchandise, brand partnerships, licensed content, and events), and it&apos;s a
+                    live testing ground for everything I build.
                   </p>
                   <p className="mt-4 text-sm text-content-muted">
                     Based in Atlanta. Working with clients across the US and UK.

@@ -554,4 +554,90 @@ describe('OverviewTab', () => {
     expect(screen.getByTestId('portal-about')).toBeInTheDocument();
     expect(screen.getByTestId('portal-contact')).toBeInTheDocument();
   });
+
+  // UAT r3 B3: the portal list collapses on mobile to free vertical
+  // space for the live data below. The kicker is replaced by a
+  // toggle button. Initial state is expanded (matches SSR + jsdom's
+  // default `matchMedia` returning false); a `useLayoutEffect`
+  // collapses on mobile pre-paint.
+  describe('UAT r3 B3, collapsible portals (mobile-default-collapsed)', () => {
+    it('renders a toggle button labeled "Explore the site" with `aria-expanded`', () => {
+      useSessionState.mockReturnValue(makeState());
+      render(
+        <Wrapper>
+          <OverviewTab />
+        </Wrapper>,
+      );
+      const toggle = screen.getByTestId('overview-portals-toggle');
+      expect(toggle.tagName).toBe('BUTTON');
+      expect(toggle.textContent).toMatch(/explore the site/i);
+      expect(toggle).toHaveAttribute('aria-expanded');
+    });
+
+    it('jsdom default (no mobile match-media): portals expanded, list rendered', () => {
+      useSessionState.mockReturnValue(makeState());
+      render(
+        <Wrapper>
+          <OverviewTab />
+        </Wrapper>,
+      );
+      const toggle = screen.getByTestId('overview-portals-toggle');
+      expect(toggle).toHaveAttribute('aria-expanded', 'true');
+      expect(screen.getByTestId('overview-portals-list')).toBeInTheDocument();
+    });
+
+    it('clicking the toggle hides the portal list (and flips aria-expanded)', () => {
+      useSessionState.mockReturnValue(makeState());
+      render(
+        <Wrapper>
+          <OverviewTab />
+        </Wrapper>,
+      );
+      const toggle = screen.getByTestId('overview-portals-toggle');
+      fireEvent.click(toggle);
+      expect(toggle).toHaveAttribute('aria-expanded', 'false');
+      expect(screen.queryByTestId('overview-portals-list')).not.toBeInTheDocument();
+      // Threshold CTA region (when applicable) must NOT be inside
+      // the collapsible body — it lives outside so "Seen enough?"
+      // still surfaces when the portals are hidden. (No threshold
+      // hit here; just pin that the toggle didn't hide the section
+      // wrapper or remove its testid.)
+      expect(screen.getByTestId('overview-portals')).toBeInTheDocument();
+    });
+
+    it('on mobile (matchMedia max-width 767px → true), portals start collapsed', () => {
+      useSessionState.mockReturnValue(makeState());
+      const originalMatchMedia = window.matchMedia;
+      // Pretend mobile: only the `(max-width: 767px)` query matches.
+      // Cast: jsdom's MediaQueryList is wider than the minimal mock
+      // surface the component reads — only `.matches` is consulted.
+      window.matchMedia = ((query: string) =>
+        ({
+          matches: query.includes('max-width: 767px'),
+          media: query,
+          addEventListener: jest.fn(),
+          removeEventListener: jest.fn(),
+          addListener: jest.fn(),
+          removeListener: jest.fn(),
+          dispatchEvent: jest.fn(),
+          onchange: null,
+        }) as unknown as MediaQueryList) as typeof window.matchMedia;
+      try {
+        render(
+          <Wrapper>
+            <OverviewTab />
+          </Wrapper>,
+        );
+        const toggle = screen.getByTestId('overview-portals-toggle');
+        expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        expect(screen.queryByTestId('overview-portals-list')).not.toBeInTheDocument();
+        // Toggle still works on mobile — clicking expands.
+        fireEvent.click(toggle);
+        expect(toggle).toHaveAttribute('aria-expanded', 'true');
+        expect(screen.getByTestId('overview-portals-list')).toBeInTheDocument();
+      } finally {
+        window.matchMedia = originalMatchMedia;
+      }
+    });
+  });
 });
