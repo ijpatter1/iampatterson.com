@@ -110,7 +110,12 @@ export function ProductDetail({ product }: ProductDetailProps) {
               fill
               priority
               sizes="(min-width: 1024px) 480px, 100vw"
-              className="object-cover"
+              // UAT r3 B13: don't crop product images. Source is
+              // square (1:1) so `object-contain` against the
+              // `aspect-square` parent fills cleanly today; the
+              // safety net catches any future non-square image with
+              // a palette-coloured letterbox.
+              className="object-contain"
             />
             <div className="absolute bottom-4 left-4 rounded bg-black/45 px-2 py-[2px] font-mono text-[10px] uppercase tracking-[0.1em] text-white/90">
               {product.imageLabel}
@@ -196,7 +201,7 @@ export function ProductDetail({ product }: ProductDetailProps) {
                 className="flex flex-col gap-2 rounded border border-[var(--shop-warm-brown,#5C4A3D)]/12 p-3 transition-shadow hover:shadow-sm"
               >
                 <div
-                  className="relative aspect-[4/5] w-full overflow-hidden rounded"
+                  className="relative aspect-square w-full overflow-hidden rounded"
                   style={{ background: p.palette[0] }}
                 >
                   {/* Decorative alt: the surrounding <Link>'s accessible
@@ -208,7 +213,7 @@ export function ProductDetail({ product }: ProductDetailProps) {
                     alt=""
                     fill
                     sizes="(min-width: 1024px) 200px, 33vw"
-                    className="object-cover"
+                    className="object-contain"
                   />
                 </div>
                 <div className="font-display text-sm text-[var(--shop-warm-brown,#5C4A3D)]">

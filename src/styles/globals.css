@@ -620,3 +620,14 @@
     }
   }
 }
+
+/* UAT r3 B1: Cookiebot consent management widget moved from
+   bottom-left (default) to bottom-right. The Cookiebot loader writes
+   inline `left: …px` styles on `#CookiebotWidget` after consent is
+   recorded, so `!important` is required to win the cascade. The
+   companion copy in `src/components/overlay/consent-view.tsx`
+   directs visitors to the bottom-right corner; keep both in sync. */
+#CookiebotWidget {
+  left: auto !important;
+  right: 20px !important;
+}

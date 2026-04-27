@@ -174,11 +174,14 @@ describe('DemosSection, post-9E-D6 single ecommerce section', () => {
     });
   });
 
-  // UAT r2 item 5, the pre-r2 "Preview · sample event" box was
+  // UAT r2 item 5 + r3 B7, the pre-r2 "Preview · sample event" box was
   // flagged as pointless fluff + pushed the section too long on mobile.
-  // Decision: drop on mobile (hide via `hidden md:block`), keep on
-  // desktop as a palette-tile product hero (Tuna Plush Classic palette).
-  describe('UAT r2 item 5, demos-section hero visual', () => {
+  // r2: drop on mobile (hide via `hidden md:block`), keep on desktop
+  // as a palette-tile product hero (Tuna Plush Classic palette).
+  // r3 B7: swap the palette-tile placeholder for the real Tuna Plush
+  // Classic photograph (`/shop/tuna-plush-classic.webp`); palette
+  // colour stays as the letterbox fallback if the image fails to load.
+  describe('UAT r2 item 5 + r3 B7, demos-section hero visual', () => {
     it('does NOT render the old "Preview · sample event" pre-block', () => {
       render(<DemosSection />);
       const section = screen.getByTestId('demos-section');
@@ -186,7 +189,7 @@ describe('DemosSection, post-9E-D6 single ecommerce section', () => {
       expect(section.textContent).not.toMatch(/\[OK\] schema_validation/);
     });
 
-    it('renders a palette-tile hero element with the Tuna Plush Classic base color', () => {
+    it('keeps the Tuna Plush Classic palette base on the hero container as the image-load fallback', () => {
       render(<DemosSection />);
       const hero = document.querySelector('[data-demos-section-hero]') as HTMLElement;
       expect(hero).not.toBeNull();
@@ -202,6 +205,24 @@ describe('DemosSection, post-9E-D6 single ecommerce section', () => {
       const hero = document.querySelector('[data-demos-section-hero]') as HTMLElement;
       expect(hero.className).toMatch(/\bhidden\b/);
       expect(hero.className).toMatch(/md:block/);
+    });
+
+    // UAT r3 B7: regression pin for the real-photograph swap. If a
+    // future polish pass reverts to the palette-tile inline divs, this
+    // test fails. Asserts the source path (catalogue keeps it stable
+    // since `/shop/tuna-plush-classic.webp` is also the listing-card +
+    // detail-hero asset for the same SKU) and `object-contain` (the
+    // r3 B13 "don't crop" rule).
+    it('renders the Tuna Plush Classic photograph inside the hero', () => {
+      render(<DemosSection />);
+      const hero = document.querySelector('[data-demos-section-hero]') as HTMLElement;
+      const img = hero.querySelector('img') as HTMLImageElement;
+      expect(img).not.toBeNull();
+      // next/image rewrites the src into a `/_next/image?url=...` URL;
+      // assert on the encoded portion of the original path.
+      expect(img.src).toMatch(/tuna-plush-classic\.webp/);
+      expect(img.alt).toMatch(/tuna plush/i);
+      expect(img.className).toMatch(/object-contain/);
     });
   });
 
@@ -227,7 +248,7 @@ describe('DemosSection, post-9E-D6 single ecommerce section', () => {
     });
 
     it('does NOT render the banner for unknown rebuild values (defensive)', () => {
-      // Guard against future URL tampering or new redirect sources, 
+      // Guard against future URL tampering or new redirect sources,
       // banner only surfaces for the two known-removed demos so typos
       // don't produce a misleading banner.
       mockSearchParams = new URLSearchParams('?rebuild=ecommerce');
@@ -309,7 +330,7 @@ describe('DemosSection, post-9E-D6 single ecommerce section', () => {
       expect(screen.queryByTestId('rebuild-banner')).not.toBeInTheDocument();
       unmount();
 
-      // Deep link redirects to the SAME shallow destination URL, 
+      // Deep link redirects to the SAME shallow destination URL,
       // `/demo/subscription/:path*` → `/?rebuild=subscription#demos`.
       // The banner's dismissal state is keyed on the `label`, not the
       // inbound path, so the deep-link remount reads the same storage

@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 
@@ -191,7 +192,7 @@ export function DemosSection() {
               <em className="text-accent-current">BigQuery</em>.
             </h2>
             <p className="mt-8 max-w-[42ch] text-[17px] leading-[1.55] text-ink-2">
-              Browse, add a plush to cart, check out with a test card. Every interaction fires a
+              Browse, add a product to cart, check out with a test card. Every interaction fires a
               real GTM event through server-side GTM into BigQuery. The cart and checkout pages show
               the staging-layer transforms and data-quality checks running against your own session.
             </p>
@@ -212,36 +213,25 @@ export function DemosSection() {
             </div>
           </div>
 
-          {/* Preview column, desktop only (UAT r2 item 5).
-              Pre-r2 this was a terminal-styled sample-event pre-block.
-              Two problems the user flagged: the box read as pointless
-              filler ("preview sample event"), and stacked on mobile it
-              pushed the section too long. The mobile side is solved by
-              hiding this column entirely below md; the desktop side is
-              solved by swapping the pre-block for a palette-tile hero
-              composed from the Tuna Plush Classic palette (cream /
-              warm-brown / near-black), mirroring the product-detail
-              hero treatment so the homepage preview matches what the
-              visitor will see when they enter the demo.
-
-              No real product photography exists yet, when it does, the
-              palette-tile composition becomes the one place to swap in
-              a photography-on-cream asset. */}
+          {/* Preview column, desktop only (UAT r2 item 5, UAT r3 B7).
+              Hidden below md so the section stays compact on mobile.
+              The earlier palette-tile placeholder was swapped for the
+              real Tuna Plush Classic photograph in r3 — the cream
+              `background` colour from the product palette stays as the
+              letterbox fallback if the image fails to load. */}
           <div
             data-demos-section-hero=""
             className="relative hidden aspect-square w-full overflow-hidden rounded-lg md:block"
             style={{ background: '#E8D8BD' }}
-            aria-hidden="true"
           >
-            <div
-              className="absolute inset-x-16 top-1/2 h-1/2 -translate-y-1/2 rounded"
-              style={{ background: '#8A6A4A' }}
+            <Image
+              src="/shop/tuna-plush-classic.webp"
+              alt="Tuna plush in a blue cardigan with red heart bowtie, retail tag visible."
+              fill
+              sizes="(min-width: 1024px) 480px, 50vw"
+              className="object-contain"
             />
-            <div
-              className="absolute right-10 top-10 h-16 w-16 rounded-full"
-              style={{ background: '#3B2A1E' }}
-            />
-            <div className="absolute bottom-5 left-5 font-mono text-[10px] uppercase tracking-[0.12em] text-white/70">
+            <div className="absolute bottom-5 left-5 rounded bg-black/45 px-2 py-[2px] font-mono text-[10px] uppercase tracking-[0.12em] text-white/90">
               Product · Tuna Plush · Classic · 12in
             </div>
           </div>

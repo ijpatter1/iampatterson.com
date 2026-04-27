@@ -18,7 +18,7 @@ function ProductCard({ product, onAddToCart }: ProductCardProps) {
     >
       <Link href={`/demo/ecommerce/${product.id}`} className="flex flex-col gap-3">
         <div
-          className="relative aspect-[4/5] w-full overflow-hidden rounded"
+          className="relative aspect-square w-full overflow-hidden rounded"
           style={{ background: product.palette[0] }}
         >
           <Image
@@ -30,7 +30,13 @@ function ProductCard({ product, onAddToCart }: ProductCardProps) {
             // attribute implied. Slight overshoot to 400px to avoid
             // browser upscaling cost.
             sizes="(min-width: 1024px) 400px, (min-width: 640px) 50vw, 78vw"
-            className="object-cover"
+            // UAT r3 B13: source images are square (1:1) and the user
+            // explicitly asked for no cropping. `object-contain` is the
+            // safety net for any future non-square image — letterboxes
+            // would show the SKU palette colour from the parent's
+            // `background` style. Aspect on the parent matches source
+            // so the safety net is invisible today.
+            className="object-contain"
           />
           <div className="absolute bottom-2 left-2 rounded bg-black/45 px-2 py-[1px] font-mono text-[10px] uppercase tracking-[0.1em] text-white/90">
             {product.imageLabel}

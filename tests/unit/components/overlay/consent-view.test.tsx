@@ -41,21 +41,21 @@ describe('ConsentView', () => {
     expect(screen.getByText(/What happens when you/i)).toBeInTheDocument();
   });
 
-  // Phase 10d D8.i: directive now points visitors at the bottom-left
+  // Phase 10d D8.i: directive now points visitors at the bottom-right
   // Cookiebot widget for consent withdrawal / change. Pin on both the
   // empty-state and the populated-state directives so a regression
   // dropping the pointer fails.
-  it('directs visitors to the bottom-left Cookiebot widget (empty state)', () => {
+  it('directs visitors to the bottom-right Cookiebot widget (empty state)', () => {
     render(<ConsentView events={[]} />);
     const body = screen.getByText(/click the Cookiebot badge/i);
-    expect(body.textContent).toMatch(/bottom-left/i);
+    expect(body.textContent).toMatch(/bottom-right/i);
     expect(body.textContent).toMatch(/cookiebot/i);
   });
 
-  it('directs visitors to the bottom-left Cookiebot widget (populated state)', () => {
+  it('directs visitors to the bottom-right Cookiebot widget (populated state)', () => {
     render(<ConsentView events={[makeEvent()]} />);
     const body = screen.getByText(/click the Cookiebot badge/i);
-    expect(body.textContent).toMatch(/bottom-left/i);
+    expect(body.textContent).toMatch(/bottom-right/i);
     expect(body.textContent).toMatch(/cookiebot/i);
   });
 

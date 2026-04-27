@@ -259,7 +259,7 @@ export function PipelineSection() {
           <button
             type="button"
             onClick={handleOpen}
-            className="bleed-cta inline-flex items-center gap-2 rounded-full border border-accent-current bg-accent-current px-5 py-2 font-sans text-[14px] font-medium text-paper transition-all"
+            className="bleed-cta inline-flex items-center gap-2.5 rounded-sm border border-accent-current bg-accent-current px-5 py-3.5 text-sm font-semibold text-paper transition-all hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-current focus-visible:ring-offset-2"
           >
             <span className="flip-label">See your session</span>
             <span className="flip-nudge font-mono" aria-hidden="true">

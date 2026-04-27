@@ -180,9 +180,10 @@ test.describe('Phase 10d D1, mobile matrix', () => {
 
       // ── 4. Homepage: primary CTA above the Safari-aware fold ──
       if (route.isHomepage) {
-        // Three "See your session" CTAs render on the homepage (hero,
-        // pipeline-section, final-cta). The hero one is the load-bearing
-        // fold-line CTA; first DOM occurrence is in the hero section.
+        // Two "See your session" CTAs render on the homepage (hero,
+        // pipeline-section); the final-cta uses "Explore your session"
+        // (UAT r3 B10). The hero one is the load-bearing fold-line CTA;
+        // first DOM occurrence is in the hero section.
         const cta = page.getByRole('button', { name: /see your session/i }).first();
         await expect(cta, 'home: "See your session" CTA visible').toBeVisible();
         const ctaBox = await cta.boundingBox();
