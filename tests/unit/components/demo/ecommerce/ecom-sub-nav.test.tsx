@@ -106,4 +106,15 @@ describe('EcomSubNav (Phase 9F follow-up)', () => {
     expect(inner?.className).toMatch(/mx-auto/);
     expect(inner?.className).toMatch(/max-w-content/);
   });
+
+  // UAT r3 B12 fix-pack: the small mono sub-tagline "the underdog
+  // with the overbite · shop" was retired here so the sub-nav
+  // doesn't contradict the new "Tuna Melts My Heart" shop hero.
+  // Pin the absence so a future "let's bring back the wordplay"
+  // pass fails red.
+  it('does NOT render the retired "underdog with the overbite" sub-tagline (UAT r3 B12)', () => {
+    renderNav();
+    const nav = screen.getByRole('navigation');
+    expect(nav.textContent).not.toMatch(/underdog with the overbite/i);
+  });
 });

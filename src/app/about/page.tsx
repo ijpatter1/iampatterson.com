@@ -25,15 +25,18 @@ export default function AboutPage() {
       {/* Bio section
           UAT r3 B17: bottom padding reduced on mobile (and trimmed
           on desktop) to tighten the gap before "What I believe".
-          Mobile pb dropped 96px → 32px; desktop pb dropped 96px →
-          48px. The "What I believe" section keeps `pb-section` for
-          balance below the cards.
-          Site-wide section-spacing tokens live in `tailwind.config.ts`
-          (`section: 6rem`, `section-sm: 4rem`); apply responsively
-          via the `py-12 md:py-section` pattern when establishing new
+          Top padding also dropped on mobile so the bio isn't visually
+          asymmetric (96px top + 32px bottom would have read off-balance);
+          desktop keeps `pt-section` for editorial weight.
+          Final paddings: mobile 48 top + 32 bottom; desktop 96 top
+          + 48 bottom. The "What I believe" section keeps `pb-section`
+          for balance below the cards. Site-wide section-spacing
+          tokens live in `tailwind.config.ts` (`section: 6rem`,
+          `section-sm: 4rem`); apply responsively via the
+          `py-12 md:py-section` pattern when establishing new
           sections so mobile doesn't inherit the desktop value
           unmodified. */}
-      <section className="px-6 pt-section pb-8 md:pb-12">
+      <section className="px-6 pt-12 pb-8 md:pt-section md:pb-12">
         <div className="section-container">
           <div className="grid gap-12 lg:grid-cols-5">
             <div className="lg:col-span-3">
