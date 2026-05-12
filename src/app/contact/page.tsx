@@ -65,8 +65,7 @@ export default function ContactPage() {
                 </p>
                 <p className="mt-3 text-sm text-content-muted">
                   I&apos;ll respond within 24 hours. If we&apos;re a good fit, we&apos;ll schedule a
-                  30-minute call to discuss your current setup and goals. No proposals without a
-                  conversation first.
+                  30-minute call to discuss your current setup and goals.
                 </p>
               </div>
             </ScrollReveal>

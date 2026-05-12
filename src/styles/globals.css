@@ -61,7 +61,21 @@
     --term-rule-2: rgba(234, 217, 188, 0.28);
   }
 
-  /* Smooth scrolling with reduced-motion respect */
+  /* Smooth scrolling with reduced-motion respect.
+   *
+   * Global because the in-page anchor jumps (Hero → /#demos,
+   * SessionPulse → overlay sticky, "see the stack ↓" inside the
+   * demo) all rely on it. The interaction cost: Next.js App
+   * Router's post-navigation `window.scrollTo(0, 0)` ALSO
+   * animates from the previous scroll position, which produces a
+   * "lands halfway down" symptom on cross-page navigation from a
+   * mid-page CTA.
+   *
+   * Mitigation: routes that need to land at top on mount call
+   * `useScrollToTopOnMount()` (`src/hooks/`), which passes
+   * `behavior: 'instant'` to override this rule for a single
+   * scroll. Apply the hook on any new route reachable from a
+   * mid-page intra-site CTA. See UAT r3 B11 closure for context. */
   html {
     scroll-behavior: smooth;
   }
@@ -619,4 +633,15 @@
       opacity: 1;
     }
   }
+}
+
+/* UAT r3 B1: Cookiebot consent management widget moved from
+   bottom-left (default) to bottom-right. The Cookiebot loader writes
+   inline `left: …px` styles on `#CookiebotWidget` after consent is
+   recorded, so `!important` is required to win the cascade. The
+   companion copy in `src/components/overlay/consent-view.tsx`
+   directs visitors to the bottom-right corner; keep both in sync. */
+#CookiebotWidget {
+  left: auto !important;
+  right: 20px !important;
 }

@@ -9,13 +9,19 @@ import { useCart } from './cart-context';
  * Phase 9F sub-nav (adopted from the prototype per user direction 2026-04-21).
  *
  * Sits at the top of every `/demo/ecommerce/*` page directly below the
- * site chrome (`SessionPulse` + `LiveStrip` + `HomeBar`). Three sections:
- * (left) Tuna Shop wordmark + "the underdog with the overbite · shop"
- * sub-tagline, (right) `shop` / `cart` wayfinding with a live item-count
- * badge. The current route is highlighted via the terracotta accent.
- * Distinct from the site's session-scoped nav, this is the demo's own
- * shop-scoped wayfinding, and the wordmark is the "you've entered the
- * Tuna Shop" brand signal per the product review 2026-04-21 Major #2.
+ * site chrome (`SessionPulse` + `LiveStrip` + `HomeBar`). Two sections:
+ * (left) Tuna Shop wordmark, (right) `shop` / `cart` wayfinding with a
+ * live item-count badge. The current route is highlighted via the
+ * terracotta accent. Distinct from the site's session-scoped nav, this
+ * is the demo's own shop-scoped wayfinding, and the wordmark is the
+ * "you've entered the Tuna Shop" brand signal per the product review
+ * 2026-04-21 Major #2.
+ *
+ * UAT r3 B12 fix-pack: the small mono sub-tagline "the underdog with
+ * the overbite · shop" was retired here so the sub-nav doesn't
+ * contradict the new "Tuna Melts My Heart" hero — keeping the
+ * wordplay only in the hero would have stranded it as a vestigial
+ * chrome echo on every cart/product/checkout page.
  */
 export function EcomSubNav() {
   const pathname = usePathname();
@@ -31,14 +37,11 @@ export function EcomSubNav() {
       <div className="mx-auto flex max-w-content flex-wrap items-center justify-between gap-4 px-6 py-4 md:px-10">
         <Link
           href="/demo/ecommerce"
-          className="group flex flex-col leading-tight"
+          className="group leading-tight"
           aria-label="tuna melts my heart · shop"
         >
           <span className="font-display text-xl text-[var(--shop-warm-brown,#5C4A3D)] group-hover:text-[var(--shop-terracotta,#C4703A)]">
             tuna melts my heart
-          </span>
-          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--shop-warm-brown,#5C4A3D)]/60">
-            the underdog with the overbite · shop
           </span>
         </Link>
         <div className="flex items-center gap-4 font-mono text-xs uppercase tracking-[0.12em]">

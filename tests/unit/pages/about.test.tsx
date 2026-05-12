@@ -26,9 +26,46 @@ beforeEach(() => {
 });
 
 describe('AboutPage', () => {
-  it('renders the page heading', () => {
+  it('renders the page heading with the "I am Ian Patterson" opener (UAT r3 B15)', () => {
     render(<AboutPage />);
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/i'm ian patterson/i);
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/i am ian patterson/i);
+  });
+
+  // UAT r3 B16: Tuna sidebar copy update — followers framed across
+  // social platforms (not Instagram alone) + revenue streams shorten
+  // "live events" to "events".
+  it('Tuna sidebar names "across social platforms" with the 2M+ figure (not Instagram alone)', () => {
+    render(<AboutPage />);
+    const text = document.body.textContent ?? '';
+    expect(text).toMatch(/over 2 million followers across social platforms/i);
+    expect(text).not.toMatch(/2 million instagram followers/i);
+  });
+
+  it('Tuna sidebar lists "events" not "live events" in the revenue-stream parenthetical', () => {
+    render(<AboutPage />);
+    const text = document.body.textContent ?? '';
+    expect(text).toMatch(/and events\)/);
+    expect(text).not.toMatch(/and live events\)/);
+  });
+
+  // UAT r3 B17: the bio section's bottom padding was reduced so the
+  // gap before "What I believe" feels editorial-tight, not stretched.
+  // Pin the responsive padding class set so a future polish pass
+  // that restores `py-section` (symmetric 96px both sides) silently
+  // undoes the B17 fix.
+  it('bio section uses the B17 responsive padding pattern (UAT r3 B17)', () => {
+    render(<AboutPage />);
+    const h1 = screen.getByRole('heading', { level: 1 });
+    // Climb to the <section> ancestor — h1 → ScrollReveal div → div.lg:col-span-3 → grid div → section-container div → section.
+    const section = h1.closest('section') as HTMLElement;
+    expect(section).not.toBeNull();
+    // Mobile: pt-12 + pb-8. Desktop: md:pt-section + md:pb-12.
+    expect(section.className).toMatch(/\bpt-12\b/);
+    expect(section.className).toMatch(/\bpb-8\b/);
+    expect(section.className).toMatch(/md:pt-section/);
+    expect(section.className).toMatch(/md:pb-12/);
+    // And does NOT regress to the pre-B17 symmetric `py-section`.
+    expect(section.className).not.toMatch(/\bpy-section\b/);
   });
 
   it('renders the biographical content', () => {

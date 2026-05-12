@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 
+import { useScrollToTopOnMount } from '@/hooks/useScrollToTopOnMount';
 import { useCart, type CartItem } from './cart-context';
 import { useToast } from '@/components/demo/reveal/toast-provider';
 import { LiveSidebar } from '@/components/demo/reveal/live-sidebar';
@@ -37,6 +38,11 @@ export function CartView() {
   const session = useSessionContext();
   const firedRef = useRef(false);
   const lookup = useMemo(() => Object.fromEntries(allProducts.map((p) => [p.id, p])), []);
+
+  // UAT r3 B11: snap to top on mount. Shared hook so the cart page
+  // doesn't inherit the smooth-scroll bug when entered from a
+  // mid-page Add-to-Cart flow elsewhere on the demo.
+  useScrollToTopOnMount();
 
   useEffect(() => {
     if (firedRef.current) return;
@@ -162,7 +168,7 @@ export function CartView() {
                             alt=""
                             fill
                             sizes="48px"
-                            className="object-cover"
+                            className="object-contain"
                           />
                         </div>
                       ) : null}

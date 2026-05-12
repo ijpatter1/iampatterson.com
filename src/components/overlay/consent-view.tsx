@@ -33,7 +33,7 @@ export function ConsentView({ events, storage = EMPTY_STORAGE }: ConsentViewProp
         <p className="max-w-[62ch] text-sm leading-relaxed text-u-ink-2">
           In server-side GTM, consent state determines tag firing. Interact with the page to
           populate the timeline, we&apos;ll show your live consent decisions here. To change
-          consent, click the Cookiebot badge in the bottom-left corner of the page.
+          consent, click the Cookiebot badge in the bottom-right corner of the page.
         </p>
         <StorageInspector snapshot={storage} />
       </div>
@@ -58,7 +58,7 @@ export function ConsentView({ events, storage = EMPTY_STORAGE }: ConsentViewProp
       <p className="mt-3 max-w-[62ch] text-sm leading-relaxed text-u-ink-2">
         In server-side GTM, consent state determines tag firing. Here&apos;s what was sent and what
         was blocked for your session right now. To change consent, click the Cookiebot badge in the
-        bottom-left corner of the page.
+        bottom-right corner of the page.
       </p>
 
       {/* Phase 10d D8.j: red/green accents replace the persimmon + muted

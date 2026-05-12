@@ -45,16 +45,27 @@ describe('ListingView (Phase 9F D5, product listing)', () => {
     jest.useRealTimers();
   });
 
-  it('renders the editorial listing hero with eyebrow, serif headline, and lede', () => {
+  it('renders the editorial listing hero with eyebrow, "Tuna Melts My Heart" h1, and lede (UAT r3 B12)', () => {
     renderView();
-    // Eyebrow in mono uppercase
-    expect(screen.getByText(/the tuna shop · 6 things/i)).toBeInTheDocument();
-    // Headline fragment: "the underdog with the overbite.", correcting
-    // the hi-fi prototype, which got this wrong. Chiweenies have
-    // overbites (upper jaw past the lower); the about page already
-    // renders the correct phrase.
-    expect(screen.getByText(/underdog/i)).toBeInTheDocument();
-    expect(screen.getByText(/overbite/i)).toBeInTheDocument();
+    // Eyebrow in mono uppercase. UAT r3 B12 trimmed the "· 6 things"
+    // tail since the products grid below already shows the count.
+    // `getAllByText` because the WalkthroughBlurb body also contains
+    // "The Tuna Shop front." — both are valid mentions; the eyebrow
+    // is the load-bearing one but we just need ≥1 match.
+    expect(screen.getAllByText(/the tuna shop/i).length).toBeGreaterThanOrEqual(1);
+    // H1 shifted from "the underdog with the overbite." (the hi-fi
+    // prototype's framing) to the brand mark "Tuna Melts My Heart"
+    // per UAT r3 B12 — pin on both the role + text so a regression
+    // back to the old fragment fails red.
+    const h1 = screen.getByRole('heading', { level: 1 });
+    expect(h1.textContent).toMatch(/tuna melts my heart/i);
+    expect(h1.textContent).not.toMatch(/underdog|overbite/i);
+    // Body lede should mention BigQuery (stack thesis) + "no-kill
+    // rescues" (mission anchor) so a future polish pass can't strip
+    // either silently.
+    const text = document.body.textContent ?? '';
+    expect(text).toMatch(/no-kill rescues/i);
+    expect(text).toMatch(/bigquery/i);
   });
 
   it('renders the your-utm + classified-as panel below the hero', () => {
@@ -106,6 +117,32 @@ describe('ListingView (Phase 9F D5, product listing)', () => {
     });
   });
 
+  // UAT r3 B11: ListingView calls `useScrollToTopOnMount` so a
+  // visitor entering from the homepage demos section doesn't land
+  // mid-listing. The hook itself is pinned at
+  // `tests/unit/hooks/useScrollToTopOnMount.test.tsx`; here we pin
+  // that ListingView is actually a consumer of it, so a regression
+  // that drops the call from the component fails red even if the
+  // hook's behaviour remains correct.
+  describe('UAT r3 B11, scroll-to-top on mount bypasses smooth-scroll', () => {
+    it('calls window.scrollTo with `behavior: instant` on mount', () => {
+      const scrollSpy = jest.fn();
+      const originalScrollTo = window.scrollTo;
+      // Cast: jsdom's scrollTo signature accepts ScrollToOptions but the
+      // jest.fn() default-typed mock erases the overload. Tests don't
+      // exercise the call signature — only its presence + arguments.
+      (window as { scrollTo: unknown }).scrollTo = scrollSpy;
+      try {
+        renderView();
+        expect(scrollSpy).toHaveBeenCalled();
+        const firstCall = scrollSpy.mock.calls[0][0];
+        expect(firstCall).toMatchObject({ top: 0, behavior: 'instant' });
+      } finally {
+        (window as { scrollTo: unknown }).scrollTo = originalScrollTo;
+      }
+    });
+  });
+
   // Phase 10d D8.f Pass-1 fix: listing cards render real product
   // photography (not the pre-D8.f palette-tile placeholder). A regression
   // dropping `Product.image` back to palette-only, or breaking the
@@ -131,6 +168,25 @@ describe('ListingView (Phase 9F D5, product listing)', () => {
         // on the listing grid — the photo carries the primary visual
         // identity of each card).
         expect(img!.getAttribute('alt')?.length ?? 0).toBeGreaterThan(10);
+      });
+    });
+
+    // UAT r3 B13: don't-crop rule — all listing cards use
+    // `object-contain` + `aspect-square` so a future polish pass that
+    // flips one card back to `object-cover` for a one-off image
+    // doesn't silently break the system rule. Per-card assertion.
+    it('every product card image renders with object-contain and aspect-square parent (UAT r3 B13)', () => {
+      renderView();
+      const cards = document.querySelectorAll('[data-product-card]');
+      expect(cards.length).toBe(6);
+      cards.forEach((card) => {
+        const img = card.querySelector('img') as HTMLImageElement;
+        expect(img.className).toMatch(/object-contain/);
+        expect(img.className).not.toMatch(/object-cover/);
+        // The aspect-square parent is the immediate image wrapper.
+        const wrapper = img.parentElement as HTMLElement;
+        expect(wrapper.className).toMatch(/aspect-square/);
+        expect(wrapper.className).not.toMatch(/aspect-\[4\/5\]/);
       });
     });
   });
@@ -178,13 +234,15 @@ describe('ListingView (Phase 9F D5, product listing)', () => {
 
   // UAT r2 item 9, the shop homepage body copy was `text-[15px]`, which
   // read smaller than the site homepage's 17px. Match the homepage body
-  // size so the shop doesn't feel like a downgrade.
+  // size so the shop doesn't feel like a downgrade. UAT r3 B12 rewrote
+  // the lede; the size pin survives the rewrite by matching on the new
+  // opening phrase ("A chiweenie with a famous face and a small shop").
   describe('UAT r2 item 9, shop body copy matches homepage body size', () => {
     it('listing hero paragraph is 17px (matches site homepage demos-section body)', () => {
       renderView();
       const paragraphs = document.querySelectorAll('section p');
       const lede = Array.from(paragraphs).find((p) =>
-        /Tuna is a chiweenie with a famous face/.test(p.textContent ?? ''),
+        /A chiweenie with a famous face/.test(p.textContent ?? ''),
       ) as HTMLElement | undefined;
       expect(lede).toBeDefined();
       expect(lede?.className).toMatch(/text-\[17px\]/);

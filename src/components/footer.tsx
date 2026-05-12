@@ -28,7 +28,13 @@ export function Footer() {
         <div className="grid gap-10 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
           <div>
             <h4 className="font-display text-3xl text-ink">
-              Patterson<em className="not-italic text-accent-current">.</em>
+              <Link
+                href="/about"
+                onClick={() => trackClickNav('Patterson', '/about')}
+                className="transition-colors hover:text-accent-current"
+              >
+                Patterson<em className="not-italic text-accent-current">.</em>
+              </Link>
             </h4>
             <p className="mt-3 max-w-xs text-sm leading-relaxed text-ink-3">
               Measurement infrastructure for marketing teams. This site runs on the same stack I

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 
+import { useScrollToTopOnMount } from '@/hooks/useScrollToTopOnMount';
 import { ProductListing } from './product-listing';
 import { useCart } from './cart-context';
 import { useToast } from '@/components/demo/reveal/toast-provider';
@@ -34,6 +35,13 @@ export function ListingView() {
   const { push } = useToast();
 
   const cascadeFiredRef = useRef(false);
+
+  // UAT r3 B11: snap to top on mount, bypassing global smooth-scroll
+  // (`html { scroll-behavior: smooth }`). Shared hook so every
+  // /demo/ecommerce/* route surface gets the same protection — the
+  // bug is rooted in the global stylesheet + Next router scroll, not
+  // in any single page.
+  useScrollToTopOnMount();
 
   useEffect(() => {
     if (cascadeFiredRef.current) return;
@@ -106,16 +114,15 @@ export function ListingView() {
     <div className="flex flex-col gap-12">
       <section className="flex flex-col gap-6">
         <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--shop-warm-brown,#5C4A3D)]/70">
-          the tuna shop · 6 things
+          the tuna shop
         </div>
         <h1 className="font-display text-[clamp(2.5rem,5vw,4rem)] leading-[1.05] tracking-[-0.015em] text-[var(--shop-warm-brown,#5C4A3D)]">
-          the underdog with the{' '}
-          <em className="not-italic text-[var(--shop-terracotta,#C4703A)]">overbite.</em>
+          Tuna Melts My <em className="not-italic text-[var(--shop-terracotta,#C4703A)]">Heart.</em>
         </h1>
         <p className="max-w-[640px] text-[17px] leading-[1.55] text-[var(--shop-warm-brown,#5C4A3D)]/80">
-          Tuna is a chiweenie with a famous face. This is his shop. Plushes, a calendar, a cameo or
-          two. A portion of every order goes to no-kill rescues. Every click you make is also a
-          demo: the toasts up top are your browser talking to sGTM, which talks to BigQuery.
+          A chiweenie with a famous face and a small shop. A portion of every order goes to no-kill
+          rescues. Every click here also fires a real GTM event into BigQuery. The toasts up top are
+          the proof.
         </p>
         <dl
           data-utm-capture=""

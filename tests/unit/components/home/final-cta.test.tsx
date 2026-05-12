@@ -41,7 +41,7 @@ describe('FinalCta', () => {
   it('renders the three-line headline with italic "Then hire me."', () => {
     renderCta();
     const h2 = screen.getByRole('heading', { level: 2 });
-    expect(h2.textContent).toMatch(/See your[\s\S]*session first[\s\S]*Then hire me/);
+    expect(h2.textContent).toMatch(/Explore your[\s\S]*session first[\s\S]*Then hire me/);
     const em = screen.getByText(/^Then hire me\.$/);
     expect(em.tagName).toBe('EM');
     expect(em.className).toContain('accent-current');
@@ -58,10 +58,10 @@ describe('FinalCta', () => {
   it('primary CTA opens the overlay and fires click_cta', async () => {
     const user = userEvent.setup();
     renderCta();
-    const cta = screen.getByRole('button', { name: /see your session/i });
+    const cta = screen.getByRole('button', { name: /explore your session/i });
     await user.click(cta);
     expect(screen.getByTestId('overlay-status')).toHaveTextContent('open');
-    expect(trackClickCta).toHaveBeenCalledWith('See your session', 'final_cta');
+    expect(trackClickCta).toHaveBeenCalledWith('Explore your session', 'final_cta');
   });
 
   it('ghost CTA links to /contact', () => {

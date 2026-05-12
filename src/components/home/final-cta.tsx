@@ -25,7 +25,7 @@ export function FinalCta() {
             letterSpacing: '-0.03em',
           }}
         >
-          See your
+          Explore your
           <br />
           session first.
           <br />
@@ -39,11 +39,11 @@ export function FinalCta() {
           <EditorialButton
             variant="accent"
             onClick={() => {
-              trackClickCta('See your session', 'final_cta');
+              trackClickCta('Explore your session', 'final_cta');
               open();
             }}
           >
-            See your session →
+            Explore your session →
           </EditorialButton>
           <EditorialLink
             href="/contact"

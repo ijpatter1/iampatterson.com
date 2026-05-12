@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 
 import { ecommerceDashboardData } from '@/lib/demo/dashboard-data';
+import { useScrollToTopOnMount } from '@/hooks/useScrollToTopOnMount';
 import { KpiGrid } from '@/components/demo/dashboard/kpi-card';
 import { ChartCard } from '@/components/demo/dashboard/chart-card';
 import { FunnelChart } from '@/components/demo/dashboard/funnel-chart';
@@ -125,6 +126,11 @@ const campaignColumns = [
 ];
 
 export function EcommerceDashboard() {
+  // UAT r3 B11: snap to top on mount. The dashboard is long; entering
+  // mid-scroll from another /demo/ecommerce/* route would land the
+  // visitor below the KPI grid.
+  useScrollToTopOnMount();
+
   const data = ecommerceDashboardData;
 
   return (

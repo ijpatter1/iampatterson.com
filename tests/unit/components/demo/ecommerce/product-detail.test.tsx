@@ -82,6 +82,39 @@ describe('ProductDetail (Phase 9F D6)', () => {
     expect(hero.getAttribute('src')).toContain('tuna-plush-classic');
   });
 
+  // UAT r3 B13: don't-crop rule. The hero image uses `object-contain`
+  // against an `aspect-square` parent; the related-products grid uses
+  // the same combination on its thumbnails. A polish pass flipping
+  // either to `object-cover` for one image would break the
+  // system-wide "don't crop" decision the user signed off on.
+  it('hero photograph uses object-contain on an aspect-square parent (UAT r3 B13)', () => {
+    renderDetail();
+    const hero = screen.getByAltText(/retail tag visible/i);
+    expect(hero.className).toMatch(/object-contain/);
+    expect(hero.className).not.toMatch(/object-cover/);
+    const wrapper = hero.parentElement as HTMLElement;
+    expect(wrapper.className).toMatch(/aspect-square/);
+  });
+
+  it('related-products thumbnails also use object-contain + aspect-square (UAT r3 B13)', () => {
+    renderDetail();
+    // Related thumbnails are inside the "other things in the shop"
+    // section header at the bottom; query by the `Link` wrappers'
+    // hrefs which target other product IDs.
+    const allImgs = document.querySelectorAll('img');
+    const relatedImgs = Array.from(allImgs).filter((img) => {
+      const src = decodeURIComponent(img.getAttribute('src') ?? '');
+      // Hero matches `tuna-plush-classic`; related are other SKUs.
+      return src.includes('/shop/') && !src.includes('tuna-plush-classic');
+    });
+    expect(relatedImgs.length).toBeGreaterThanOrEqual(1);
+    relatedImgs.forEach((img) => {
+      expect(img.className).toMatch(/object-contain/);
+      const wrapper = img.parentElement as HTMLElement;
+      expect(wrapper.className).toMatch(/aspect-square/);
+    });
+  });
+
   it('fires trackProductView once on mount', () => {
     renderDetail();
     expect(mockProductView).toHaveBeenCalledTimes(1);

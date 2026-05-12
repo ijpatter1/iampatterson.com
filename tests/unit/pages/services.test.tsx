@@ -47,12 +47,18 @@ describe('ServicesPage, editorial', () => {
     expect(screen.getAllByText('Attribution & Advanced').length).toBeGreaterThanOrEqual(2);
   });
 
-  it('renders all four tier subtitles', () => {
+  it('renders all four tier subtitles (UAT r3 B9/B14 workshop)', () => {
     renderPage();
-    expect(screen.getByText(/get the data right at the source/i)).toBeInTheDocument();
-    expect(screen.getByText(/turn raw events into a source of truth/i)).toBeInTheDocument();
+    // r3 B9/B14 rewrote Tier 1, Tier 2, and Tier 4 subtitles; Tier 3
+    // kept "Answers, not dashboards." as already-crisp.
+    expect(screen.getByText(/if the source is wrong/i)).toBeInTheDocument();
+    expect(screen.getByText(/raw events are a start/i)).toBeInTheDocument();
     expect(screen.getByText(/answers, not dashboards/i)).toBeInTheDocument();
-    expect(screen.getByText(/actually working/i)).toBeInTheDocument();
+    expect(screen.getByText(/causation, not correlation/i)).toBeInTheDocument();
+    // Negative pins: the retired subtitles must not regress back.
+    const text = document.body.textContent ?? '';
+    expect(text).not.toMatch(/finally answering/i);
+    expect(text).not.toMatch(/get the data right at the source/i);
   });
 
   it('renders tier outcome summaries for each tier', () => {
@@ -165,7 +171,7 @@ describe('ServicesPage, editorial', () => {
     const tier3 = screen.getByTestId('tier-03');
     const link = within(tier3).getByRole('link', { name: /see it live/i });
     const href = link.getAttribute('href') ?? '';
-    // Confirmation page reads order_id, total, items from the query string, 
+    // Confirmation page reads order_id, total, items from the query string,
     // pre-filling them makes the inline Tier 3 embeds meaningful on arrival
     // rather than landing on an empty-order state.
     expect(href).toMatch(/^\/demo\/ecommerce\/confirmation\?/);
