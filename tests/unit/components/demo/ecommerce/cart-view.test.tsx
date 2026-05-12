@@ -171,6 +171,27 @@ describe('CartView (Phase 9F D7)', () => {
     expect(img!.getAttribute('alt')).toBe('');
   });
 
+  // UAT r3 B13: don't-crop rule applied to the cart-line thumbnail
+  // so it stays consistent with the listing card + product detail
+  // hero. The 48×48 square wrapper means a square source image fills
+  // perfectly; a non-square future image letterboxes against the
+  // wrapper's palette `background` color (intentional consistency
+  // with the listing-card fallback treatment).
+  it('cart-line thumbnail uses object-contain (UAT r3 B13)', () => {
+    const { container } = renderWithCart([
+      {
+        product_id: 'tuna-plush-classic',
+        product_name: 'Tuna Plush',
+        product_price: 26,
+        quantity: 1,
+      },
+    ]);
+    const img = container.querySelector('[data-cart-line] img') as HTMLImageElement;
+    expect(img).not.toBeNull();
+    expect(img.className).toMatch(/object-contain/);
+    expect(img.className).not.toMatch(/object-cover/);
+  });
+
   it('renders a summary block with subtotal, total, and checkout link when items present', () => {
     renderWithCart([
       {

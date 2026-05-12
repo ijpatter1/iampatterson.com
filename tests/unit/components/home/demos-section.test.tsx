@@ -105,6 +105,18 @@ describe('DemosSection, post-9E-D6 single ecommerce section', () => {
       expect(section.textContent).not.toMatch(/instead of toggling/i);
     });
 
+    // UAT r3 B5: the homepage body's CTA-flow framing says "add a
+    // product to cart" (not "plush"). The catalogue contains a
+    // calendar, a cameo, and a bundle — "plush" was a leak from the
+    // pre-9F prototype. Pin both directions so a regression flipping
+    // back to "plush" fails red.
+    it('body says "add a product to cart" not "add a plush to cart" (UAT r3 B5)', () => {
+      render(<DemosSection />);
+      const section = screen.getByTestId('demos-section');
+      expect(section.textContent).toMatch(/add a product to cart/i);
+      expect(section.textContent).not.toMatch(/add a plush to cart/i);
+    });
+
     it('body does NOT use internal jargon "Tier 3 payoff"', () => {
       render(<DemosSection />);
       const section = screen.getByTestId('demos-section');
@@ -217,14 +229,48 @@ describe('DemosSection, post-9E-D6 single ecommerce section', () => {
     // UAT r3 B6: one-line intro line for the demo, anchored to the
     // photo via `<figcaption>` so the relationship is semantic
     // (the figcaption belongs to the figure containing the image).
+    // The cardinal count is derived from `products.length` at render
+    // time, so a future SKU add naturally swaps "Six" for "Seven"
+    // without a stale-claim risk.
     it('renders the B6 one-line demo intro as the photo figcaption', () => {
       render(<DemosSection />);
       const hero = document.querySelector('[data-demos-section-hero]') as HTMLElement;
       const figure = hero.closest('figure') as HTMLElement;
       const figcaption = figure.querySelector('figcaption') as HTMLElement;
       expect(figcaption).not.toBeNull();
-      expect(figcaption.textContent).toMatch(/six skus/i);
+      expect(figcaption.textContent).toMatch(/SKUs/);
       expect(figcaption.textContent).toMatch(/bigquery/i);
+    });
+
+    // UAT r3 B6 + Tech evaluator Minor #4: the figcaption count is
+    // derived from `products.length` (catalogue authoritative)
+    // rather than hardcoded "Six". Pin the cross-source invariant so
+    // a future SKU add can't leave a stale spelled-out cardinal in
+    // the prose.
+    it('B6 figcaption count matches the canonical catalogue length', () => {
+      // Force-import the catalogue here so the pin reads against the
+      // source of truth instead of the rendered DOM.
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { products } = require('@/lib/demo/products') as {
+        products: { id: string }[];
+      };
+      const cardinals = [
+        'Zero',
+        'One',
+        'Two',
+        'Three',
+        'Four',
+        'Five',
+        'Six',
+        'Seven',
+        'Eight',
+        'Nine',
+        'Ten',
+      ];
+      const expectedCardinal = cardinals[products.length] ?? String(products.length);
+      render(<DemosSection />);
+      const figcaption = document.querySelector('figcaption') as HTMLElement;
+      expect(figcaption.textContent).toContain(`${expectedCardinal} SKUs`);
     });
 
     // UAT r3 B7: regression pin for the real-photograph swap. If a

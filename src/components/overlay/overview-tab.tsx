@@ -185,8 +185,10 @@ function CollapsiblePortals({ children }: { children: React.ReactNode }) {
   // Why useLayoutEffect (not useEffect): runs after DOM commit but
   // BEFORE the browser paints, so mobile visitors don't see a flash
   // of the expanded portals list before it collapses. SSR-safe
-  // because the OverviewTab module is `'use client'` — never
-  // executed on the server.
+  // because React's `useLayoutEffect` is a no-op on the server pass
+  // (it only emits a dev warning, and the OverviewTab doesn't reach
+  // SSR anyway — the OverlayProvider defaults `isOpen` to false so
+  // the overlay-children render is lazily triggered post-mount).
   useLayoutEffect(() => {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
     if (window.matchMedia('(max-width: 767px)').matches) {

@@ -63,7 +63,7 @@ export const TIERS: Tier[] = [
     num: '02',
     title: 'Data Infrastructure',
     subtitle: 'Raw events are a start. A source of truth is the work.',
-    lede: 'Raw events landing in a warehouse is the easy part. Turning them into a documented, tested, queryable layer your team and your AI tools both trust is the work that pays off for years.',
+    lede: 'Raw events landing in a warehouse is the easy part. Turning them into a documented, tested, queryable layer your team and your AI tools both trust is the work.',
     core: [
       {
         title: 'Warehouse Configuration',

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 
 import { trackBeginCheckout, trackPurchase } from '@/lib/events/track';
 import { getAnonymousId } from '@/lib/identity/anonymous-id';
+import { useScrollToTopOnMount } from '@/hooks/useScrollToTopOnMount';
 import { useCart } from './cart-context';
 import { useToast } from '@/components/demo/reveal/toast-provider';
 import { LiveSidebar } from '@/components/demo/reveal/live-sidebar';
@@ -89,6 +90,11 @@ export function CheckoutForm() {
   const searchParams = useSearchParams();
   const { push } = useToast();
   const session = useSessionContext();
+
+  // UAT r3 B11: snap to top on mount so the checkout summary is
+  // visible immediately, not below a stale mid-page scroll position
+  // inherited from /cart or wherever the visitor came from.
+  useScrollToTopOnMount();
 
   // Derive URL + browser-derivable values to thread into the BQ row
   // preview so the warehouse-write sidebar stops rendering hardcoded

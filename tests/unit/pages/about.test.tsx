@@ -48,6 +48,26 @@ describe('AboutPage', () => {
     expect(text).not.toMatch(/and live events\)/);
   });
 
+  // UAT r3 B17: the bio section's bottom padding was reduced so the
+  // gap before "What I believe" feels editorial-tight, not stretched.
+  // Pin the responsive padding class set so a future polish pass
+  // that restores `py-section` (symmetric 96px both sides) silently
+  // undoes the B17 fix.
+  it('bio section uses the B17 responsive padding pattern (UAT r3 B17)', () => {
+    render(<AboutPage />);
+    const h1 = screen.getByRole('heading', { level: 1 });
+    // Climb to the <section> ancestor — h1 → ScrollReveal div → div.lg:col-span-3 → grid div → section-container div → section.
+    const section = h1.closest('section') as HTMLElement;
+    expect(section).not.toBeNull();
+    // Mobile: pt-12 + pb-8. Desktop: md:pt-section + md:pb-12.
+    expect(section.className).toMatch(/\bpt-12\b/);
+    expect(section.className).toMatch(/\bpb-8\b/);
+    expect(section.className).toMatch(/md:pt-section/);
+    expect(section.className).toMatch(/md:pb-12/);
+    // And does NOT regress to the pre-B17 symmetric `py-section`.
+    expect(section.className).not.toMatch(/\bpy-section\b/);
+  });
+
   it('renders the biographical content', () => {
     render(<AboutPage />);
     expect(screen.getByText(/allied global marketing/i)).toBeInTheDocument();

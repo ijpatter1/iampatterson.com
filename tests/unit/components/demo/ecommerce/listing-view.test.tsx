@@ -117,15 +117,13 @@ describe('ListingView (Phase 9F D5, product listing)', () => {
     });
   });
 
-  // UAT r3 B11: when navigating from the homepage demos section to
-  // /demo/ecommerce, the visitor was landing "halfway down" the
-  // listing — Next.js's default post-push scroll-to-top animates from
-  // the previous scroll position because `html { scroll-behavior:
-  // smooth }` is set globally, and the new page paints mid-animation.
-  // Fix: a `useLayoutEffect` in ListingView snaps `window.scrollTo`
-  // with `behavior: 'instant'` on mount, bypassing the smooth
-  // animation. Pin the call so a future regression that drops the
-  // effect (or changes the behavior to 'auto'/'smooth') fails red.
+  // UAT r3 B11: ListingView calls `useScrollToTopOnMount` so a
+  // visitor entering from the homepage demos section doesn't land
+  // mid-listing. The hook itself is pinned at
+  // `tests/unit/hooks/useScrollToTopOnMount.test.tsx`; here we pin
+  // that ListingView is actually a consumer of it, so a regression
+  // that drops the call from the component fails red even if the
+  // hook's behaviour remains correct.
   describe('UAT r3 B11, scroll-to-top on mount bypasses smooth-scroll', () => {
     it('calls window.scrollTo with `behavior: instant` on mount', () => {
       const scrollSpy = jest.fn();
@@ -170,6 +168,25 @@ describe('ListingView (Phase 9F D5, product listing)', () => {
         // on the listing grid — the photo carries the primary visual
         // identity of each card).
         expect(img!.getAttribute('alt')?.length ?? 0).toBeGreaterThan(10);
+      });
+    });
+
+    // UAT r3 B13: don't-crop rule — all listing cards use
+    // `object-contain` + `aspect-square` so a future polish pass that
+    // flips one card back to `object-cover` for a one-off image
+    // doesn't silently break the system rule. Per-card assertion.
+    it('every product card image renders with object-contain and aspect-square parent (UAT r3 B13)', () => {
+      renderView();
+      const cards = document.querySelectorAll('[data-product-card]');
+      expect(cards.length).toBe(6);
+      cards.forEach((card) => {
+        const img = card.querySelector('img') as HTMLImageElement;
+        expect(img.className).toMatch(/object-contain/);
+        expect(img.className).not.toMatch(/object-cover/);
+        // The aspect-square parent is the immediate image wrapper.
+        const wrapper = img.parentElement as HTMLElement;
+        expect(wrapper.className).toMatch(/aspect-square/);
+        expect(wrapper.className).not.toMatch(/aspect-\[4\/5\]/);
       });
     });
   });

@@ -8,6 +8,29 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useClientMount } from '@/hooks/useClientMount';
 import { trackClickCta } from '@/lib/events/track';
 import { randomUtmSeedParams } from '@/lib/demo/reveal/campaign-taxonomy';
+import { products as shopProducts } from '@/lib/demo/products';
+
+// UAT r3 B6 figcaption hard-spells the catalog size in prose
+// ("Six SKUs..."). When the catalog grows, the spelled count needs
+// to change — derive it from `products.length` so a future SKU add
+// triggers the cardinal-number swap at the test level rather than
+// silently leaving "Six SKUs" stale.
+const CARDINAL_TO_TEN = [
+  'Zero',
+  'One',
+  'Two',
+  'Three',
+  'Four',
+  'Five',
+  'Six',
+  'Seven',
+  'Eight',
+  'Nine',
+  'Ten',
+];
+function spellCardinal(n: number): string {
+  return CARDINAL_TO_TEN[n] ?? String(n);
+}
 
 // Phase 9E D6: the three-card horizontal-scroll track is replaced by a
 // single full-width section dedicated to the ecommerce demo. Subscription
@@ -224,7 +247,7 @@ export function DemosSection() {
               the same BigQuery thesis the section headline carries. */}
           <figure className="hidden md:block">
             <figcaption className="mb-3 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-3">
-              Six SKUs. Every click lands in BigQuery.
+              {spellCardinal(shopProducts.length)} SKUs. Every click lands in BigQuery.
             </figcaption>
             <div
               data-demos-section-hero=""

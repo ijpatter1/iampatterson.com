@@ -7,6 +7,7 @@ import Link from 'next/link';
 import type { Product } from '@/lib/demo/products';
 import { getRelatedProducts } from '@/lib/demo/products';
 import { trackAddToCart, trackProductView } from '@/lib/events/track';
+import { useScrollToTopOnMount } from '@/hooks/useScrollToTopOnMount';
 import { useCart } from './cart-context';
 import { useToast } from '@/components/demo/reveal/toast-provider';
 import { LiveSidebar } from '@/components/demo/reveal/live-sidebar';
@@ -33,6 +34,12 @@ export function ProductDetail({ product }: ProductDetailProps) {
   const { push } = useToast();
   const session = useSessionContext();
   const firedRef = useRef(false);
+
+  // UAT r3 B11: snap to top on mount. The same fix as ListingView —
+  // mid-page intra-site CTAs (e.g. listing card → product) trigger
+  // Next router's smooth-scroll-to-top so the visitor lands mid-page
+  // without this. See `useScrollToTopOnMount` for the full rationale.
+  useScrollToTopOnMount();
 
   useEffect(() => {
     if (firedRef.current) return;

@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 
+import { useScrollToTopOnMount } from '@/hooks/useScrollToTopOnMount';
 import { useToast } from '@/components/demo/reveal/toast-provider';
 import { InlineDiagnostic } from '@/components/demo/reveal/inline-diagnostic';
 
@@ -36,6 +37,11 @@ interface OrderConfirmationProps {
 export function OrderConfirmation({ orderId, orderTotal, itemCount }: OrderConfirmationProps) {
   const { push } = useToast();
   const firedRef = useRef(false);
+
+  // UAT r3 B11: snap to top on mount so the order-confirmed editorial
+  // head is what the visitor sees after the checkout redirect, not a
+  // mid-page scroll inherited from the prior route.
+  useScrollToTopOnMount();
 
   // One-shot `purchase` toast on mount. The `firedRef` guards against
   // React 18 Strict-Mode double-invocation in dev; the effect-level

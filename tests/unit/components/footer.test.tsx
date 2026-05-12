@@ -12,6 +12,9 @@ jest.mock('@/lib/events/track', () => ({
   trackClickCta: jest.fn(),
 }));
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { trackClickNav } = require('@/lib/events/track') as { trackClickNav: jest.Mock };
+
 function Probe() {
   const { isOpen } = useOverlay();
   return <span data-testid="overlay-status">{isOpen ? 'open' : 'closed'}</span>;
@@ -27,9 +30,27 @@ function renderFooter() {
 }
 
 describe('Footer, editorial', () => {
+  beforeEach(() => {
+    trackClickNav.mockClear();
+  });
+
   it('renders the Patterson wordmark', () => {
     renderFooter();
     expect(screen.getByRole('heading', { level: 4 })).toHaveTextContent(/patterson/i);
+  });
+
+  // UAT r3 B2: the "Patterson." wordmark in the brand block links to
+  // /about. Pin both the href and the trackClickNav payload so a
+  // regression unwrapping the Link (or dropping the onClick handler)
+  // fails red.
+  it('Patterson wordmark links to /about and fires click_nav (UAT r3 B2)', async () => {
+    const user = userEvent.setup();
+    renderFooter();
+    const heading = screen.getByRole('heading', { level: 4 });
+    const wordmarkLink = within(heading).getByRole('link', { name: /patterson/i });
+    expect(wordmarkLink).toHaveAttribute('href', '/about');
+    await user.click(wordmarkLink);
+    expect(trackClickNav).toHaveBeenCalledWith('Patterson', '/about');
   });
 
   it('renders the Pages column with all top-level nav links', () => {

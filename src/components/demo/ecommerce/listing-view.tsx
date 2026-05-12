@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 
+import { useScrollToTopOnMount } from '@/hooks/useScrollToTopOnMount';
 import { ProductListing } from './product-listing';
 import { useCart } from './cart-context';
 import { useToast } from '@/components/demo/reveal/toast-provider';
@@ -35,19 +36,12 @@ export function ListingView() {
 
   const cascadeFiredRef = useRef(false);
 
-  // UAT r3 B11: snap to document top on mount, bypassing the global
-  // `html { scroll-behavior: smooth }` rule. Without this, navigating
-  // from the homepage demos section (which sits mid-page) to
-  // /demo/ecommerce causes Next.js's default post-navigation
-  // `window.scrollTo(0, 0)` to animate from the previous scroll
-  // position. The new listing paints mid-animation and the visitor
-  // lands "halfway down". `'instant'` is the CSSOM-View spec value
-  // that overrides `scroll-behavior: smooth` for a single call
-  // (Chrome 102+ / Firefox 109+ / Safari 16.4+).
-  useLayoutEffect(() => {
-    if (typeof window === 'undefined') return;
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
-  }, []);
+  // UAT r3 B11: snap to top on mount, bypassing global smooth-scroll
+  // (`html { scroll-behavior: smooth }`). Shared hook so every
+  // /demo/ecommerce/* route surface gets the same protection — the
+  // bug is rooted in the global stylesheet + Next router scroll, not
+  // in any single page.
+  useScrollToTopOnMount();
 
   useEffect(() => {
     if (cascadeFiredRef.current) return;
