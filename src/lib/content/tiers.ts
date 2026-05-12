@@ -20,8 +20,8 @@ export const TIERS: Tier[] = [
   {
     num: '01',
     title: 'Measurement Foundation',
-    subtitle: 'Get the data right at the source.',
-    lede: 'Server-side GTM moves your tracking from the browser to a server you control. Longer cookie life, higher match rates, immunity to ad blockers, proper consent enforcement.',
+    subtitle: 'If the source is wrong, nothing downstream gets fixed.',
+    lede: "Server-side GTM moves your tracking off the browser and onto a server you control. That's where consent stops being broken, cookies stop expiring on you, and match rates start looking like the platforms claim they do.",
     core: [
       {
         title: 'Tag Audit & Data Layer Spec',
@@ -62,8 +62,8 @@ export const TIERS: Tier[] = [
   {
     num: '02',
     title: 'Data Infrastructure',
-    subtitle: 'Turn raw events into a source of truth.',
-    lede: 'Raw event data in a warehouse is a start, not a finish. Tier 2 transforms it into a structured, documented analytics layer.',
+    subtitle: 'Raw events are a start. A source of truth is the work.',
+    lede: 'Raw events landing in a warehouse is the easy part. Turning them into a documented, tested, queryable layer your team and your AI tools both trust is the work that pays off for years.',
     core: [
       {
         title: 'Warehouse Configuration',
@@ -137,8 +137,8 @@ export const TIERS: Tier[] = [
   {
     num: '04',
     title: 'Attribution & Advanced',
-    subtitle: 'Finally answering "what\u2019s actually working."',
-    lede: 'Only available to clients who have completed Tiers 1 and 2 with me. Attribution models inherit the assumptions of the pipeline feeding them, and I need to understand those assumptions deeply to stand behind the model.',
+    subtitle: 'Causation, not correlation.',
+    lede: 'Multi-touch attribution, geo-lift incrementality, MMM. The rigorous methods that let you say \u201cthis channel is incremental,\u201d not \u201cthis channel correlates with revenue.\u201d Reserved for clients who\u2019ve completed Tiers 1 and 2 with me. The methodology is only as trustworthy as the pipeline it sits on.',
     core: [],
     optional: [
       {

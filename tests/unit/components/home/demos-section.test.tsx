@@ -203,8 +203,28 @@ describe('DemosSection, post-9E-D6 single ecommerce section', () => {
     it('hides the hero on mobile via `hidden md:block` (UAT r2 item 5, mobile-length concern)', () => {
       render(<DemosSection />);
       const hero = document.querySelector('[data-demos-section-hero]') as HTMLElement;
-      expect(hero.className).toMatch(/\bhidden\b/);
-      expect(hero.className).toMatch(/md:block/);
+      // UAT r3 B6 wrapped the hero div in a `<figure>` with the
+      // figcaption ("Six SKUs. Every click lands in BigQuery."). The
+      // responsive visibility classes moved up to the figure so the
+      // caption is hidden in lockstep with the photo. Climb to the
+      // figure ancestor + assert there.
+      const figure = hero.closest('figure') as HTMLElement;
+      expect(figure).not.toBeNull();
+      expect(figure.className).toMatch(/\bhidden\b/);
+      expect(figure.className).toMatch(/md:block/);
+    });
+
+    // UAT r3 B6: one-line intro line for the demo, anchored to the
+    // photo via `<figcaption>` so the relationship is semantic
+    // (the figcaption belongs to the figure containing the image).
+    it('renders the B6 one-line demo intro as the photo figcaption', () => {
+      render(<DemosSection />);
+      const hero = document.querySelector('[data-demos-section-hero]') as HTMLElement;
+      const figure = hero.closest('figure') as HTMLElement;
+      const figcaption = figure.querySelector('figcaption') as HTMLElement;
+      expect(figcaption).not.toBeNull();
+      expect(figcaption.textContent).toMatch(/six skus/i);
+      expect(figcaption.textContent).toMatch(/bigquery/i);
     });
 
     // UAT r3 B7: regression pin for the real-photograph swap. If a
