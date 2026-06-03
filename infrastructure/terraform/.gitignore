@@ -1,0 +1,20 @@
+# Local Terraform working data — never committed.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+
+# Override files are local-only by convention.
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# CLI config / credentials.
+.terraformrc
+terraform.rc
+
+# Committed deliberately (do NOT ignore): *.tf, terraform.tfvars (non-secret),
+# .terraform.lock.hcl (provider lock).
