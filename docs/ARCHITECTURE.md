@@ -227,6 +227,8 @@ Vercel is the deliberate choice for the frontend, not just a convenience. Most c
 - Dataform, transformation pipeline (raw → staging → marts)
 - Cloud Storage, AI access layer exports
 
+**Provisioning:** today the GCP backend is provisioned by imperative one-shot scripts under `infrastructure/` (`bigquery/setup.sh`, `pubsub/setup.sh`, the `metabase/*.sh` family, `gtm/deploy-phase6.js`). Phase 11 (deliverable 9) replaces these with Terraform as the canonical IaC for all Terraform-supported GCP resources — see the "Phase 11, Infrastructure-as-Code (Terraform)" section. GTM/sGTM *container configuration* stays reconciler-managed (no Terraform provider exists for it); the Cloud Run service that runs sGTM is Terraform-managed. The Vercel frontend stays on Vercel's own pipeline, by the cross-provider design intent above.
+
 ---
 
 ## Phase 2, Real-Time Event Pipeline Architecture
@@ -610,3 +612,22 @@ Shapley value MTA in Dataform. Comparison views against last-click and platform-
 
 ### Phase 9, Polish
 Performance, mobile testing, error handling, security review, SEO.
+
+### Phase 11, Infrastructure-as-Code (Terraform)
+
+> **Status: planned, not yet implemented.** This section documents the intended Phase 11 design (deliverable 9, quality-improvement revision 2026-06-03). Today the GCP backend is provisioned by the imperative scripts under `infrastructure/` enumerated below; Terraform replaces them.
+
+**Goal.** Make Terraform the single declarative source of truth for the GCP footprint, replacing the imperative provisioning scripts (`infrastructure/bigquery/setup.sh`, `infrastructure/pubsub/setup.sh`, `infrastructure/metabase/{deploy,setup-cloudsql,setup-domain,setup-iam,setup-iap,upgrade}.sh`, and the Cloud Run deploys) with versioned, plan-reviewable configuration. Configs live under `infrastructure/terraform/`; remote state lives in a versioned, state-locked GCS backend bucket.
+
+**Provider boundary — what Terraform owns vs. what it deliberately doesn't.** The project spans three providers, and the IaC tool follows the resource:
+
+- **GCP backend → Terraform.** Cloud Run (sGTM, event-stream, data-generator, Metabase), Pub/Sub (topic + push subscription + dead-letter), BigQuery (the three datasets + table schemas from `infrastructure/bigquery/*.json` + partition/cost controls), Cloud SQL (`metabase-app-db`), the full Metabase load-balancer topology (static IP, serverless NEG, backend service, URL map with the `/app/*`·`/api/*`·`/embed/*` IAP/non-IAP split, HTTPS proxy, forwarding rule, managed SSL cert, IAP OAuth client + accessor allowlist), Cloud Scheduler (the three staggered data-gen jobs), the GCS AI-export bucket + lifecycle, Secret Manager secret *shells* (values out of state), service accounts + IAM bindings, and the Phase 11 D1–D3 monitoring/alerting/uptime resources as they land.
+- **GTM container config → reconciler (not Terraform).** Google ships no Terraform provider for GTM container entities (triggers, tags, variables, versions), so `infrastructure/gtm/reconcile.js` remains the declarative mechanism: it diffs `web-container.json` / `server-container.json` against the live Default Workspace, applies adds/updates (deletes behind `--allow-deletes`), versions, and publishes. **Key split:** the Cloud Run service that *runs* sGTM is Terraform-managed; the container *config* it serves is reconciler-managed. This is the only carve-out where the reconciler approach (the deliverable's original design) survives the Terraform pivot.
+- **Vercel frontend → Vercel's own pipeline.** Out of scope for the GCP IaC, by the cross-provider design intent in the Deployment section. `next.config.mjs` redirects deploy with the app.
+- **Dataform model SQL → git-synced.** Already mirrored to the `dataform` branch via GitHub Action. Terraform may own the Dataform release/workflow-config resource; the model `.sqlx` definitions stay in the repo.
+
+**Brownfield import contract.** Every in-scope resource already exists and serves production, so the first Terraform pass is an **import** (via `import {}` blocks / `terraform import`) that converges state onto live resources until `terraform plan` is a clean no-op — never a destroy-and-recreate. A destructive plan against the LB, IAP, SSL cert, or Cloud SQL resources is a **release blocker**, not an acceptable convergence step. The no-op plan is also the standing proof that the LB route surface is complete — the exact failure mode behind Phase 9F's IAP-blocked `/app/*` incident (2026-04-22).
+
+**CI/CD.** `.github/workflows/infra-terraform.yml`: `terraform plan` on PRs touching `infrastructure/terraform/**` (plan posted as a PR comment); `terraform apply` on merge to `main`, behind an `infra-production` GitHub environment with manual approval. Auth via Workload Identity Federation — no service-account JSON key in repo secrets. The GTM reconciler keeps a parallel dry-run-on-PR / apply-on-merge job triggered by `infrastructure/gtm/**`. Red/green gates: `tests/integration/web-container-spec.test.ts` (GTM) and a new state-vs-live check on the LB URL-map path matchers.
+
+**Relationship to existing infra docs.** The Terraform module set formalizes what the Phase 9B-infra "GCP resources provisioned" list (above) describes prose-only today, and absorbs the Phase 11 D5 retention/cost controls and D1–D3 monitoring resources into the same plan/apply loop. It does not change any application surface (Next.js, event schema, SSE pipeline) — it is purely a provisioning-layer refactor.
