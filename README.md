@@ -90,7 +90,7 @@ All features are built with red/green TDD: test written first, then implementati
 
 ## Development phases
 
-The project is built in phases, tracked in `docs/PHASE_STATUS.md`. Phases 1-9A are complete. Current work is on Phase 9B (e-commerce demo tiers 2 and 3). See `docs/REQUIREMENTS.md` for the full plan.
+The project is built in phases, tracked in `docs/PHASE_STATUS.md`. Phases 1 through 10 are complete: foundation, real-time event pipeline, the flip-the-card overlay, the background data generator, the data infrastructure, the demo front-ends, the BI/dashboards layer, the frontend redesign, the 9A/9B/9E/9F homepage and ecommerce rebuilds, and Phase 10 (polish, performance, and launch prep — framework currency, Core Web Vitals, voice/data honesty, and the full launch-prep punch list across three UAT rounds). Phase 11 (operational readiness) is the remaining work. See `docs/REQUIREMENTS.md` for the full plan.
 
 ## License
 
