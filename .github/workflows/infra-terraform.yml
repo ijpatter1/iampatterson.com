@@ -51,7 +51,9 @@ jobs:
 
   plan:
     name: plan (PR)
-    if: github.event_name == 'pull_request'
+    # Skipped until Workload Identity Federation is configured (repo var
+    # GCP_WIF_PROVIDER set). Until then the fmt+validate job is the PR gate.
+    if: github.event_name == 'pull_request' && vars.GCP_WIF_PROVIDER != ''
     needs: validate
     runs-on: ubuntu-latest
     steps:
@@ -98,7 +100,9 @@ jobs:
 
   apply:
     name: apply (main)
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Skipped until Workload Identity Federation is configured (repo var
+    # GCP_WIF_PROVIDER set). Live applies run from a workstation until then.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.GCP_WIF_PROVIDER != ''
     needs: validate
     runs-on: ubuntu-latest
     environment: infra-production # repo setting requires manual approval
