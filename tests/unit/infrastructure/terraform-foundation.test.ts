@@ -44,13 +44,11 @@ describe('Phase 11 D9 — Terraform foundation', () => {
   });
 
   describe('provider + version constraints (versions.tf)', () => {
-    it('pins google + google-beta to hashicorp with a version constraint', async () => {
+    it('pins the google provider to hashicorp with a version constraint', async () => {
       const json = await parseTf('versions.tf');
       const rp = json.terraform[0].required_providers[0];
       expect(rp.google.source).toBe('hashicorp/google');
       expect(rp.google.version).toMatch(/\d/);
-      expect(rp['google-beta'].source).toBe('hashicorp/google-beta');
-      expect(rp['google-beta'].version).toMatch(/\d/);
       expect(json.terraform[0].required_version).toMatch(/\d/);
     });
   });

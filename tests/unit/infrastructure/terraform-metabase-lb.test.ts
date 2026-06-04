@@ -42,7 +42,10 @@ describe('Phase 11 D9 — Metabase LB/IAP', () => {
 
     it('carves /api, /app, /embed out to the non-IAP backend', () => {
       expect(rule.service).toBe(DIRECT_BACKEND);
-      expect(rule.paths).toEqual(expect.arrayContaining(['/api/*', '/app/*', '/embed/*']));
+      // Exact set, not arrayContaining: a NEW path silently added to the non-IAP
+      // carve-out (e.g. /admin/* leaking out from behind IAP — the inverse of the
+      // 9F incident) must fail this pin, not slip through.
+      expect([...rule.paths].sort()).toEqual(['/api/*', '/app/*', '/embed/*']);
     });
 
     it('never routes a carve-out path to the IAP backend', () => {

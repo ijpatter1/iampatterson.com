@@ -1,6 +1,6 @@
 # Terraform Import Inventory — `iampatterson` GCP project
 
-Live-resource census taken **2026-06-03** (Phase 11 D9 kickoff), used as the brownfield-import map. Terraform adopts these existing resources via `import {}` blocks; the standing proof of completeness is a clean `terraform plan` no-op.
+Live-resource census taken **2026-06-03** (Phase 11 D9 kickoff), used as the brownfield-import map. Modules 1-3 (foundation, Metabase LB/IAP, Cloud Run) imported through **2026-06-04**; see the per-module status in the build order at the bottom. Terraform adopts these existing resources via `import {}` blocks; the standing proof of completeness is a clean `terraform plan` no-op.
 
 - **Project:** `iampatterson` · number `262727068689` · ACTIVE
 - **Default region:** `us-central1` (all Cloud Run + Cloud SQL + Scheduler live here)
@@ -70,9 +70,9 @@ Live-resource census taken **2026-06-03** (Phase 11 D9 kickoff), used as the bro
 
 ## Module build order (foundation-first)
 
-1. **Foundation** ✅ this session — backend, providers, variables, project-services, service-accounts.
-2. Networking + Metabase LB/IAP topology (highest-risk; the 9F `/app/*` drift surface).
-3. Cloud Run services (×5).
+1. **Foundation** ✅ 2026-06-03 — backend, providers, variables, project-services, service-accounts (23 resources).
+2. **Metabase LB/IAP topology** ✅ 2026-06-04 — the highest-risk surface, the 9F `/app/*` drift family (8 resources).
+3. **Cloud Run services (×5)** ✅ 2026-06-04 — service shells imported; deploy-volatile fields yielded via `ignore_changes`.
 4. Cloud SQL.
 5. Pub/Sub (+ DLQ decision).
 6. BigQuery datasets.

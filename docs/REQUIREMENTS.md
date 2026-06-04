@@ -771,7 +771,7 @@ Originally a single-block 9-deliverable phase. Restructured 2026-04-23 after UAT
 
    **(a) In scope — Terraform-managed:**
    - **Project bootstrap:** enabled service APIs, project-level IAM
-   - **Service accounts + IAM bindings:** `metabase-runtime@`, `metabase-bigquery@` (dataset-scoped read-only on `iampatterson_marts`), `data-gen-scheduler@`, and the Cloud Run runtime service accounts — closing the Phase 10d D5 security-review carry-forward on Cloud Run runtime SA IaC visibility
+   - **Service accounts + IAM bindings:** `metabase-runtime@`, `metabase-bigquery@` (dataset-scoped read-only on `iampatterson_marts`), `data-gen-scheduler@`, and the Cloud Run runtime service accounts. This brings the SA *resources* under IaC (addressing the Phase 10d D5 security-review carry-forward on runtime-SA visibility — which SA runs what); the IAM *bindings* that grant each SA its permissions are a separate, later sub-deliverable (see IAM below), so "what each SA is granted" is not yet codified here
    - **Cloud Run services:** sGTM, event-stream, data-generator, Metabase (image tags pinned, never `:latest`; ingress on Metabase locked to the LB)
    - **Pub/Sub:** `iampatterson-events` topic, push subscription, dead-letter topic + subscription
    - **BigQuery:** `iampatterson_raw` / `iampatterson_staging` / `iampatterson_marts` datasets + table schemas (sourced from the existing `infrastructure/bigquery/*.json`), plus the partition-expiration and cost controls from Phase 11 D5
