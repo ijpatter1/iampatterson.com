@@ -10,7 +10,7 @@ Flat root module (import-friendly for a project this size):
 |---|---|
 | `versions.tf` | Terraform + provider version constraints |
 | `backend.tf` | GCS remote state (`gs://iampatterson-tfstate`) |
-| `providers.tf` | `google` / `google-beta` provider config |
+| `providers.tf` | `google` provider config |
 | `variables.tf` / `terraform.tfvars` | project id/number + region (non-secret) |
 | `project-services.tf` | curated enabled APIs |
 | `service-accounts.tf` | user-created service accounts |
