@@ -50,6 +50,21 @@ interface TranscriptFile {
   sessionId: string;
 }
 
+/** Recursively collect .jsonl under a session dir (subagents nest: a
+ * subagent's own subagents live at depth 5+). Everything inherits the
+ * TOP-LEVEL session id — the split-safety unit. */
+function collectSessionFiles(dir: string, projectId: string, sessionId: string, out: TranscriptFile[]): void {
+  for (const entry of readdirSync(dir)) {
+    const entryPath = path.join(dir, entry);
+    const stat = statSync(entryPath);
+    if (stat.isFile() && entry.endsWith('.jsonl')) {
+      out.push({ file: entryPath, projectId, sessionId });
+    } else if (stat.isDirectory() && entry !== 'tool-results') {
+      collectSessionFiles(entryPath, projectId, sessionId, out);
+    }
+  }
+}
+
 function findTranscripts(root: string): TranscriptFile[] {
   const out: TranscriptFile[] = [];
   for (const project of readdirSync(root)) {
@@ -61,15 +76,7 @@ function findTranscripts(root: string): TranscriptFile[] {
       if (stat.isFile() && entry.endsWith('.jsonl')) {
         out.push({ file: entryPath, projectId: project, sessionId: entry.replace(/\.jsonl$/, '') });
       } else if (stat.isDirectory() && entry !== 'memory') {
-        // Subagent transcripts inherit the parent session id (split-safety).
-        const subDir = path.join(entryPath, 'subagents');
-        if (existsSync(subDir)) {
-          for (const sub of readdirSync(subDir)) {
-            if (sub.endsWith('.jsonl')) {
-              out.push({ file: path.join(subDir, sub), projectId: project, sessionId: entry });
-            }
-          }
-        }
+        collectSessionFiles(entryPath, project, entry, out);
       }
     }
   }
@@ -169,16 +176,29 @@ async function main(): Promise<void> {
   const kept: ChunkRecord[] = [];
   let boilerplateDropped = 0;
   let dupDropped = 0;
-  const projectCap = Math.max(1000, Math.floor(rawChunks.length * 0.08));
+  let capDropped = 0;
+  // Caps are BALANCE controls, sized to the corpus actually present:
+  // this corpus retains few parent sessions (each huge, with hundreds of
+  // subagent transcripts inheriting its id), so fixed small caps would
+  // throttle the whole dataset. No session gets more than ~2x the mean;
+  // no project more than ~15%.
+  const sessionCount = new Set(rawChunks.map((c) => c.sessionId)).size;
+  const sessionCap = Math.max(200, Math.ceil((rawChunks.length / Math.max(1, sessionCount)) * 2));
+  const projectCap = Math.max(1000, Math.floor(rawChunks.length * 0.15));
   for (const chunk of rawChunks) {
     if (boilerplate.isBoilerplate(chunk.text)) {
       boilerplateDropped++;
       continue;
     }
-    if ((perSession.get(chunk.sessionId) ?? 0) >= 200) continue;
-    if ((perProject.get(chunk.projectId) ?? 0) >= projectCap) continue;
     if (!deduper.add(chunk.text)) {
       dupDropped++;
+      continue;
+    }
+    if (
+      (perSession.get(chunk.sessionId) ?? 0) >= sessionCap ||
+      (perProject.get(chunk.projectId) ?? 0) >= projectCap
+    ) {
+      capDropped++;
       continue;
     }
     perSession.set(chunk.sessionId, (perSession.get(chunk.sessionId) ?? 0) + 1);
@@ -226,6 +246,8 @@ async function main(): Promise<void> {
       droppedByScrub: dropCounts,
       droppedBoilerplate: boilerplateDropped,
       droppedDuplicates: dupDropped,
+      droppedByCaps: capDropped,
+      perSessionCap: sessionCap,
       perProjectCap: projectCap,
     },
   };
