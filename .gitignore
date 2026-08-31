@@ -116,3 +116,4 @@ docs/perf/mobile-matrix-screenshots/**/*.png
 # Claude subagent memory — per-machine, not project artifact
 .claude/agent-memory/
 .claude/settings.local.json
+scripts/claudish/denylist.txt

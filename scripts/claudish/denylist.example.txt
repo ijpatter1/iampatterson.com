@@ -1,0 +1,6 @@
+# Claudish corpus miner — denylist (client confidentiality).
+# Copy to denylist.txt (gitignored) and add one term per line:
+# client names, company names, people. Any chunk containing a term is
+# DROPPED whole (masking would leak the sentence around the name).
+# Lines starting with # are comments.
+acme-example-client
