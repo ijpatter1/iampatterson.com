@@ -105,6 +105,19 @@ describe('ClaudishApp', () => {
     expect(englishTarget).toHaveAttribute('aria-selected', 'true');
   });
 
+  it('labels confident plain English as "English - detected" (GT names its guess)', async () => {
+    const user = userEvent.setup();
+    render(<ClaudishApp />);
+    await user.click(screen.getByRole('textbox'));
+    await user.paste(
+      'Saw a tweet this week about a company saying their biggest problem is still hiring. Not enough people who can generate good judgment under ambiguity is how they put it.'
+    );
+    expect(screen.getByRole('tab', { name: 'English - detected' })).toBeInTheDocument();
+    // Clearing the input resets the label to the resting state.
+    await user.clear(screen.getByRole('textbox'));
+    expect(screen.getByRole('tab', { name: 'Detect language' })).toBeInTheDocument();
+  });
+
   it('fires claudish_detected once per session per language', async () => {
     const user = userEvent.setup();
     render(<ClaudishApp />);

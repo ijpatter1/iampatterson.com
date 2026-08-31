@@ -14,7 +14,7 @@ import { LanguageTabRow } from '@/components/claudish/language-tab-row';
 
 describe('LanguageTabRow', () => {
   it('renders the source row tabs with tablist semantics', () => {
-    render(<LanguageTabRow side="source" activeIndex={0} onSelect={() => {}} detected={false} />);
+    render(<LanguageTabRow side="source" activeIndex={0} onSelect={() => {}} detectedLang={null} />);
     const tabs = screen.getAllByRole('tab');
     expect(tabs.map((t) => t.textContent)).toEqual(['Detect language', 'English', 'Claudish']);
     expect(screen.getByRole('tablist')).toBeInTheDocument();
@@ -23,7 +23,7 @@ describe('LanguageTabRow', () => {
   });
 
   it('renders the target row tabs', () => {
-    render(<LanguageTabRow side="target" activeIndex={1} onSelect={() => {}} detected={false} />);
+    render(<LanguageTabRow side="target" activeIndex={1} onSelect={() => {}} detectedLang={null} />);
     expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual([
       'English',
       'Claudish',
@@ -31,14 +31,19 @@ describe('LanguageTabRow', () => {
   });
 
   it('shows "Claudish - detected" on the Detect tab while detection is live', () => {
-    render(<LanguageTabRow side="source" activeIndex={0} onSelect={() => {}} detected={true} />);
+    render(<LanguageTabRow side="source" activeIndex={0} onSelect={() => {}} detectedLang={'en-x-claudish'} />);
     expect(screen.getAllByRole('tab')[0]).toHaveTextContent('Claudish - detected');
+  });
+
+  it('names confident plain English too (GT always names its guess)', () => {
+    render(<LanguageTabRow side="source" activeIndex={0} onSelect={() => {}} detectedLang={'en'} />);
+    expect(screen.getAllByRole('tab')[0]).toHaveTextContent('English - detected');
   });
 
   it('reports tab selection by index', async () => {
     const user = userEvent.setup();
     const onSelect = jest.fn();
-    render(<LanguageTabRow side="source" activeIndex={0} onSelect={onSelect} detected={false} />);
+    render(<LanguageTabRow side="source" activeIndex={0} onSelect={onSelect} detectedLang={null} />);
     await user.click(screen.getByRole('tab', { name: 'Claudish' }));
     expect(onSelect).toHaveBeenCalledWith(2);
   });

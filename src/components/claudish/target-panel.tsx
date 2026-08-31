@@ -54,7 +54,7 @@ export function TargetPanel({
         side="target"
         activeIndex={activeTab}
         onSelect={onTabSelect}
-        detected={false}
+        detectedLang={null}
       />
       <div className="flex flex-1 flex-col gap-2 px-4 py-3">
         {showPlaceholder ? (

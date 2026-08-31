@@ -34,6 +34,11 @@ export const CLAUDISH_LANG_TAG = 'en-x-claudish';
 /** Live client-side detection label, spec-verbatim (hyphen, not em dash). */
 export const DETECTED_LABEL = 'Claudish - detected';
 
+/** The English twin: Google Translate always names its guess, so a page
+ * that only ever labels the Claudish case reads as "nothing happened"
+ * when plain English is pasted (user-reported during dev testing). */
+export const DETECTED_LABEL_EN = 'English - detected';
+
 export const TAB_LABELS = {
   source: ['Detect language', 'English', 'Claudish'],
   target: ['English', 'Claudish'],

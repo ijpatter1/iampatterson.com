@@ -17,13 +17,13 @@ export function SourcePanel({
   onChange,
   activeTab,
   onTabSelect,
-  detected,
+  detectedLang,
 }: {
   value: string;
   onChange: (value: string) => void;
   activeTab: number;
   onTabSelect: (index: number) => void;
-  detected: boolean;
+  detectedLang: 'en-x-claudish' | 'en' | null;
 }) {
   return (
     <section
@@ -34,7 +34,7 @@ export function SourcePanel({
         side="source"
         activeIndex={activeTab}
         onSelect={onTabSelect}
-        detected={detected}
+        detectedLang={detectedLang}
       />
       <div className="relative flex flex-1">
         <textarea

@@ -118,6 +118,20 @@ export function ClaudishApp({ shareParam }: { shareParam?: string }) {
     }
   };
 
+  // What the Detect tab names. Latched Claudish wins; confident plain
+  // English (p < 0.5 at detectable length) gets its own label — Google
+  // Translate always names its guess, and a tab that only ever labels
+  // Claudish reads as broken when English is pasted. The 0.5-0.8
+  // sub-latch gray zone stays at the resting label (honest: not sure).
+  const detectedLang: 'en-x-claudish' | 'en' | null =
+    sourceTab !== 0 || input.trim().length === 0
+      ? null
+      : latch.detected
+        ? 'en-x-claudish'
+        : latch.lang === 'en' && latch.confidence < 0.5
+          ? 'en'
+          : null;
+
   // Target row: 0 = English, 1 = Claudish; choosing one determines direction.
   const targetTab = direction === 'en2cl' ? 1 : 0;
   const handleTargetSelect = (index: number) => {
@@ -133,7 +147,7 @@ export function ClaudishApp({ shareParam }: { shareParam?: string }) {
           onChange: handleInputChange,
           activeTab: sourceTab,
           onTabSelect: setSourceTab,
-          detected: sourceTab === 0 && latch.detected,
+          detectedLang,
         }}
         targetProps={{
           source: input,
