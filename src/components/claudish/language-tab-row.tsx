@@ -22,7 +22,7 @@ export function LanguageTabRow({
   onSelect: (index: number) => void;
   detected: boolean;
 }) {
-  const labels = [...TAB_LABELS[side]];
+  const labels: string[] = [...TAB_LABELS[side]];
   if (side === 'source' && detected) {
     labels[0] = DETECTED_LABEL;
   }

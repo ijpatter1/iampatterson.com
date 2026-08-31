@@ -58,6 +58,13 @@ interface Options {
   /** Defaults to NEXT_PUBLIC_CLAUDISH_PROXY_URL; undefined ⇒ capacity mode. */
   proxyUrl?: string;
   debounceMs?: number;
+  /**
+   * Share-link rehydration seed: presents as an already-done translation
+   * and pre-warms the client cache, so opening a shared link costs zero
+   * tokens no matter how viral it goes. Fires no analytics (the share
+   * open is its own event, owned by the caller).
+   */
+  initialResolved?: { input: string; direction: ClaudishDirection; text: string };
 }
 
 type Phase = 'resting' | 'streaming' | 'done' | 'refused' | 'capacity' | 'error';
@@ -147,7 +154,8 @@ const ANALYTICS_DIRECTION = {
 } as const;
 
 export function useClaudishTranslation(options: Options): ClaudishTranslationState & {
-  translateNow: () => void;
+  /** Immediate manual translation; override lets swap fire before state settles. */
+  translateNow: (override?: { input: string; direction: ClaudishDirection }) => void;
 } {
   const {
     input,
@@ -156,11 +164,39 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
     debounceMs = DEBOUNCE_MS,
   } = options;
 
-  const [state, dispatch] = useReducer(reducer, INITIAL);
+  const [state, dispatch] = useReducer(
+    reducer,
+    options.initialResolved,
+    (seed): MachineState =>
+      seed
+        ? {
+            phase: 'done',
+            key: `${seed.direction}::${normalizeTranslationInput(seed.input)}`,
+            text: seed.text,
+            stale: '',
+            hasFirstToken: true,
+            ttftMs: 0,
+            cache: 'client',
+          }
+        : INITIAL
+  );
 
   const abortRef = useRef<AbortController | null>(null);
   const seqRef = useRef(0);
-  const cacheRef = useRef<Map<string, string>>(new Map());
+  // Lazy-initialized (house `== null` pattern) so the share-rehydration
+  // seed lands in the cache exactly once, on first render.
+  const cacheRef = useRef<Map<string, string> | null>(null);
+  if (cacheRef.current == null) {
+    const seeded = new Map<string, string>();
+    const seed = options.initialResolved;
+    if (seed) {
+      seeded.set(
+        `${seed.direction}::${normalizeTranslationInput(seed.input)}`,
+        seed.text
+      );
+    }
+    cacheRef.current = seeded;
+  }
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const manualRef = useRef(false);
   const stateRef = useRef(state);
@@ -189,11 +225,11 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
       };
 
       // Client cache short-circuit: instant done, zero network.
-      const cached = cacheRef.current.get(runKey);
+      const cached = cacheRef.current?.get(runKey);
       if (cached !== undefined) {
         // Refresh LRU recency.
-        cacheRef.current.delete(runKey);
-        cacheRef.current.set(runKey, cached);
+        cacheRef.current?.delete(runKey);
+        cacheRef.current?.set(runKey, cached);
         dispatch({ type: 'cache-hit', key: runKey, text: cached });
         trackClaudishTranslate({
           ...baseEventFields,
@@ -262,10 +298,13 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
           case 'done':
             terminal = 'complete';
             dispatch({ type: 'done' });
-            cacheRef.current.set(runKey, accumulated);
-            if (cacheRef.current.size > CLIENT_CACHE_MAX_ENTRIES) {
-              const oldest = cacheRef.current.keys().next().value;
-              if (oldest !== undefined) cacheRef.current.delete(oldest);
+            const cache = cacheRef.current;
+            if (cache) {
+              cache.set(runKey, accumulated);
+              if (cache.size > CLIENT_CACHE_MAX_ENTRIES) {
+                const oldest = cache.keys().next().value;
+                if (oldest !== undefined) cache.delete(oldest);
+              }
             }
             finish('complete');
             break;
@@ -339,13 +378,17 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
     []
   );
 
-  const translateNow = useCallback(() => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    manualRef.current = true;
-    const now = normalizeTranslationInput(input);
-    if (!now) return;
-    startTranslation(`${direction}::${now}`, now, direction);
-  }, [input, direction, startTranslation]);
+  const translateNow = useCallback(
+    (override?: { input: string; direction: ClaudishDirection }) => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      manualRef.current = true;
+      const runDirection = override?.direction ?? direction;
+      const now = normalizeTranslationInput(override?.input ?? input);
+      if (!now) return;
+      startTranslation(`${runDirection}::${now}`, now, runDirection);
+    },
+    [input, direction, startTranslation]
+  );
 
   // Derived presentation state.
   let status: TranslationStatus;

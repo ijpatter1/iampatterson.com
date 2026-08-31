@@ -5,6 +5,8 @@
  * occurrence of the word "Google" (the trade-dress guard test enforces
  * exactly-once globally).
  */
+import Link from 'next/link';
+
 import { FOOTER_ATTRIBUTION, FOOTER_DISCLAIMER } from '@/lib/claudish/messages';
 
 export function ClaudishFooter() {
@@ -18,9 +20,9 @@ export function ClaudishFooter() {
     >
       <p className="text-sm text-[var(--gt-text-2,#5f6368)]">
         {before}
-        <a href="/" className="hover:underline">
+        <Link href="/" className="hover:underline">
           iampatterson.com
-        </a>
+        </Link>
       </p>
       <p className="text-xs text-[var(--gt-text-3,#80868b)]">{FOOTER_DISCLAIMER}</p>
     </footer>
