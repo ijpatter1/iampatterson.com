@@ -645,3 +645,56 @@
   left: auto !important;
   right: 20px !important;
 }
+
+/* ── Claudish translator (/claudish) ─────────────────────────────────────
+   Trade-dress palette, deliberately foreign to the site system and scoped
+   by data attribute (the [data-demo='ecommerce'] precedent). Two complete
+   sibling skins keyed by [data-skin]: 'clone' is the faithful Translate
+   look; 'personal' is the takedown re-skin — flipping
+   NEXT_PUBLIC_CLAUDISH_SKIN=personal + redeploy swaps every variable with
+   no code change. Both blocks MUST declare the identical variable set
+   (pinned by tests/unit/styles/claudish-palette.test.ts). Hex values are
+   hardcoded on purpose: this scope is page-local, not site tokens. */
+@layer base {
+  [data-page='claudish'] {
+    background-color: var(--gt-surface, #ffffff);
+    color: var(--gt-text, #202124);
+    font-family: var(--font-claudish-ui, sans-serif);
+  }
+
+  [data-page='claudish'][data-skin='clone'] {
+    --gt-surface: #ffffff;
+    --gt-surface-alt: #f8f9fa;
+    --gt-border: #dadce0;
+    --gt-border-strong: #bdc1c6;
+    --gt-text: #202124;
+    --gt-text-2: #5f6368;
+    --gt-text-3: #80868b;
+    --gt-accent: #1a73e8;
+    --gt-accent-soft: #e8f0fe;
+    --gt-tab-active: #1a73e8;
+    --gt-focus-ring: #1a73e8;
+    --gt-danger: #d93025;
+    --gt-radius: 8px;
+    --gt-radius-lg: 12px;
+    --font-claudish-ui: var(--font-claudish-roboto, sans-serif);
+  }
+
+  [data-page='claudish'][data-skin='personal'] {
+    --gt-surface: #ffffff;
+    --gt-surface-alt: #f5f5f5;
+    --gt-border: rgba(17, 17, 17, 0.12);
+    --gt-border-strong: #222222;
+    --gt-text: #111111;
+    --gt-text-2: #333333;
+    --gt-text-3: #5c5c5c;
+    --gt-accent: #ea5f2a;
+    --gt-accent-soft: rgba(234, 95, 42, 0.08);
+    --gt-tab-active: #ea5f2a;
+    --gt-focus-ring: #ea5f2a;
+    --gt-danger: #d9725b;
+    --gt-radius: 2px;
+    --gt-radius-lg: 4px;
+    --font-claudish-ui: var(--font-body);
+  }
+}
