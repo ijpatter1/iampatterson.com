@@ -187,8 +187,12 @@ export function createTranslateHandler(deps: TranslateDeps) {
       else reservation.release(estimateUsage(text.length, streamedChars));
     };
 
-    req.on('close', () => {
-      if (sse.terminated) return;
+    // Client-disconnect detection: req 'close' fires when the request
+    // BODY completes on Node 20+, which is immediately — useless here.
+    // res 'close' fires when the response finishes OR the connection
+    // drops; writableEnded/terminated distinguishes the two.
+    res.on('close', () => {
+      if (sse.terminated || res.writableEnded) return;
       controller.abort();
       sse.abandon();
       settle();

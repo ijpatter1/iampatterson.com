@@ -67,7 +67,11 @@ function stubReqRes(body: unknown, headers: Record<string, string> = {}) {
   let jsonBody: unknown = null;
   const headerBag: Record<string, string> = {};
   let endedCount = 0;
+  const resEmitter = new EventEmitter();
   const res = {
+    on: resEmitter.on.bind(resEmitter),
+    emit: resEmitter.emit.bind(resEmitter),
+    writableEnded: false,
     writeHead: jest.fn(),
     flushHeaders: jest.fn(),
     socket: { setNoDelay: jest.fn() },
@@ -77,6 +81,7 @@ function stubReqRes(body: unknown, headers: Record<string, string> = {}) {
     },
     end: () => {
       endedCount++;
+      (res as { writableEnded: boolean }).writableEnded = true;
     },
     status(code: number) {
       statusCode = code;
@@ -383,7 +388,7 @@ describe('client abort', () => {
     const ctx = stubReqRes(VALID_BODY);
     const pending = createTranslateHandler(makeDeps([lane]))(ctx.req, ctx.res);
     await new Promise((r) => setTimeout(r, 20));
-    ctx.req.emit('close');
+    (ctx.res as unknown as EventEmitter).emit('close');
     await new Promise((r) => setTimeout(r, 5));
     expect(seenSignal).not.toBeNull();
     expect((seenSignal as unknown as AbortSignal).aborted).toBe(true);
