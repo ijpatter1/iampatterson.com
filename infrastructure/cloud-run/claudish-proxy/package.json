@@ -1,0 +1,26 @@
+{
+  "name": "iampatterson-claudish-proxy",
+  "version": "1.0.0",
+  "description": "Streaming translation proxy for the Claudish translator: SSE pass-through in front of Claude on Vertex AI with a capacity ladder, per-IP rate limiting, and a hard daily spend cap",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "tsx src/server.ts",
+    "test": "jest --config jest.config.json"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.65.0",
+    "@anthropic-ai/vertex-sdk": "^0.19.6",
+    "express": "^4.18.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.0",
+    "@types/jest": "^29.5.0",
+    "@types/node": "^20.0.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.0"
+  }
+}
