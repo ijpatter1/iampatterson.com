@@ -13,7 +13,7 @@
  * Usage: npx ts-node -P tsconfig.scripts.json scripts/claudish/mine-corpus.ts \
  *          [--root DIR] [--out DIR] [--max-chunks N] [--sample N]
  */
-import { createReadStream, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { createReadStream, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import readline from 'node:readline';

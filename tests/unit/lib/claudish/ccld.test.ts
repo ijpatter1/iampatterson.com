@@ -12,8 +12,7 @@ import { statSync } from 'node:fs';
 import path from 'node:path';
 
 import { loadCcldModel, resetCcldForTests, warmCcld, isCcldAvailable, getCcldModel } from '@/lib/claudish/ccld';
-import { probabilityClaudish, forwardLogits } from '@/lib/claudish/ccld-inference';
-import { extractFeatures } from '@/lib/claudish/ccld-featurizer';
+import { probabilityClaudish } from '@/lib/claudish/ccld-inference';
 import fixtures from '@/lib/claudish/ccld-fixtures.json';
 import weights from '@/lib/claudish/ccld-weights.json';
 

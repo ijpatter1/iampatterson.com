@@ -21,7 +21,7 @@ import {
   initModel,
   tensorSizes,
 } from './lib/train-core';
-import { CCLD_CONFIG, configHash } from '../../src/lib/claudish/ccld-featurizer';
+import { CCLD_CONFIG, configHash, fnv1a32 } from '../../src/lib/claudish/ccld-featurizer';
 import {
   forwardLogits,
   probabilityClaudish,
@@ -269,7 +269,6 @@ async function main(): Promise<void> {
       const n = CCLD_CONFIG.orders[orderIndex];
       for (let i = 0; i + n <= points.length; i++) {
         const gram = points.slice(i, i + n).join('');
-        const { fnv1a32 } = require('../../src/lib/claudish/ccld-featurizer');
         const bucket = fnv1a32(gram) % CCLD_CONFIG.buckets[orderIndex];
         let grams = gramCounts[orderIndex].get(bucket);
         if (!grams) gramCounts[orderIndex].set(bucket, (grams = new Map()));
