@@ -13,6 +13,9 @@
     ]
   },
   "include": [
-    "scripts/claudish/**/*.ts"
+    "scripts/claudish/**/*.ts",
+    "src/lib/claudish/text-stats.ts",
+    "src/lib/claudish/heuristic.ts",
+    "src/lib/claudish/ccld-featurizer.ts"
   ]
 }

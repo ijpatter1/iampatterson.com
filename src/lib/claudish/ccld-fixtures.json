@@ -1,0 +1,61 @@
+{
+  "featurizerConfigHash": "f016e0a6d1189fab5d2fd227372d54d4b1488236f3527a2785abbfdd3b6c0aed",
+  "inferenceCases": [
+    {
+      "text": "",
+      "logits": [
+        0.362181,
+        -0.548085
+      ],
+      "p": 0.31896
+    },
+    {
+      "text": "a",
+      "logits": [
+        -3.233484,
+        2.983647
+      ],
+      "p": 0.994409
+    },
+    {
+      "text": "banana",
+      "logits": [
+        3.013589,
+        -3.560964
+      ],
+      "p": 0.004157
+    },
+    {
+      "text": " — ",
+      "logits": [
+        -56.334992,
+        52.284286
+      ],
+      "p": 1
+    },
+    {
+      "text": "It's not a gap; it's a line.",
+      "logits": [
+        -5.839892,
+        5.403243
+      ],
+      "p": 0.999915
+    },
+    {
+      "text": "The meeting moved to Thursday. Bring the numbers.",
+      "logits": [
+        -0.684686,
+        0.462562
+      ],
+      "p": 0.722328
+    },
+    {
+      "text": "This isn't just a refactor — it's a robust, seamless transformation, underscoring everything.",
+      "logits": [
+        -2.963116,
+        2.738152
+      ],
+      "p": 0.991431
+    }
+  ]
+}

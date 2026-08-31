@@ -14,13 +14,15 @@ import {
   detectClaudish,
   MIN_DETECT_CHARS,
 } from '@/lib/claudish/detect';
-import { isCcldAvailable, warmCcld } from '@/lib/claudish/ccld';
+import { isCcldAvailable, resetCcldForTests, warmCcld } from '@/lib/claudish/ccld';
 import type { DetectionResult } from '@/lib/claudish/types';
 
 const CLAUDISH_TEXT =
   "This isn't just a refactor — it's a fundamental shift in how the pipeline thinks about state.";
 const HUMAN_TEXT =
   'Meeting moved to 3pm. Bring the Q3 deck and whatever you have on the churn analysis.';
+
+beforeEach(() => resetCcldForTests());
 
 describe('detectClaudish', () => {
   it('answers from the heuristic while no CCLD model is loaded', () => {
@@ -49,10 +51,21 @@ describe('detectClaudish', () => {
   });
 });
 
-describe('ccld placeholder', () => {
-  it('reports unavailable with the version-0 placeholder weights, even after warm-up', async () => {
+describe('ccld swap-in (M5: trained weights are live)', () => {
+  it('answers from CCLD after warm-up, same API, heuristic still guards short input', async () => {
     await warmCcld();
-    expect(isCcldAvailable()).toBe(false);
+    expect(isCcldAvailable()).toBe(true);
+    const claudish = detectClaudish(
+      "This isn't just a refactor — it's a robust, seamless transformation, underscoring everything."
+    );
+    expect(claudish.source).toBe('ccld');
+    expect(claudish.lang).toBe('en-x-claudish');
+    expect(claudish.confidence).toBeGreaterThan(0.8);
+    const human = detectClaudish('lol yeah that is broken, been meaning to fix it for weeks tbh');
+    expect(human.source).toBe('ccld');
+    expect(human.lang).toBe('en');
+    // Below the minimum length the orchestration still holds 'unknown'.
+    expect(detectClaudish('short — text').lang).toBe('unknown');
   });
 });
 

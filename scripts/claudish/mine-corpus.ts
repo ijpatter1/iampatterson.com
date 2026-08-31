@@ -19,6 +19,7 @@ import path from 'node:path';
 import readline from 'node:readline';
 
 import { chunkText, seededRng } from './lib/chunk';
+import { findTranscripts } from './lib/walk';
 import { BoilerplateCounter, Deduper } from './lib/dedup';
 import { mightBeAssistant, parseTranscriptLine } from './lib/jsonl';
 import { chunkDropReason, stripStructures } from './lib/scrub';
@@ -42,45 +43,6 @@ function parseArgs(argv: string[]): Args {
     maxChunks: Number(get('--max-chunks') ?? Infinity),
     sample: Number(get('--sample') ?? 1),
   };
-}
-
-interface TranscriptFile {
-  file: string;
-  projectId: string;
-  sessionId: string;
-}
-
-/** Recursively collect .jsonl under a session dir (subagents nest: a
- * subagent's own subagents live at depth 5+). Everything inherits the
- * TOP-LEVEL session id — the split-safety unit. */
-function collectSessionFiles(dir: string, projectId: string, sessionId: string, out: TranscriptFile[]): void {
-  for (const entry of readdirSync(dir)) {
-    const entryPath = path.join(dir, entry);
-    const stat = statSync(entryPath);
-    if (stat.isFile() && entry.endsWith('.jsonl')) {
-      out.push({ file: entryPath, projectId, sessionId });
-    } else if (stat.isDirectory() && entry !== 'tool-results') {
-      collectSessionFiles(entryPath, projectId, sessionId, out);
-    }
-  }
-}
-
-function findTranscripts(root: string): TranscriptFile[] {
-  const out: TranscriptFile[] = [];
-  for (const project of readdirSync(root)) {
-    const projectDir = path.join(root, project);
-    if (!statSync(projectDir).isDirectory()) continue;
-    for (const entry of readdirSync(projectDir)) {
-      const entryPath = path.join(projectDir, entry);
-      const stat = statSync(entryPath);
-      if (stat.isFile() && entry.endsWith('.jsonl')) {
-        out.push({ file: entryPath, projectId: project, sessionId: entry.replace(/\.jsonl$/, '') });
-      } else if (stat.isDirectory() && entry !== 'memory') {
-        collectSessionFiles(entryPath, project, entry, out);
-      }
-    }
-  }
-  return out;
 }
 
 interface ChunkRecord {
