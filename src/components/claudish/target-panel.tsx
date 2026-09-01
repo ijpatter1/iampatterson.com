@@ -15,6 +15,8 @@ import { CLAUDISH_LANG_TAG } from '@/lib/claudish/messages';
 import { LanguageTabRow } from './language-tab-row';
 import { OutputActions } from './output-actions';
 import { PanelStatus } from './panel-status';
+
+import { useRevealText } from '@/hooks/useRevealText';
 import { SpinnerVerbs } from './spinner-verbs';
 
 import type { ClaudishDirection, TranslationStatus } from '@/hooks/useClaudishTranslation';
@@ -41,7 +43,15 @@ export function TargetPanel({
   onTabSelect: (index: number) => void;
 }) {
   const streaming = status === 'streaming';
-  const waiting = (streaming || status === 'debouncing') && !hasFirstToken;
+  // The cl2en refinement loop is invisible by design (Ian, 2026-09-01):
+  // drafts and revisions never render — the panel holds the translating
+  // animation until the settled text arrives, then reveals it.
+  const concealDrafts = direction === 'cl2en';
+  const concealing = concealDrafts && streaming;
+  const waiting = (streaming || status === 'debouncing') && (!hasFirstToken || concealDrafts);
+  const settled = concealDrafts && status === 'done';
+  const revealed = useRevealText(text, settled);
+  const shownText = concealing ? '' : settled ? revealed : text;
   const outputLang = direction === 'en2cl' ? CLAUDISH_LANG_TAG : 'en';
   const showPlaceholder = status === 'idle';
 
@@ -70,14 +80,14 @@ export function TargetPanel({
           </p>
         ) : null}
         {waiting && status === 'streaming' ? <SpinnerVerbs /> : null}
-        {text ? (
+        {shownText ? (
           <p
             data-testid="claudish-output"
             lang={outputLang}
             aria-busy={streaming}
             className="whitespace-pre-wrap text-lg text-[var(--gt-text,#202124)]"
           >
-            {text}
+            {shownText}
           </p>
         ) : null}
         {/* Screen readers get the finished translation exactly once. */}

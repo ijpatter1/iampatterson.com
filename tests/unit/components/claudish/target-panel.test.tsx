@@ -7,7 +7,7 @@
  * while waiting, renders verbatim status lines, aria-busy during
  * streaming with the final text mirrored once for screen readers.
  */
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 
 jest.mock('@/lib/events/track', () => ({
   trackClaudishShare: jest.fn(),
@@ -80,5 +80,51 @@ describe('TargetPanel', () => {
     const mirror = screen.getByTestId('claudish-live-mirror');
     expect(mirror).toHaveAttribute('aria-live', 'polite');
     expect(mirror).toHaveTextContent('Final output.');
+  });
+});
+
+describe('concealed refinement (Ian UX decision, 2026-09-01)', () => {
+  it('cl2en streaming shows the translating animation, never draft text', () => {
+    render(
+      <TargetPanel
+        {...base}
+        direction="cl2en"
+        status="streaming"
+        text="This draft must never render mid-flight."
+        hasFirstToken={true}
+      />
+    );
+    expect(screen.queryByTestId('claudish-output')).toBeNull();
+    expect(screen.getByTestId('claudish-spinner')).toBeInTheDocument();
+  });
+
+  it('en2cl still streams live (no concealment)', () => {
+    render(
+      <TargetPanel
+        {...base}
+        direction="en2cl"
+        status="streaming"
+        text="Streaming Claudish — visible as it lands."
+        hasFirstToken={true}
+      />
+    );
+    expect(screen.getByTestId('claudish-output')).toHaveTextContent('visible as it lands');
+  });
+
+  it('cl2en reveals progressively at done', () => {
+    jest.useFakeTimers();
+    const LONG = 'Sentence one is here. '.repeat(20).trim();
+    render(
+      <TargetPanel {...base} direction="cl2en" status="done" text={LONG} hasFirstToken={true} />
+    );
+    const first = screen.getByTestId('claudish-output').textContent ?? '';
+    expect(first.length).toBeGreaterThan(0);
+    expect(first.length).toBeLessThan(LONG.length);
+    act(() => {
+      jest.advanceTimersByTime(2000);
+    });
+    expect(screen.getByTestId('claudish-output')).toHaveTextContent('Sentence one is here.');
+    expect((screen.getByTestId('claudish-output').textContent ?? '').length).toBe(LONG.length);
+    jest.useRealTimers();
   });
 });
