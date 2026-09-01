@@ -15,6 +15,9 @@ import type { DetectionResult, LatchState } from './types';
 
 export { warmCcld };
 
+/** Just under the 0.80 latch: zero-family text can lean, never latch. */
+const ZERO_FAMILY_CAP = 0.79;
+
 /** Below this many normalized characters, detection is a guess — hold instead. */
 export const MIN_DETECT_CHARS = 24;
 
@@ -41,7 +44,8 @@ export function detectClaudish(text: string): DetectionResult {
     // encodes the STEREOTYPE register visitors type expecting detection.
     // The joke needs both, so detection takes the max — whichever side
     // is more convinced wins and is reported as the source.
-    const heuristic = scoreClaudish(text).score;
+    const heuristicResult = scoreClaudish(text);
+    const heuristic = heuristicResult.score;
     const model = getCcldModel();
     let ccld: number | null = null;
     if (model) {
@@ -52,7 +56,19 @@ export function detectClaudish(text: string): DetectionResult {
         ccld = null;
       }
     }
-    const confidence = ccld === null ? heuristic : Math.max(ccld, heuristic);
+    let confidence = ccld === null ? heuristic : Math.max(ccld, heuristic);
+    // Zero-family latch cap: full "Claudish - detected" requires
+    // mechanical register evidence. When NO heuristic family fires —
+    // no em dash, no kill-list vocabulary, no contrastive negation, no
+    // stereotype (the smoking gun is a family, so the meme door stays
+    // open) — CCLD alone cannot cross the latch. This is the
+    // deterministic floor under cl2en's own de-registered output and
+    // the formalization of the shipped contract: full detection is
+    // reserved for the loud register and the stereotype door; soft,
+    // register-free prose claims at most a leaning.
+    if (heuristicResult.activeFamilies === 0) {
+      confidence = Math.min(confidence, ZERO_FAMILY_CAP);
+    }
     return {
       lang: confidence >= 0.5 ? 'en-x-claudish' : 'en',
       confidence,

@@ -176,3 +176,36 @@ describe('createDetectionLatch', () => {
     expect(latch.update('ab', 1000).detected).toBe(false);
   });
 });
+
+describe('zero-family latch cap (round-trip fix, 2026-09-01)', () => {
+  // Full "Claudish - detected" requires mechanical register evidence:
+  // when NO heuristic family fires (em dash, kill-list vocabulary,
+  // contrastive negation, stereotype...), CCLD alone cannot latch —
+  // 0.79 keeps such text at most "Leaning Claudish". This is the
+  // deterministic floor under the translator's own de-registered
+  // output, and it formalizes the shipped contract: full detection is
+  // reserved for the loud register and the stereotype door.
+  it('caps register-free prose below the latch even when CCLD convicts', async () => {
+    await warmCcld();
+    // cl2en-style output: plain declaratives, no em dashes, no kill
+    // words — raw CCLD scores this shape far above the latch.
+    const result = detectClaudish(
+      'Your instinct to give me both fixes is right. The first one failed, and that matters. The damage was extensive. The mask fixes it by neutralizing model names, and the new model is promoted.'
+    );
+    expect(result.confidence).toBeLessThan(0.8);
+  });
+
+  it('does not cap when register families fire (loud stays latched)', async () => {
+    await warmCcld();
+    const result = detectClaudish(
+      "This isn't just a refactor — it's a robust, seamless transformation, underscoring everything."
+    );
+    expect(result.confidence).toBeGreaterThanOrEqual(0.8);
+  });
+
+  it('leaves the stereotype door open (smoking gun counts as a family)', async () => {
+    await warmCcld();
+    const result = detectClaudish('Let me delve into this for you');
+    expect(result.confidence).toBeGreaterThanOrEqual(0.8);
+  });
+});

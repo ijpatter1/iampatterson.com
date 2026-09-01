@@ -69,6 +69,12 @@ const NEGATIVE_SOURCE_WEIGHTS: Record<string, number> = {
   // Pre-2022 HN comments: human tech-casual — the register that owns
   // "let me check/know" in HUMAN voice. Absent file = empty pool, harmless.
   hn: Number(process.env.CONV_HN ?? 0),
+  // cl2en translations of TRAIN-split positives (contrastive negatives,
+  // generate-contrastive-negatives.ts): content-matched register-stripped
+  // twins that force the boundary onto register markers instead of
+  // discourse skeletons (the round-trip fix, 2026-09-01). Train-only by
+  // construction — see the split override below.
+  'translated-positives': Number(process.env.TP ?? 0),
   // Ian's own user turns ABOUT Claude/models (mine-claude-topic-negatives):
   // the only human source that says "Claude"/"Opus" at all. Tiny pool (~90),
   // so CLAUDE_TOPIC_OVERSAMPLE repeats train-split copies to give these
@@ -158,7 +164,16 @@ function main(): void {
         });
       }
     });
-    if (source === 'human-turns') humanTurns = bucket;
+    if (source === 'translated-positives') {
+      // Sources are train-split positives, so these negatives must stay
+      // OUT of dev/test/holdout: a dev negative whose content twin sits
+      // in train as a positive corrupts evaluation in both directions.
+      const k = Math.max(1, Number(process.env.TP_OVERSAMPLE ?? 1));
+      for (const example of bucket) {
+        example.split = 'train';
+        for (let i = 0; i < k; i++) negatives.push(example);
+      }
+    } else if (source === 'human-turns') humanTurns = bucket;
     else if (source === 'claude-topic') {
       const k = Math.max(1, Number(process.env.CLAUDE_TOPIC_OVERSAMPLE ?? 1));
       for (const example of bucket) {
