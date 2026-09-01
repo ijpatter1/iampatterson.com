@@ -18,6 +18,7 @@ const BATTERY: Array<{ group: string; expectMax?: number; expectMin?: number; te
   { group: 'human-conversational', expectMax: 0.5, text: 'Hang on a minute, let me call my wife and make sure this is ok with her.' },
   { group: 'human-conversational', expectMax: 0.5, text: 'Let me know if Thursday works for the budget review.' },
   { group: 'human-conversational', expectMax: 0.5, text: 'Sure, let me grab my coat and we can head out for lunch.' },
+  { group: 'human-conversational', expectMax: 0.5, text: 'Let me check if Thursday works.' },
   { group: 'human-conversational', expectMax: 0.5, text: 'hold my beer' },
   { group: 'human-formal', expectMax: 0.5, text: 'Saw a tweet this week about Anthropic, one of the hottest companies on earth, saying their biggest problem is still hiring.' },
   { group: 'human-formal', expectMax: 0.5, text: 'The meeting moved to Thursday. Bring the numbers.' },
