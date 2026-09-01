@@ -422,3 +422,21 @@ describe('stale-streaming recovery (round-2 re-check finding)', () => {
     expect(liveSignal.aborted).toBe(true); // the burn stops even on the cache-hit path
   });
 });
+
+describe('revise frame (cl2en loop, 2026-09-01)', () => {
+  it('clears the panel and streams the replacement in place', async () => {
+    const { result } = renderTranslation({ input: 'The fix — such as it is — shipped.', direction: 'cl2en' });
+    await advance(600);
+    await frame({ type: 'meta', lane: 'gemini-loop', cached: false });
+    await frame({ type: 'token', t: 'The fix, such as it is, shipped.' });
+    expect(result.current.text).toBe('The fix, such as it is, shipped.');
+    await frame({ type: 'revise' });
+    expect(result.current.text).toBe('');
+    expect(result.current.status).toBe('streaming');
+    await frame({ type: 'token', t: 'You shipped the fix.' });
+    await frame({ type: 'done' });
+    await endStream({ kind: 'ended' });
+    expect(result.current.text).toBe('You shipped the fix.');
+    expect(result.current.status).toBe('done');
+  });
+});

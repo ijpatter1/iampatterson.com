@@ -16,12 +16,14 @@
 import { randomUUID } from 'node:crypto';
 
 import { cacheKey, cacheableTranslation, normalizeInput } from './cache';
+import { runCl2enLoop } from './cl2en-loop';
+import { streamGemini } from './gemini';
 import { EmDashSmoother } from './smooth';
 import { FIRST_TOKEN_DEADLINE_MS, INPUT_CAP } from './config';
 import { hashIp, logEvent, redactError } from './log';
 import { clientIp } from './ratelimit';
 import { SseStream } from './sse';
-import { PROMPT_VERSION } from './prompts';
+import { PROMPT_VERSION, buildSystem } from './prompts';
 
 import type { Request, Response } from 'express';
 import type { BudgetTracker, Reservation, Usage } from './budget';
@@ -37,6 +39,8 @@ export interface TranslateDeps {
   budget: BudgetTracker;
   limiter: RateLimiter;
   breaker: CircuitBreaker;
+  /** Injectable for tests; defaults to the real Gemini client. */
+  geminiStream?: typeof streamGemini;
 }
 
 class FirstTokenDeadline extends Error {}
@@ -226,6 +230,143 @@ export function createTranslateHandler(deps: TranslateDeps) {
       settle();
       logEvent('INFO', 'client_closed', { requestId, outputChars: streamedChars });
     });
+
+    // The Claudish→English refinement loop (designed with Ian
+    // 2026-09-01): Gemini attempt 1 streams live; judge-driven retries
+    // buffer server-side as a cached-prefix conversation; a revise
+    // frame replaces the visible text only on meaningful improvement.
+    // On a pre-first-token failure the request FALLS THROUGH to the
+    // Claude ladder below — Gemini outage never blanks the panel.
+    if (direction === 'cl2en' && config.cl2enEngine === 'gemini-loop') {
+      const system = buildSystem('cl2en');
+      sse.open(allowOrigin);
+      sse.frame({
+        type: 'meta',
+        lane: 'gemini-loop',
+        cached: false,
+        direction,
+        promptVersion: PROMPT_VERSION,
+      });
+      let loopTtftMs = 0;
+      try {
+        const result = await runCl2enLoop(
+          normalized,
+          system,
+          {
+            nowMs: () => Date.now(),
+            stream: (turns, _attempt, temperature) =>
+              (deps.geminiStream ?? streamGemini)(
+                {
+                  projectId: config.projectId,
+                  location: config.geminiLocation,
+                  modelId: config.geminiModelId,
+                  maxOutputTokens: 2048,
+                  thinkingBudget: 0,
+                  temperature,
+                },
+                system,
+                turns,
+                controller.signal
+              ),
+          },
+          {
+            token: (t) => {
+              if (loopTtftMs === 0) loopTtftMs = Date.now() - t0;
+              streamedChars += t.length;
+              accumulated += t;
+              sse.frame({ type: 'token', t });
+            },
+            revise: () => {
+              streamedChars = 0;
+              accumulated = '';
+              sse.frame({ type: 'revise' });
+            },
+          }
+        );
+        // Gemini usage into the (Haiku-priced) budget: a deliberate
+        // overestimate — 2.5-flash is ~3x cheaper, so the cap errs safe.
+        const loopUsage: Usage = {
+          inputTokens: Math.max(0, result.usage.inputTokens - result.usage.cachedTokens),
+          outputTokens: result.usage.outputTokens,
+          cacheReadTokens: result.usage.cachedTokens,
+          cacheWriteTokens: 0,
+        };
+        if (result.refused) {
+          sse.frame({ type: 'refusal' });
+          sse.end();
+          settle(loopUsage);
+          logEvent('INFO', 'translate_refused', {
+            requestId,
+            direction,
+            lane: 'gemini-loop',
+            inputChars: text.length,
+            stopReason: 'refusal',
+          });
+          return;
+        }
+        sse.frame({
+          type: 'done',
+          chars: result.servedText.length,
+          ttftMs: loopTtftMs,
+          totalMs: Date.now() - t0,
+          cached: false,
+        });
+        sse.end();
+        settle(loopUsage);
+        if (
+          result.servedText.length > 0 &&
+          cacheableTranslation(direction, normalized, result.servedText)
+        ) {
+          cache.set(key, result.servedText);
+        }
+        logEvent('INFO', 'translate_done', {
+          requestId,
+          direction,
+          lane: 'gemini-loop',
+          cached: false,
+          inputChars: text.length,
+          outputChars: result.servedText.length,
+          inputTokens: result.usage.inputTokens,
+          outputTokens: result.usage.outputTokens,
+          cacheReadTokens: result.usage.cachedTokens,
+          ttftMs: loopTtftMs,
+          totalMs: Date.now() - t0,
+          promptVersion: PROMPT_VERSION,
+          budgetUsedPct: budget.usedPct(),
+          loopAttempts: result.attempts.length,
+          revised: result.revised,
+          judgeP: result.attempts.length > 0 ? result.attempts[result.attempts.length - 1].p : undefined,
+          judgeActionable:
+            result.attempts.length > 0
+              ? result.attempts[result.attempts.length - 1].actionable
+              : undefined,
+        });
+        return;
+      } catch (err) {
+        if (controller.signal.aborted) return; // client left
+        if (loopTtftMs > 0) {
+          // Mid-stream failure: terminal error, no silent lane swap.
+          sse.frame({ type: 'error', code: 'upstream_error' });
+          sse.end();
+          settle();
+          logEvent('ERROR', 'loop_failed_midstream', {
+            requestId,
+            direction,
+            lane: 'gemini-loop',
+            errorName: err instanceof Error ? err.constructor.name : 'Unknown',
+          });
+          return;
+        }
+        // Pre-token failure: fall through to the Claude ladder (the
+        // client tolerates a second meta frame — last one wins).
+        logEvent('WARNING', 'loop_fell_through', {
+          requestId,
+          direction,
+          lane: 'gemini-loop',
+          errorName: err instanceof Error ? err.constructor.name : 'Unknown',
+        });
+      }
+    }
 
     // The capacity ladder.
     let committed = false;

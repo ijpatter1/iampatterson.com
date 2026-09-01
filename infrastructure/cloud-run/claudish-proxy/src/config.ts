@@ -52,6 +52,9 @@ export interface Config {
   vertexModelId: string;
   anthropicModelId: string;
   vertexFallbackRegion: string;
+  cl2enEngine: 'lanes' | 'gemini-loop';
+  geminiModelId: string;
+  geminiLocation: string;
   dailyBudgetUsd: number;
   maxInstances: number;
   killSwitch: boolean;
@@ -104,6 +107,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     vertexModelId: env.VERTEX_MODEL_ID ?? DEFAULT_VERTEX_MODEL_ID,
     anthropicModelId: env.ANTHROPIC_MODEL_ID ?? DEFAULT_ANTHROPIC_MODEL_ID,
     vertexFallbackRegion: env.VERTEX_FALLBACK_REGION ?? 'us-east5',
+    // cl2en engine: 'lanes' = the Claude ladder (safe default);
+    // 'gemini-loop' = the judge-driven refinement loop (Ian 2026-09-01).
+    // en2cl always rides the Claude ladder — no one speaks Claude like
+    // Claude.
+    cl2enEngine: env.CL2EN_ENGINE === 'gemini-loop' ? ('gemini-loop' as const) : ('lanes' as const),
+    geminiModelId: env.GEMINI_MODEL_ID ?? 'gemini-2.5-flash',
+    geminiLocation: env.GEMINI_LOCATION ?? 'us-central1',
     dailyBudgetUsd,
     maxInstances,
     killSwitch: env.KILL_SWITCH === 'on',

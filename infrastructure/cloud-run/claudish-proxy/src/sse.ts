@@ -22,6 +22,9 @@ export type Frame =
   | { type: 'done'; chars: number; ttftMs: number; totalMs: number; cached: boolean }
   | { type: 'refusal' }
   | { type: 'capacity' }
+  // The loop's in-place replacement: the client clears the target panel
+  // and streams the improved translation (revise-then-retokens).
+  | { type: 'revise' }
   | { type: 'error'; code: string };
 
 const TERMINAL_TYPES = new Set(['done', 'refusal', 'capacity', 'error']);
@@ -35,7 +38,14 @@ export class SseStream {
   constructor(private readonly res: Response) {}
 
   /** Write status + SSE headers and flush them immediately. */
+  private openedOnce = false;
+
   open(allowOrigin: string): void {
+    // Idempotent: the gemini-loop fall-through path reaches the Claude
+    // ladder with the stream already open; a second open must not
+    // re-write headers or leak a second heartbeat interval.
+    if (this.openedOnce) return;
+    this.openedOnce = true;
     this.res.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache, no-transform',

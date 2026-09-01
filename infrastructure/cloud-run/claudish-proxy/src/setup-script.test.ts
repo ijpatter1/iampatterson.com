@@ -18,7 +18,7 @@ describe('setup.sh deploy contract', () => {
     // No @ inside any value on that line, or the delimiter splits it.
     const line = script.split('\n').find((l) => l.includes('--set-env-vars'))!;
     const vars = line.replace(/.*\^@\^/, '').replace(/".*$/, '').split('@');
-    for (const v of vars) expect(v).toMatch(/^[A-Z_]+=/);
+    for (const v of vars) expect(v).toMatch(/^[A-Z0-9_]+=/);
   });
 
   it('threads all four Anthropic WIF ids into the service env', () => {

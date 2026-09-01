@@ -28,9 +28,10 @@ export type ClaudishFrame =
   | { type: 'done'; chars?: number; ttftMs?: number; totalMs?: number; cached?: boolean }
   | { type: 'refusal' }
   | { type: 'capacity' }
+  | { type: 'revise' }
   | { type: 'error'; code?: string };
 
-const FRAME_TYPES = new Set(['meta', 'token', 'done', 'refusal', 'capacity', 'error']);
+const FRAME_TYPES = new Set(['meta', 'token', 'done', 'refusal', 'capacity', 'error', 'revise']);
 
 function parseBlock(block: string): ClaudishFrame | null {
   // Per the SSE spec, a block may hold multiple `data:` lines (joined with

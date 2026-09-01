@@ -98,3 +98,17 @@ describe('SseStream', () => {
     expect(endedCount()).toBe(0);
   });
 });
+
+describe('open idempotence (loop fall-through)', () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  it('a second open is a no-op: one writeHead, one heartbeat', () => {
+    const { res } = stubRes();
+    const stream = new SseStream(res);
+    stream.open('https://iampatterson.com');
+    stream.open('https://iampatterson.com');
+    expect(res.writeHead).toHaveBeenCalledTimes(1);
+    stream.end();
+  });
+});

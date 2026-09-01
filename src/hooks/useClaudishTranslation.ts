@@ -88,7 +88,8 @@ type Action =
   | { type: 'capacity' }
   | { type: 'error' }
   | { type: 'server-cache' }
-  | { type: 'cache-hit'; key: string; text: string };
+  | { type: 'cache-hit'; key: string; text: string }
+  | { type: 'revise' };
 
 const INITIAL: MachineState = {
   phase: 'resting',
@@ -121,6 +122,11 @@ function reducer(state: MachineState, action: Action): MachineState {
         hasFirstToken: true,
         ttftMs: state.hasFirstToken ? state.ttftMs : action.ttftMs,
       };
+    case 'revise':
+      // The loop found a meaningfully better translation: clear the
+      // panel and let the replacement stream in (Google Translate
+      // refines visibly too — in-genre).
+      return { ...state, text: '' };
     case 'server-cache':
       return { ...state, cache: 'server' };
     case 'done':
@@ -306,6 +312,10 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
               serverCache = true;
               dispatch({ type: 'server-cache' });
             }
+            break;
+          case 'revise':
+            accumulated = '';
+            dispatch({ type: 'revise' });
             break;
           case 'token': {
             const first = accumulated.length === 0;

@@ -122,7 +122,9 @@ export async function* streamGemini(
     for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
-      buffer += decoder.decode(value, { stream: true });
+      // Vertex emits CRLF-delimited SSE frames; normalize so the
+      // splitter sees plain LF (the live-API gap the fakes reproduced).
+      buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, '\n');
       let i;
       while ((i = buffer.indexOf('\n\n')) >= 0) {
         const frame = buffer.slice(0, i);

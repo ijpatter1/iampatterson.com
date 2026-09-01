@@ -90,6 +90,18 @@ describe('streamGemini', () => {
     ]);
   });
 
+  it('parses CRLF-delimited frames (the live Vertex wire format)', async () => {
+    const fetchFn = (async () =>
+      sse(
+        'data: {"candidates":[{"content":{"parts":[{"text":"live"}]}}]}\r\n\r\ndata: {"usageMetadata":{"promptTokenCount":7}}\r\n\r\n'
+      )) as typeof fetch;
+    const events = await collect(
+      streamGemini(CONFIG, 'sys', [{ role: 'user', text: 'x' }], new AbortController().signal, fetchFn)
+    );
+    expect(events[0]).toEqual({ kind: 'text', text: 'live' });
+    expect(events[events.length - 1]).toMatchObject({ kind: 'stop' });
+  });
+
   it('handles frames split across network chunks', async () => {
     const fetchFn = (async () =>
       sse(

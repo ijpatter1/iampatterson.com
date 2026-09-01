@@ -583,3 +583,90 @@ describe('lane cleanup on failover (CR3)', () => {
     expect(signals[0].aborted).toBe(true);
   });
 });
+
+describe('cl2en gemini-loop engine', () => {
+  const LOUD_OUT =
+    "This isn't just a refactor — it's a robust, seamless transformation, underscoring the fundamental shift in how the pipeline thinks about state.";
+  const CLEAN_OUT = 'You were right to send both fixes, because the first one failed.';
+
+  function scriptedGemini(outputs: string[], failFirst = false) {
+    let call = 0;
+    const geminiStream = ((..._args: unknown[]) => {
+      call++;
+      if (failFirst && call === 1) {
+        return (async function* () {
+          throw new Error('gemini upstream HTTP 500');
+          yield undefined as never;
+        })();
+      }
+      const text = outputs[Math.min(call - (failFirst ? 2 : 1), outputs.length - 1)];
+      return (async function* () {
+        yield { kind: 'text', text } as const;
+        yield {
+          kind: 'stop',
+          usage: { inputTokens: 100, outputTokens: 20, cachedTokens: 0 },
+          finishReason: 'STOP',
+        } as const;
+      })();
+    }) as never;
+    return { geminiStream, calls: () => call };
+  }
+
+  function loopDeps(outputs: string[], failFirst = false) {
+    const scripted = scriptedGemini(outputs, failFirst);
+    const lane = fakeLane('vertex-global', [
+      { kind: 'start' },
+      { kind: 'text', text: 'ladder fallback' },
+      { kind: 'stop', stopReason: 'end_turn', usage: OK_USAGE },
+    ]);
+    const deps = makeDeps([lane]);
+    deps.config = loadConfig({ CL2EN_ENGINE: 'gemini-loop', LANES: 'vertex-global,cache-only' });
+    (deps as { geminiStream?: unknown }).geminiStream = scripted.geminiStream;
+    return { deps, scripted };
+  }
+
+  it('clean attempt streams through the loop: meta gemini-loop, token, done; cached', async () => {
+    const { deps } = loopDeps([CLEAN_OUT]);
+    const handler = createTranslateHandler(deps);
+    const ctx = stubReqRes({ text: 'x '.repeat(20), direction: 'cl2en' as const });
+    await handler(ctx.req, ctx.res);
+    const frames = ctx.frames();
+    expect(frames.map((f) => f.type)).toEqual(['meta', 'token', 'done']);
+    expect(frames[0]).toMatchObject({ lane: 'gemini-loop' });
+    expect(frames[1]).toMatchObject({ t: CLEAN_OUT });
+    expect(deps.cache.size).toBe(1);
+  });
+
+  it('convicted-then-improved emits revise and serves the retry', async () => {
+    const { deps, scripted } = loopDeps([LOUD_OUT, CLEAN_OUT]);
+    const handler = createTranslateHandler(deps);
+    const ctx = stubReqRes({ text: 'y '.repeat(20), direction: 'cl2en' as const });
+    await handler(ctx.req, ctx.res);
+    const types = ctx.frames().map((f) => f.type);
+    expect(types).toEqual(['meta', 'token', 'revise', 'token', 'done']);
+    expect(scripted.calls()).toBe(2);
+    const tokens = ctx.frames().filter((f) => f.type === 'token');
+    expect(tokens[tokens.length - 1]).toMatchObject({ t: CLEAN_OUT });
+  });
+
+  it('pre-token gemini failure falls through to the Claude ladder', async () => {
+    const { deps } = loopDeps([CLEAN_OUT], true);
+    const handler = createTranslateHandler(deps);
+    const ctx = stubReqRes({ text: 'z '.repeat(20), direction: 'cl2en' as const });
+    await handler(ctx.req, ctx.res);
+    const frames = ctx.frames();
+    // Two metas: the loop's, then the ladder's — last wins client-side.
+    expect(frames.filter((f) => f.type === 'meta').length).toBe(2);
+    expect(frames.some((f) => f.type === 'token' && f.t === 'ladder fallback')).toBe(true);
+    expect(frames[frames.length - 1].type).toBe('done');
+  });
+
+  it('en2cl never touches the loop even with the engine on', async () => {
+    const { deps, scripted } = loopDeps([CLEAN_OUT]);
+    const handler = createTranslateHandler(deps);
+    const ctx = stubReqRes({ text: 'w '.repeat(20), direction: 'en2cl' as const });
+    await handler(ctx.req, ctx.res);
+    expect(scripted.calls()).toBe(0);
+    expect(ctx.frames()[0]).toMatchObject({ lane: 'vertex-global' });
+  });
+});
