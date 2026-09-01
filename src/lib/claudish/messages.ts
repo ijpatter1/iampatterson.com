@@ -39,6 +39,11 @@ export const DETECTED_LABEL = 'Claudish - detected';
  * when plain English is pasted (user-reported during dev testing). */
 export const DETECTED_LABEL_EN = 'English - detected';
 
+/** Sub-confident tiers — the detector claims a side instead of hedging
+ * (user decision: binary english/claudish, leaning variants allowed). */
+export const LEANING_CLAUDISH_LABEL = 'Leaning Claudish';
+export const LEANING_EN_LABEL = 'Leaning English';
+
 export const TAB_LABELS = {
   source: ['Detect language', 'English', 'Claudish'],
   target: ['English', 'Claudish'],

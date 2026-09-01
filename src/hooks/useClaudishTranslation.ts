@@ -183,6 +183,10 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
 
   const abortRef = useRef<AbortController | null>(null);
   const seqRef = useRef(0);
+  // Refusals are terminal by design: re-sending a refused input re-refuses
+  // and burns tokens for nothing, so the VERDICT is remembered per key
+  // (never the content — the cache stays refusal-free per spec).
+  const refusedKeysRef = useRef<Set<string>>(new Set());
   // Lazy-initialized (house `== null` pattern) so the share-rehydration
   // seed lands in the cache exactly once, on first render.
   const cacheRef = useRef<Map<string, string> | null>(null);
@@ -224,6 +228,14 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
         input_em_dashes: countEmDashes(runText),
       };
 
+      // A remembered refusal short-circuits without a request or analytics:
+      // it is a replayed verdict, not a new translation.
+      if (refusedKeysRef.current.has(runKey)) {
+        dispatch({ type: 'stream-start', key: runKey });
+        dispatch({ type: 'refusal' });
+        return;
+      }
+
       // Client cache short-circuit: instant done, zero network.
       const cached = cacheRef.current?.get(runKey);
       if (cached !== undefined) {
@@ -258,6 +270,9 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
         return;
       }
 
+      // A manual fire during a different key's stream must cancel it —
+      // overwriting the ref without aborting would orphan a live burn.
+      abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
       dispatch({ type: 'stream-start', key: runKey });
@@ -310,6 +325,7 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
             break;
           case 'refusal':
             terminal = 'refused';
+            refusedKeysRef.current.add(runKey);
             dispatch({ type: 'refusal' });
             finish('refused');
             break;
@@ -350,18 +366,29 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
     [proxyUrl]
   );
 
-  // Debounce + abort-on-edit. The effect only manages side effects
-  // (aborting, arming the timer); all state changes happen in callbacks.
+  // Debounce + abort-on-edit. The skip decisions run BEFORE any abort or
+  // seq bump (CR5): a swap's translateNow starts a stream for exactly the
+  // key this effect then sees — aborting it (or even bumping seq, which
+  // silently orphans its frames) would kill the manual request and re-fire
+  // it 600ms later as 'auto'. Liveness is judged from the reducer state
+  // (phase streaming + key match), never from abortRef — a completed
+  // stream leaves an un-aborted controller behind (CR5 refuter finding).
   useEffect(() => {
+    const runKey = normalized ? `${direction}::${normalized}` : null;
+    const resolved = stateRef.current;
+    if (runKey !== null && runKey === resolved.key) {
+      if (resolved.phase === 'streaming') {
+        return undefined; // that exact stream is already in flight: leave it be
+      }
+      if (resolved.phase === 'done' || resolved.phase === 'refused') {
+        return undefined; // terminal for this input — done serves from state, refusals stay refused
+      }
+      // error/capacity fall through: transient failures are retryable (CR7).
+    }
     abortRef.current?.abort();
     abortRef.current = null;
     seqRef.current++;
-    if (!normalized) return undefined;
-    const runKey = `${direction}::${normalized}`;
-    const resolved = stateRef.current;
-    if (runKey === resolved.key && resolved.phase !== 'resting' && resolved.phase !== 'streaming') {
-      return undefined; // already resolved for this exact input
-    }
+    if (runKey === null) return undefined;
     const timer = setTimeout(() => {
       startTranslation(runKey, normalized, direction);
     }, debounceMs);

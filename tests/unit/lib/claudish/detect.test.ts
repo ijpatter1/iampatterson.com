@@ -85,6 +85,41 @@ describe('createDetectionLatch', () => {
     expect(at.update(LONG, 0).detected).toBe(true);
   });
 
+  it('always claims a side with a tier — no hedging (user decision)', () => {
+    // confident English below 0.30
+    expect(createDetectionLatch({}, scorerFor(0.1)).update(LONG, 0)).toMatchObject({
+      lang: 'en',
+      tier: 'confident',
+    });
+    // leaning English 0.30-0.50
+    expect(createDetectionLatch({}, scorerFor(0.4)).update(LONG, 0)).toMatchObject({
+      lang: 'en',
+      tier: 'leaning',
+    });
+    // leaning Claudish 0.50-0.80 (sub-latch)
+    expect(createDetectionLatch({}, scorerFor(0.7)).update(LONG, 0)).toMatchObject({
+      lang: 'en-x-claudish',
+      tier: 'leaning',
+      detected: false,
+    });
+    // confident Claudish at the latch
+    expect(createDetectionLatch({}, scorerFor(0.9)).update(LONG, 0)).toMatchObject({
+      lang: 'en-x-claudish',
+      tier: 'confident',
+      detected: true,
+    });
+  });
+
+  it('confident-English has hysteresis too: enter below 0.30, hold until 0.45', () => {
+    let conf = 0.1;
+    const latch = createDetectionLatch({}, (t) => scorerFor(conf)(t));
+    expect(latch.update(LONG, 0).tier).toBe('confident');
+    conf = 0.38; // inside the band: hold confident English
+    expect(latch.update(LONG, 1000)).toMatchObject({ lang: 'en', tier: 'confident' });
+    conf = 0.46; // past the exit: demote to leaning
+    expect(latch.update(LONG, 2000)).toMatchObject({ lang: 'en', tier: 'leaning' });
+  });
+
   it('holds detection through the hysteresis band and exits only at 0.55', () => {
     let conf = 0.9;
     const latch = createDetectionLatch({}, (t) => scorerFor(conf)(t));

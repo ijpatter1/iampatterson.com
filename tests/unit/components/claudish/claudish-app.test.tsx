@@ -110,12 +110,27 @@ describe('ClaudishApp', () => {
     render(<ClaudishApp />);
     await user.click(screen.getByRole('textbox'));
     await user.paste(
-      'Saw a tweet this week about a company saying their biggest problem is still hiring. Not enough people who can generate good judgment under ambiguity is how they put it.'
+      // Scores ~0.25 with the trained model: confidently English.
+      'Saw a tweet this week about Anthropic, one of the hottest companies on earth, saying their biggest problem is still hiring. Not enough exceptional people who can generate good judgment under extreme ambiguity is how they put it.'
     );
     expect(screen.getByRole('tab', { name: 'English - detected' })).toBeInTheDocument();
     // Clearing the input resets the label to the resting state.
     await user.clear(screen.getByRole('textbox'));
     expect(screen.getByRole('tab', { name: 'Detect language' })).toBeInTheDocument();
+  });
+
+  it('claims a leaning side in the mid band instead of hedging (user decision)', async () => {
+    const user = userEvent.setup();
+    render(<ClaudishApp />);
+    await user.click(screen.getByRole('textbox'));
+    // Terse imperative prose: CCLD scores this ~0.72 — sub-latch Claudish.
+    await user.paste('The meeting moved to Thursday. Bring the numbers.');
+    expect(screen.getByRole('tab', { name: 'Leaning Claudish' })).toBeInTheDocument();
+    // A claimed Claudish side drives the direction: target flips to English.
+    const englishTarget = screen
+      .getAllByRole('tab', { name: 'English' })
+      .find((tab) => tab.closest('[aria-label="Target language"]'));
+    expect(englishTarget).toHaveAttribute('aria-selected', 'true');
   });
 
   it('fires claudish_detected once per session per language', async () => {

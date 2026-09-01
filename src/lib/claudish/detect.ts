@@ -21,9 +21,14 @@ export const MIN_DETECT_CHARS = 24;
 const NEUTRAL: LatchState = {
   detected: false,
   lang: 'unknown',
+  tier: 'leaning',
   confidence: 0.5,
   source: 'heuristic',
 };
+
+/** Confident-English hysteresis band (the Claudish side uses enter/exit). */
+const EN_CONFIDENT_ENTER = 0.3;
+const EN_CONFIDENT_EXIT = 0.45;
 
 export function detectClaudish(text: string): DetectionResult {
   try {
@@ -88,6 +93,7 @@ export function createDetectionLatch(
 
   let state: LatchState = { ...NEUTRAL };
   let lastFlipAt: number | null = null;
+  let enConfident = false;
 
   return {
     update(text: string, nowMs: number = Date.now()): LatchState {
@@ -96,31 +102,35 @@ export function createDetectionLatch(
         return state; // hold — too short to re-decide
       }
       const result = score(text);
+      const p = result.confidence;
       const wantDetected = state.detected
-        ? result.confidence > exit // stay until we cross the exit threshold
-        : result.confidence >= enter;
+        ? p > exit // stay until we cross the exit threshold
+        : p >= enter;
+
+      // Confident-English has its own hysteresis band so the label
+      // doesn't flap around the 0.30 boundary while typing.
+      enConfident = enConfident ? p < EN_CONFIDENT_EXIT : p < EN_CONFIDENT_ENTER;
+
+      // No hedging (user decision): every readable input claims a side.
+      const side: LatchState['lang'] = wantDetected || p >= 0.5 ? 'en-x-claudish' : 'en';
+      const tier: LatchState['tier'] =
+        wantDetected || (side === 'en' && enConfident) ? 'confident' : 'leaning';
 
       if (wantDetected !== state.detected) {
         const dwellOk = lastFlipAt === null || nowMs - lastFlipAt >= minDwellMs;
         if (!dwellOk) {
           // Refresh confidence but refuse the flip inside the dwell window.
-          state = { ...state, confidence: result.confidence, source: result.source };
+          state = { ...state, confidence: p, source: result.source };
           return state;
         }
         lastFlipAt = nowMs;
-        state = {
-          detected: wantDetected,
-          lang: result.lang,
-          confidence: result.confidence,
-          source: result.source,
-        };
-        return state;
       }
 
       state = {
-        detected: state.detected,
-        lang: state.detected ? 'en-x-claudish' : result.lang,
-        confidence: result.confidence,
+        detected: wantDetected,
+        lang: side,
+        tier,
+        confidence: p,
         source: result.source,
       };
       return state;
@@ -128,6 +138,7 @@ export function createDetectionLatch(
     reset(): void {
       state = { ...NEUTRAL };
       lastFlipAt = null;
+      enConfident = false;
     },
   };
 }

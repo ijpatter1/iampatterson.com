@@ -186,13 +186,15 @@ describe('refusal', () => {
       expect.objectContaining({ outcome: 'refused', output_chars: 0 })
     );
 
-    // Refused inputs are never cached: retyping re-requests.
+    // Refusals are REMEMBERED (never content-cached): retyping the same
+    // input replays the verdict without a request — re-sending would
+    // re-refuse and burn tokens for nothing.
     rerender({ input: 'A fine first input.', direction: 'en2cl' });
     await advance(600);
     rerender({ input: 'Something that gets refused.', direction: 'en2cl' });
     await advance(600);
     const requested = mockStream.mock.calls.map((c) => c[1].text);
-    expect(requested.filter((t) => t === 'Something that gets refused.')).toHaveLength(2);
+    expect(requested.filter((t) => t === 'Something that gets refused.')).toHaveLength(1);
   });
 });
 
@@ -293,5 +295,95 @@ describe('unmount', () => {
       errorSpy.mock.calls.filter((c) => String(c[0]).includes('unmounted'))
     ).toHaveLength(0);
     errorSpy.mockRestore();
+  });
+});
+
+describe('manual translation survival (CR5)', () => {
+  it('translateNow with an override survives the debounce effect and completes as manual', async () => {
+    const { result, rerender } = renderTranslation({ input: 'First input to swap from.' });
+    await advance(600);
+    await frame({ type: 'token', t: 'output text' });
+    await frame({ type: 'done' });
+    await endStream();
+    mockTrack.mockClear();
+
+    // Swap: state changes + immediate manual fire in the same commit.
+    await act(async () => {
+      result.current.translateNow({ input: 'output text', direction: 'cl2en' });
+    });
+    rerender({ input: 'output text', direction: 'cl2en' });
+    await act(async () => {});
+    const manualStream = streams[streams.length - 1];
+    expect(manualStream.req).toEqual({ text: 'output text', direction: 'cl2en' });
+    // The debounce effect must NOT have aborted its own manual stream...
+    expect(manualStream.signal.aborted).toBe(false);
+    // ...nor armed a doomed auto re-fire.
+    const callsBefore = mockStream.mock.calls.length;
+    await advance(700);
+    expect(mockStream.mock.calls.length).toBe(callsBefore);
+    // And it completes with the manual label intact.
+    await frame({ type: 'token', t: 'English.' });
+    await frame({ type: 'done' });
+    await endStream();
+    expect(result.current.status).toBe('done');
+    expect(mockTrack).toHaveBeenCalledTimes(1);
+    expect(mockTrack.mock.calls[0][0]).toMatchObject({
+      source_mode: 'manual',
+      outcome: 'complete',
+    });
+  });
+
+  it('retyping the identical input during streaming does not abort the stream', async () => {
+    const { rerender } = renderTranslation({ input: 'Same text streaming now.' });
+    await advance(600);
+    await frame({ type: 'token', t: 'partial' });
+    const signal = streams[0].signal;
+    // A no-op re-render with identical input (e.g. parent state churn).
+    rerender({ input: 'Same text streaming now.', direction: 'en2cl' });
+    await act(async () => {});
+    expect(signal.aborted).toBe(false);
+    expect(mockStream).toHaveBeenCalledTimes(1);
+  });
+
+  it('a genuine edit mid-stream still aborts', async () => {
+    const { rerender } = renderTranslation({ input: 'Original text being streamed.' });
+    await advance(600);
+    const signal = streams[0].signal;
+    rerender({ input: 'Original text being streamed, edited.', direction: 'en2cl' });
+    await act(async () => {});
+    expect(signal.aborted).toBe(true);
+  });
+});
+
+describe('transient failures are retryable (CR7)', () => {
+  it('re-entering the same text after a network error fires a fresh request', async () => {
+    const { result, rerender } = renderTranslation({ input: 'Text that will fail once.' });
+    await advance(600);
+    await endStream({ kind: 'network' });
+    expect(result.current.status).toBe('error');
+    // Edit away, then back to the identical text.
+    rerender({ input: 'Different text now.', direction: 'en2cl' });
+    await advance(600);
+    await endStream({ kind: 'network' });
+    rerender({ input: 'Text that will fail once.', direction: 'en2cl' });
+    await advance(600);
+    const requested = mockStream.mock.calls.map((c) => c[1].text);
+    expect(requested.filter((t) => t === 'Text that will fail once.')).toHaveLength(2);
+  });
+
+  it('refusals stay sticky: the same input is not re-sent', async () => {
+    const { rerender } = renderTranslation({ input: 'Input that gets refused.' });
+    await advance(600);
+    await frame({ type: 'refusal' });
+    await endStream();
+    rerender({ input: 'Other text meanwhile.', direction: 'en2cl' });
+    await advance(600);
+    await frame({ type: 'token', t: 'x' });
+    await frame({ type: 'done' });
+    await endStream();
+    rerender({ input: 'Input that gets refused.', direction: 'en2cl' });
+    await advance(600);
+    const requested = mockStream.mock.calls.map((c) => c[1].text);
+    expect(requested.filter((t) => t === 'Input that gets refused.')).toHaveLength(1);
   });
 });

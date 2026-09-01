@@ -32,6 +32,7 @@ const ANALYTICS_DIRECTION = {
 const NEUTRAL_LATCH: LatchState = {
   detected: false,
   lang: 'unknown',
+  tier: 'leaning',
   confidence: 0.5,
   source: 'heuristic',
 };
@@ -92,8 +93,11 @@ export function ClaudishApp({ shareParam }: { shareParam?: string }) {
     });
   }, [share, shareParam]);
 
+  // The claimed side drives the auto direction (no hedging): a tab that
+  // says "Leaning Claudish" must translate INTO English, latched or not.
+  const claimedClaudish = latch.lang === 'en-x-claudish';
   const direction: ClaudishDirection =
-    sourceTab === 0 ? (latch.detected ? 'cl2en' : 'en2cl') : sourceTab === 2 ? 'cl2en' : 'en2cl';
+    sourceTab === 0 ? (claimedClaudish ? 'cl2en' : 'en2cl') : sourceTab === 2 ? 'cl2en' : 'en2cl';
 
   const translation = useClaudishTranslation({
     input,
@@ -137,19 +141,14 @@ export function ClaudishApp({ shareParam }: { shareParam?: string }) {
     }
   };
 
-  // What the Detect tab names. Latched Claudish wins; confident plain
-  // English (p < 0.5 at detectable length) gets its own label — Google
-  // Translate always names its guess, and a tab that only ever labels
-  // Claudish reads as broken when English is pasted. The 0.5-0.8
-  // sub-latch gray zone stays at the resting label (honest: not sure).
-  const detectedLang: 'en-x-claudish' | 'en' | null =
-    sourceTab !== 0 || input.trim().length === 0
+  // What the Detect tab claims. No hedging (user decision): once input
+  // is readable the tab always names a side — English / Leaning English /
+  // Leaning Claudish / Claudish - detected. "Detect language" survives
+  // only for an empty or sub-24-char box.
+  const detection =
+    sourceTab !== 0 || input.trim().length === 0 || latch.lang === 'unknown'
       ? null
-      : latch.detected
-        ? 'en-x-claudish'
-        : latch.lang === 'en' && latch.confidence < 0.5
-          ? 'en'
-          : null;
+      : { lang: latch.lang, tier: latch.tier };
 
   // Target row: 0 = English, 1 = Claudish; choosing one determines direction.
   const targetTab = direction === 'en2cl' ? 1 : 0;
@@ -166,7 +165,7 @@ export function ClaudishApp({ shareParam }: { shareParam?: string }) {
           onChange: handleInputChange,
           activeTab: sourceTab,
           onTabSelect: setSourceTab,
-          detectedLang,
+          detection,
         }}
         targetProps={{
           source: input,

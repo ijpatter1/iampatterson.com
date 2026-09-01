@@ -13,6 +13,6 @@ const model = loadCcldModel(weights);
 const text = process.argv.slice(2).join(' ') || readFileSync(0, 'utf8');
 const p = model ? model.predict(text) : NaN;
 const h = scoreClaudish(text);
-const verdict = p >= 0.8 ? 'Claudish - detected' : p >= 0.5 ? 'claudish-leaning (sub-latch)' : 'English';
+const verdict = p >= 0.8 ? 'Claudish - detected' : p >= 0.5 ? 'Leaning Claudish' : p >= 0.3 ? 'Leaning English' : 'English - detected';
 console.log(`CCLD  P(claudish) = ${p.toFixed(3)}  →  ${verdict}`);
 console.log(`heuristic = ${h.score.toFixed(3)} (${h.activeFamilies} families: ${h.signals.join(', ') || 'none'})`);

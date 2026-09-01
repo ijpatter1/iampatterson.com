@@ -9,24 +9,37 @@
  * here. While live detection is latched, the source row's Detect tab
  * relabels to the spec-verbatim "Claudish - detected".
  */
-import { DETECTED_LABEL, DETECTED_LABEL_EN, TAB_LABELS } from '@/lib/claudish/messages';
+import {
+  DETECTED_LABEL,
+  DETECTED_LABEL_EN,
+  LEANING_CLAUDISH_LABEL,
+  LEANING_EN_LABEL,
+  TAB_LABELS,
+} from '@/lib/claudish/messages';
 
 export function LanguageTabRow({
   side,
   activeIndex,
   onSelect,
-  detectedLang,
+  detection,
 }: {
   side: 'source' | 'target';
   activeIndex: number;
   onSelect: (index: number) => void;
-  /** Which language the Detect tab names: latched Claudish, confident
-   * plain English, or null for the resting "Detect language" label. */
-  detectedLang: 'en-x-claudish' | 'en' | null;
+  /** What the Detect tab claims: a side + tier, or null only while the
+   * box is empty/unreadable (that's the one honest "Detect language"). */
+  detection: { lang: 'en-x-claudish' | 'en'; tier: 'confident' | 'leaning' } | null;
 }) {
   const labels: string[] = [...TAB_LABELS[side]];
-  if (side === 'source' && detectedLang) {
-    labels[0] = detectedLang === 'en-x-claudish' ? DETECTED_LABEL : DETECTED_LABEL_EN;
+  if (side === 'source' && detection) {
+    labels[0] =
+      detection.lang === 'en-x-claudish'
+        ? detection.tier === 'confident'
+          ? DETECTED_LABEL
+          : LEANING_CLAUDISH_LABEL
+        : detection.tier === 'confident'
+          ? DETECTED_LABEL_EN
+          : LEANING_EN_LABEL;
   }
   return (
     <div
