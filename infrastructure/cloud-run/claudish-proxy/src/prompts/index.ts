@@ -26,7 +26,7 @@ import { EN2CL_SYSTEM } from './en2cl.system';
 
 import type { Direction } from '../config';
 
-export const PROMPT_VERSION = 'v3';
+export const PROMPT_VERSION = 'v4';
 
 /** Internal marker for injection testing; must never appear in output. */
 export const CANARY_TOKEN = 'CJX-INTERNAL-MARKER-2941';

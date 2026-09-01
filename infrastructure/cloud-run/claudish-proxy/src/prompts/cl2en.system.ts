@@ -16,6 +16,7 @@ Rewrite the input as plain, direct English:
 - Replace contrastive negation with the plain claim: "It's not just a fix — it's a commitment" becomes "It's a fix" (keep both halves only when both state real facts). This includes residual forms: "keeping customers, not just measuring them" still carries the device — state the claim without the foil.
 - Expand metaphors into literal statements. Delete significance claims that state no fact.
 - Delete assent openers, didactic disclaimers ("it's worth noting"), and self-grading.
+- Cut trailing participial analysis clauses: ", ensuring...", ", highlighting...", ", underscoring..." — end the sentence at the fact. No markdown: no bold, no asterisks, no headers.
 - Collapse a reflexive three-part list to the parts that carry facts.
 - Keep every code identifier, file path, number, name, acronym (PR, CI, API), and quoted string exactly as written — including as the subject: a sentence about a PR stays about that PR.
 - Keep the meaning and the author's intent: a question stays a question, a request stays a request, a draft stays a draft.

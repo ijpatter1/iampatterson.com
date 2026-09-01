@@ -422,3 +422,48 @@ describe('stale-streaming recovery (round-2 re-check finding)', () => {
     expect(liveSignal.aborted).toBe(true); // the burn stops even on the cache-hit path
   });
 });
+
+describe('provenance memo wiring (round-trip fix, 2026-09-01)', () => {
+  it('a completed cl2en translation is detected as English when pasted back', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { resetProvenance } = require('@/lib/claudish/provenance');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { detectClaudish } = require('@/lib/claudish/detect');
+    resetProvenance();
+    const OUT = 'The fix shipped and every test passes across the whole suite.';
+
+    renderTranslation({
+      input: 'The fix — such as it is — shipped, a testament to rigor.',
+      direction: 'cl2en',
+    });
+    await advance(600);
+    await frame({ type: 'meta', lane: 'anthropic-api', cached: false });
+    await frame({ type: 'token', t: OUT });
+    await frame({ type: 'done' });
+    await endStream({ kind: 'ended' });
+
+    const detection = detectClaudish(OUT);
+    expect(detection).toMatchObject({ lang: 'en', source: 'provenance' });
+    expect(detection.confidence).toBeLessThan(0.3);
+    resetProvenance();
+  });
+
+  it('an en2cl output pasted back claims the Claudish side by provenance', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { resetProvenance } = require('@/lib/claudish/provenance');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { detectClaudish } = require('@/lib/claudish/detect');
+    resetProvenance();
+    const OUT = 'The fix landed — not merely a patch; a comprehensive testament to rigor.';
+
+    renderTranslation({ input: 'We fixed it and the tests pass.', direction: 'en2cl' });
+    await advance(600);
+    await frame({ type: 'meta', lane: 'anthropic-api', cached: false });
+    await frame({ type: 'token', t: OUT });
+    await frame({ type: 'done' });
+    await endStream({ kind: 'ended' });
+
+    expect(detectClaudish(OUT)).toMatchObject({ lang: 'en-x-claudish', source: 'provenance' });
+    resetProvenance();
+  });
+});

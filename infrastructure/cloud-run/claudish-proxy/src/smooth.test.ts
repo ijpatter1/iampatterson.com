@@ -42,3 +42,22 @@ describe('EmDashSmoother', () => {
     expect(run(['— and so it begins.'])).toBe('and so it begins.');
   });
 });
+
+describe('markdown-bold stripping (cl2en mechanical cleanup)', () => {
+  it('strips paired double-asterisk emphasis', () => {
+    expect(run(['**Bottom line:** the fix shipped.'])).toBe('Bottom line: the fix shipped.');
+  });
+
+  it('handles bold markers split across frame boundaries', () => {
+    expect(run(['**Bo', 'ld label** rest.'])).toBe('Bold label rest.');
+    expect(run(['*', '*Label**: done.'])).toBe('Label: done.');
+  });
+
+  it('leaves single asterisks alone', () => {
+    expect(run(['Rated 5* by reviewers (see note *).'])).toBe('Rated 5* by reviewers (see note *).');
+  });
+
+  it('flushes a trailing lone asterisk that never became bold', () => {
+    expect(run(['The fix shipped *'])).toBe('The fix shipped *');
+  });
+});

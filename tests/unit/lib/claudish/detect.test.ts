@@ -209,3 +209,28 @@ describe('zero-family latch cap (round-trip fix, 2026-09-01)', () => {
     expect(result.confidence).toBeGreaterThanOrEqual(0.8);
   });
 });
+
+describe('length-conditioned English-side cap', () => {
+  it('long register-free prose claims the English side', async () => {
+    await warmCcld();
+    const long = [
+      'Your instinct to give me both fixes is right. The first one failed, and that matters.',
+      'The damage was extensive. The mask fixes it by neutralizing model names before processing.',
+      'Every registry model still loads, and the new model is promoted after review.',
+      'The probes improved and the trade-offs are documented in the registry for later.',
+    ].join(' ');
+    const result = detectClaudish(long);
+    expect(result.lang).toBe('en');
+    expect(result.confidence).toBeLessThan(0.5);
+  });
+
+  it('short register-free text keeps the leaning cap, not the side flip', async () => {
+    await warmCcld();
+    // Soft-Claudish contract text: short, zero families — may still lean
+    // Claudish (capped at 0.79), never forced to the English side.
+    const result = detectClaudish(
+      'That criticism lands. The report buried its one actionable number under six paragraphs of context.'
+    );
+    expect(result.confidence).toBeLessThanOrEqual(0.79);
+  });
+});

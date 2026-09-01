@@ -18,14 +18,20 @@ export class EmDashSmoother {
   feed(chunk: string): string {
     let text = this.holdback + chunk;
     this.holdback = '';
-    // Hold back a trailing run that could still grow into " — ".
-    const m = /(?: |—| —|— | — )$/.exec(text);
-    if (m && /[— ]/.test(m[0])) {
-      const keep = /(?: ?— ?| )$/.exec(text);
-      if (keep) {
-        this.holdback = keep[0];
-        text = text.slice(0, text.length - keep[0].length);
-      }
+    // An OPEN bold span must be held whole until its close arrives —
+    // paired stripping cannot work frame-locally. Odd count of '**'
+    // means the last one is unclosed.
+    const marks = text.match(/\*\*/g)?.length ?? 0;
+    if (marks % 2 === 1) {
+      const at = text.lastIndexOf('**');
+      this.holdback = text.slice(at);
+      text = text.slice(0, at);
+    }
+    // Then hold a trailing run that could still grow into " — " or "**".
+    const keep = /(?: ?— ?| |\*)$/.exec(text);
+    if (keep) {
+      this.holdback = keep[0] + this.holdback;
+      text = text.slice(0, text.length - keep[0].length);
     }
     return this.transform(text);
   }
@@ -39,6 +45,11 @@ export class EmDashSmoother {
   private transform(text: string, final = false): string {
     if (text.length === 0) return text;
     let out = text.replace(/ — /g, ', ').replace(/ —|— /g, ', ').replace(/—/g, ',');
+    // Markdown bold survives nothing else in plain English: strip PAIRED
+    // double-asterisk emphasis (single asterisks — footnotes, ratings —
+    // pass through). Known accepted edge: a literal ** operator in
+    // preserved code prose would lose its asterisks.
+    out = out.replace(/\*\*([^*]+)\*\*/g, '$1');
     if (final) out = out.replace(/[ ]+$/g, ' ');
     if (!this.started) {
       out = out.replace(/^,? ?/, (s) => (s.startsWith(',') ? '' : s));

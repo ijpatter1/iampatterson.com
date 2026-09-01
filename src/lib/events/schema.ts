@@ -83,7 +83,7 @@ export interface ClaudishTranslateEvent extends BaseEvent {
   /** auto = debounced translate-as-you-type; manual = swap/share-driven. */
   source_mode: 'auto' | 'manual';
   detected_language: 'en' | 'en-x-claudish' | 'none';
-  detector_source: 'ccld' | 'heuristic';
+  detector_source: 'ccld' | 'heuristic' | 'provenance';
   outcome: 'complete' | 'refused' | 'capacity' | 'error';
   input_chars: number;
   input_em_dashes: number;
@@ -103,7 +103,7 @@ export interface ClaudishTranslateEvent extends BaseEvent {
 export interface ClaudishDetectedEvent extends BaseEvent {
   event: 'claudish_detected';
   detected_language: 'en' | 'en-x-claudish';
-  detector_source: 'ccld' | 'heuristic';
+  detector_source: 'ccld' | 'heuristic' | 'provenance';
   input_chars: number;
 }
 

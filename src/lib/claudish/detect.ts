@@ -10,6 +10,7 @@
  */
 import { getCcldModel, warmCcld } from './ccld';
 import { scoreClaudish } from './heuristic';
+import { lookupProvenance } from './provenance';
 import { normalizeForDetection } from './text-stats';
 import type { DetectionResult, LatchState } from './types';
 
@@ -17,6 +18,15 @@ export { warmCcld };
 
 /** Just under the 0.80 latch: zero-family text can lean, never latch. */
 const ZERO_FAMILY_CAP = 0.79;
+/**
+ * Long register-free text claims the English side: across 300+
+ * normalized chars, genuine Claudish always fires at least one family
+ * (100% of the round-trip originals do; soft-register probes are all
+ * shorter), so a paragraph with zero mechanical evidence is English
+ * by the product's own definition of the register.
+ */
+const ZERO_FAMILY_LONG_CHARS = 300;
+const ZERO_FAMILY_LONG_CAP = 0.49;
 
 /** Below this many normalized characters, detection is a guess — hold instead. */
 export const MIN_DETECT_CHARS = 24;
@@ -44,6 +54,17 @@ export function detectClaudish(text: string): DetectionResult {
     // encodes the STEREOTYPE register visitors type expecting detection.
     // The joke needs both, so detection takes the max — whichever side
     // is more convinced wins and is reported as the source.
+    // Provenance beats inference: a recent translation output pasted
+    // back has a KNOWN side — cl2en output is English by construction.
+    // (The r8 contrastive sweep proved the model cannot know this.)
+    const known = lookupProvenance(text);
+    if (known !== null) {
+      return {
+        lang: known,
+        confidence: known === 'en' ? 0.02 : 0.98,
+        source: 'provenance',
+      };
+    }
     const heuristicResult = scoreClaudish(text);
     const heuristic = heuristicResult.score;
     const model = getCcldModel();
@@ -67,7 +88,10 @@ export function detectClaudish(text: string): DetectionResult {
     // reserved for the loud register and the stereotype door; soft,
     // register-free prose claims at most a leaning.
     if (heuristicResult.activeFamilies === 0) {
-      confidence = Math.min(confidence, ZERO_FAMILY_CAP);
+      confidence = Math.min(
+        confidence,
+        normalized.length >= ZERO_FAMILY_LONG_CHARS ? ZERO_FAMILY_LONG_CAP : ZERO_FAMILY_CAP
+      );
     }
     return {
       lang: confidence >= 0.5 ? 'en-x-claudish' : 'en',
