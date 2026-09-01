@@ -4,7 +4,7 @@
  * Claudish translator — source panel.
  *
  * Borderless textarea in the Translate idiom; native maxLength enforces
- * the 1,200 cap (pastes truncate at the browser level, matching the
+ * the 3,000 cap (pastes truncate at the browser level, matching the
  * counter and the proxy's 413). Clear button appears only with content.
  */
 import { INPUT_CAP } from '@/lib/claudish/limits';

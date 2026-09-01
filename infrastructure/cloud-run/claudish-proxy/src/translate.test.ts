@@ -11,7 +11,7 @@ import { EventEmitter } from 'node:events';
 
 import { BudgetTracker } from './budget';
 import { TranslationCache } from './cache';
-import { loadConfig } from './config';
+import { INPUT_CAP, loadConfig } from './config';
 import { CircuitBreaker } from './lanes';
 import { setLogSink } from './log';
 import { RateLimiter } from './ratelimit';
@@ -238,10 +238,10 @@ describe('pre-stream rejections', () => {
       await handler(ctx.req, ctx.res);
       expect(ctx.status()).toBe(400);
     }
-    const big = stubReqRes({ text: 'x'.repeat(1201), direction: 'en2cl' });
+    const big = stubReqRes({ text: 'x'.repeat(INPUT_CAP + 1), direction: 'en2cl' });
     await handler(big.req, big.res);
     expect(big.status()).toBe(413);
-    expect(big.json()).toMatchObject({ max: 1200 });
+    expect(big.json()).toMatchObject({ max: INPUT_CAP });
   });
 
   it('429s past the per-IP limit with Retry-After', async () => {

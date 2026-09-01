@@ -2,8 +2,8 @@
  * Claudish translator — character counter.
  *
  * Google Translate's counter format with the joke's own tail:
- * "412 / 1,200 · 9 em dashes". Shows the real enforced cap (user
- * decision — displaying 5,000 while truncating at 1,200 is the kind of
+ * "412 / 3,000 · 9 em dashes". Shows the real enforced cap (user
+ * decision — displaying 5,000 while truncating at 3,000 is the kind of
  * detail that gets screenshotted). The em-dash tail only appears once
  * there is at least one.
  */

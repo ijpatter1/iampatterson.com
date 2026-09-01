@@ -47,11 +47,18 @@ const CONTRASTIVE_PATTERNS = [
   /\b(?:isn't|not|doesn't|wasn't|aren't)\b[^.;!?—]{0,60}[;—]\s*(?:it|they|that)\b/i,
 ];
 
+// A preamble is the TRANSLATOR speaking about the act of translating.
+// A first-person speaker opening their own text ("I'll start by laying
+// out what unfolded: ...") is the translation — speaker preservation and
+// the opener-move device both produce it — so the I'll/Let-me forms only
+// count when the sentence is about translating, rendering, or the languages.
+const TRANSLATOR_VOICE = /^(?:i'?ll|i will|let me)\s+(?:\w+\s+){0,3}?(?:translat|render|convert|rewrit|claudish|english)/i;
 const PREAMBLE_PATTERNS = [
   /^here(?:'s| is)\b/i,
   /^sure\b/i,
   /^translation:/i,
-  /^i'?ll\b/i,
+  /^(?:in|into) (?:claudish|english)\b/i,
+  TRANSLATOR_VOICE,
   /^certainly\b/i,
   /^of course\b/i,
 ];

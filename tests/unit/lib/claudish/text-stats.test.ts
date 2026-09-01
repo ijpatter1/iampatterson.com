@@ -1,7 +1,7 @@
 /**
  * Claudish translator — text statistics (feat/claudish M1).
  *
- * countChars feeds the "412 / 1,200" counter and must use the same unit
+ * countChars feeds the "412 / 3,000" counter and must use the same unit
  * as textarea maxLength and the server cap (UTF-16 code units), or the
  * three disagree on emoji-laden input. countEmDashes feeds the counter's
  * "· 9 em dashes" tail and the detection heuristic. normalizeForDetection

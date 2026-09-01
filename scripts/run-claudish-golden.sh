@@ -9,7 +9,7 @@
 # anthropic-api lane authenticates via WIF from the Cloud Run metadata
 # server and is NOT exercisable locally — it's covered by the deploy
 # smoke test instead.
-# Usage: bash scripts/run-claudish-golden.sh
+# Usage: bash scripts/run-claudish-golden.sh [jest args, e.g. -t en2cl-16]
 set -euo pipefail
 cd "$(dirname "$0")/../infrastructure/cloud-run/claudish-proxy"
 [ -d node_modules ] || npm install
@@ -32,4 +32,4 @@ GOLDEN_TEST=1 \
   ANTHROPIC_SERVICE_ACCOUNT_ID="${ANTHROPIC_SERVICE_ACCOUNT_ID:-svac_014RW8M13t3K3QXY6pL7mrLo}" \
   ANTHROPIC_WORKSPACE_ID="${ANTHROPIC_WORKSPACE_ID:-wrkspc_01K3PnFVDjmiNyuH6DQUJwKo}" \
   WIF_IDENTITY_TOKEN_FILE="${WIF_TOKEN_FILE}" \
-  npx jest src/golden.test.ts --verbose
+  npx jest src/golden.test.ts --verbose "$@"

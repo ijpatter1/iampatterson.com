@@ -12,11 +12,8 @@
  *    to a bare link instead of emitting an over-budget URL;
  *  - version discipline: unknown versions and garbage decode to null.
  */
-import {
-  decodeShare,
-  encodeShare,
-} from '@/lib/claudish/share-codec';
-import { SHARE_URL_MAX } from '@/lib/claudish/limits';
+import { MAX_TARGET_CHARS, decodeShare, encodeShare } from '@/lib/claudish/share-codec';
+import { INPUT_CAP, SHARE_URL_MAX } from '@/lib/claudish/limits';
 
 const BASE = 'https://iampatterson.com/claudish';
 
@@ -138,12 +135,12 @@ describe('encodeShare / decodeShare', () => {
     expect(decodeShare('A'.repeat(5000))).toBeNull();
     // Decompressed source past the input cap: refused (would bypass maxLength).
     const overCap = lz.compressToEncodedURIComponent(
-      JSON.stringify({ v: 1, d: 'en2cl', s: 'x'.repeat(1300), t: 'y' })
+      JSON.stringify({ v: 1, d: 'en2cl', s: 'x'.repeat(INPUT_CAP + 100), t: 'y' })
     );
     expect(decodeShare(overCap)).toBeNull();
     // Absurd target size: refused.
     const hugeTarget = lz.compressToEncodedURIComponent(
-      JSON.stringify({ v: 1, d: 'en2cl', s: 'ok', t: 'y'.repeat(9000) })
+      JSON.stringify({ v: 1, d: 'en2cl', s: 'ok', t: 'y'.repeat(MAX_TARGET_CHARS + 1) })
     );
     expect(decodeShare(hugeTarget)).toBeNull();
   });
@@ -154,5 +151,28 @@ describe('encodeShare / decodeShare', () => {
       decodeShare(lz.compressToEncodedURIComponent(JSON.stringify(obj)));
     expect(bad({ v: 1, d: 'fr2en', s: 'a', t: 'b' })).toBeNull();
     expect(bad({ v: 1, d: 'en2cl', s: 5, t: 'b' })).toBeNull();
+  });
+});
+
+describe('3,000-char cap (Stage 1 bundle, 2026-09-01)', () => {
+  it('round-trips a cap-length source and a fully expanded target', () => {
+    const source = 'A plain sentence about quarterly planning. '.repeat(80).slice(0, INPUT_CAP);
+    const target = 'This is not merely a plan — it stands as a testament to rigor. '.repeat(160).slice(0, 10_000);
+    expect(source.length).toBe(INPUT_CAP);
+    const { url, truncated } = encodeShare(
+      { direction: 'en2cl', source, target },
+      { baseUrl: 'https://x.test/claudish' }
+    );
+    const param = new URL(url).searchParams.get('t');
+    // A cap-length payload degrades through the truncation tiers (never
+    // throws); whatever tier it lands on, a carried param must decode.
+    expect(typeof truncated).toBe('boolean');
+    if (param !== null) {
+      const decoded = decodeShare(param);
+      expect(decoded).not.toBeNull();
+      expect(decoded?.source.length).toBeGreaterThan(0);
+    } else {
+      expect(truncated).toBe(true); // bare-link tier
+    }
   });
 });

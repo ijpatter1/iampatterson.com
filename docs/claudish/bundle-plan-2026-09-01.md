@@ -1,7 +1,7 @@
 # Claudish bundle plan — 3,000-character cap + savings
 
 **Created:** 2026-09-01, feat/claudish
-**Status:** proposed (Ian agreed on 3,000; savings held from the cost analysis of the same day)
+**Status:** Stage 1 shipped 2026-09-01 as rev-00016 (Decision #30 in the session handoff); Stages 2–3 not started
 **Scope:** one branch-sized unit of work in three gated stages. Nothing here touches the loop mechanics, the judge, or the tuned prompt content except where a stage says so explicitly.
 
 ## What the bundle contains

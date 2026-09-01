@@ -21,7 +21,7 @@ import {
 import { INPUT_CAP, SHARE_URL_MAX } from './limits';
 
 /** Decompressed-target ceiling: generously above any real translation. */
-const MAX_TARGET_CHARS = 8192;
+export const MAX_TARGET_CHARS = 12_000; // a 3,000-char input fully expanded (3.5x) still encodes
 /** Param ceiling: refuse hostile input before it reaches the decompressor. */
 const MAX_PARAM_CHARS = 4096;
 

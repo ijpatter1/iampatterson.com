@@ -70,6 +70,6 @@ describe('SourcePanel', () => {
       />
     );
     expect(screen.queryByRole('button', { name: /clear source text/i })).not.toBeInTheDocument();
-    expect(screen.getByTestId('claudish-char-counter')).toHaveTextContent('0 / 1,200');
+    expect(screen.getByTestId('claudish-char-counter')).toHaveTextContent('0 / 3,000');
   });
 });

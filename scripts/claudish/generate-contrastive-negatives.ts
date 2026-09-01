@@ -83,7 +83,7 @@ async function main(): Promise<void> {
   console.log(`pool ${pool.length} train positives, sampling ${sample.length}`);
 
   const kept: string[] = [];
-  let dropped = { failed: 0, echo: 0, register: 0, short: 0 };
+  const dropped = { failed: 0, echo: 0, register: 0, short: 0 };
   let done = 0;
   let cost = 0;
 

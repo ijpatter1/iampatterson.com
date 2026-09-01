@@ -30,15 +30,36 @@ export const PRICES = {
   cacheReadPerMTok: 0.1,
 } as const;
 
-/** Worst-case per-request reservation: max input + max output, cache-miss. */
-export const RESERVATION_USD = 0.006;
+/**
+ * Gemini 2.5 Flash on Vertex (us-central1), USD per million tokens —
+ * the cl2en loop lane. Implicit cache reads are billed at a discount;
+ * there is no explicit write charge on the implicit path.
+ */
+export const GEMINI_PRICES = {
+  inputPerMTok: 0.3,
+  outputPerMTok: 2.5,
+  cacheWritePerMTok: 0.3,
+  cacheReadPerMTok: 0.075,
+} as const;
 
-/** Server-side input cap (chars); the client shows and enforces the same number. */
-export const INPUT_CAP = 1200;
+export type PriceTable = { readonly [K in keyof typeof PRICES]: number };
+
+/**
+ * Worst-case per-request reservation, cache-miss, en2cl at the cap:
+ * (~2.2k prefix + ~0.8k input) x $1/MTok + ~2.8k output x $5/MTok ≈
+ * $0.017. Pinned >= the derived figure in limits-contract.test.ts.
+ */
+export const RESERVATION_USD = 0.018;
+
+/**
+ * Server-side input cap (chars); the client shows and enforces the same
+ * number. 3,000 = LinkedIn's post limit (Ian, 2026-09-01).
+ */
+export const INPUT_CAP = 3000;
 
 export const MAX_TOKENS: Record<Direction, number> = {
-  en2cl: 1024, // Claudish expands
-  cl2en: 512, // English compresses
+  en2cl: 3072, // Claudish expands up to 3.5x: a cap-length input needs ~2.8k
+  cl2en: 1536, // English compresses, but dense input can run ~1:1
 };
 
 /** First-token deadline before the ladder advances to the next lane. */

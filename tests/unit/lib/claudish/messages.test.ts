@@ -63,8 +63,8 @@ describe('claudish verbatim strings', () => {
 });
 
 describe('claudish limits', () => {
-  it('caps input at 1,200 characters (user decision: counter shows the real cap)', () => {
-    expect(INPUT_CAP).toBe(1200);
+  it('caps input at 3,000 characters (LinkedIn post limit; user decision 2026-09-01)', () => {
+    expect(INPUT_CAP).toBe(3000);
   });
 
   it('debounces translation at 600ms per the spec', () => {

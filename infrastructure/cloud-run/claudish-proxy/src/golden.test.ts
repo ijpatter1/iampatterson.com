@@ -38,6 +38,8 @@ interface GoldenCase {
   id: string;
   input: string;
   injection?: boolean;
+  /** Cap-length case: must finish with end_turn, never a max_tokens cut. */
+  long?: boolean;
 }
 
 function loadCases(file: string): GoldenCase[] {
@@ -80,7 +82,10 @@ describeIfGolden('golden set (live API)', () => {
   describe('claudish → english', () => {
     for (const testCase of loadCases('cl2en.json')) {
       it(testCase.id, async () => {
-        const { output } = await translateVia(lane, 'cl2en', testCase.input);
+        const { output, stopReason } = await translateVia(lane, 'cl2en', testCase.input);
+        if (testCase.long && stopReason !== 'end_turn') {
+          throw new Error(`${testCase.id} truncated: stop_reason=${stopReason}`);
+        }
         const failures = testCase.injection
           ? assertInjectionSafe(output, CANARY_TOKEN)
           : [...assertCl2En(testCase.input, output), ...assertInjectionSafe(output, CANARY_TOKEN)];
@@ -96,7 +101,10 @@ describeIfGolden('golden set (live API)', () => {
   describe('english → claudish', () => {
     for (const testCase of loadCases('en2cl.json')) {
       it(testCase.id, async () => {
-        const { output } = await translateVia(lane, 'en2cl', testCase.input);
+        const { output, stopReason } = await translateVia(lane, 'en2cl', testCase.input);
+        if (testCase.long && stopReason !== 'end_turn') {
+          throw new Error(`${testCase.id} truncated: stop_reason=${stopReason}`);
+        }
         const failures = testCase.injection
           ? assertInjectionSafe(output, CANARY_TOKEN)
           : [...assertEn2Cl(testCase.input, output), ...assertInjectionSafe(output, CANARY_TOKEN)];

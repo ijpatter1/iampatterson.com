@@ -19,7 +19,7 @@ import { cacheKey, cacheableTranslation, normalizeInput } from './cache';
 import { loopBudgetFor, runCl2enLoop } from './cl2en-loop';
 import { streamGemini } from './gemini';
 import { EmDashSmoother } from './smooth';
-import { FIRST_TOKEN_DEADLINE_MS, INPUT_CAP } from './config';
+import { FIRST_TOKEN_DEADLINE_MS, INPUT_CAP, GEMINI_PRICES } from './config';
 import { hashIp, logEvent, redactError } from './log';
 import { clientIp } from './ratelimit';
 import { SseStream } from './sse';
@@ -27,7 +27,7 @@ import { PROMPT_VERSION, buildSystem } from './prompts';
 
 import type { Request, Response } from 'express';
 import type { BudgetTracker, Reservation, Usage } from './budget';
-import type { Config, Direction } from './config';
+import type { Config, Direction, PriceTable } from './config';
 import type { CircuitBreaker, LaneClient, UpstreamEvent } from './lanes';
 import type { RateLimiter } from './ratelimit';
 import type { TranslationCache } from './cache';
@@ -212,10 +212,10 @@ export function createTranslateHandler(deps: TranslateDeps) {
     // cl2en's no-em-dash contract enforced mechanically (see smooth.ts).
     const smoother = direction === 'cl2en' ? new EmDashSmoother() : null;
     let settled = false;
-    const settle = (usage?: Usage) => {
+    const settle = (usage?: Usage, prices?: PriceTable) => {
       if (settled) return;
       settled = true;
-      if (usage) reservation.reconcile(usage);
+      if (usage) reservation.reconcile(usage, prices);
       else reservation.release(estimateUsage(text.length, streamedChars));
     };
 
@@ -287,8 +287,9 @@ export function createTranslateHandler(deps: TranslateDeps) {
           // the 9s deadline was starving it; plateau still bounds cost).
           loopBudgetFor(normalized.length)
         );
-        // Gemini usage into the (Haiku-priced) budget: a deliberate
-        // overestimate — 2.5-flash is ~3x cheaper, so the cap errs safe.
+        // Gemini usage priced at Gemini rates (Stage 1 bundle): the
+        // earlier Haiku-rate overestimate cost ~1.5x real capacity inside
+        // the same daily cap.
         const loopUsage: Usage = {
           inputTokens: Math.max(0, result.usage.inputTokens - result.usage.cachedTokens),
           outputTokens: result.usage.outputTokens,
@@ -298,7 +299,7 @@ export function createTranslateHandler(deps: TranslateDeps) {
         if (result.refused) {
           sse.frame({ type: 'refusal' });
           sse.end();
-          settle(loopUsage);
+          settle(loopUsage, GEMINI_PRICES);
           logEvent('INFO', 'translate_refused', {
             requestId,
             direction,
@@ -316,7 +317,7 @@ export function createTranslateHandler(deps: TranslateDeps) {
           cached: false,
         });
         sse.end();
-        settle(loopUsage);
+        settle(loopUsage, GEMINI_PRICES);
         // Quality-gated caching, extended (Ian's LinkedIn case): never
         // pin a serving that is convicted AND still carries actionable
         // evidence — a fresh attempt could do better, and the cache

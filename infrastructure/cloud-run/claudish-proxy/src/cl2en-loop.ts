@@ -110,7 +110,10 @@ export interface LoopOptions {
 export function loopBudgetFor(inputChars: number): Required<LoopOptions> {
   if (inputChars <= 400) return { maxAttempts: 3, deadlineMs: 9000 };
   if (inputChars <= 800) return { maxAttempts: 4, deadlineMs: 16000 };
-  return { maxAttempts: 5, deadlineMs: 25000 };
+  if (inputChars <= 2000) return { maxAttempts: 5, deadlineMs: 25000 };
+  // Post-length inputs: each attempt runs 6-10s, so 25s afforded only
+  // two; the concealed UX can show "Translating..." for up to ~40s here.
+  return { maxAttempts: 5, deadlineMs: 40000 };
 }
 
 export async function runCl2enLoop(

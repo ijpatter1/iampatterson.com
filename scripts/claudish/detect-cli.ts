@@ -3,7 +3,7 @@
  * Usage: npx ts-node -P tsconfig.scripts.json -T scripts/claudish/detect-cli.ts "some text"
  *        echo "text" | npx ts-node -P tsconfig.scripts.json -T scripts/claudish/detect-cli.ts
  */
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 
@@ -42,7 +42,6 @@ const tierOf = (p: number) =>
 const h = scoreClaudish(text);
 
 if (compareAll) {
-  const { readdirSync, existsSync } = require('node:fs') as typeof import('node:fs');
   const registry = path.join(homedir(), '.claudish-corpus', 'models');
   console.log(`heuristic = ${h.score.toFixed(3)} (${h.activeFamilies} families: ${h.signals.join(', ') || 'none'})`);
   console.log('model                        ccld    product  UI label (product = max(ccld, heuristic))');

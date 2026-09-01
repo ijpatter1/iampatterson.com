@@ -31,6 +31,20 @@ describe('primitives', () => {
     expect(startsWithPreamble('The fix works.')).toBe(false);
   });
 
+  it('preamble means the TRANSLATOR speaking, never the speaker opening in first person', () => {
+    // Translator-voice chatter about the act of translating is a preamble.
+    expect(startsWithPreamble("I'll translate this into Claudish:")).toBe(true);
+    expect(startsWithPreamble('Let me render this in English:')).toBe(true);
+    expect(startsWithPreamble('In Claudish:')).toBe(true);
+    // A first-person speaker opening their own text is the translation
+    // (speaker preservation + the opener-move device both produce this).
+    expect(
+      startsWithPreamble("I'll start by laying out what unfolded: the last quarter brought a rebuild.")
+    ).toBe(false);
+    expect(startsWithPreamble("I'll be at the standup — and I'll bring the numbers.")).toBe(false);
+    expect(startsWithPreamble('Let me be direct: the deploy failed.')).toBe(false);
+  });
+
   it('tracks identifiers: camelCase, dotted, CONSTANTS, calls', () => {
     const input = 'Call useEventStream and check MAX_TOKENS in config.lanes via retry().';
     expect(identifiersPreserved(input, 'useEventStream MAX_TOKENS config.lanes retry()')).toEqual(

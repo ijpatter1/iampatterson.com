@@ -58,11 +58,13 @@ describe('BudgetTracker', () => {
 
   it('fires threshold callbacks once each at 50/80/100', () => {
     const fired: number[] = [];
-    const tracker = new BudgetTracker(0.02, false, (pct) => fired.push(pct), DAY1);
+    // Budget sized to the 3,000-char reservation ($0.018): 0.036 + 0.018
+    // fits under 0.06, so the second reserve succeeds.
+    const tracker = new BudgetTracker(0.06, false, (pct) => fired.push(pct), DAY1);
     const r1 = tracker.reserve(DAY1)!;
-    r1.reconcile({ inputTokens: 0, outputTokens: 2400, cacheReadTokens: 0, cacheWriteTokens: 0 }); // $0.012 = 60%
-    const r2 = tracker.reserve(DAY1)!; // 0.012 + 0.006 fits under 0.02
-    r2.reconcile({ inputTokens: 0, outputTokens: 1800, cacheReadTokens: 0, cacheWriteTokens: 0 }); // +$0.009 => 105%
+    r1.reconcile({ inputTokens: 0, outputTokens: 7200, cacheReadTokens: 0, cacheWriteTokens: 0 }); // $0.036 = 60%
+    const r2 = tracker.reserve(DAY1)!;
+    r2.reconcile({ inputTokens: 0, outputTokens: 5400, cacheReadTokens: 0, cacheWriteTokens: 0 }); // +$0.027 => 105%
     expect(fired).toEqual([50, 80, 100]);
     expect(tracker.isCapped(DAY1)).toBe(true);
   });
@@ -73,5 +75,22 @@ describe('BudgetTracker', () => {
     r.release();
     r.release(); // idempotent
     expect(tracker.usedPct(DAY1)).toBe(0);
+  });
+});
+
+describe('per-lane pricing (Stage 1 bundle, 2026-09-01)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { usageCostUsd } = require('./budget');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { GEMINI_PRICES, PRICES } = require('./config');
+  const usage = { inputTokens: 1_000_000, outputTokens: 100_000, cacheReadTokens: 0, cacheWriteTokens: 0 };
+
+  it('prices Gemini usage at Gemini rates, well under the Haiku default', () => {
+    const haiku = usageCostUsd(usage);
+    const gemini = usageCostUsd(usage, GEMINI_PRICES);
+    expect(haiku).toBeCloseTo(1.0 + 0.5, 6);
+    expect(gemini).toBeCloseTo(0.3 + 0.25, 6);
+    expect(gemini).toBeLessThan(haiku / 2);
+    expect(PRICES.inputPerMTok).toBe(1.0);
   });
 });

@@ -13,6 +13,8 @@
  */
 import { PRICES, RESERVATION_USD } from './config';
 
+import type { PriceTable } from './config';
+
 export interface Usage {
   inputTokens: number;
   outputTokens: number;
@@ -20,19 +22,23 @@ export interface Usage {
   cacheWriteTokens: number;
 }
 
-export function usageCostUsd(usage: Usage): number {
+export function usageCostUsd(usage: Usage, prices: PriceTable = PRICES): number {
   return (
-    (usage.inputTokens * PRICES.inputPerMTok +
-      usage.outputTokens * PRICES.outputPerMTok +
-      usage.cacheReadTokens * PRICES.cacheReadPerMTok +
-      usage.cacheWriteTokens * PRICES.cacheWritePerMTok) /
+    (usage.inputTokens * prices.inputPerMTok +
+      usage.outputTokens * prices.outputPerMTok +
+      usage.cacheReadTokens * prices.cacheReadPerMTok +
+      usage.cacheWriteTokens * prices.cacheWritePerMTok) /
     1_000_000
   );
 }
 
 export interface Reservation {
-  /** Replace the reservation with the actual cost (call exactly once). */
-  reconcile(usage: Usage): void;
+  /**
+   * Replace the reservation with the actual cost (call exactly once).
+   * `prices` selects the lane's table — the Gemini loop is ~3-4x cheaper
+   * per token than the Haiku default and must not be over-counted.
+   */
+  reconcile(usage: Usage, prices?: PriceTable): void;
   /** Release with a partial estimate (abort path). */
   release(partial?: Usage): void;
 }
@@ -106,7 +112,7 @@ export class BudgetTracker {
       this.checkThresholds();
     };
     return {
-      reconcile: (usage: Usage) => settle(usageCostUsd(usage)),
+      reconcile: (usage: Usage, prices?: PriceTable) => settle(usageCostUsd(usage, prices)),
       release: (partial?: Usage) => settle(partial ? usageCostUsd(partial) : 0),
     };
   }

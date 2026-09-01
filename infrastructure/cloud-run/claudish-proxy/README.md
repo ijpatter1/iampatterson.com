@@ -8,7 +8,7 @@ everything here serves.
 
 ## Shape
 
-- `POST /translate` `{ text ≤1200 chars, direction: en2cl|cl2en }` →
+- `POST /translate` `{ text ≤3000 chars, direction: en2cl|cl2en }` →
   `text/event-stream` of `data: {"type": ...}` frames:
   `meta`, `token`*, then exactly one of `done | refusal | capacity | error`.
 - Pre-stream failures are HTTP: 400/403/405/413/429 (+Retry-After)/503.
