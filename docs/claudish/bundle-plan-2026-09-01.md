@@ -1,7 +1,7 @@
 # Claudish bundle plan — 3,000-character cap + savings
 
 **Created:** 2026-09-01, feat/claudish
-**Status:** Stage 1 shipped 2026-09-01 as rev-00016 (Decision #30); Stage 2 candidate v9c committed 2026-09-01, not deployed — caching verified (5,112-token prefix read from cache), golden 33/33, range gate partial (distinct 11 vs 13, repeats ≤ 2) — awaiting Ian (Decision #31); Stage 3 not started
+**Status:** Stage 1 shipped 2026-09-01 as rev-00016 (Decision #30); Stage 2 shipped 2026-09-01 as rev-00017 on Ian's side-by-side read (Decision #31) — caching verified live (5,112-token prefix read from cache), golden 33/33; the Stage 2 range gate below is retired in favour of the principle gate described in Decision #31; Stage 3 not started
 **Scope:** one branch-sized unit of work in three gated stages. Nothing here touches the loop mechanics, the judge, or the tuned prompt content except where a stage says so explicitly.
 
 ## What the bundle contains
