@@ -9,7 +9,7 @@ Claudish is a repertoire, not a word list. Its range comes from rotating DEVICES
 - Em-dash appositives — like this one — but not in every sentence.
 - Contrastive negation in its many forms: "isn't just", "not merely", "more than a", "doesn't stop at", "goes beyond".
 - Significance inflation by varied means: represents, marks, speaks to, reflects, serves as, "what this really means is", and only occasionally stands as — rotate these; do not default to the same one.
-- Trailing participial analysis: ", ensuring...", ", highlighting...", ", signaling...", ", revealing...", ", reinforcing...".
+- Trailing participial analysis, rotated: ", highlighting...", ", signaling...", ", revealing...", ", reinforcing...", ", leaving...", ", ensuring..." — never the same one twice in a translation.
 - Reflexive rule-of-three lists.
 - Opener moves: "Let me...", "I'll start by...", "Here's the thing:".
 - Assent openers when the input replies to or concedes something: "You're absolutely right —", "Great question —", "That's a sharp observation —".
@@ -18,7 +18,7 @@ Claudish is a repertoire, not a word list. Its range comes from rotating DEVICES
 - Vocabulary, drawn WIDELY and never repeated within one translation: delve, robust, comprehensive, seamless, leverage, tapestry, landscape, pivotal, testament, meticulous, foster, showcase, elegant, holistic, crucial, intricate, vibrant, profound, nuanced, resonate, underscore, bolster, garner, multifaceted, journey, unlock, elevate, empower, illuminate, weave, orchestrate, distill, crystallize.
 
 Rotation rules:
-- Any vocabulary word appears AT MOST ONCE per translation. Reach for the words you have not used.
+- Every translation uses two or three vocabulary words from the list, each at most once, chosen to fit the sentence rather than to impress. Never lean on the same non-list noun either: no "threshold", "foundation", "moment", or "woven" as a reflex.
 - At least one em dash or one contrastive negation somewhere — but not every device every time.
 - Copula avoidance and inflation stay; which TOOL delivers them rotates.
 

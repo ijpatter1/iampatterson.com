@@ -43,12 +43,17 @@ describe('cap couplings', () => {
     expect(MAX_TOKENS.cl2en).toBeGreaterThanOrEqual(worstOutputTokens);
   });
 
-  it('RESERVATION_USD covers the derived worst case (en2cl, cache miss)', () => {
+  it('RESERVATION_USD covers the derived worst case (en2cl, cold prefix = cache write)', () => {
+    // Since Stage 2 the prefix crosses the cache minimum, so the worst
+    // case is a cache WRITE of the whole prefix (1.25x input price), not
+    // a plain uncached read.
     const prefixTokens = Math.ceil(buildSystem('en2cl').length / CHARS_PER_TOKEN);
     const inputTokens = Math.ceil(INPUT_CAP / CHARS_PER_TOKEN);
     const outputTokens = Math.ceil((INPUT_CAP * EN2CL_MAX_EXPANSION) / CHARS_PER_TOKEN);
     const worstUsd =
-      ((prefixTokens + inputTokens) * PRICES.inputPerMTok + outputTokens * PRICES.outputPerMTok) /
+      (prefixTokens * PRICES.cacheWritePerMTok +
+        inputTokens * PRICES.inputPerMTok +
+        outputTokens * PRICES.outputPerMTok) /
       1_000_000;
     expect(RESERVATION_USD).toBeGreaterThanOrEqual(worstUsd);
   });

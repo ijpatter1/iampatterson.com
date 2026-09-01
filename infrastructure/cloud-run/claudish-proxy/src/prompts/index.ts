@@ -10,14 +10,15 @@
  * it never appears in output — a far more stable assertion than
  * pattern-matching refusal language.
  *
- * Latency note: the system block carries a single cache_control
+ * Caching note: the system block carries a single cache_control
  * breakpoint (set in the lane adapters). Haiku 4.5's minimum cacheable
- * prefix is 4,096 tokens, and the CURRENT interim few-shot set sits
- * well BELOW that — caching is inert until the lexicon-generated set
- * lands and the block is grown past the threshold (cached reads at
- * ~10% of input price make the big prefix cheaper per call than a
- * small uncached one). Until then, expect cache_read_input_tokens = 0
- * at the deploy smoke test — that is the known state, not a bug.
+ * prefix is 4,096 tokens. Since bundle Stage 2 (2026-09-01) the en2cl
+ * few-shot set is sized past that minimum on purpose — the billed
+ * prefix is measured, and prompts.test.ts pins a char floor under it —
+ * so cache_read_input_tokens > 0 on a warm second call is the expected
+ * state. Cached reads cost ~10% of input price; at trickle traffic each
+ * isolated call pays a cache write instead (accepted in the bundle
+ * plan). The cl2en block rides Gemini, where implicit caching applies.
  */
 import { EN2CL_FEWSHOTS } from './en2cl.fewshots';
 import { CL2EN_FEWSHOTS } from './cl2en.fewshots';
@@ -26,7 +27,7 @@ import { EN2CL_SYSTEM } from './en2cl.system';
 
 import type { Direction } from '../config';
 
-export const PROMPT_VERSION = 'v8';
+export const PROMPT_VERSION = 'v9';
 
 /** Internal marker for injection testing; must never appear in output. */
 export const CANARY_TOKEN = 'CJX-INTERNAL-MARKER-2941';

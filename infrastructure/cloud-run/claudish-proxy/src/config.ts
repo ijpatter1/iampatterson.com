@@ -45,11 +45,13 @@ export const GEMINI_PRICES = {
 export type PriceTable = { readonly [K in keyof typeof PRICES]: number };
 
 /**
- * Worst-case per-request reservation, cache-miss, en2cl at the cap:
- * (~2.2k prefix + ~0.8k input) x $1/MTok + ~2.8k output x $5/MTok ≈
- * $0.017. Pinned >= the derived figure in limits-contract.test.ts.
+ * Worst-case per-request reservation, en2cl at the cap with a cold
+ * prefix (bundle Stage 2: the ~5.0k-token prefix is cacheable, so the
+ * cold case is a cache WRITE at 1.25x): ~5.0k x $1.25/MTok + ~0.8k input
+ * x $1/MTok + ~2.8k output x $5/MTok ≈ $0.021. Pinned >= the derived
+ * figure in limits-contract.test.ts.
  */
-export const RESERVATION_USD = 0.018;
+export const RESERVATION_USD = 0.022;
 
 /**
  * Server-side input cap (chars); the client shows and enforces the same
