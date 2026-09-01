@@ -9,7 +9,7 @@
  * Weights load via dynamic import (warmCcld) so the ~36KB payload stays
  * out of the base page chunk; until it lands, the heuristic answers.
  */
-import { CCLD_CONFIG, configHash, extractFeatures } from './ccld-featurizer';
+import { CCLD_CONFIG, CCLD_V2_CONFIG, configHash, extractFeatures } from './ccld-featurizer';
 import { forwardLogits, probabilityClaudish } from './ccld-inference';
 
 import type { CcldTensors } from './ccld-inference';
@@ -51,9 +51,18 @@ export function loadCcldModel(weights: unknown): CcldModel | null {
   if (typeof weights !== 'object' || weights === null) return null;
   const file = weights as WeightsFile;
   if (file.version !== 1) return null;
-  // The parity contract: weights trained against a different featurizer
-  // are refused outright — the heuristic is the safe answer path.
-  if (file.featurizer?.configHash !== configHash()) return null;
+  // The parity contract: weights trained against a featurizer we don't
+  // ship are refused outright — the heuristic is the safe answer path.
+  // The embedded hash selects which BLESSED config to featurize with;
+  // embedded config fields are informational and never trusted.
+  const embeddedHash = file.featurizer?.configHash;
+  const config =
+    embeddedHash === configHash(CCLD_CONFIG)
+      ? CCLD_CONFIG
+      : embeddedHash === configHash(CCLD_V2_CONFIG)
+        ? CCLD_V2_CONFIG
+        : null;
+  if (!config) return null;
   const scales = file.quant?.scales;
   const tensors = file.tensors;
   if (!scales || !tensors) return null;
@@ -65,7 +74,7 @@ export function loadCcldModel(weights: unknown): CcldModel | null {
       for (let i = 0; i < quantized.length; i++) out[i] = quantized[i] * scale;
       return out;
     });
-    const embeddingCount = CCLD_CONFIG.buckets.length;
+    const embeddingCount = config.buckets.length;
     const modelTensors: CcldTensors = {
       embeddings: dequantized.slice(0, embeddingCount),
       w1: dequantized[embeddingCount],
@@ -78,7 +87,7 @@ export function loadCcldModel(weights: unknown): CcldModel | null {
       predict(text: string): number {
         try {
           return probabilityClaudish(
-            forwardLogits(extractFeatures(text), modelTensors),
+            forwardLogits(extractFeatures(text, config), modelTensors),
             temperature
           );
         } catch {

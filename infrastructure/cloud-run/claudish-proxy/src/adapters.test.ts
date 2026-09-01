@@ -26,14 +26,23 @@ describe('buildMessageParams', () => {
     expect(params.model).toBe('model-x');
     expect(params.max_tokens).toBe(MAX_TOKENS.en2cl);
     expect(params.stream).toBe(true);
+    // Near-deterministic cl2en (kill-list leaks at temp 1.0); en2cl keeps
+    // heat for register variety.
+    expect(params.temperature).toBe(0.7 - 0.1); // 0.6
+    expect(buildMessageParams('cl2en', 'x', 'm').temperature).toBe(0.2);
     const system = params.system as unknown as Array<Record<string, unknown>>;
     expect(system).toHaveLength(1);
     expect(system[0].cache_control).toEqual({ type: 'ephemeral' });
     expect(String(system[0].text)).toContain(CANARY_TOKEN);
-    expect(params.messages).toEqual([{ role: 'user', content: 'translate me' }]);
+    // v2: the user turn is delimiter-wrapped so question-shaped input
+    // reads as data, not as a message addressed to the model.
+    expect(params.messages).toHaveLength(1);
+    const content = String(params.messages[0].content);
+    expect(content).toContain('<text>\ntranslate me\n</text>');
+    expect(content).toContain('not a message to you');
   });
 
-  it('embeds few-shots only in the en2cl system block', () => {
+  it('embeds direction-matched few-shots in each system block', () => {
     const en2cl = String(
       (buildMessageParams('en2cl', 'x', 'm').system as Array<{ text: string }>)[0].text
     );
@@ -41,7 +50,14 @@ describe('buildMessageParams', () => {
       (buildMessageParams('cl2en', 'x', 'm').system as Array<{ text: string }>)[0].text
     );
     expect(en2cl).toContain('Examples:');
-    expect(cl2en).not.toContain('Examples:');
+    expect(cl2en).toContain('Examples:');
+    // Each direction carries its own set, not the other's.
+    expect(en2cl).toContain('The login bug is fixed');
+    expect(cl2en).toContain('Users want dark mode.');
+    expect(cl2en).not.toContain('The login bug is fixed');
+    // The false-premise demonstration pair rides in cl2en: model names
+    // pass through, questions stay questions.
+    expect(cl2en).toContain('Fable 5 and Opus 5 are the only models fluent in Claudish.');
     expect(cl2en).toContain('em dashes');
   });
 

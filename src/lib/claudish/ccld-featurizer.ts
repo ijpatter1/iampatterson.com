@@ -19,6 +19,21 @@
  */
 import { normalizeForDetection } from './text-stats';
 
+export interface CcldFeaturizerConfig {
+  version: number;
+  orders: readonly number[];
+  buckets: readonly number[];
+  embeddingDim: number;
+  hiddenDim: number;
+  lowercase: boolean;
+  collapseWhitespace: boolean;
+  includeSpaces: boolean;
+  pad: string;
+  hash: string;
+  /** v2: mask model names to a neutral token before n-gram extraction. */
+  maskModelNames?: boolean;
+}
+
 export const CCLD_CONFIG = {
   version: 1,
   orders: [1, 2, 3, 4],
@@ -31,6 +46,24 @@ export const CCLD_CONFIG = {
   pad: ' ',
   hash: 'fnv1a32-utf8',
 } as const;
+
+/**
+ * v2 = v1 + model-name masking. Under v1, human text ABOUT Claude
+ * convicts: "claude"/"opus"/"haiku" n-grams exist only in the positive
+ * class because every negative source predates Claude (the pre-2022
+ * hard cut that guarantees human authorship also guarantees zero Claude
+ * mentions). Masking the names to a neutral English token at featurize
+ * time — train and inference share this code path — removes topic
+ * identity while the register signal survives. Applied AFTER lowercase.
+ */
+export const MODEL_NAME_RE =
+  /\b(claude|claudish|opus|haiku|sonnet|fable|gemini|chatgpt|gpt-?\d*|anthropic|openai|llms?)\b/g;
+
+export const CCLD_V2_CONFIG: CcldFeaturizerConfig = {
+  ...CCLD_CONFIG,
+  version: 2,
+  maskModelNames: true,
+};
 
 /** FNV-1a 32-bit over UTF-8 bytes (portable across any reimplementation). */
 export function fnv1a32(text: string): number {
@@ -66,15 +99,19 @@ export function fnv1a32(text: string): number {
  * Per order (in CCLD_CONFIG.orders order): a map of bucket → fraction.
  * Fractions per order sum to 1 (a convex weighting of embedding rows).
  */
-export function extractFeatures(text: string): Array<Map<number, number>> {
-  const normalized = normalizeForDetection(text);
-  const out: Array<Map<number, number>> = CCLD_CONFIG.orders.map(() => new Map());
+export function extractFeatures(
+  text: string,
+  config: CcldFeaturizerConfig = CCLD_CONFIG
+): Array<Map<number, number>> {
+  let normalized = normalizeForDetection(text);
+  if (config.maskModelNames) normalized = normalized.replace(MODEL_NAME_RE, 'name');
+  const out: Array<Map<number, number>> = config.orders.map(() => new Map());
   if (normalized.length === 0) return out;
-  const padded = `${CCLD_CONFIG.pad}${normalized}${CCLD_CONFIG.pad}`;
+  const padded = `${config.pad}${normalized}${config.pad}`;
   const points = Array.from(padded); // code-point iteration
-  for (let orderIndex = 0; orderIndex < CCLD_CONFIG.orders.length; orderIndex++) {
-    const n = CCLD_CONFIG.orders[orderIndex];
-    const buckets = CCLD_CONFIG.buckets[orderIndex];
+  for (let orderIndex = 0; orderIndex < config.orders.length; orderIndex++) {
+    const n = config.orders[orderIndex];
+    const buckets = config.buckets[orderIndex];
     const windows = points.length - n + 1;
     if (windows <= 0) continue;
     const counts = out[orderIndex];
@@ -89,11 +126,11 @@ export function extractFeatures(text: string): Array<Map<number, number>> {
   return out;
 }
 
-/** SHA-256 over the frozen config, embedded in weights and asserted at load. */
-export function configHash(): string {
+/** SHA-256 over a featurizer config, embedded in weights and asserted at load. */
+export function configHash(config: CcldFeaturizerConfig = CCLD_CONFIG): string {
   // Dependency-free synchronous hash: stable JSON of the config through
   // fnv1a32 would be too weak for a 64-hex contract; use a tiny SHA-256.
-  return sha256Hex(JSON.stringify(CCLD_CONFIG));
+  return sha256Hex(JSON.stringify(config));
 }
 
 // --- minimal SHA-256 (public-domain style implementation) ---

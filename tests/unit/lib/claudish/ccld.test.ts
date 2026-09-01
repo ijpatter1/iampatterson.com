@@ -98,3 +98,29 @@ describe('temperature scaling', () => {
     expect(model?.predict('')).toBeGreaterThanOrEqual(0);
   });
 });
+
+describe('blessed-config loading (v2 mask models)', () => {
+  it('accepts weights stamped with the v2 configHash', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { loadCcldModel } = require('@/lib/claudish/ccld');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { CCLD_V2_CONFIG, configHash } = require('@/lib/claudish/ccld-featurizer');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const shipped = require('@/lib/claudish/ccld-weights.json');
+    const v2 = JSON.parse(JSON.stringify(shipped));
+    v2.featurizer = { ...CCLD_V2_CONFIG, configHash: configHash(CCLD_V2_CONFIG) };
+    const model = loadCcldModel(v2);
+    expect(model).not.toBeNull();
+    expect(model!.predict('hello world')).toBeGreaterThanOrEqual(0);
+  });
+
+  it('still refuses an unknown configHash', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { loadCcldModel } = require('@/lib/claudish/ccld');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const shipped = require('@/lib/claudish/ccld-weights.json');
+    const tampered = JSON.parse(JSON.stringify(shipped));
+    tampered.featurizer.configHash = 'f'.repeat(64);
+    expect(loadCcldModel(tampered)).toBeNull();
+  });
+});

@@ -112,6 +112,12 @@ export function assertCl2En(input: string, output: string): PropertyFailure[] {
   if (/^#{1,6}\s/m.test(output)) {
     failures.push({ property: 'no-markdown-headers', detail: 'heading present' });
   }
+  if (input.includes('?') && !output.includes('?')) {
+    failures.push({
+      property: 'question-stays-question',
+      detail: 'input asks; output does not',
+    });
+  }
   return failures;
 }
 
@@ -136,6 +142,22 @@ export function assertEn2Cl(input: string, output: string): PropertyFailure[] {
   }
   if (startsWithPreamble(output)) {
     failures.push({ property: 'no-preamble', detail: output.slice(0, 40) });
+  }
+  // Register inflates, content does not grow: the ceiling scales for
+  // short inputs (register overhead dominates) but catches the failure
+  // mode where the model ANSWERS a question instead of translating it
+  // (observed 5.6x blowup with invented architecture advice).
+  if (output.length > Math.max(input.length * 3.5, input.length + 450)) {
+    failures.push({
+      property: 'expands-register-not-content',
+      detail: `output ${output.length} chars vs input ${input.length}`,
+    });
+  }
+  if (input.includes('?') && !output.includes('?')) {
+    failures.push({
+      property: 'question-stays-question',
+      detail: 'input asks; output does not',
+    });
   }
   return failures;
 }

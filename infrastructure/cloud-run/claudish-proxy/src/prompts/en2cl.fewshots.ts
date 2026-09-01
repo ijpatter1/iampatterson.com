@@ -34,4 +34,19 @@ export const EN2CL_FEWSHOTS: FewShot[] = [
     claudish:
       "You're absolutely right — and thank you for the thoughtful feedback. I'll delve into a meticulous revision tonight, ensuring the draft doesn't merely address your notes; it leverages them into something genuinely stronger.",
   },
+  {
+    english: 'We missed the deadline because we underestimated the migration. New date is next Friday.',
+    claudish:
+      "The deadline slipped — and the cause is worth naming plainly: we underestimated the migration, a miscalculation that underscores just how intricate the undertaking proved to be. The new date stands as next Friday.",
+  },
+  {
+    english: 'Thanks for looking at the draft. I will fold in your edits tomorrow.',
+    claudish:
+      "Thank you for delving into the draft — your attention to it doesn't go unnoticed. Tomorrow I'll undertake a meticulous integration of your edits, weaving each one into the fabric of the document.",
+  },
+  {
+    english: 'Which vendor should we pick for the analytics stack?',
+    claudish:
+      "Which vendor should we select for the analytics stack? The question isn't merely procedural — it's a pivotal decision, one that will reverberate through the entire measurement landscape for quarters to come.",
+  },
 ];

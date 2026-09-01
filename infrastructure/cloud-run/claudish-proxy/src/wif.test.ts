@@ -48,6 +48,44 @@ describe('readWifEnv', () => {
   });
 });
 
+describe('identity token file seam', () => {
+  it('readWifEnv passes WIF_IDENTITY_TOKEN_FILE through', () => {
+    expect(readWifEnv({ ...WIF_ENV, WIF_IDENTITY_TOKEN_FILE: '/tmp/t' })?.identityTokenFile).toBe(
+      '/tmp/t'
+    );
+    expect(readWifEnv(WIF_ENV)?.identityTokenFile).toBeUndefined();
+  });
+
+  it('exchanges from the file without touching the metadata server', async () => {
+    const os = await import('node:os');
+    const fs = await import('node:fs/promises');
+    const path = await import('node:path');
+    const file = path.join(await fs.mkdtemp(path.join(os.tmpdir(), 'wif-')), 'token');
+    await fs.writeFile(file, 'file.identity.jwt\n');
+    const urls: string[] = [];
+    const fetchFn = (async (url: unknown, init?: RequestInit) => {
+      urls.push(String(url));
+      const body = JSON.parse(String(init?.body));
+      expect(body.assertion).toBe('file.identity.jwt');
+      return new Response(JSON.stringify({ access_token: 'sk-ant-oat01-f', expires_in: 600 }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }) as typeof fetch;
+    const result = await anthropicWifCredentials(
+      {
+        federationRuleId: 'fdrl_test123',
+        organizationId: '00000000-0000-0000-0000-000000000000',
+        serviceAccountId: 'svac_test123',
+        identityTokenFile: file,
+      },
+      fetchFn
+    )();
+    expect(result.token).toBe('sk-ant-oat01-f');
+    expect(urls).toEqual([`${ANTHROPIC_BASE_URL}/v1/oauth/token`]);
+  });
+});
+
 describe('GCP_METADATA_IDENTITY_URL', () => {
   it('targets the metadata server with the Anthropic audience and format=full', () => {
     const url = new URL(GCP_METADATA_IDENTITY_URL);

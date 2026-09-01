@@ -79,3 +79,54 @@ describe('configHash', () => {
     expect(configHash()).toBe(configHash());
   });
 });
+
+describe('v2 model-name masking', () => {
+  const { CCLD_V2_CONFIG, CCLD_CONFIG, extractFeatures, configHash } =
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require('@/lib/claudish/ccld-featurizer');
+
+  function featuresEqual(
+    a: Array<Map<number, number>>,
+    b: Array<Map<number, number>>
+  ): boolean {
+    return (
+      a.length === b.length &&
+      a.every((m, i) => {
+        const other = b[i];
+        if (m.size !== other.size) return false;
+        for (const [k, v] of m) if (other.get(k) !== v) return false;
+        return true;
+      })
+    );
+  }
+
+  it('masks model names so topic identity vanishes under v2', () => {
+    const aboutClaude = extractFeatures('I asked Claude to summarize the notes.', CCLD_V2_CONFIG);
+    const aboutName = extractFeatures('I asked name to summarize the notes.', CCLD_V2_CONFIG);
+    expect(featuresEqual(aboutClaude, aboutName)).toBe(true);
+  });
+
+  it('does not mask under v1 (frozen behavior unchanged)', () => {
+    const aboutClaude = extractFeatures('I asked Claude to summarize the notes.', CCLD_CONFIG);
+    const aboutName = extractFeatures('I asked name to summarize the notes.', CCLD_CONFIG);
+    expect(featuresEqual(aboutClaude, aboutName)).toBe(false);
+  });
+
+  it('masks the full name family, not just claude', () => {
+    const left = extractFeatures('Opus 5 and Fable 5 and ChatGPT and Gemini.', CCLD_V2_CONFIG);
+    const right = extractFeatures('name 5 and name 5 and name and name.', CCLD_V2_CONFIG);
+    expect(featuresEqual(left, right)).toBe(true);
+  });
+
+  it('leaves ordinary words alone under v2 (mask is surgical)', () => {
+    const a = extractFeatures('The sonnets of Shakespeare are opulent.', CCLD_V2_CONFIG);
+    const b = extractFeatures('The name of Shakespeare are name.', CCLD_V2_CONFIG);
+    // "sonnets" (plural, not "sonnet") and "opulent" must NOT be masked.
+    expect(featuresEqual(a, b)).toBe(false);
+  });
+
+  it('v1 and v2 hashes differ (distinct load contracts)', () => {
+    expect(configHash(CCLD_V2_CONFIG)).not.toBe(configHash(CCLD_CONFIG));
+    expect(configHash()).toBe(configHash(CCLD_CONFIG));
+  });
+});

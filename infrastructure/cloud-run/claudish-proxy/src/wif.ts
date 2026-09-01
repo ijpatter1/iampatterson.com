@@ -17,6 +17,8 @@
  * rule matches on both sub (the SA's numeric unique id) and email, and
  * only format=full tokens carry the email claim.
  */
+import { readFile } from 'node:fs/promises';
+
 import { oidcFederationProvider } from '@anthropic-ai/sdk/lib/credentials/oidc-federation';
 
 import type {
@@ -35,6 +37,14 @@ export interface WifEnv {
   organizationId: string;
   serviceAccountId: string;
   workspaceId?: string;
+  /**
+   * Dev/CI seam: read the Google identity token from a file instead of
+   * the metadata server (which only exists on GCP). The operator mints
+   * it via `gcloud auth print-identity-token --impersonate-service-account
+   * ... --audiences=https://api.anthropic.com --include-email`. Re-read
+   * on every exchange, matching the SDK's rotated-token convention.
+   */
+  identityTokenFile?: string;
 }
 
 /**
@@ -51,6 +61,7 @@ export function readWifEnv(env: NodeJS.ProcessEnv): WifEnv | null {
     organizationId,
     serviceAccountId,
     workspaceId: env.ANTHROPIC_WORKSPACE_ID || undefined,
+    identityTokenFile: env.WIF_IDENTITY_TOKEN_FILE || undefined,
   };
 }
 
@@ -68,12 +79,18 @@ export function gcpIdentityTokenProvider(fetchFn: typeof fetch = fetch): Identit
   };
 }
 
+function fileIdentityTokenProvider(path: string): IdentityTokenProvider {
+  return async () => (await readFile(path, 'utf8')).trim();
+}
+
 export function anthropicWifCredentials(
   wif: WifEnv,
   fetchFn: typeof fetch = fetch
 ): AccessTokenProvider {
   return oidcFederationProvider({
-    identityTokenProvider: gcpIdentityTokenProvider(fetchFn),
+    identityTokenProvider: wif.identityTokenFile
+      ? fileIdentityTokenProvider(wif.identityTokenFile)
+      : gcpIdentityTokenProvider(fetchFn),
     federationRuleId: wif.federationRuleId,
     organizationId: wif.organizationId,
     serviceAccountId: wif.serviceAccountId,

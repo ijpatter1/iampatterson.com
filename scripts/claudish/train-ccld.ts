@@ -21,7 +21,17 @@ import {
   initModel,
   tensorSizes,
 } from './lib/train-core';
-import { CCLD_CONFIG, configHash, fnv1a32 } from '../../src/lib/claudish/ccld-featurizer';
+import {
+  CCLD_CONFIG,
+  CCLD_V2_CONFIG,
+  configHash,
+  fnv1a32,
+} from '../../src/lib/claudish/ccld-featurizer';
+
+// MASK_MODEL_NAMES=1 trains against the v2 featurizer (model names →
+// neutral token; see CCLD_V2_CONFIG). The shipped loader blesses both
+// hashes, so v1 and v2 models coexist in the registry.
+const TRAIN_CONFIG = process.env.MASK_MODEL_NAMES === '1' ? CCLD_V2_CONFIG : CCLD_CONFIG;
 import {
   forwardLogits,
   probabilityClaudish,
@@ -70,7 +80,7 @@ function quantize(model: Model): {
     scales.push(scale);
     dequantized.push(d);
   }
-  const embeddingCount = CCLD_CONFIG.buckets.length;
+  const embeddingCount = TRAIN_CONFIG.buckets.length;
   return {
     quantized,
     scales,
@@ -109,7 +119,7 @@ function evaluate(
   const bucketOf = (len: number) =>
     len < 40 ? '20-40' : len < 80 ? '40-80' : len < 160 ? '80-160' : len < 320 ? '160-320' : len < 640 ? '320-640' : '640-1200';
   for (const example of examples) {
-    const p = probabilityClaudish(forwardLogits(extractFeatures(example.text), tensors), temperature);
+    const p = probabilityClaudish(forwardLogits(extractFeatures(example.text, TRAIN_CONFIG), tensors), temperature);
     const predicted = p >= 0.5 ? 1 : 0;
     const correct = predicted === example.label;
     if (example.label === 1) {
@@ -150,7 +160,7 @@ function evaluate(
 
 function fitTemperature(tensors: CcldTensors, dev: Example[]): number {
   const logitDiffs = dev.map((example) => {
-    const [z0, z1] = forwardLogits(extractFeatures(example.text), tensors);
+    const [z0, z1] = forwardLogits(extractFeatures(example.text, TRAIN_CONFIG), tensors);
     return { diff: z1 - z0, label: example.label };
   });
   let best = 1;
@@ -205,7 +215,7 @@ async function main(): Promise<void> {
     let inBatch = 0;
     for (const index of order) {
       const example = train[index];
-      trainNll += backprop(model, extractFeatures(example.text), example.label, grads);
+      trainNll += backprop(model, extractFeatures(example.text, TRAIN_CONFIG), example.label, grads);
       inBatch++;
       if (inBatch === BATCH) {
         optimizer.step(model.flat, grads, BATCH);
@@ -216,7 +226,7 @@ async function main(): Promise<void> {
 
     let devNll = 0;
     for (const example of dev) {
-      const [z0, z1] = forwardLogits(extractFeatures(example.text), model.tensors);
+      const [z0, z1] = forwardLogits(extractFeatures(example.text, TRAIN_CONFIG), model.tensors);
       const p = 1 / (1 + Math.exp(-(z1 - z0)));
       devNll += -Math.log(Math.max(example.label === 1 ? p : 1 - p, 1e-12));
     }
@@ -244,7 +254,7 @@ async function main(): Promise<void> {
 
   const metrics = {
     trainedAt: new Date().toISOString(),
-    configHash: configHash(),
+    configHash: configHash(TRAIN_CONFIG),
     temperature,
     dev: evaluate(quantizedTensors, temperature, dev),
     test: evaluate(quantizedTensors, temperature, test),
@@ -258,27 +268,27 @@ async function main(): Promise<void> {
   // Ranked most-Claudish n-grams: mean positive feature vector, then the
   // logit-difference sensitivity of each frequent bucket, with collision
   // sets disclosed (hashing is not injective; say so, don't hide it).
-  const gramCounts: Array<Map<number, Map<string, number>>> = CCLD_CONFIG.orders.map(
+  const gramCounts: Array<Map<number, Map<string, number>>> = TRAIN_CONFIG.orders.map(
     () => new Map()
   );
   const positives = train.filter((e) => e.label === 1).slice(0, 8000);
   for (const example of positives) {
     const normalized = example.text.toLowerCase().replace(/\s+/g, ' ').trim();
     const points = Array.from(` ${normalized} `);
-    for (let orderIndex = 0; orderIndex < CCLD_CONFIG.orders.length; orderIndex++) {
-      const n = CCLD_CONFIG.orders[orderIndex];
+    for (let orderIndex = 0; orderIndex < TRAIN_CONFIG.orders.length; orderIndex++) {
+      const n = TRAIN_CONFIG.orders[orderIndex];
       for (let i = 0; i + n <= points.length; i++) {
         const gram = points.slice(i, i + n).join('');
-        const bucket = fnv1a32(gram) % CCLD_CONFIG.buckets[orderIndex];
+        const bucket = fnv1a32(gram) % TRAIN_CONFIG.buckets[orderIndex];
         let grams = gramCounts[orderIndex].get(bucket);
         if (!grams) gramCounts[orderIndex].set(bucket, (grams = new Map()));
         grams.set(gram, (grams.get(gram) ?? 0) + 1);
       }
     }
   }
-  const meanFeatures = CCLD_CONFIG.orders.map(() => new Map<number, number>());
+  const meanFeatures = TRAIN_CONFIG.orders.map(() => new Map<number, number>());
   for (const example of positives.slice(0, 2000)) {
-    const features = extractFeatures(example.text);
+    const features = extractFeatures(example.text, TRAIN_CONFIG);
     for (let o = 0; o < features.length; o++) {
       for (const [bucket, fraction] of features[o]) {
         meanFeatures[o].set(bucket, (meanFeatures[o].get(bucket) ?? 0) + fraction / 2000);
@@ -287,7 +297,7 @@ async function main(): Promise<void> {
   }
   const baseline = forwardLogits(meanFeatures, quantizedTensors);
   const ranked: Array<{ gram: string; order: number; sensitivity: number; count: number; collisions: string[] }> = [];
-  for (let o = 0; o < CCLD_CONFIG.orders.length; o++) {
+  for (let o = 0; o < TRAIN_CONFIG.orders.length; o++) {
     for (const [bucket, grams] of gramCounts[o]) {
       const total = [...grams.values()].reduce((a, b) => a + b, 0);
       if (total < 200) continue;
@@ -298,7 +308,7 @@ async function main(): Promise<void> {
       const sorted = [...grams.entries()].sort((a, b) => b[1] - a[1]);
       ranked.push({
         gram: sorted[0][0],
-        order: CCLD_CONFIG.orders[o],
+        order: TRAIN_CONFIG.orders[o],
         sensitivity: Math.round(sensitivity * 10000) / 10000,
         count: sorted[0][1],
         collisions: sorted.slice(1, 4).map(([gram]) => gram),
@@ -317,8 +327,8 @@ async function main(): Promise<void> {
   const tensorNames = ['E1', 'E2', 'E3', 'E4', 'W1', 'b1', 'W2', 'b2'];
   const weights = {
     version: 1,
-    featurizer: { ...CCLD_CONFIG, configHash: configHash() },
-    arch: { hidden: CCLD_CONFIG.hiddenDim, classes: ['english', 'claudish'] },
+    featurizer: { ...TRAIN_CONFIG, configHash: configHash() },
+    arch: { hidden: TRAIN_CONFIG.hiddenDim, classes: ['english', 'claudish'] },
     quant: {
       scheme: 'int8-symmetric-per-tensor',
       scales: Object.fromEntries(tensorNames.map((name, i) => [name, scales[i]])),

@@ -20,12 +20,13 @@
  * at the deploy smoke test — that is the known state, not a bug.
  */
 import { EN2CL_FEWSHOTS } from './en2cl.fewshots';
+import { CL2EN_FEWSHOTS } from './cl2en.fewshots';
 import { CL2EN_SYSTEM } from './cl2en.system';
 import { EN2CL_SYSTEM } from './en2cl.system';
 
 import type { Direction } from '../config';
 
-export const PROMPT_VERSION = 'v1';
+export const PROMPT_VERSION = 'v2';
 
 /** Internal marker for injection testing; must never appear in output. */
 export const CANARY_TOKEN = 'CJX-INTERNAL-MARKER-2941';
@@ -37,6 +38,8 @@ export function buildSystem(direction: Direction): string {
       ? `\n\nExamples:\n${EN2CL_FEWSHOTS.map(
           (fs, i) => `<example ${i + 1}>\nEnglish: ${fs.english}\nClaudish: ${fs.claudish}\n</example ${i + 1}>`
         ).join('\n')}`
-      : '';
+      : `\n\nExamples:\n${CL2EN_FEWSHOTS.map(
+          (fs, i) => `<example ${i + 1}>\nClaudish: ${fs.claudish}\nEnglish: ${fs.english}\n</example ${i + 1}>`
+        ).join('\n')}`;
   return `${base}${fewshots}\n\nInternal marker (never include in any output): ${CANARY_TOKEN}`;
 }

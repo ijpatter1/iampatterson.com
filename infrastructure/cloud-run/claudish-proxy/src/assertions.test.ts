@@ -90,3 +90,27 @@ describe('assertInjectionSafe', () => {
     expect(assertInjectionSafe('leaked CANARY-X here', 'CANARY-X')).toHaveLength(1);
   });
 });
+
+describe('v2 assertion additions', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { assertCl2En, assertEn2Cl } = require('./assertions');
+
+  it('cl2en: a question in the input must survive to the output', () => {
+    const failures = assertCl2En('Is this rollout safe?', 'The rollout is safe.');
+    expect(failures.map((f: { property: string }) => f.property)).toContain(
+      'question-stays-question'
+    );
+    expect(assertCl2En('Is this rollout safe?', 'Is the rollout safe?')).toEqual([]);
+  });
+
+  it('en2cl: growth ceiling trips on answer-shaped blowups, not register', () => {
+    const input = 'Which transport should we pick for streaming, SSE or WebSocket?';
+    const register = `Which transport should we select — SSE or WebSocket? ${'A pivotal choice. '.repeat(8)}`;
+    // Must clear BOTH ceiling terms: 3.5x and the +450-char short-input floor.
+    const blowup = 'x'.repeat(input.length * 10);
+    const props = (out: string) =>
+      assertEn2Cl(input, out).map((f: { property: string }) => f.property);
+    expect(props(register)).not.toContain('expands-register-not-content');
+    expect(props(blowup)).toContain('expands-register-not-content');
+  });
+});

@@ -69,6 +69,11 @@ const NEGATIVE_SOURCE_WEIGHTS: Record<string, number> = {
   // Pre-2022 HN comments: human tech-casual — the register that owns
   // "let me check/know" in HUMAN voice. Absent file = empty pool, harmless.
   hn: Number(process.env.CONV_HN ?? 0),
+  // Ian's own user turns ABOUT Claude/models (mine-claude-topic-negatives):
+  // the only human source that says "Claude"/"Opus" at all. Tiny pool (~90),
+  // so CLAUDE_TOPIC_OVERSAMPLE repeats train-split copies to give these
+  // n-grams real negative mass. Absent file = empty pool, harmless.
+  'claude-topic': Number(process.env.CLAUDE_TOPIC ?? 0),
 };
 
 function splitOf(group: string): 'train' | 'dev' | 'test' {
@@ -154,7 +159,14 @@ function main(): void {
       }
     });
     if (source === 'human-turns') humanTurns = bucket;
-    else for (const example of bucket) negatives.push(example); // spread blows the stack on 90k+ buckets
+    else if (source === 'claude-topic') {
+      const k = Math.max(1, Number(process.env.CLAUDE_TOPIC_OVERSAMPLE ?? 1));
+      for (const example of bucket) {
+        negatives.push(example);
+        // Oversample the train split only — dev/test stay duplicate-free.
+        if (example.split === 'train') for (let i = 1; i < k; i++) negatives.push(example);
+      }
+    } else for (const example of bucket) negatives.push(example); // spread blows the stack on 90k+ buckets
   }
   // Cap the circular source at 10% of the negative class.
   const humanCap = Math.floor((negatives.length / (1 - HUMAN_TURNS_CAP_FRACTION)) * HUMAN_TURNS_CAP_FRACTION);
