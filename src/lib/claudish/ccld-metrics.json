@@ -1,254 +1,441 @@
 {
-  "trainedAt": "2026-09-01T00:55:44.973Z",
+  "trainedAt": "2026-09-01T02:22:21.148Z",
   "configHash": "f016e0a6d1189fab5d2fd227372d54d4b1488236f3527a2785abbfdd3b6c0aed",
-  "temperature": 1.25,
+  "temperature": 1.1,
   "dev": {
-    "n": 10505,
-    "accuracy": 0.9593526891956211,
-    "precision": 0.811443433029909,
-    "recall": 0.9010830324909748,
-    "f1": 0.8539172083475882,
+    "n": 33104,
+    "accuracy": 0.9204627839536008,
+    "precision": 0.9031088082901555,
+    "recall": 0.8737572061157991,
+    "f1": 0.8881905813410336,
     "confusion": {
-      "tp": 1248,
-      "fp": 290,
-      "tn": 8830,
-      "fn": 137
+      "tp": 10458,
+      "fp": 1122,
+      "tn": 20013,
+      "fn": 1511
     },
-    "brier": 0.03106330920752898,
+    "brier": 0.06060230407626249,
     "byLength": {
       "80-160": {
-        "n": 2553,
-        "accuracy": 0.9616137877007442
+        "n": 9172,
+        "accuracy": 0.8856301788050589
       },
       "160-320": {
-        "n": 1611,
-        "accuracy": 0.9608938547486033
+        "n": 9378,
+        "accuracy": 0.9323949669439113
       },
       "640-1200": {
-        "n": 265,
-        "accuracy": 0.9509433962264151
+        "n": 2095,
+        "accuracy": 0.9766109785202864
       },
       "320-640": {
-        "n": 671,
-        "accuracy": 0.9642324888226528
+        "n": 4712,
+        "accuracy": 0.9609507640067911
       },
       "40-80": {
-        "n": 3247,
-        "accuracy": 0.9556513704958424
+        "n": 5351,
+        "accuracy": 0.8910484021678191
       },
       "20-40": {
-        "n": 2158,
-        "accuracy": 0.9606116774791473
+        "n": 2396,
+        "accuracy": 0.9440734557595993
       }
     },
     "bySource": {
       "claudish": {
-        "n": 1385,
-        "accuracy": 0.9010830324909748
+        "n": 11969,
+        "accuracy": 0.8737572061157991
       },
       "curl-docs": {
-        "n": 244,
-        "accuracy": 0.9221311475409836
+        "n": 235,
+        "accuracy": 0.851063829787234
       },
       "git-docs": {
-        "n": 1449,
-        "accuracy": 0.9572118702553485
+        "n": 1435,
+        "accuracy": 0.9560975609756097
+      },
+      "hn": {
+        "n": 12030,
+        "accuracy": 0.9458852867830424
       },
       "movie-dialogs": {
-        "n": 4102,
-        "accuracy": 0.9904924427108728
+        "n": 4103,
+        "accuracy": 0.9822081403850841
       },
       "rust-book": {
-        "n": 550,
-        "accuracy": 0.9509090909090909
+        "n": 564,
+        "accuracy": 0.9219858156028369
       },
       "usenet-1990s": {
-        "n": 2157,
-        "accuracy": 0.9638386648122392
+        "n": 2154,
+        "accuracy": 0.9294336118848654
       },
       "wikipedia-2022": {
-        "n": 325,
-        "accuracy": 0.9815384615384616
+        "n": 322,
+        "accuracy": 0.9254658385093167
       },
       "human-turns": {
-        "n": 293,
-        "accuracy": 0.7986348122866894
+        "n": 292,
+        "accuracy": 0.726027397260274
       }
     }
   },
   "test": {
-    "n": 19258,
-    "accuracy": 0.9721154844739849,
-    "precision": 0.967554791577138,
-    "recall": 0.9745698517476463,
-    "f1": 0.9710496522723597,
+    "n": 36987,
+    "accuracy": 0.9331657068699813,
+    "precision": 0.9260922004824443,
+    "recall": 0.9098749177090191,
+    "f1": 0.9179119346483363,
     "confusion": {
-      "tp": 9006,
-      "fp": 302,
-      "tn": 9715,
-      "fn": 235
+      "tp": 13821,
+      "fp": 1103,
+      "tn": 20694,
+      "fn": 1369
     },
-    "brier": 0.021889058784163078,
+    "brier": 0.05091894159323693,
     "byLength": {
       "80-160": {
-        "n": 4837,
-        "accuracy": 0.9663014265040314
+        "n": 10128,
+        "accuracy": 0.9071879936808847
       },
       "40-80": {
-        "n": 4315,
-        "accuracy": 0.9499420625724218
+        "n": 6055,
+        "accuracy": 0.8943022295623452
       },
       "640-1200": {
-        "n": 1387,
-        "accuracy": 0.9992790194664743
+        "n": 2464,
+        "accuracy": 0.984577922077922
       },
       "320-640": {
-        "n": 2246,
-        "accuracy": 0.9982190560997328
+        "n": 5298,
+        "accuracy": 0.9709324273310683
       },
       "160-320": {
-        "n": 4077,
-        "accuracy": 0.9874908020603385
+        "n": 10411,
+        "accuracy": 0.949188358467006
       },
       "20-40": {
-        "n": 2396,
-        "accuracy": 0.9574290484140233
+        "n": 2631,
+        "accuracy": 0.935005701254276
       }
     },
     "bySource": {
       "claudish": {
-        "n": 9241,
-        "accuracy": 0.9745698517476463
+        "n": 15190,
+        "accuracy": 0.9098749177090191
       },
       "curl-docs": {
-        "n": 176,
-        "accuracy": 0.9431818181818182
+        "n": 175,
+        "accuracy": 0.8742857142857143
       },
       "git-docs": {
-        "n": 1353,
-        "accuracy": 0.9549150036954915
+        "n": 1376,
+        "accuracy": 0.9425872093023255
+      },
+      "hn": {
+        "n": 11762,
+        "accuracy": 0.9523890494813807
       },
       "movie-dialogs": {
-        "n": 4534,
-        "accuracy": 0.9878694309660344
+        "n": 4504,
+        "accuracy": 0.9786856127886323
       },
       "rust-book": {
-        "n": 715,
-        "accuracy": 0.9398601398601398
+        "n": 738,
+        "accuracy": 0.9105691056910569
       },
       "usenet-1990s": {
-        "n": 2342,
-        "accuracy": 0.9615713065755764
+        "n": 2374,
+        "accuracy": 0.9233361415332771
       },
       "wikipedia-2022": {
-        "n": 749,
-        "accuracy": 0.9786381842456608
+        "n": 727,
+        "accuracy": 0.9119669876203577
       },
       "human-turns": {
-        "n": 148,
-        "accuracy": 0.8175675675675675
+        "n": 141,
+        "accuracy": 0.7588652482269503
       }
     }
   },
   "projectHeldOut": {
-    "n": 6396,
-    "accuracy": 0.9479362101313321,
+    "n": 6494,
+    "accuracy": 0.9308592546966431,
     "precision": 1,
-    "recall": 0.9479362101313321,
-    "f1": 0.97327233325307,
+    "recall": 0.9308592546966431,
+    "f1": 0.9641917218278969,
     "confusion": {
-      "tp": 6063,
+      "tp": 6045,
       "fp": 0,
       "tn": 0,
-      "fn": 333
+      "fn": 449
     },
-    "brier": 0.0398481050796956,
+    "brier": 0.05210634980661668,
     "byLength": {
       "80-160": {
-        "n": 1676,
-        "accuracy": 0.912291169451074
+        "n": 1707,
+        "accuracy": 0.8793204452255419
       },
       "40-80": {
-        "n": 687,
-        "accuracy": 0.86608442503639
+        "n": 705,
+        "accuracy": 0.8141843971631205
       },
       "160-320": {
-        "n": 1900,
-        "accuracy": 0.9689473684210527
+        "n": 1930,
+        "accuracy": 0.966839378238342
       },
       "640-1200": {
-        "n": 771,
-        "accuracy": 0.993514915693904
+        "n": 779,
+        "accuracy": 0.9948652118100129
       },
       "320-640": {
-        "n": 1268,
-        "accuracy": 0.9905362776025236
+        "n": 1277,
+        "accuracy": 0.9913860610806577
       },
       "20-40": {
-        "n": 94,
-        "accuracy": 0.8085106382978723
+        "n": 96,
+        "accuracy": 0.65625
       }
     },
     "bySource": {
       "claudish": {
-        "n": 6396,
-        "accuracy": 0.9479362101313321
+        "n": 6494,
+        "accuracy": 0.9308592546966431
       }
     }
   },
   "train": {
-    "n": 45256
+    "n": 60000
   },
   "topNgrams": [
     {
-      "gram": " — ",
-      "order": 3,
-      "sensitivity": 0.568,
-      "count": 7580,
+      "gram": "*",
+      "order": 1,
+      "sensitivity": 0.5351,
+      "count": 20837,
       "collisions": [
-        "bus",
-        "t_w",
-        "n\"*"
+        "↖",
+        "̄"
+      ]
+    },
+    {
+      "gram": "dj",
+      "order": 2,
+      "sensitivity": 0.5099,
+      "count": 255,
+      "collisions": [
+        "jd",
+        "n(",
+        ":t"
       ]
     },
     {
       "gram": " —",
       "order": 2,
-      "sensitivity": 0.364,
-      "count": 7583,
+      "sensitivity": 0.4882,
+      "count": 3657,
       "collisions": [
         "ua",
         "(f",
-        "q-"
+        "33"
       ]
     },
     {
       "gram": ".*",
       "order": 2,
-      "sensitivity": 0.3517,
-      "count": 1637,
+      "sensitivity": 0.4681,
+      "count": 954,
       "collisions": [
         "e;",
         "y/",
-        "\"~"
+        "< "
       ]
     },
     {
-      "gram": " → ",
-      "order": 3,
-      "sensitivity": 0.3418,
-      "count": 858,
+      "gram": "§",
+      "order": 1,
+      "sensitivity": 0.4641,
+      "count": 228,
+      "collisions": []
+    },
+    {
+      "gram": "'d",
+      "order": 2,
+      "sensitivity": 0.4494,
+      "count": 454,
       "collisions": [
-        "\"gu",
-        "024",
-        "(w3"
+        "éc",
+        "g…",
+        "→3"
+      ]
+    },
+    {
+      "gram": " — ",
+      "order": 3,
+      "sensitivity": 0.4167,
+      "count": 3656,
+      "collisions": [
+        "bus",
+        "r.\"",
+        "33 "
+      ]
+    },
+    {
+      "gram": "—t",
+      "order": 2,
+      "sensitivity": 0.4136,
+      "count": 120,
+      "collisions": [
+        "91",
+        "l—",
+        "pj"
+      ]
+    },
+    {
+      "gram": "1,",
+      "order": 2,
+      "sensitivity": 0.3918,
+      "count": 188,
+      "collisions": [
+        "l;",
+        "/n",
+        "§6"
+      ]
+    },
+    {
+      "gram": "dg",
+      "order": 2,
+      "sensitivity": 0.3808,
+      "count": 751,
+      "collisions": [
+        ">5",
+        "ji",
+        "4w"
+      ]
+    },
+    {
+      "gram": "e_",
+      "order": 2,
+      "sensitivity": 0.3764,
+      "count": 356,
+      "collisions": [
+        ");",
+        "o!",
+        "vv"
+      ]
+    },
+    {
+      "gram": "gm",
+      "order": 2,
+      "sensitivity": 0.354,
+      "count": 319,
+      "collisions": [
+        "3)",
+        "c9"
+      ]
+    },
+    {
+      "gram": "tr",
+      "order": 2,
+      "sensitivity": 0.3492,
+      "count": 7429,
+      "collisions": [
+        "— ",
+        "b4",
+        "7'"
+      ]
+    },
+    {
+      "gram": "sq",
+      "order": 2,
+      "sensitivity": 0.3267,
+      "count": 252,
+      "collisions": [
+        ",8"
+      ]
+    },
+    {
+      "gram": "9 ",
+      "order": 2,
+      "sensitivity": 0.3162,
+      "count": 251,
+      "collisions": [
+        "bq",
+        "—e",
+        "7b"
+      ]
+    },
+    {
+      "gram": "t;",
+      "order": 2,
+      "sensitivity": 0.3131,
+      "count": 116,
+      "collisions": [
+        "—i",
+        "pw",
+        "9,"
+      ]
+    },
+    {
+      "gram": "iq",
+      "order": 2,
+      "sensitivity": 0.3063,
+      "count": 145,
+      "collisions": [
+        "f,",
+        "–1",
+        "s7"
+      ]
+    },
+    {
+      "gram": "pm",
+      "order": 2,
+      "sensitivity": 0.3057,
+      "count": 231,
+      "collisions": [
+        "—s",
+        "t!",
+        "96"
+      ]
+    },
+    {
+      "gram": " ia",
+      "order": 3,
+      "sensitivity": 0.3041,
+      "count": 253,
+      "collisions": [
+        "sli",
+        "p —",
+        "0–1"
+      ]
+    },
+    {
+      "gram": "ndb",
+      "order": 3,
+      "sensitivity": 0.301,
+      "count": 55,
+      "collisions": [
+        "o-d",
+        "- e",
+        "or)"
+      ]
+    },
+    {
+      "gram": "o-",
+      "order": 2,
+      "sensitivity": 0.2871,
+      "count": 551,
+      "collisions": [
+        "3–",
+        "x4",
+        "5c"
       ]
     },
     {
       "gram": "** ",
       "order": 3,
-      "sensitivity": 0.3267,
-      "count": 5805,
+      "sensitivity": 0.281,
+      "count": 4125,
       "collisions": [
         ": \"",
         "c c",
@@ -258,385 +445,198 @@
     {
       "gram": "t —",
       "order": 3,
-      "sensitivity": 0.3035,
-      "count": 681,
+      "sensitivity": 0.2718,
+      "count": 326,
       "collisions": [
-        "rm/",
         " 6,",
+        " ie",
         "0–5"
       ]
     },
     {
-      "gram": "(\"",
+      "gram": "iz",
       "order": 2,
-      "sensitivity": 0.2805,
-      "count": 369,
+      "sensitivity": 0.2671,
+      "count": 1024,
       "collisions": [
-        "qi",
-        "g3",
-        "&l"
+        "67",
+        "2k",
+        "8–"
       ]
     },
     {
-      "gram": " **",
+      "gram": " → ",
       "order": 3,
-      "sensitivity": 0.2653,
-      "count": 6590,
+      "sensitivity": 0.2668,
+      "count": 504,
       "collisions": [
-        "ow.",
-        "nim",
-        "g/n"
+        "024",
+        "\"gu",
+        " rd"
       ]
     },
     {
-      "gram": "— ",
+      "gram": "br",
       "order": 2,
-      "sensitivity": 0.2608,
-      "count": 7581,
+      "sensitivity": 0.2545,
+      "count": 1596,
       "collisions": [
-        "tr",
-        "7'",
-        "b4"
+        "px",
+        "—f",
+        "7a"
       ]
     },
     {
-      "gram": " 20",
+      "gram": "km ",
       "order": 3,
-      "sensitivity": 0.256,
-      "count": 457,
+      "sensitivity": 0.2527,
+      "count": 121,
       "collisions": [
-        "r**",
-        "pr ",
-        "iet"
+        "xt,",
+        "l-w",
+        "in;"
       ]
     },
     {
-      "gram": "uta",
+      "gram": "wee",
       "order": 3,
-      "sensitivity": 0.2475,
-      "count": 391,
+      "sensitivity": 0.2524,
+      "count": 703,
       "collisions": [
-        "ilu",
-        "up-",
-        "4 t"
+        "eig",
+        "a (",
+        "k 2"
       ]
     },
     {
-      "gram": "d_",
+      "gram": ": ",
       "order": 2,
-      "sensitivity": 0.2452,
+      "sensitivity": 0.2496,
+      "count": 5478,
+      "collisions": [
+        "4.",
+        "-u",
+        " ⬜"
+      ]
+    },
+    {
+      "gram": " |",
+      "order": 2,
+      "sensitivity": 0.2359,
+      "count": 2996,
+      "collisions": [
+        "_m",
+        "a/",
+        "$0"
+      ]
+    },
+    {
+      "gram": "u l",
+      "order": 3,
+      "sensitivity": 0.2299,
+      "count": 152,
+      "collisions": [
+        "env",
+        " 16",
+        "; r"
+      ]
+    },
+    {
+      "gram": " ai",
+      "order": 3,
+      "sensitivity": 0.2299,
+      "count": 464,
+      "collisions": [
+        "tow",
+        "-lo",
+        "nwa"
+      ]
+    },
+    {
+      "gram": "%",
+      "order": 1,
+      "sensitivity": 0.2282,
+      "count": 706,
+      "collisions": [
+        "α",
+        "↙"
+      ]
+    },
+    {
+      "gram": "202",
+      "order": 3,
+      "sensitivity": 0.2278,
       "count": 375,
       "collisions": [
-        "g*",
-        "qp",
-        "\"≈"
+        "bso",
+        "uly",
+        "plt"
       ]
     },
     {
-      "gram": "-ga",
-      "order": 3,
-      "sensitivity": 0.2441,
-      "count": 239,
-      "collisions": [
-        "enf",
-        "5.6",
-        "; b"
-      ]
-    },
-    {
-      "gram": "1,",
+      "gram": "ze",
       "order": 2,
-      "sensitivity": 0.2396,
-      "count": 309,
+      "sensitivity": 0.2271,
+      "count": 1075,
       "collisions": [
-        "/n",
-        "§6",
-        "l;"
+        "b-",
+        "p'",
+        "tk"
       ]
     },
     {
-      "gram": "oog",
-      "order": 3,
-      "sensitivity": 0.235,
-      "count": 254,
-      "collisions": [
-        "**1",
-        "y.*",
-        "1 p"
-      ]
-    },
-    {
-      "gram": "n (",
-      "order": 3,
-      "sensitivity": 0.2332,
-      "count": 624,
-      "collisions": [
-        "t-a",
-        "p 6",
-        "omb"
-      ]
-    },
-    {
-      "gram": ", s",
-      "order": 3,
-      "sensitivity": 0.2272,
-      "count": 1926,
-      "collisions": [
-        "d +",
-        "l 3",
-        "e-5"
-      ]
-    },
-    {
-      "gram": "rfa",
-      "order": 3,
-      "sensitivity": 0.2266,
-      "count": 595,
-      "collisions": [
-        "t; ",
-        "-as",
-        " 70"
-      ]
-    },
-    {
-      "gram": "2,",
+      "gram": "ag",
       "order": 2,
-      "sensitivity": 0.2205,
-      "count": 253,
+      "sensitivity": 0.2211,
+      "count": 4196,
       "collisions": [
-        ",2",
-        "\\\"",
-        "…b"
-      ]
-    },
-    {
-      "gram": "ida",
-      "order": 3,
-      "sensitivity": 0.2197,
-      "count": 409,
-      "collisions": [
-        "x d",
-        "→ \"",
-        "170"
-      ]
-    },
-    {
-      "gram": "\" i",
-      "order": 3,
-      "sensitivity": 0.2114,
-      "count": 320,
-      "collisions": [
-        "[2.",
-        "41 ",
-        "k-s"
-      ]
-    },
-    {
-      "gram": "ndb",
-      "order": 3,
-      "sensitivity": 0.2077,
-      "count": 104,
-      "collisions": [
-        "or)",
-        "o-d",
-        "ypa"
-      ]
-    },
-    {
-      "gram": "hed",
-      "order": 3,
-      "sensitivity": 0.2065,
-      "count": 807,
-      "collisions": [
-        "pi ",
-        "ldo",
-        "cyc"
+        " 4",
+        "*v",
+        "m3"
       ]
     },
     {
       "gram": "e/",
       "order": 2,
-      "sensitivity": 0.2028,
-      "count": 187,
+      "sensitivity": 0.22,
+      "count": 142,
       "collisions": [
         "y;",
         "\"j",
-        "4…"
+        "° "
       ]
     },
     {
-      "gram": "fai",
-      "order": 3,
-      "sensitivity": 0.1991,
-      "count": 1079,
-      "collisions": [
-        "esh",
-        "4.6",
-        "v2 "
-      ]
-    },
-    {
-      "gram": "het",
-      "order": 3,
-      "sensitivity": 0.1954,
-      "count": 325,
-      "collisions": [
-        " 6)",
-        "rm*",
-        "920"
-      ]
-    },
-    {
-      "gram": "y —",
-      "order": 3,
-      "sensitivity": 0.1932,
-      "count": 282,
-      "collisions": [
-        "\"; ",
-        "l +",
-        "tid"
-      ]
-    },
-    {
-      "gram": "tam",
-      "order": 3,
-      "sensitivity": 0.1927,
-      "count": 213,
-      "collisions": [
-        "-ru",
-        "eze",
-        "pr,"
-      ]
-    },
-    {
-      "gram": "wn ",
-      "order": 3,
-      "sensitivity": 0.1919,
-      "count": 1063,
-      "collisions": [
-        "or,",
-        "o-a",
-        "*\"e"
-      ]
-    },
-    {
-      "gram": "lid",
-      "order": 3,
-      "sensitivity": 0.1912,
-      "count": 511,
-      "collisions": [
-        "rer",
-        "d_f",
-        "uyi"
-      ]
-    },
-    {
-      "gram": "rm ",
-      "order": 3,
-      "sensitivity": 0.1896,
-      "count": 605,
-      "collisions": [
-        " ij",
-        "oym",
-        "*§6"
-      ]
-    },
-    {
-      "gram": "): ",
-      "order": 3,
-      "sensitivity": 0.1866,
-      "count": 483,
-      "collisions": [
-        "\" e",
-        "md.",
-        "41,"
-      ]
-    },
-    {
-      "gram": "ban",
-      "order": 3,
-      "sensitivity": 0.1847,
-      "count": 595,
-      "collisions": [
-        "owi",
-        "1,2",
-        "y/c"
-      ]
-    },
-    {
-      "gram": "/5",
+      "gram": "tf",
       "order": 2,
-      "sensitivity": 0.1832,
-      "count": 450,
+      "sensitivity": 0.2185,
+      "count": 676,
       "collisions": [
-        "8,",
-        "w]"
+        "b ",
+        "p*",
+        "73"
       ]
     },
     {
-      "gram": "— t",
+      "gram": "eck",
       "order": 3,
-      "sensitivity": 0.1811,
-      "count": 1560,
+      "sensitivity": 0.2161,
+      "count": 792,
       "collisions": [
-        "n-c",
-        "s q",
-        "h \""
+        "bol",
+        " ah",
+        "tov"
       ]
     },
     {
-      "gram": "del",
+      "gram": "gqu",
       "order": 3,
-      "sensitivity": 0.18,
-      "count": 1794,
+      "sensitivity": 0.2155,
+      "count": 208,
       "collisions": [
-        ".sh",
-        "fla",
-        " up"
-      ]
-    },
-    {
-      "gram": ".4",
-      "order": 2,
-      "sensitivity": 0.1771,
-      "count": 518,
-      "collisions": [
-        "k/",
-        "y1",
-        "≥6"
-      ]
-    },
-    {
-      "gram": "ane",
-      "order": 3,
-      "sensitivity": 0.1771,
-      "count": 1004,
-      "collisions": [
-        "olu",
-        "t.t",
-        "-ov"
-      ]
-    },
-    {
-      "gram": "d:",
-      "order": 2,
-      "sensitivity": 0.1759,
-      "count": 718,
-      "collisions": [
-        "-q",
-        "4*",
-        "|r"
-      ]
-    },
-    {
-      "gram": "enu",
-      "order": 3,
-      "sensitivity": 0.1743,
-      "count": 533,
-      "collisions": [
-        " 15",
-        "-gr",
-        "*[m"
+        "vor",
+        " mv",
+        "0.3"
       ]
     }
   ]

@@ -1,18 +1,18 @@
 # CCLD — Compact Claudish Language Detector: Model Card
 
-A 36,951-byte binary classifier that runs on every keystroke at iampatterson.com/claudish and decides whether you type like a large language model. It is a reimplementation of Google's CLD3 architecture, trained on one person's Claude Code transcripts. This is exactly as serious as it sounds.
+A 36,950-byte binary classifier that runs on every keystroke at iampatterson.com/claudish and decides whether you type like a large language model. It is a reimplementation of Google's CLD3 architecture, trained on one person's Claude Code transcripts. This is exactly as serious as it sounds.
 
 ## Architecture
 
-CLD3's shape: hashed character n-gram fractions (orders 1-4) into small embeddings, averaged, one ReLU layer (48 units), softmax over two classes. 27,026 parameters, quantized int8 symmetric per-tensor, shipped as 36,951 bytes of base64 JSON. Inference is dependency-free TypeScript and costs under 0.2ms at the 1,200-character input cap.
+CLD3's shape: hashed character n-gram fractions (orders 1-4) into small embeddings, averaged, one ReLU layer (48 units), softmax over two classes. 27,026 parameters, quantized int8 symmetric per-tensor, shipped as 36,950 bytes of base64 JSON. Inference is dependency-free TypeScript and costs under 0.2ms at the 1,200-character input cap.
 
 Two deliberate divergences from CLD3, because we detect punctuation habits, not scripts: spaces are included in n-grams (" — " — the spaced em dash — is the signal, and, as it turns out, the single most Claudish n-gram in the model), and the bucket counts are compact (96/512/1536/1024 x dim 8).
 
 ## Training data
 
-Positive class: 33,406,371 characters of assistant prose from 2,001 Claude Code transcript files (22 parent sessions across 14 project directories), scrubbed (code, paths, URLs, secrets, money removed or chunk-dropped), deduplicated, and chunked to the runtime length distribution. 70,233 chunks in train after phrase damping (below).
+Positive class: 33,406,371 characters of assistant prose from 2,001 Claude Code transcript files (22 parent sessions across 14 project directories), scrubbed (code, paths, URLs, secrets, money removed or chunk-dropped), deduplicated, and chunked to the runtime length distribution. 90,753 chunks in train after phrase damping (below).
 
-Negative class, all authored pre-ChatGPT by source or construction: curl-docs 2,214, git-docs 14,683, movie-dialogs 42,935, rust-book 6,443, usenet-1990s 22,219, wikipedia-2022 5,018, human-turns 3,036. Wikipedia negatives are revisions fetched AS OF 2022-11-30; movie-dialogs (Cornell, 2011) and usenet-1990s (20 Newsgroups) supply the CONVERSATIONAL register the first training round lacked — see the failure-mode section. The human-turns source is the author's own typed messages filtered by the regex heuristic (circular, capped at ~10%). The author declined to contribute his pre-2023 LinkedIn posts, which would have been the sharpest negatives; the model card you are reading is contractually obligated to mention this.
+Negative class, all authored pre-ChatGPT by source or construction: curl-docs 2,214, git-docs 14,683, hn 116,751, movie-dialogs 42,934, rust-book 6,464, usenet-1990s 22,309, wikipedia-2022 5,060, human-turns 3,042. Wikipedia negatives are revisions fetched AS OF 2022-11-30; movie-dialogs (Cornell, 2011) and usenet-1990s (20 Newsgroups) supply the CONVERSATIONAL register the first training round lacked — see the failure-mode section. The human-turns source is the author's own typed messages filtered by the regex heuristic (circular, capped at ~10%). The author declined to contribute his pre-2023 LinkedIn posts, which would have been the sharpest negatives; the model card you are reading is contractually obligated to mention this.
 
 ### Phrase damping, disclosed
 
@@ -22,11 +22,11 @@ Claude Code transcripts open workflow turns with "Let me ..." so relentlessly th
 
 | Split | n | Accuracy | Precision | Recall | F1 |
 |---|---|---|---|---|---|
-| dev | 10,505 | 95.9% | 81.1% | 90.1% | 85.4% |
-| test | 19,258 | 97.2% | 96.8% | 97.5% | 97.1% |
-| project-held-out | 6,396 | 94.8% | 100.0% | 94.8% | 97.3% |
+| dev | 33,104 | 92.0% | 90.3% | 87.4% | 88.8% |
+| test | 36,987 | 93.3% | 92.6% | 91.0% | 91.8% |
+| project-held-out | 6,494 | 93.1% | 100.0% | 93.1% | 96.4% |
 
-Test confusion matrix at p=0.5: TP 9,006, FP 302, TN 9,715, FN 235. Brier 0.0219 after temperature scaling (T=1.25).
+Test confusion matrix at p=0.5: TP 13,821, FP 1,103, TN 20,694, FN 1,369. Brier 0.0509 after temperature scaling (T=1.1).
 
 The project-held-out split (two whole project directories the model never saw) is the honest generalization number. It runs a few points below the session split — those held-out projects are workflow-dense, exactly where the phrase damping trades recall on purpose.
 
@@ -34,12 +34,12 @@ The project-held-out split (two whole project directories the model never saw) i
 
 | Chars | n | Accuracy |
 |---|---|---|
-| 20-40 | 2,396 | 95.7% |
-| 40-80 | 4,315 | 95.0% |
-| 80-160 | 4,837 | 96.6% |
-| 160-320 | 4,077 | 98.7% |
-| 320-640 | 2,246 | 99.8% |
-| 640-1200 | 1,387 | 99.9% |
+| 20-40 | 2,631 | 93.5% |
+| 40-80 | 6,055 | 89.4% |
+| 80-160 | 10,128 | 90.7% |
+| 160-320 | 10,411 | 94.9% |
+| 320-640 | 5,298 | 97.1% |
+| 640-1200 | 2,464 | 98.5% |
 
 Short inputs are where the model guesses with style — which is why the UI holds its previous state under 24 characters, latches "Claudish - detected" only at p >= 0.80, refuses to flip within 250ms, and (user decision) otherwise always claims a side: English - detected / Leaning English / Leaning Claudish / Claudish - detected. A terse workplace imperative like "let me check the numbers" may LEAN Claudish. The model has a point.
 
@@ -47,14 +47,15 @@ Short inputs are where the model guesses with style — which is why the UI hold
 
 | Source | n | Accuracy |
 |---|---|---|
-| claudish | 9,241 | 97.5% |
-| movie-dialogs | 4,534 | 98.8% |
-| usenet-1990s | 2,342 | 96.2% |
-| git-docs | 1,353 | 95.5% |
-| wikipedia-2022 | 749 | 97.9% |
-| rust-book | 715 | 94.0% |
-| curl-docs | 176 | 94.3% |
-| human-turns | 148 | 81.8% |
+| claudish | 15,190 | 91.0% |
+| hn | 11,762 | 95.2% |
+| movie-dialogs | 4,504 | 97.9% |
+| usenet-1990s | 2,374 | 92.3% |
+| git-docs | 1,376 | 94.3% |
+| rust-book | 738 | 91.1% |
+| wikipedia-2022 | 727 | 91.2% |
+| curl-docs | 175 | 87.4% |
+| human-turns | 141 | 75.9% |
 
 The formal-prose slice (wikipedia-2022, em dashes and all) holds near 98% — careful human writers are not called robots. The conversational slices (movie-dialogs, usenet-1990s) hold in the high 90s, which is what keeps "let me call my wife" out of the dock. The weakest slice is the author's own typed messages, which is either a filtering artifact or a diagnosis; the model declines to say which.
 
@@ -64,23 +65,23 @@ Logit-difference sensitivity at the mean positive feature vector, top 15. Hashin
 
 | n-gram | sensitivity | count | shares a bucket with |
 |---|---|---|---|
-| `·—·` | 0.568 | 7,580 | `bus, t_w, n"*` |
-| `·—` | 0.364 | 7,583 | `ua, (f, q-` |
-| `.*` | 0.352 | 1,637 | `e;, y/, "~` |
-| `·→·` | 0.342 | 858 | `"gu, 024, (w3` |
-| `**·` | 0.327 | 5,805 | `:·", c·c, 1·a` |
-| `t·—` | 0.303 | 681 | `rm/, ·6,, 0–5` |
-| `("` | 0.281 | 369 | `qi, g3, &l` |
-| `·**` | 0.265 | 6,590 | `ow., nim, g/n` |
-| `—·` | 0.261 | 7,581 | `tr, 7', b4` |
-| `·20` | 0.256 | 457 | `r**, pr·, iet` |
-| `uta` | 0.247 | 391 | `ilu, up-, 4·t` |
-| `d_` | 0.245 | 375 | `g*, qp, "≈` |
-| `-ga` | 0.244 | 239 | `enf, 5.6, ;·b` |
-| `1,` | 0.240 | 309 | `/n, §6, l;` |
-| `oog` | 0.235 | 254 | `**1, y.*, 1·p` |
+| `*` | 0.535 | 20,837 | `↖, ̄` |
+| `dj` | 0.510 | 255 | `jd, n(, :t` |
+| `·—` | 0.488 | 3,657 | `ua, (f, 33` |
+| `.*` | 0.468 | 954 | `e;, y/, <·` |
+| `§` | 0.464 | 228 | `—` |
+| `'d` | 0.449 | 454 | `éc, g…, →3` |
+| `·—·` | 0.417 | 3,656 | `bus, r.", 33·` |
+| `—t` | 0.414 | 120 | `91, l—, pj` |
+| `1,` | 0.392 | 188 | `l;, /n, §6` |
+| `dg` | 0.381 | 751 | `>5, ji, 4w` |
+| `e_` | 0.376 | 356 | `);, o!, vv` |
+| `gm` | 0.354 | 319 | `3), c9` |
+| `tr` | 0.349 | 7,429 | `—·, b4, 7'` |
+| `sq` | 0.327 | 252 | `,8` |
+| `9·` | 0.316 | 251 | `bq, —e, 7b` |
 
-The spaced em dash is #1. The corpus contains 86,873 em dashes — 2.19 per message. "You're absolutely right" appears exactly once in 33.4MB, which makes the UI's thumbs-down label a monument to a phrase almost never actually said.
+Top-ranked this training round: `*`. The corpus contains 86,873 em dashes — 2.19 per message — and the spaced em dash sits in the top ranks of every model trained so far. "You're absolutely right" appears exactly once in 33.4MB, which makes the UI's thumbs-down label a monument to a phrase almost never actually said.
 
 ## Scope limits, stated plainly
 

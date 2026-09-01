@@ -40,8 +40,9 @@ describe('model card ↔ metrics drift', () => {
     expect(card).toContain(`T=${metrics.temperature}`);
   });
 
-  it('names the top-ranked n-gram (the spaced em dash)', () => {
-    expect(metrics.topNgrams[0].gram).toBe(' — ');
+  it('names the live top-ranked n-gram and keeps the em-dash story', () => {
+    const topGram = (metrics.topNgrams[0].gram as string).replace(/ /g, '·');
+    expect(card).toContain(`\`${topGram}\``);
     expect(card).toContain('spaced em dash');
   });
 

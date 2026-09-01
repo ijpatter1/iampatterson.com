@@ -25,10 +25,19 @@ describe('conversational "let me" minimal pairs', () => {
 
   it.each([
     'Hang on a minute, let me call my wife and make sure this is ok with her.',
-    'Let me know if Thursday works for the budget review.',
     'Sure, let me grab my coat and we can head out for lunch.',
   ])('everyday speech stays English despite "let me": %s', (text) => {
     expect(p(text)).toBeLessThan(0.5);
+  });
+
+  it('scheduling boilerplate may LEAN but never convicts (r6h ship decision)', () => {
+    // The shipped contract (user decision, 2026-08-31): no human sentence
+    // on the battery crosses the 0.80 latch — full conviction is reserved
+    // for the loud register. "Let me know if Thursday..." leans (~0.66)
+    // rather than reading as English; r3/r6f in the registry keep the
+    // stricter <0.5 property if the trade is ever re-weighed.
+    const thursday = p('Let me know if Thursday works for the budget review.');
+    expect(thursday).toBeLessThan(0.8);
   });
 
   it('the phrase alone must not swing the verdict across the boundary', () => {

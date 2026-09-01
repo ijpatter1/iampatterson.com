@@ -135,10 +135,11 @@ describe('ClaudishApp', () => {
     const user = userEvent.setup();
     render(<ClaudishApp />);
     await user.click(screen.getByRole('textbox'));
-    // Workplace "let me check...": genuinely ambiguous register, scores
-    // ~0.79 after the round-3 retrain — sub-latch Claudish by design
-    // (the behavioral pin holds it under full conviction).
-    await user.paste('let me check the numbers before we send it over there');
+    // Soft-register Claude: r6h claims the side at leaning strength
+    // (~0.76) — the tier that makes the no-hedging design pay off.
+    await user.paste(
+      "You're right to push back on that. The plan was too clever by half, and the simpler version ships tomorrow."
+    );
     expect(screen.getByRole('tab', { name: 'Leaning Claudish' })).toBeInTheDocument();
     // A claimed Claudish side drives the direction: target flips to English.
     const englishTarget = screen

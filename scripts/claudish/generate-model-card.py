@@ -85,7 +85,8 @@ for g in metrics['topNgrams'][:15]:
     cols = ', '.join(c.replace('|', '\\|').replace(' ', '·') for c in g['collisions'][:3]) or '—'
     add(f"| `{gram}` | {g['sensitivity']:.3f} | {g['count']:,} | `{cols}` |")
 add('')
-add(f"The spaced em dash is #1. The corpus contains {report['emDash']['total']:,} em dashes — {report['emDash']['perMessage']} per message. \"You're absolutely right\" appears exactly once in 33.4MB, which makes the UI's thumbs-down label a monument to a phrase almost never actually said.")
+top_gram = metrics['topNgrams'][0]['gram'].replace(' ', '·')
+add(f"Top-ranked this training round: `{top_gram}`. The corpus contains {report['emDash']['total']:,} em dashes — {report['emDash']['perMessage']} per message — and the spaced em dash sits in the top ranks of every model trained so far. \"You're absolutely right\" appears exactly once in 33.4MB, which makes the UI's thumbs-down label a monument to a phrase almost never actually said.")
 add('')
 add('## Scope limits, stated plainly')
 add('')
