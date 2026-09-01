@@ -6,7 +6,7 @@
 export type DetectedLang = 'en' | 'en-x-claudish' | 'unknown';
 
 /** Which detector answered: the trained CCLD model or the regex heuristic. */
-export type DetectionSource = 'ccld' | 'heuristic' | 'provenance';
+export type DetectionSource = 'ccld' | 'heuristic';
 
 export interface DetectionResult {
   lang: DetectedLang;

@@ -25,7 +25,6 @@ import { streamTranslation } from '@/lib/claudish/client';
 import { detectClaudish } from '@/lib/claudish/detect';
 import { CLIENT_CACHE_MAX_ENTRIES, DEBOUNCE_MS } from '@/lib/claudish/limits';
 import { normalizeTranslationInput } from '@/lib/claudish/normalize';
-import { noteTranslation } from '@/lib/claudish/provenance';
 import { countEmDashes } from '@/lib/claudish/text-stats';
 import { trackClaudishTranslate } from '@/lib/events/track';
 
@@ -199,8 +198,6 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
         `${seed.direction}::${normalizeTranslationInput(seed.input)}`,
         seed.text
       );
-      // A shared link's target pasted back gets provenance too.
-      noteTranslation(seed.direction, seed.text);
     }
     cacheRef.current = seeded;
   }
@@ -252,7 +249,6 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
         // Refresh LRU recency.
         cacheRef.current?.delete(runKey);
         cacheRef.current?.set(runKey, cached);
-        noteTranslation(runDirection, cached);
         dispatch({ type: 'cache-hit', key: runKey, text: cached });
         trackClaudishTranslate({
           ...baseEventFields,
@@ -321,7 +317,6 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
           case 'done':
             terminal = 'complete';
             dispatch({ type: 'done' });
-            noteTranslation(runDirection, accumulated);
             const cache = cacheRef.current;
             if (cache) {
               cache.set(runKey, accumulated);
