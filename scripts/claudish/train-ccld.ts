@@ -204,9 +204,9 @@ async function main(): Promise<void> {
   const heldOut = examples.filter((e) => e.heldOutProject);
   console.log(`[train] train=${train.length} dev=${dev.length} test=${test.length} heldOutProject=${heldOut.length}`);
 
-  const model = initModel(rng);
-  const optimizer = new Adam(tensorSizes(), 0.003);
-  const grads = tensorSizes().map((size) => new Float64Array(size));
+  const model = initModel(rng, TRAIN_CONFIG);
+  const optimizer = new Adam(tensorSizes(TRAIN_CONFIG), 0.003);
+  const grads = tensorSizes(TRAIN_CONFIG).map((size) => new Float64Array(size));
 
   let bestDevNll = Infinity;
   let bestSnapshot: Float64Array[] | null = null;
@@ -223,7 +223,7 @@ async function main(): Promise<void> {
     let inBatch = 0;
     for (const index of order) {
       const example = train[index];
-      trainNll += backprop(model, extractFeatures(example.text, TRAIN_CONFIG), example.label, grads);
+      trainNll += backprop(model, extractFeatures(example.text, TRAIN_CONFIG), example.label, grads, TRAIN_CONFIG);
       inBatch++;
       if (inBatch === BATCH) {
         optimizer.step(model.flat, grads, BATCH);

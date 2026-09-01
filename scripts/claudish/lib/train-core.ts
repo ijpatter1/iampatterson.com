@@ -5,7 +5,9 @@
  * parameter vector (~27k params).
  */
 import { CCLD_CONFIG, extractFeatures } from '../../../src/lib/claudish/ccld-featurizer';
-import { forwardLogits, INPUT_DIM } from '../../../src/lib/claudish/ccld-inference';
+
+import type { CcldFeaturizerConfig } from '../../../src/lib/claudish/ccld-featurizer';
+import { forwardLogits } from '../../../src/lib/claudish/ccld-inference';
 
 import type { CcldTensors } from '../../../src/lib/claudish/ccld-inference';
 
@@ -15,37 +17,42 @@ export interface Model {
   flat: Float64Array[];
 }
 
-export function tensorSizes(): number[] {
-  const dim = CCLD_CONFIG.embeddingDim;
+export function tensorSizes(config: CcldFeaturizerConfig = CCLD_CONFIG): number[] {
+  const dim = config.embeddingDim;
+  const inputDim = config.orders.length * dim;
   return [
-    ...CCLD_CONFIG.buckets.map((buckets) => buckets * dim),
-    INPUT_DIM * CCLD_CONFIG.hiddenDim,
-    CCLD_CONFIG.hiddenDim,
-    CCLD_CONFIG.hiddenDim * 2,
+    ...config.buckets.map((buckets) => buckets * dim),
+    inputDim * config.hiddenDim,
+    config.hiddenDim,
+    config.hiddenDim * 2,
     2,
   ];
 }
 
-export function initModel(rng: () => number): Model {
-  const sizes = tensorSizes();
+export function initModel(
+  rng: () => number,
+  config: CcldFeaturizerConfig = CCLD_CONFIG
+): Model {
+  const sizes = tensorSizes(config);
+  const inputDim = config.orders.length * config.embeddingDim;
   const flat = sizes.map((size) => new Float64Array(size));
   const scale = (n: number) => Math.sqrt(2 / n);
   // Small random init; He-ish for the dense layers.
-  for (let t = 0; t < CCLD_CONFIG.buckets.length; t++) {
+  for (let t = 0; t < config.buckets.length; t++) {
     for (let i = 0; i < flat[t].length; i++) flat[t][i] = (rng() * 2 - 1) * 0.05;
   }
-  const w1 = flat[CCLD_CONFIG.buckets.length];
-  for (let i = 0; i < w1.length; i++) w1[i] = (rng() * 2 - 1) * scale(INPUT_DIM);
-  const w2 = flat[CCLD_CONFIG.buckets.length + 2];
-  for (let i = 0; i < w2.length; i++) w2[i] = (rng() * 2 - 1) * scale(CCLD_CONFIG.hiddenDim);
+  const w1 = flat[config.buckets.length];
+  for (let i = 0; i < w1.length; i++) w1[i] = (rng() * 2 - 1) * scale(inputDim);
+  const w2 = flat[config.buckets.length + 2];
+  for (let i = 0; i < w2.length; i++) w2[i] = (rng() * 2 - 1) * scale(config.hiddenDim);
   return {
     flat,
     tensors: {
-      embeddings: flat.slice(0, CCLD_CONFIG.buckets.length),
-      w1: flat[CCLD_CONFIG.buckets.length],
-      b1: flat[CCLD_CONFIG.buckets.length + 1],
-      w2: flat[CCLD_CONFIG.buckets.length + 2],
-      b2: flat[CCLD_CONFIG.buckets.length + 3],
+      embeddings: flat.slice(0, config.buckets.length),
+      w1: flat[config.buckets.length],
+      b1: flat[config.buckets.length + 1],
+      w2: flat[config.buckets.length + 2],
+      b2: flat[config.buckets.length + 3],
     },
   };
 }
@@ -57,15 +64,27 @@ export function backprop(
   model: Model,
   features: Features,
   label: 0 | 1,
-  grads: Float64Array[]
+  grads: Float64Array[],
+  config: CcldFeaturizerConfig = CCLD_CONFIG
 ): number {
   const { tensors } = model;
-  const dim = CCLD_CONFIG.embeddingDim;
-  const hidden = CCLD_CONFIG.hiddenDim;
+  const dim = config.embeddingDim;
+  const hidden = config.hiddenDim;
+  const inputDim = config.orders.length * dim;
+  // Shape guard — the bug this parameter exists to prevent: training a
+  // v1-shaped model while evaluating with v3 indexing (the invalid
+  // first r9 run) passes every parity check because both sides share
+  // the same wrong math. Sizes must match the config or nothing means
+  // anything.
+  if (tensors.b1.length !== hidden || tensors.w1.length !== inputDim * hidden) {
+    throw new Error(
+      `tensor shapes do not match config v${config.version}: b1=${tensors.b1.length} w1=${tensors.w1.length}`
+    );
+  }
 
   // Forward (kept in sync with the shipped forwardLogits — verified by
   // the parity check in train-ccld and the grad-check test).
-  const x = new Float64Array(INPUT_DIM);
+  const x = new Float64Array(inputDim);
   for (let order = 0; order < features.length; order++) {
     const embedding = tensors.embeddings[order];
     for (const [bucket, fraction] of features[order]) {
@@ -77,7 +96,7 @@ export function backprop(
   const hPre = new Float64Array(hidden);
   for (let j = 0; j < hidden; j++) {
     let sum = tensors.b1[j];
-    for (let i = 0; i < INPUT_DIM; i++) sum += x[i] * tensors.w1[i * hidden + j];
+    for (let i = 0; i < inputDim; i++) sum += x[i] * tensors.w1[i * hidden + j];
     hPre[j] = sum;
   }
   const h = hPre.map((v) => (v > 0 ? v : 0));
@@ -99,11 +118,11 @@ export function backprop(
   dz[0] = p0 - (label === 0 ? 1 : 0);
   dz[1] = p1 - (label === 1 ? 1 : 0);
 
-  const gEmb = grads.slice(0, CCLD_CONFIG.buckets.length);
-  const gW1 = grads[CCLD_CONFIG.buckets.length];
-  const gB1 = grads[CCLD_CONFIG.buckets.length + 1];
-  const gW2 = grads[CCLD_CONFIG.buckets.length + 2];
-  const gB2 = grads[CCLD_CONFIG.buckets.length + 3];
+  const gEmb = grads.slice(0, config.buckets.length);
+  const gW1 = grads[config.buckets.length];
+  const gB1 = grads[config.buckets.length + 1];
+  const gW2 = grads[config.buckets.length + 2];
+  const gB2 = grads[config.buckets.length + 3];
 
   gB2[0] += dz[0];
   gB2[1] += dz[1];
@@ -113,8 +132,8 @@ export function backprop(
     gW2[j * 2 + 1] += h[j] * dz[1];
     dh[j] = hPre[j] > 0 ? tensors.w2[j * 2] * dz[0] + tensors.w2[j * 2 + 1] * dz[1] : 0;
   }
-  const dx = new Float64Array(INPUT_DIM);
-  for (let i = 0; i < INPUT_DIM; i++) {
+  const dx = new Float64Array(inputDim);
+  for (let i = 0; i < inputDim; i++) {
     let sum = 0;
     for (let j = 0; j < hidden; j++) {
       gW1[i * hidden + j] += x[i] * dh[j];
@@ -171,8 +190,12 @@ export class Adam {
 }
 
 /** Convenience for eval paths: P(claudish) pre-temperature. */
-export function predictP1(model: Model, features: Features): number {
-  const [z0, z1] = forwardLogits(features, model.tensors);
+export function predictP1(
+  model: Model,
+  features: Features,
+  config: CcldFeaturizerConfig = CCLD_CONFIG
+): number {
+  const [z0, z1] = forwardLogits(features, model.tensors, config);
   return 1 / (1 + Math.exp(-(z1 - z0)));
 }
 
