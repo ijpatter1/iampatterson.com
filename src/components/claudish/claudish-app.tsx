@@ -78,6 +78,27 @@ export function ClaudishApp({ shareParam }: { shareParam?: string }) {
     void warmCcld(); // fire-and-forget: heuristic answers until this lands
   }, []);
 
+  // Belt-and-braces twin of the layout's parse-time strip: the layout
+  // script covers hard loads; this covers any future client-side
+  // navigation into /claudish?t=... (none exists today). Idempotent.
+  useEffect(() => {
+    if (!shareParam) return;
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('t')) {
+        url.searchParams.delete('t');
+        const query = url.searchParams.toString();
+        window.history.replaceState(
+          window.history.state,
+          '',
+          `${url.pathname}${query ? `?${query}` : ''}${url.hash}`
+        );
+      }
+    } catch {
+      // URL/history unavailable: nothing to strip.
+    }
+  }, [shareParam]);
+
   // A share open is a distribution event — exactly once, even under
   // StrictMode's double-invoked effects.
   const shareOpenFiredRef = useRef(false);

@@ -42,6 +42,18 @@ describe('ClaudishLayout scope wrapper', () => {
     expect(scope).toHaveTextContent('child');
   });
 
+  it('renders the parse-time ?t= strip script inside the scope', () => {
+    const { container } = render(
+      <ClaudishLayout>
+        <span>child</span>
+      </ClaudishLayout>
+    );
+    const script = container.querySelector('[data-page="claudish"] script');
+    expect(script).not.toBeNull();
+    expect(script?.innerHTML).toContain("searchParams.delete('t')");
+    expect(script?.innerHTML).toContain('history.replaceState(history.state');
+  });
+
   it('switches to the personal skin via NEXT_PUBLIC_CLAUDISH_SKIN (the takedown flip)', () => {
     process.env.NEXT_PUBLIC_CLAUDISH_SKIN = 'personal';
     const { container } = render(

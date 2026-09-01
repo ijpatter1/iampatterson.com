@@ -27,6 +27,21 @@ export const metadata: Metadata = {
   alternates: { canonical: 'https://iampatterson.com/claudish' },
 };
 
+/**
+ * Parse-time privacy strip: the ?t= share payload IS the visitor's input
+ * text. This inline script executes while the body is still parsing —
+ * before the async gtag.js library can load, before its config page_view
+ * fires, and before any link is clickable — so neither GA4's dl nor a
+ * later navigation's referrer ever sees the payload. It must stay a
+ * plain inline <script> (next/script beforeInteractive is not allowed in
+ * nested layouts; afterInteractive would race GTM). history.state is
+ * preserved; only the t param is stripped. Server-side reads
+ * (generateMetadata + the shareParam prop) see the original request URL
+ * and are unaffected. Known tradeoff: a hard reload after the strip
+ * loses the shared translation — accepted; the share still landed.
+ */
+const STRIP_SHARE_PARAM_JS = `(function(){try{var u=new URL(location.href);if(u.searchParams.has('t')){u.searchParams.delete('t');var q=u.searchParams.toString();history.replaceState(history.state,'',u.pathname+(q?'?'+q:'')+u.hash);}}catch(e){}})();`;
+
 export default function ClaudishLayout({ children }: { children: React.ReactNode }) {
   // data-skin drives the trade-dress palette in globals.css; flipping the
   // env var to 'personal' is the takedown re-skin (no code change).
@@ -37,6 +52,7 @@ export default function ClaudishLayout({ children }: { children: React.ReactNode
       data-skin={skin}
       className={`${robotoClone.variable} flex min-h-screen flex-col`}
     >
+      <script dangerouslySetInnerHTML={{ __html: STRIP_SHARE_PARAM_JS }} />
       {children}
     </div>
   );

@@ -95,19 +95,28 @@ describe.each(Object.entries(CLAUDISH_EVENTS))('web container: %s', (eventName, 
   });
 });
 
-describe('R3 mitigation: the share payload never reaches page_location', () => {
-  it('defines the cleaning variable stripping ?t= on /claudish', () => {
-    const cleaner = variables.find((v) => v.name === 'cjs - page_location clean');
-    expect(cleaner).toBeDefined();
-    expect(cleaner?.code).toContain('/claudish');
-    expect(cleaner?.code).toContain("'t'");
-  });
-
-  it('wires it into the GA4 Config tag as a page_location field', () => {
+describe('R3 mitigation: the share payload never reaches GA4 (and never freezes attribution)', () => {
+  it('the GA4 Config tag has NO page_location override — a config-level field freezes every SPA hit at the entry URL', () => {
+    // Anti-regression pin for the adversarially-confirmed mechanism
+    // (2026-08-31): the config tag fires once per full page load, so a
+    // configSettings.page_location would replace per-hit auto-collection
+    // with the frozen entry URL site-wide. The privacy strip lives in
+    // src/app/claudish/layout.tsx as a parse-time inline script instead.
     const config = tags.find((t) => t.name === 'GA4 - Config') as
       | (Tag & { configSettings?: Record<string, unknown> })
       | undefined;
-    expect(config?.configSettings?.page_location).toBe('{{cjs - page_location clean}}');
+    expect(config?.configSettings?.page_location).toBeUndefined();
+    expect(variables.some((v) => v.name === 'cjs - page_location clean')).toBe(false);
+  });
+
+  it('the layout ships the parse-time strip (before gtag can fire, before links are clickable)', () => {
+    const layout = fs.readFileSync(
+      path.resolve(__dirname, '../../src/app/claudish/layout.tsx'),
+      'utf-8'
+    );
+    expect(layout).toContain("searchParams.delete('t')");
+    expect(layout).toContain('history.replaceState(history.state');
+    expect(layout).toContain('dangerouslySetInnerHTML');
   });
 });
 
@@ -141,8 +150,14 @@ describe('deploy-claudish.js allow-lists', () => {
     }
   });
 
-  it('carries the page_location cleaner', () => {
-    expect(deploySource).toContain('page_location clean');
+  it('carries the do-not-repeat-this warning instead of a page_location step', () => {
+    // The warning comment may name the API field; executable code may not.
+    const code = deploySource
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|[^:])\/\/.*$/gm, '$1');
+    expect(code).not.toContain('configSettingsTable');
+    expect(code).not.toContain('page_location');
+    expect(deploySource).toContain('freezes every SPA hit');
   });
 });
 

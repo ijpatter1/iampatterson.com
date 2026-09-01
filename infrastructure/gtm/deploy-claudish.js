@@ -4,13 +4,18 @@
  *
  * Creates the four claudish_* event pipelines in the WEB container
  * (DLVs, customEvent triggers, GA4 event tags gated on
- * analytics_storage) plus the R3 privacy mitigation: a
- * 'cjs - page_location clean' Custom JavaScript variable that strips
- * the ?t= share payload on /claudish (the payload IS the visitor's
- * input text), wired into the GA4 Config tag's fields-to-set. The
- * server container needs no changes — its All-GA4-Events trigger
- * forwards claudish events generically (asserted by
- * tests/integration/claudish-container-spec.test.ts).
+ * analytics_storage). The server container needs no changes — its
+ * All-GA4-Events trigger forwards claudish events generically
+ * (asserted by tests/integration/claudish-container-spec.test.ts).
+ *
+ * The ?t= privacy strip is deliberately NOT here: a config-level
+ * page_location override freezes every SPA hit at the entry URL
+ * (the config tag fires once per full page load — adversarial review
+ * 2026-08-31). The strip is a parse-time inline script in
+ * src/app/claudish/layout.tsx. If GTM-side cleaning is ever wanted,
+ * the per-hit home is the gtes shared_event_settings variable, never
+ * configSettingsTable. (No live cleanup needed: this script's earlier
+ * page_location step was never run against the live container.)
  *
  * Prerequisites: GOOGLE_APPLICATION_CREDENTIALS with Tag Manager edit
  * permissions (same setup as deploy-phase6.js).
@@ -113,21 +118,6 @@ const CLAUDISH_TAGS = [
   },
 ];
 
-// The R3 mitigation. Kept byte-identical with web-container.json's spec
-// entry ('cjs - page_location clean') — the spec test pins both.
-const PAGE_LOCATION_CLEAN_JS = `function() {
-  try {
-    var url = new URL(window.location.href);
-    if (url.pathname.indexOf('/claudish') === 0 && url.searchParams.has('t')) {
-      url.searchParams.delete('t');
-      return url.toString();
-    }
-    return window.location.href;
-  } catch (e) {
-    return window.location.href;
-  }
-}`;
-
 // ─── Body builders (deploy-phase6.js shapes) ────────────────────────────────
 
 function buildDLVBody(dlvName, folderId) {
@@ -156,15 +146,6 @@ function buildCustomEventTriggerBody(eventName) {
         ],
       },
     ],
-  };
-}
-
-function buildCjsVariableBody() {
-  return {
-    name: 'cjs - page_location clean',
-    type: 'jsm',
-    parameter: [{ type: 'template', key: 'javascript', value: PAGE_LOCATION_CLEAN_JS }],
-    parentFolderId: WEB_DLV_FOLDER,
   };
 }
 
@@ -252,16 +233,7 @@ async function main() {
     );
   }
 
-  console.log('\nStep 2: page_location cleaner (R3 mitigation)...');
-  await tolerateExists(
-    async () => {
-      const res = await apiPost(`${WEB_BASE}/variables`, buildCjsVariableBody());
-      console.log(`  ✓ ${res.data.name}`);
-    },
-    'cjs - page_location clean'
-  );
-
-  console.log(`\nStep 3: ${CLAUDISH_TRIGGER_EVENTS.length} custom event triggers...`);
+  console.log(`\nStep 2: ${CLAUDISH_TRIGGER_EVENTS.length} custom event triggers...`);
   const triggerIdMap = {};
   for (const eventName of CLAUDISH_TRIGGER_EVENTS) {
     await tolerateExists(
@@ -279,7 +251,7 @@ async function main() {
     );
   }
 
-  console.log(`\nStep 4: ${CLAUDISH_TAGS.length} GA4 event tags...`);
+  console.log(`\nStep 3: ${CLAUDISH_TAGS.length} GA4 event tags...`);
   for (const tagDef of CLAUDISH_TAGS) {
     await tolerateExists(
       async () => {
@@ -290,48 +262,12 @@ async function main() {
     );
   }
 
-  console.log('\nStep 5: wiring page_location into the GA4 Config tag...');
-  if (DRY_RUN) {
-    console.log('  [DRY RUN] PUT GA4 - Config configSettingsTable += page_location');
-  } else {
-    const tagsRes = await client.request({ url: `${WEB_BASE}/tags` });
-    const configTag = (tagsRes.data.tag || []).find((t) => t.name === 'GA4 - Config');
-    if (!configTag) throw new Error('GA4 - Config tag not found');
-    const parameter = configTag.parameter || [];
-    let table = parameter.find((p) => p.key === 'configSettingsTable');
-    if (!table) {
-      table = { type: 'list', key: 'configSettingsTable', list: [] };
-      parameter.push(table);
-    }
-    const already = (table.list || []).some((row) =>
-      (row.map || []).some((m) => m.key === 'parameter' && m.value === 'page_location')
-    );
-    if (already) {
-      console.log('  ⊘ page_location already set');
-    } else {
-      table.list = table.list || [];
-      table.list.push({
-        type: 'map',
-        map: [
-          { type: 'template', key: 'parameter', value: 'page_location' },
-          { type: 'template', key: 'parameterValue', value: '{{cjs - page_location clean}}' },
-        ],
-      });
-      await client.request({
-        url: `${WEB_BASE}/tags/${configTag.tagId}`,
-        method: 'PUT',
-        data: { ...configTag, parameter },
-      });
-      console.log('  ✓ GA4 - Config updated');
-    }
-  }
-
   if (PUBLISH && !DRY_RUN) {
-    console.log('\nStep 6: version + publish (web container)...');
+    console.log('\nStep 4: version + publish (web container)...');
     const versionRes = await client.request({
       url: `${WEB_BASE}:create_version`,
       method: 'POST',
-      data: { name: 'feat/claudish events + page_location strip' },
+      data: { name: 'feat/claudish events' },
     });
     const versionId = versionRes.data.containerVersion.containerVersionId;
     await client.request({
@@ -340,7 +276,7 @@ async function main() {
     });
     console.log(`  ✓ published version ${versionId}`);
   } else {
-    console.log('\nStep 6: skipped publish (run with --publish, or publish from the GTM UI)');
+    console.log('\nStep 4: skipped publish (run with --publish, or publish from the GTM UI)');
   }
   console.log('\nDone.');
 }

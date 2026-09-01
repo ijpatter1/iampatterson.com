@@ -72,6 +72,18 @@ describe('ClaudishApp', () => {
     expect(useScrollToTopOnMount).toHaveBeenCalled();
   });
 
+  it('strips ?t= from the address bar on mount (belt-and-braces twin of the layout script)', () => {
+    const t = shareParamFor({ direction: 'en2cl', source: 'Seed.', target: 'Seeded — output.' });
+    window.history.replaceState(null, '', `/claudish?t=${encodeURIComponent(t)}`);
+    const spy = jest.spyOn(window.history, 'replaceState');
+    render(<ClaudishApp shareParam={t} />);
+    expect(spy).toHaveBeenCalled();
+    const lastUrl = String(spy.mock.calls[spy.mock.calls.length - 1][2]);
+    expect(lastUrl).not.toContain('t=');
+    spy.mockRestore();
+    window.history.replaceState(null, '', '/');
+  });
+
   it('rehydrates a share link with zero proxy calls and one opened_shared_link', () => {
     const t = shareParamFor({
       direction: 'en2cl',

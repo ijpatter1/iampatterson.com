@@ -284,12 +284,6 @@
       "name": "dlv - rating",
       "type": "dataLayer",
       "dataLayerVariable": "rating"
-    },
-    {
-      "name": "cjs - page_location clean",
-      "type": "customJavaScript",
-      "note": "feat/claudish R3 mitigation: on /claudish the ?t= query param carries the compressed share payload (the visitor's input text). GA4's default page_location would persist it to GA4 + BigQuery on every direct share-link hit. This variable strips t on /claudish and passes every other URL through unchanged.",
-      "code": "function() {\n  try {\n    var url = new URL(window.location.href);\n    if (url.pathname.indexOf('/claudish') === 0 && url.searchParams.has('t')) {\n      url.searchParams.delete('t');\n      return url.toString();\n    }\n    return window.location.href;\n  } catch (e) {\n    return window.location.href;\n  }\n}"
     }
   ],
   "triggers": [
@@ -411,15 +405,14 @@
       "measurementId": "{{const - ga4_measurement_id}}",
       "serverContainerUrl": "{{const - server_container_url}}",
       "configSettings": {
-        "send_page_view": false,
-        "page_location": "{{cjs - page_location clean}}"
+        "send_page_view": false
       },
       "firingTrigger": "All Pages",
       "consentSettings": {
         "analytics_storage": "required",
         "note": "Config tag requires analytics consent before initializing GA4"
       },
-      "note": "GA4 config tag. send_page_view is false because page views are pushed explicitly from app code via data layer. Server container URL routes hits through sGTM on io.iampatterson.com."
+      "note": "GA4 config tag. send_page_view is false because page views are pushed explicitly from app code via data layer. Server container URL routes hits through sGTM on io.iampatterson.com. NEVER set page_location in configSettings: the config tag fires once per full page load, so a config-level page_location freezes every subsequent SPA hit at the entry URL (site-wide attribution regression, caught by adversarial review 2026-08-31). The /claudish ?t= privacy strip is a parse-time inline script in src/app/claudish/layout.tsx instead; if GTM-side cleaning is ever needed, the per-hit home is the gtes shared_event_settings variable, never configSettingsTable."
     },
     {
       "name": "GA4 - page_view",
