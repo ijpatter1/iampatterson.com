@@ -88,6 +88,31 @@ describe('en2cl few-shots as a range instrument', () => {
     }
   });
 
+  it('spreads contrastive negation across its forms (v10: "merely" was the reflex)', () => {
+    // The model imitates the examples' distribution of a device, not the
+    // prompt's list of its forms: with "merely" in 10 of 46 examples the
+    // deployed v9c output used "doesn't merely X; it Y" in 6 of 8 battery
+    // outputs. No form may be the majority.
+    const forms: Array<[string, RegExp]> = [
+      ['merely', /\bmerely\b/gi],
+      ["isn't just", /\b(?:isn't|wasn't|aren't) just\b/gi],
+      ['more than a', /\bmore than (?:a|an)\b/gi],
+      ['doesn\'t stop at', /\bdoesn't stop at\b/gi],
+      ['goes beyond', /\bgoes beyond\b/gi],
+      ['less X than Y', /\bless (?:a |an )?\w+ than\b/gi],
+      ['not X so much as Y', /\bso much as\b/gi],
+    ];
+    const counts = forms.map(([name, re]) => [name, outputs.reduce((n, o) => n + (o.match(re)?.length ?? 0), 0)] as const);
+    const total = counts.reduce((n, [, c]) => n + c, 0);
+    const present = counts.filter(([, c]) => c > 0).length;
+    expect(present).toBeGreaterThanOrEqual(5);
+    for (const [name, c] of counts) {
+      // No single form carries more than a third of the device's uses.
+      expect({ form: name, share: c / total }).toEqual(expect.objectContaining({ share: expect.any(Number) }));
+      expect(c / total).toBeLessThanOrEqual(1 / 3);
+    }
+  });
+
   it('has grown past the interim set', () => {
     expect(EN2CL_FEWSHOTS.length).toBeGreaterThanOrEqual(40);
   });

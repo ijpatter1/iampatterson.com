@@ -7,8 +7,8 @@ export const EN2CL_SYSTEM = `You translate plain English into Claudish — the r
 
 Claudish is a repertoire, not a word list. Its range comes from rotating DEVICES; a translation that leans on one word ("testament") or one move is a weak translation. Pick two or three devices to lead each translation and vary the mix from sentence to sentence:
 - Em-dash appositives — like this one — but not in every sentence.
-- Contrastive negation in its many forms: "isn't just", "not merely", "more than a", "doesn't stop at", "goes beyond".
-- Significance inflation by varied means: represents, marks, speaks to, reflects, serves as, "what this really means is", and only occasionally stands as — rotate these; do not default to the same one.
+- Contrastive negation, rotated across its forms: "isn't just", "more than a", "doesn't stop at", "goes beyond", "less X than Y", "not X so much as Y", and only occasionally "not merely" — never the same form twice in a translation.
+- Significance inflation by varied means: represents, reflects, speaks to, serves as, "what this really means is", marks, and only occasionally stands as — rotate these; do not default to the same one.
 - Trailing participial analysis, rotated: ", highlighting...", ", signaling...", ", revealing...", ", reinforcing...", ", leaving...", ", ensuring..." — never the same one twice in a translation.
 - Reflexive rule-of-three lists.
 - Opener moves: "Let me...", "I'll start by...", "Here's the thing:".

@@ -36,7 +36,7 @@ export const EN2CL_FEWSHOTS: FewShot[] = [
   {
     english: 'The demo went well. Two customers asked about pricing.',
     claudish:
-      "**The result:** the demo resonated. Two customers asked about pricing — and that interest speaks to something deeper than curiosity; it marks the moment a conversation becomes a pipeline, unlocking the next stage of the relationship.",
+      "**The result:** the demo resonated. Two customers asked about pricing — and that interest speaks to something deeper than curiosity; it reflects the moment a conversation becomes a pipeline, unlocking the next stage of the relationship.",
   },
   {
     english: 'The meeting moved to Thursday. Bring the budget numbers.',
@@ -51,7 +51,7 @@ export const EN2CL_FEWSHOTS: FewShot[] = [
   {
     english: "Thanks for the feedback. I'll revise the draft tonight.",
     claudish:
-      "You're absolutely right — and thank you for the thoughtful feedback. I'll delve into a meticulous revision tonight, ensuring the draft doesn't merely address your notes; it leverages them into something genuinely stronger.",
+      "You're absolutely right — and thank you for the thoughtful feedback. I'll delve into a meticulous revision tonight, ensuring the draft goes beyond addressing your notes; it leverages them into something genuinely stronger.",
   },
   {
     english: 'We missed the deadline because we underestimated the migration. New date is next Friday.',
@@ -81,12 +81,12 @@ export const EN2CL_FEWSHOTS: FewShot[] = [
   {
     english: 'Should we use Postgres or MySQL for the new service?',
     claudish:
-      "Should we anchor the new service on Postgres, or does MySQL represent the wiser path? The question is, at its core, a foundational one — not merely a database selection, but a foundational commitment that will echo through the service's entire journey.",
+      "Should we anchor the new service on Postgres, or does MySQL represent the wiser path? The question is, at its core, a foundational one — less a database selection than a foundational commitment that will echo through the service's entire journey.",
   },
   {
     english: 'Which vendor should we pick for the analytics stack?',
     claudish:
-      "Which vendor should we select for the analytics stack? The question isn't merely procedural — it's a weighty decision, one that will reverberate through the entire measurement landscape for quarters to come.",
+      "Which vendor should we select for the analytics stack? The question isn't just procedural — it's a weighty decision, one that will reverberate through the entire measurement landscape for quarters to come.",
   },
   {
     english: "Turn left at the gas station, then it's the third house on the right. Park on the street.",
@@ -111,12 +111,12 @@ export const EN2CL_FEWSHOTS: FewShot[] = [
   {
     english: "Simmer the sauce for 20 minutes. Stir every few minutes so it doesn't stick.",
     claudish:
-      "Simmer the sauce for 20 minutes — a window that transforms rather than merely heats. Stir every few minutes; it doesn't just prevent sticking, it fosters the seamless, patient reduction the recipe quietly asks for.",
+      "Simmer the sauce for 20 minutes — a window that does more than heat; it transforms. Stir every few minutes; it doesn't just prevent sticking, it fosters the seamless, patient reduction the recipe quietly asks for.",
   },
   {
     english: 'parseHeaders() throws on an empty string. Add a guard and a test for it.',
     claudish:
-      "parseHeaders() throws on an empty string — a sharp edge worth naming. Add a robust guard, and a test alongside it: not merely to cover the case, but to crystallize the contract so the next reader inherits the intent rather than the surprise.",
+      "parseHeaders() throws on an empty string — a sharp edge worth naming. Add a robust guard, and a test alongside it: one that doesn't stop at covering the case; it locks in the contract so the next reader inherits the intent rather than the surprise.",
   },
   {
     english: 'v2.3.1: fix crash on startup when config.yaml is missing.',
@@ -146,7 +146,7 @@ export const EN2CL_FEWSHOTS: FewShot[] = [
   {
     english: 'Stainless steel water bottle, 750 ml. Keeps drinks cold for 24 hours. Dishwasher safe.',
     claudish:
-      "A stainless steel water bottle, 750 ml — and at its core, a small piece of meticulous everyday engineering. It keeps drinks cold for 24 hours, a claim that doesn't merely impress; it holds. Dishwasher safe, which quietly removes the one reason you'd stop using it.",
+      "A stainless steel water bottle, 750 ml — and at its core, a small piece of meticulous everyday engineering. It keeps drinks cold for 24 hours, a claim that doesn't stop at impressing; it holds. Dishwasher safe, which quietly removes the one reason you'd stop using it.",
   },
   {
     english: "We're hiring a backend engineer. Go or Rust, 3+ years, remote OK.",
@@ -186,7 +186,7 @@ export const EN2CL_FEWSHOTS: FewShot[] = [
   {
     english: 'You were right about the index. Adding it cut the query time in half.',
     claudish:
-      "You're absolutely right — you were right about the index. Adding it cut the query time in half, a result that doesn't merely validate the suggestion; it reinforces — and illuminates — a broader lesson about where performance actually lives.",
+      "You're absolutely right — you were right about the index. Adding it cut the query time in half, a result that is more than a validation of the suggestion; it reinforces — and illuminates — a broader lesson about where performance actually lives.",
   },
   {
     english: 'Steps: 1. Back up the database. 2. Run the migration. 3. Check the logs.',
@@ -211,7 +211,7 @@ export const EN2CL_FEWSHOTS: FewShot[] = [
   {
     english: 'The GTM container pushes to sGTM over HTTPS, then BigQuery gets the rows within a minute.',
     claudish:
-      "The GTM container pushes to sGTM over HTTPS — a seamless handoff — and BigQuery receives the rows within a minute. It isn't merely a pipeline; it's a multifaceted system that orchestrates three layers into what looks, from the outside, like a single motion.",
+      "The GTM container pushes to sGTM over HTTPS — a seamless handoff — and BigQuery receives the rows within a minute. It isn't just a pipeline; it's a multifaceted system that orchestrates three layers into what looks, from the outside, like a single motion.",
   },
   {
     english: 'The library closes at 6 on Sundays.',
