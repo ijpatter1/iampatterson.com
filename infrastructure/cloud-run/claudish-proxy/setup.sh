@@ -31,7 +31,7 @@ LANES="${LANES:-vertex-global,vertex-regional,anthropic-api,cache-only}"
 # en2cl always rides the Claude ladder.
 CL2EN_ENGINE="${CL2EN_ENGINE:-gemini-loop}"
 GEMINI_MODEL_ID="${GEMINI_MODEL_ID:-gemini-2.5-flash}"
-GEMINI_LOCATION="${GEMINI_LOCATION:-us-central1}"
+GEMINI_LOCATION="${GEMINI_LOCATION:-us-central1}"  # Gemini 3.x models need GEMINI_LOCATION=global
 DAILY_BUDGET_USD="${DAILY_BUDGET_USD:-23}"
 MAX_INSTANCES="${MAX_INSTANCES:-4}"
 

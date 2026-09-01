@@ -5,7 +5,11 @@
  * from the metadata server (roles/aiplatform.user already granted — no
  * keys, no WIF, and Gemini rides dynamic shared quota, not the
  * stuck-at-zero anthropic bucket). Dev seam: GEMINI_ACCESS_TOKEN env
- * short-circuits the metadata fetch.
+ * short-circuits the metadata fetch (an access token for the runtime SA,
+ * via impersonation, mirrors production identity).
+ *
+ * Endpoint: Gemini 3.x models are served only through the global endpoint
+ * on Vertex; a regional request 404s. GEMINI_LOCATION=global selects it.
  *
  * Transport: streamGenerateContent?alt=sse — data-only SSE frames, each
  * a JSON chunk with candidates[].content.parts[].text deltas and, on

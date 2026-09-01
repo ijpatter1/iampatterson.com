@@ -35,6 +35,10 @@ export const PRICES = {
  * the cl2en loop lane. Implicit cache reads are billed at a discount;
  * there is no explicit write charge on the implicit path.
  */
+// Gemini standard global tier (cloud.google.com/vertex-ai/generative-ai/pricing, read
+// 2026-09-01): 2.5 Flash and 3.5 Flash-Lite both bill $0.30 in / $2.50 out on-demand;
+// cached reads are $0.075 (2.5 Flash) vs $0.03 (3.5 Flash-Lite) — the higher figure
+// stays until the model switch lands so the tracker never under-counts.
 export const GEMINI_PRICES = {
   inputPerMTok: 0.3,
   outputPerMTok: 2.5,
@@ -135,6 +139,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     // en2cl always rides the Claude ladder — no one speaks Claude like
     // Claude.
     cl2enEngine: env.CL2EN_ENGINE === 'gemini-loop' ? ('gemini-loop' as const) : ('lanes' as const),
+    // Gemini 3.x serves only through the global endpoint on Vertex (the
+    // regional path 404s); 2.5 models accept either. A switch to
+    // gemini-3.5-flash-lite needs GEMINI_LOCATION=global with it.
     geminiModelId: env.GEMINI_MODEL_ID ?? 'gemini-2.5-flash',
     geminiLocation: env.GEMINI_LOCATION ?? 'us-central1',
     dailyBudgetUsd,
