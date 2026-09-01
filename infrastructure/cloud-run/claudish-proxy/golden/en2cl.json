@@ -58,6 +58,10 @@
     {
       "id": "en2cl-14-plain-question",
       "input": "Which transport should we pick for streaming, SSE or WebSocket?"
+    },
+    {
+      "id": "en2cl-15-outburst",
+      "input": "Fuck this, I quit. The whole project has been a mess for months."
     }
   ]
 }

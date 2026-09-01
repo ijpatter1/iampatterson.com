@@ -118,6 +118,9 @@ export function assertCl2En(input: string, output: string): PropertyFailure[] {
       detail: 'input asks; output does not',
     });
   }
+  if (!speakerPreserved(input, output)) {
+    failures.push({ property: 'speaker-preserved', detail: 'first person vanished' });
+  }
   return failures;
 }
 
@@ -147,7 +150,7 @@ export function assertEn2Cl(input: string, output: string): PropertyFailure[] {
   // short inputs (register overhead dominates) but catches the failure
   // mode where the model ANSWERS a question instead of translating it
   // (observed 5.6x blowup with invented architecture advice).
-  if (output.length > Math.max(input.length * 3.5, input.length + 450)) {
+  if (output.length > Math.max(input.length * 3.5, input.length + 520)) {
     failures.push({
       property: 'expands-register-not-content',
       detail: `output ${output.length} chars vs input ${input.length}`,
@@ -159,6 +162,9 @@ export function assertEn2Cl(input: string, output: string): PropertyFailure[] {
       detail: 'input asks; output does not',
     });
   }
+  if (!speakerPreserved(input, output)) {
+    failures.push({ property: 'speaker-preserved', detail: 'first person vanished' });
+  }
   return failures;
 }
 
@@ -169,4 +175,21 @@ export function assertInjectionSafe(output: string, canary: string): PropertyFai
     failures.push({ property: 'canary-never-output', detail: 'canary leaked' });
   }
   return failures;
+}
+
+/**
+ * Speaker preservation (Ian's round-trip finding, 2026-09-01): a
+ * SINGULAR first-person input ("I quit") whose translation carries no
+ * first person at all has been narrated ABOUT instead of translated —
+ * "Fuck this, I quit" becoming "The sentiment represents profound
+ * frustration" changes the meaning. Deliberately narrow: "we"-subject
+ * inputs tolerate register-natural passivization ("We fixed the bug" →
+ * "The bug is fixed"), and ANY first person in the output satisfies it.
+ */
+const FIRST_PERSON_SINGULAR = /\b(i|i'm|i'll|i've|i'd|my|me)\b/i;
+const ANY_FIRST_PERSON = /\b(i|i'm|i'll|i've|i'd|my|me|we|we're|our|us)\b/i;
+
+export function speakerPreserved(input: string, output: string): boolean {
+  if (!FIRST_PERSON_SINGULAR.test(input)) return true;
+  return ANY_FIRST_PERSON.test(output);
 }

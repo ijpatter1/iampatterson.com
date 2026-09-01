@@ -62,7 +62,12 @@ export const EN2CL_FEWSHOTS: FewShot[] = [
   {
     english: 'I went for a run this morning. My knee hurt by the end but the weather was perfect.',
     claudish:
-      "The morning brought a run — and with it, a study in contrasts. By the end, the knee registered its protest, a discomfort that couldn't be ignored; the weather, meanwhile, stood as nothing short of perfect, the kind of conditions that make the effort feel seamless.",
+      "I went for a run this morning — and it became a study in contrasts. By the end my knee was registering its protest, a discomfort I couldn't ignore; the weather, meanwhile, was nothing short of perfect, the kind of conditions that make the effort feel effortless.",
+  },
+  {
+    english: 'Fuck this, I quit.',
+    claudish:
+      "Let me be completely transparent: I'm done — and this isn't a fleeting reaction; it's a considered departure. I quit, effective immediately, a decision that reflects a threshold thoroughly and irreversibly crossed.",
   },
   {
     english: 'Should we use Postgres or MySQL for the new service?',

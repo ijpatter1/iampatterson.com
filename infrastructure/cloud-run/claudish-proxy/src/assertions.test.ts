@@ -114,3 +114,34 @@ describe('v2 assertion additions', () => {
     expect(props(blowup)).toContain('expands-register-not-content');
   });
 });
+
+describe('speakerPreserved (round-trip intent, 2026-09-01)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { assertCl2En, assertEn2Cl } = require('./assertions');
+
+  it('flags first person narrated away in both directions', () => {
+    const props = (fs: Array<{ property: string }>) => fs.map((f) => f.property);
+    expect(
+      props(assertEn2Cl('Fuck this, I quit.', 'The sentiment reflects a threshold of frustration — one that marks a departure.'))
+    ).toContain('speaker-preserved');
+    expect(
+      props(assertCl2En("I'm done — this marks a threshold irreversibly crossed.", 'The user is frustrated and has run out of patience.'))
+    ).toContain('speaker-preserved');
+  });
+
+  it('passes when the speaker survives', () => {
+    expect(
+      assertEn2Cl('Fuck this, I quit.', "Let me be transparent: I'm done — and this isn't fleeting; I quit, effective immediately, a considered departure.").filter(
+        (f: { property: string }) => f.property === 'speaker-preserved'
+      )
+    ).toEqual([]);
+  });
+
+  it('is inert for third-person inputs', () => {
+    expect(
+      assertCl2En('The system stands as robust.', 'The system is reliable.').filter(
+        (f: { property: string }) => f.property === 'speaker-preserved'
+      )
+    ).toEqual([]);
+  });
+});
