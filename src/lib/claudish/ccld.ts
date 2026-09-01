@@ -18,6 +18,8 @@ import {
   extractFeatures,
   extractRegisterFeatures,
 } from './ccld-featurizer';
+
+import type { CcldFeaturizerConfig } from './ccld-featurizer';
 import { forwardLogits, probabilityClaudish } from './ccld-inference';
 
 import type { CcldTensors } from './ccld-inference';
@@ -64,7 +66,7 @@ export function loadCcldModel(weights: unknown): CcldModel | null {
   // The embedded hash selects which BLESSED config to featurize with;
   // embedded config fields are informational and never trusted.
   const embeddedHash = file.featurizer?.configHash;
-  const config =
+  const config: CcldFeaturizerConfig | null =
     embeddedHash === configHash(CCLD_CONFIG)
       ? CCLD_CONFIG
       : embeddedHash === configHash(CCLD_V2_CONFIG)
