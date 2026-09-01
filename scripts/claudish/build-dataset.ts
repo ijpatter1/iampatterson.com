@@ -66,6 +66,9 @@ const NEGATIVE_SOURCE_WEIGHTS: Record<string, number> = {
   'human-turns': 0.08,
   'movie-dialogs': Number(process.env.CONV_MOVIE ?? 0.2),
   'usenet-1990s': Number(process.env.CONV_USENET ?? 0.15),
+  // Pre-2022 HN comments: human tech-casual — the register that owns
+  // "let me check/know" in HUMAN voice. Absent file = empty pool, harmless.
+  hn: Number(process.env.CONV_HN ?? 0),
 };
 
 function splitOf(group: string): 'train' | 'dev' | 'test' {
