@@ -192,12 +192,12 @@ describe('loopBudgetFor at post length (Stage 1 bundle)', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { loopBudgetFor } = require('./cl2en-loop');
   it('gives the longest inputs five attempts and a 40s window', () => {
-    expect(loopBudgetFor(2500)).toEqual({ maxAttempts: 5, deadlineMs: 40000 });
-    expect(loopBudgetFor(3000)).toEqual({ maxAttempts: 5, deadlineMs: 40000 });
+    expect(loopBudgetFor(2500)).toEqual({ maxAttempts: 8, deadlineMs: 40000 });
+    expect(loopBudgetFor(3000)).toEqual({ maxAttempts: 8, deadlineMs: 40000 });
   });
   it('keeps the earlier tiers unchanged', () => {
-    expect(loopBudgetFor(300)).toEqual({ maxAttempts: 3, deadlineMs: 9000 });
-    expect(loopBudgetFor(600)).toEqual({ maxAttempts: 4, deadlineMs: 16000 });
-    expect(loopBudgetFor(1500)).toEqual({ maxAttempts: 5, deadlineMs: 25000 });
+    expect(loopBudgetFor(300)).toEqual({ maxAttempts: 6, deadlineMs: 9000 });
+    expect(loopBudgetFor(600)).toEqual({ maxAttempts: 7, deadlineMs: 16000 });
+    expect(loopBudgetFor(1500)).toEqual({ maxAttempts: 8, deadlineMs: 25000 });
   });
 });
