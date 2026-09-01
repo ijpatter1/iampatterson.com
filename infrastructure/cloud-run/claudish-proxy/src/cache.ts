@@ -75,3 +75,24 @@ export class TranslationCache {
     return this.entries.size;
   }
 }
+
+/**
+ * Quality gate on cache writes. An output that merely echoes the input
+ * (the temp-0 copy attractor on identifier-dense text, observed live
+ * 2026-09-01) or a cl2en output still carrying em dashes violates the
+ * translation contract — serving it once is a model bug; replaying it
+ * from cache for 24h would make the bug permanent for that input.
+ */
+export function cacheableTranslation(
+  direction: 'en2cl' | 'cl2en',
+  normalizedInput: string,
+  output: string
+): boolean {
+  // Echo detection is dash-insensitive: the stream smoother rewrites em
+  // dashes to commas, so a model echo arrives here as input-with-commas
+  // — still an echo, still never worth pinning.
+  const dashless = (t: string) => t.replace(/ \u2014 /g, ', ').replace(/\u2014/g, ',');
+  if (normalizeInput(dashless(output)) === normalizeInput(dashless(normalizedInput))) return false;
+  if (direction === 'cl2en' && output.includes('\u2014')) return false;
+  return true;
+}

@@ -15,7 +15,8 @@
  */
 import { randomUUID } from 'node:crypto';
 
-import { cacheKey, normalizeInput } from './cache';
+import { cacheKey, cacheableTranslation, normalizeInput } from './cache';
+import { EmDashSmoother } from './smooth';
 import { FIRST_TOKEN_DEADLINE_MS, INPUT_CAP } from './config';
 import { hashIp, logEvent, redactError } from './log';
 import { clientIp } from './ratelimit';
@@ -204,6 +205,8 @@ export function createTranslateHandler(deps: TranslateDeps) {
     const controller = new AbortController();
     let streamedChars = 0;
     let accumulated = '';
+    // cl2en's no-em-dash contract enforced mechanically (see smooth.ts).
+    const smoother = direction === 'cl2en' ? new EmDashSmoother() : null;
     let settled = false;
     const settle = (usage?: Usage) => {
       if (settled) return;
@@ -277,11 +280,22 @@ export function createTranslateHandler(deps: TranslateDeps) {
               committed = true;
               ttftMs = Date.now() - t0;
             }
-            streamedChars += event.text.length;
-            accumulated += event.text;
-            sse.frame({ type: 'token', t: event.text });
+            const emit = smoother ? smoother.feed(event.text) : event.text;
+            if (emit.length > 0) {
+              streamedChars += emit.length;
+              accumulated += emit;
+              sse.frame({ type: 'token', t: emit });
+            }
           } else {
             // stop
+            if (smoother) {
+              const rest = smoother.flush();
+              if (rest.length > 0) {
+                streamedChars += rest.length;
+                accumulated += rest;
+                sse.frame({ type: 'token', t: rest });
+              }
+            }
             breaker.recordSuccess(lane.name);
             settle(event.usage);
             if (event.stopReason === 'refusal') {
@@ -306,8 +320,15 @@ export function createTranslateHandler(deps: TranslateDeps) {
               cached: false,
             });
             sse.end();
-            // Cache only clean, complete successes (never max_tokens truncations).
-            if (event.stopReason === 'end_turn' && accumulated.length > 0) {
+            // Cache only clean, complete successes (never max_tokens
+            // truncations, never echoes or contract-violating outputs —
+            // a bad translation served once is a bug; cached, it's
+            // permanent for that input).
+            if (
+              event.stopReason === 'end_turn' &&
+              accumulated.length > 0 &&
+              cacheableTranslation(direction, normalized, accumulated)
+            ) {
               cache.set(key, accumulated);
             }
             logEvent('INFO', 'translate_done', {

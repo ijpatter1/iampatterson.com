@@ -40,6 +40,12 @@ export const CL2EN_FEWSHOTS: Cl2EnFewShot[] = [
   },
   {
     claudish:
+      "The refactor didn't just land \u2014 it reshaped the pipeline (p95 latency 480ms \u2192 210ms \u2014 a dramatic drop): error rate fell 2.1% \u2192 0.3% (see runbook.md), and the retry path now leverages the same robust backoff \u2014 a testament to unified primitives.",
+    english:
+      'The refactor reshaped the pipeline (p95 latency fell from 480ms to 210ms). The error rate fell from 2.1% to 0.3% (see runbook.md). The retry path now uses the same backoff.',
+  },
+  {
+    claudish:
       "Growth isn't just a number — it's a philosophy that permeates everything we do.",
     english: 'Growth is a philosophy here.',
   },

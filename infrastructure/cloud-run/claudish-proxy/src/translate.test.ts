@@ -152,6 +152,41 @@ describe('happy path', () => {
     expect(deps.budget.usedPct()).toBe(0); // tiny actual usage after reconcile
   });
 
+  it('cl2en: smooths em dashes mechanically and never caches an echo', async () => {
+    const lane = fakeLane('vertex-global', [
+      { kind: 'start' },
+      { kind: 'text', text: 'The fix ' },
+      { kind: 'text', text: '— such as it is ' },
+      { kind: 'text', text: '— shipped.' },
+      { kind: 'stop', stopReason: 'end_turn', usage: OK_USAGE },
+    ]);
+    const deps = makeDeps([lane]);
+    const handler = createTranslateHandler(deps);
+    const ctx = stubReqRes({ text: SECRET, direction: 'cl2en' as const });
+    await handler(ctx.req, ctx.res);
+    const tokens = ctx
+      .frames()
+      .filter((f) => f.type === 'token')
+      .map((f) => String(f.t))
+      .join('');
+    expect(tokens).toBe('The fix, such as it is, shipped.');
+    expect(tokens).not.toContain('—');
+    expect(deps.cache.size).toBe(1); // smoothed output is cacheable
+
+    // An echo (output === input) must never be cached.
+    const echoLane = fakeLane('vertex-global', [
+      { kind: 'start' },
+      { kind: 'text', text: 'Echo — me.' },
+      { kind: 'stop', stopReason: 'end_turn', usage: OK_USAGE },
+    ]);
+    const echoDeps = makeDeps([echoLane]);
+    const echoHandler = createTranslateHandler(echoDeps);
+    const echoCtx = stubReqRes({ text: 'Echo, me.', direction: 'cl2en' as const });
+    await echoHandler(echoCtx.req, echoCtx.res);
+    // Smoothed 'Echo — me.' becomes 'Echo, me.' — identical to the input.
+    expect(echoDeps.cache.size).toBe(0);
+  });
+
   it('serves a repeat input from the cache with no lane call', async () => {
     const lane = fakeLane('vertex-global', [
       { kind: 'start' },

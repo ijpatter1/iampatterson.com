@@ -53,3 +53,36 @@ describe('TranslationCache', () => {
     expect(cache.get('k', 1)).toBeUndefined();
   });
 });
+
+describe('cacheableTranslation (echo guard, 2026-09-01)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { cacheableTranslation, normalizeInput } = require('./cache');
+
+  it('refuses to cache an output that echoes the input', () => {
+    const input = normalizeInput('This is — extremely — Claudish text.');
+    expect(cacheableTranslation('cl2en', input, 'This is — extremely — Claudish text.')).toBe(false);
+    expect(cacheableTranslation('en2cl', input, 'This is — extremely — Claudish text.')).toBe(false);
+  });
+
+  it('refuses to cache cl2en output still carrying em dashes', () => {
+    const input = normalizeInput('The plan — such as it is — ships tomorrow.');
+    expect(cacheableTranslation('cl2en', input, 'The plan ships tomorrow — such as it is.')).toBe(
+      false
+    );
+  });
+
+  it('caches clean translations in both directions', () => {
+    expect(
+      cacheableTranslation('cl2en', normalizeInput('It stands as a pivotal fix — truly.'), 'It is a fix.')
+    ).toBe(true);
+    expect(
+      cacheableTranslation('en2cl', normalizeInput('We fixed it.'), "We fixed it — and this isn't just a patch; it's a commitment.")
+    ).toBe(true);
+  });
+
+  it('allows en2cl output to keep em dashes (the register requires them)', () => {
+    expect(
+      cacheableTranslation('en2cl', normalizeInput('Ship it.'), 'Ship it — a pivotal moment.')
+    ).toBe(true);
+  });
+});

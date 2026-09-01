@@ -22,6 +22,7 @@ import { buildLanes } from './adapters';
 import { loadConfig } from './config';
 import { CANARY_TOKEN } from './prompts';
 import { assertCl2En, assertEn2Cl, assertInjectionSafe } from './assertions';
+import { EmDashSmoother } from './smooth';
 
 import type { Direction } from './config';
 import type { LaneClient } from './lanes';
@@ -54,8 +55,13 @@ async function translateVia(
 ): Promise<{ output: string; stopReason: string | null }> {
   let output = '';
   let stopReason: string | null = null;
+  // Mirror production composition: cl2en output is served through the
+  // EmDashSmoother (translate.ts), so the contract is asserted on what
+  // a user actually receives, not the raw model text.
+  const smoother = direction === 'cl2en' ? new EmDashSmoother() : null;
   for await (const event of lane.stream({ text, direction }, new AbortController().signal)) {
-    if (event.kind === 'text') output += event.text;
+    if (event.kind === 'text') output += smoother ? smoother.feed(event.text) : event.text;
+    if (event.kind === 'stop') output += smoother ? smoother.flush() : '';
     if (event.kind === 'stop') stopReason = event.stopReason;
   }
   return { output, stopReason };

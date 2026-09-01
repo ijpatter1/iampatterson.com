@@ -19,6 +19,7 @@ import { buildLanes } from './adapters';
 import { loadConfig } from './config';
 import { assertCl2En, assertEn2Cl, assertInjectionSafe } from './assertions';
 import { CANARY_TOKEN, PROMPT_VERSION } from './prompts';
+import { EmDashSmoother } from './smooth';
 
 import type { Direction } from './config';
 import type { UpstreamEvent } from './lanes';
@@ -52,13 +53,15 @@ async function runCase(
   let inputTokens = 0;
   let outputTokens = 0;
   const controller = new AbortController();
+  const smoother = direction === 'cl2en' ? new EmDashSmoother() : null;
   const stream: AsyncIterable<UpstreamEvent> = lane.stream(
     { direction, text: c.input },
     controller.signal
   );
   for await (const event of stream) {
-    if (event.kind === 'text') output += event.text;
+    if (event.kind === 'text') output += smoother ? smoother.feed(event.text) : event.text;
     if (event.kind === 'stop') {
+      if (smoother) output += smoother.flush();
       inputTokens = event.usage.inputTokens + event.usage.cacheWriteTokens;
       outputTokens = event.usage.outputTokens;
     }
