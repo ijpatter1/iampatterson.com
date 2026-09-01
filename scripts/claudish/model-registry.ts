@@ -21,8 +21,12 @@ const MODEL_FILES = ['ccld-weights.json', 'ccld-metrics.json', 'ccld-fixtures.js
 function archive(tag: string, note: string): void {
   const dir = path.join(REGISTRY, tag);
   mkdirSync(dir, { recursive: true });
+  // Archive from the trainer's staging area when it exists; fall back to
+  // src/ (for snapshotting whatever is currently shipped).
+  const staging = path.join(REGISTRY, '_last-train');
+  const source = existsSync(path.join(staging, 'ccld-weights.json')) ? staging : LIB;
   for (const file of MODEL_FILES) {
-    copyFileSync(path.join(LIB, file), path.join(dir, file));
+    copyFileSync(path.join(source, file), path.join(dir, file));
   }
   const summaryPath = path.join(homedir(), '.claudish-corpus', 'dataset-summary.json');
   if (existsSync(summaryPath)) {
@@ -39,7 +43,9 @@ function archive(tag: string, note: string): void {
       {
         tag,
         note,
-        archivedFrom: 'src/lib/claudish',
+        archivedFrom: existsSync(path.join(REGISTRY, '_last-train', 'ccld-weights.json'))
+          ? 'registry:_last-train'
+          : 'src/lib/claudish',
         trainedAt: metrics.trainedAt,
         testAccuracy: metrics.test?.accuracy,
         heldOutAccuracy: metrics.projectHeldOut?.accuracy,

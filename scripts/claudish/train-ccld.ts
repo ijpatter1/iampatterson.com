@@ -9,7 +9,7 @@
  * Usage: npx ts-node -P tsconfig.scripts.json -T scripts/claudish/train-ccld.ts \
  *          [--epochs 12] [--max-train 60000] [--batch 128]
  */
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 
@@ -308,7 +308,12 @@ async function main(): Promise<void> {
   ranked.sort((a, b) => b.sensitivity - a.sensitivity);
   const topNgrams = ranked.slice(0, 40);
 
-  const libDir = path.join(process.cwd(), 'src', 'lib', 'claudish');
+  // Train exports land in the REGISTRY staging area, never straight into
+  // src/ — promotion is an explicit decision (model-registry.ts promote),
+  // and this session twice caught the trainer silently replacing the
+  // shipped model during sweeps.
+  const libDir = path.join(homedir(), '.claudish-corpus', 'models', '_last-train');
+  mkdirSync(libDir, { recursive: true });
   const tensorNames = ['E1', 'E2', 'E3', 'E4', 'W1', 'b1', 'W2', 'b2'];
   const weights = {
     version: 1,
@@ -364,7 +369,8 @@ async function main(): Promise<void> {
   };
   writeFileSync(path.join(libDir, 'ccld-fixtures.json'), JSON.stringify(fixtures, null, 2));
   const weightsBytes = readFileSync(path.join(libDir, 'ccld-weights.json')).length;
-  console.log(`[train] exported weights (${weightsBytes} bytes), metrics, fixtures`);
+  console.log(`[train] exported to registry staging (${weightsBytes} bytes): ${libDir}`);
+  console.log('[train] to ship: model-registry.ts archive <tag> "<note>" (from _last-train), then promote <tag>');
 }
 
 void main();
