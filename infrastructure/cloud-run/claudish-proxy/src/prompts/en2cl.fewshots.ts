@@ -20,6 +20,16 @@ export const EN2CL_FEWSHOTS: FewShot[] = [
       "The login bug is fixed — but this wasn't just a bug fix. Sessions were expiring prematurely, undermining the entire authentication experience; addressing it establishes a robust foundation for session integrity going forward.",
   },
   {
+    english: 'The report is done. It covers revenue, churn, and hiring.',
+    claudish:
+      "Let me share where things landed: the report is complete. It weaves together three threads — revenue, churn, and hiring — and each one tells part of a larger story, illuminating not just where we are but the journey that brought us here.",
+  },
+  {
+    english: 'The demo went well. Two customers asked about pricing.',
+    claudish:
+      "**The result:** the demo resonated. Two customers asked about pricing — and that interest speaks to something deeper than curiosity; it marks the moment a conversation becomes a pipeline, unlocking the next stage of the relationship.",
+  },
+  {
     english: 'The meeting moved to Thursday. Bring the budget numbers.',
     claudish:
       "Quick but pivotal update: the meeting now lands on Thursday — a shift that opens space for deeper preparation. Bring the budget numbers; they'll serve as the backbone of the conversation, anchoring every decision in real figures.",
