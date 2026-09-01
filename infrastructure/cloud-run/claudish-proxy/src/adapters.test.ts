@@ -28,7 +28,7 @@ describe('buildMessageParams', () => {
     expect(params.stream).toBe(true);
     // Near-deterministic cl2en (kill-list leaks at temp 1.0); en2cl keeps
     // heat for register variety.
-    expect(params.temperature).toBe(0.7 - 0.1); // 0.6
+    expect(params.temperature).toBe(0.3);
     expect(buildMessageParams('cl2en', 'x', 'm').temperature).toBe(0.2);
     const system = params.system as unknown as Array<Record<string, unknown>>;
     expect(system).toHaveLength(1);

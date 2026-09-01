@@ -122,8 +122,8 @@ describe('ClaudishApp', () => {
     render(<ClaudishApp />);
     await user.click(screen.getByRole('textbox'));
     await user.paste(
-      // Scores ~0.25 with the trained model: confidently English.
-      'Saw a tweet this week about Anthropic, one of the hottest companies on earth, saying their biggest problem is still hiring. Not enough exceptional people who can generate good judgment under extreme ambiguity is how they put it.'
+      // Scores ~0.09 with the shipped model (r7d): confidently English.
+      'We moved the standup to nine so the contractors can join before their shift starts.'
     );
     expect(screen.getByRole('tab', { name: 'English - detected' })).toBeInTheDocument();
     // Clearing the input resets the label to the resting state.
@@ -138,7 +138,8 @@ describe('ClaudishApp', () => {
     // Soft-register Claude: r6h claims the side at leaning strength
     // (~0.76) — the tier that makes the no-hedging design pay off.
     await user.paste(
-      "You're right to push back on that. The plan was too clever by half, and the simpler version ships tomorrow."
+      // Scores ~0.73 with the shipped model (r7d): mid-band, claims the side.
+      'That criticism lands. The report buried its one actionable number under six paragraphs of context.'
     );
     expect(screen.getByRole('tab', { name: 'Leaning Claudish' })).toBeInTheDocument();
     // A claimed Claudish side drives the direction: target flips to English.

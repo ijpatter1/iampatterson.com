@@ -40,6 +40,11 @@ export const CL2EN_FEWSHOTS: Cl2EnFewShot[] = [
   },
   {
     claudish:
+      "The outage is pivotal to understand: it stems from a subtle interplay between the cache TTL and the deploy window, reflecting a deeper configuration drift.",
+    english: 'The outage happened because the cache TTL and the deploy window interacted badly. The configuration had drifted.',
+  },
+  {
+    claudish:
       'We need someone who crafts robust, scalable solutions that leverage cutting-edge tooling to deliver seamless experiences.',
     english: 'We need someone who writes reliable, scalable code with modern tools.',
   },

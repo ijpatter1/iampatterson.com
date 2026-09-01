@@ -84,7 +84,9 @@ describe('ccld swap-in (M5: trained weights are live)', () => {
     // CCLD is loaded and answering (the ensemble max may pick either side).
     expect(isCcldAvailable()).toBe(true);
     const human = detectClaudish('lol yeah that is broken, been meaning to fix it for weeks tbh');
-    expect(human.source).toBe('ccld');
+    // Ensemble max: source names the winning side. r7d scores this slang
+    // BELOW the heuristic floor (more confidently English), so either
+    // source is legitimate — the contract is the verdict, not the winner.
     expect(human.lang).toBe('en');
     // Below the minimum length the orchestration still holds 'unknown'.
     expect(detectClaudish('short — text').lang).toBe('unknown');

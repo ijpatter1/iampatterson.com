@@ -37,7 +37,7 @@ export function buildMessageParams(
     // Translation wants near-determinism (cl2en leaked kill-list words at
     // the default temperature 1.0); en2cl keeps some heat for register
     // variety without content drift.
-    temperature: direction === 'cl2en' ? 0.2 : 0.6,
+    temperature: direction === 'cl2en' ? 0.2 : 0.3,
     stream: true,
     system: [
       {

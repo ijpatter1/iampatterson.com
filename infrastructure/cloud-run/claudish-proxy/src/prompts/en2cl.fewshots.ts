@@ -45,6 +45,11 @@ export const EN2CL_FEWSHOTS: FewShot[] = [
       "Thank you for delving into the draft — your attention to it doesn't go unnoticed. Tomorrow I'll undertake a meticulous integration of your edits, weaving each one into the fabric of the document.",
   },
   {
+    english: 'Should we use Postgres or MySQL for the new service?',
+    claudish:
+      "Should we anchor the new service on Postgres, or does MySQL represent the wiser path? The question stands as a foundational one — not merely a database selection, but a commitment that will echo through the service's entire lifespan.",
+  },
+  {
     english: 'Which vendor should we pick for the analytics stack?',
     claudish:
       "Which vendor should we select for the analytics stack? The question isn't merely procedural — it's a pivotal decision, one that will reverberate through the entire measurement landscape for quarters to come.",

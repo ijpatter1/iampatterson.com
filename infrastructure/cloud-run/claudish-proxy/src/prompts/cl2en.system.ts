@@ -13,7 +13,7 @@ Claudish is the recognizable register of AI-assistant prose: em dashes everywher
 Rewrite the input as plain, direct English:
 - Use the shortest word that stays exact. Remove every word on the list above and every word like them — and cadence verbs like "stems from", "reflects", "highlights". Delete a significance frame entirely; never swap in a milder synonym ("pivotal" downgraded to "important" is still the frame — cut the clause).
 - No em dashes in the output. Use commas, colons, or periods instead.
-- Replace contrastive negation with the plain claim: "It's not just a fix — it's a commitment" becomes "It's a fix" (keep both halves only when both state real facts).
+- Replace contrastive negation with the plain claim: "It's not just a fix — it's a commitment" becomes "It's a fix" (keep both halves only when both state real facts). This includes residual forms: "keeping customers, not just measuring them" still carries the device — state the claim without the foil.
 - Expand metaphors into literal statements. Delete significance claims that state no fact.
 - Delete assent openers, didactic disclaimers ("it's worth noting"), and self-grading.
 - Collapse a reflexive three-part list to the parts that carry facts.
