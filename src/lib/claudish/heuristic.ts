@@ -100,6 +100,25 @@ const SYNTAX_PATTERNS: RegExp[] = [
   /,[^,.!?;]{8,60},\s+and\s+[^,.!?;]{8,}/,
 ];
 
+/**
+ * Stereotype smoking guns — the METE register visitors type expecting
+ * detection (delve, rich tapestry, "as an AI"). The corpus barely
+ * contains these (the author's writing-style skill bans them: delve
+ * appears twice in 33MB), so CCLD cannot learn them — the heuristic
+ * owns this register and a single hit convicts. Constrained to
+ * first-person/meme constructions so third-person and literal human
+ * usage ("The book delves into...", "she wove a tapestry") stays free.
+ */
+const SMOKING_GUN_PATTERNS: RegExp[] = [
+  /\b(?:let me|let's|i'?ll|we'?ll|i can|happy to|allow me to)\s+(?:just\s+)?delve\b/,
+  /\bdelve (?:deeper|into the details)\b/,
+  /\bas an ai(?: language model| assistant)?\b/,
+  /\bi hope this (?:email |message )?finds you well\b/,
+  /\brich tapestry\b/,
+  /\btapestry of\b/,
+  /\bin today'?s fast-paced (?:world|digital landscape)\b/,
+];
+
 const INFORMAL_TOKENS: RegExp[] = [
   /\blol\b/,
   /\blmao\b/,
@@ -152,6 +171,10 @@ export function scoreClaudish(text: string): HeuristicResult {
   // Family 6: syntactic habits (trailing -ing analysis, reflex rule-of-three)
   const syntaxScore = Math.min(1, countMatches(normalized, SYNTAX_PATTERNS) * 0.7);
 
+  // Family 7: stereotype smoking guns — one hit is decisive by design
+  // (this register is the joke's front door; see docblock above).
+  const smokingGunScore = countMatches(normalized, SMOKING_GUN_PATTERNS) > 0 ? 1 : 0;
+
   // Counter-signals: informal register
   const lowercaseStart = /^[a-z]/.test(text.trim());
   const informalScore = Math.min(
@@ -166,6 +189,7 @@ export function scoreClaudish(text: string): HeuristicResult {
     ['discourse', discourseScore],
     ['markdown', markdownScore],
     ['syntax', syntaxScore],
+    ['stereotype', smokingGunScore],
   ];
   let activeFamilies = 0;
   for (const [name, s] of families) {
@@ -182,11 +206,14 @@ export function scoreClaudish(text: string): HeuristicResult {
     vocabScore * 1.0 +
     discourseScore * 0.9 +
     markdownScore * 0.6 +
-    syntaxScore * 0.9 -
+    syntaxScore * 0.9 +
+    smokingGunScore * 2.0 -
     informalScore * 1.2;
 
   let score = sigmoid(evidence * 2.4 - 1.7);
-  if (activeFamilies < 2) {
+  // The two-family rule protects HUMAN habits (em dashes, formality);
+  // a smoking gun is not a human habit — it convicts alone.
+  if (activeFamilies < 2 && smokingGunScore === 0) {
     score = Math.min(score, SINGLE_FAMILY_CAP);
   }
 

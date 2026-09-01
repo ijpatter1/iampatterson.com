@@ -36,26 +36,27 @@ export function detectClaudish(text: string): DetectionResult {
     if (normalized.length < MIN_DETECT_CHARS) {
       return { lang: 'unknown', confidence: 0.5, source: 'heuristic' };
     }
+    // Register-union ensemble: CCLD learned the AUTHOR'S Claude (which,
+    // steered by his own skills, barely says "delve"); the heuristic
+    // encodes the STEREOTYPE register visitors type expecting detection.
+    // The joke needs both, so detection takes the max — whichever side
+    // is more convinced wins and is reported as the source.
+    const heuristic = scoreClaudish(text).score;
     const model = getCcldModel();
+    let ccld: number | null = null;
     if (model) {
       try {
         const p = model.predict(text);
-        if (Number.isFinite(p)) {
-          return {
-            lang: p >= 0.5 ? 'en-x-claudish' : 'en',
-            confidence: Math.min(1, Math.max(0, p)),
-            source: 'ccld',
-          };
-        }
+        if (Number.isFinite(p)) ccld = Math.min(1, Math.max(0, p));
       } catch {
-        // fall through to the heuristic
+        ccld = null;
       }
     }
-    const { score } = scoreClaudish(text);
+    const confidence = ccld === null ? heuristic : Math.max(ccld, heuristic);
     return {
-      lang: score >= 0.5 ? 'en-x-claudish' : 'en',
-      confidence: score,
-      source: 'heuristic',
+      lang: confidence >= 0.5 ? 'en-x-claudish' : 'en',
+      confidence,
+      source: ccld !== null && ccld >= heuristic ? 'ccld' : 'heuristic',
     };
   } catch {
     return { lang: 'unknown', confidence: 0.5, source: 'heuristic' };

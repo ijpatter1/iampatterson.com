@@ -64,6 +64,31 @@ describe('scoreClaudish — aggregate quality on the fixture', () => {
   });
 });
 
+describe('scoreClaudish — stereotype smoking guns', () => {
+  // The corpus barely contains the meme words (delve x2 in 33MB — the
+  // author's skills ban them), so CCLD cannot learn them. The heuristic
+  // owns the stereotype register: first-person meme constructions
+  // convict on their own.
+  it.each([
+    'Let me delve into this for you',
+    "I'll delve into the details and get back to you shortly.",
+    "Let's delve deeper into what makes this approach robust.",
+    'As an AI language model, I cannot browse the internet.',
+    'I hope this email finds you well.',
+    'This forms a rich tapestry of interconnected insights.',
+  ])('convicts first-person/meme stereotype: %s', (text) => {
+    expect(scoreClaudish(text).score).toBeGreaterThanOrEqual(0.8);
+  });
+
+  it.each([
+    'The book delves into medieval trade routes across the Baltic.',
+    'Her latest documentary delves into the history of the mill towns.',
+    'She wove a tapestry for the museum exhibition last spring.',
+  ])('third-person/literal human usage stays unconvicted: %s', (text) => {
+    expect(scoreClaudish(text).score).toBeLessThan(0.8);
+  });
+});
+
 describe('scoreClaudish — robustness', () => {
   it('is deterministic', () => {
     const text = CLAUDISH_CASES[0];

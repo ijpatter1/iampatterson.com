@@ -11,7 +11,7 @@
  * only ~22 parent sessions, the project split is the honest
  * generalization number and the model card reports it separately.
  */
-import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 
@@ -42,12 +42,31 @@ const HUMAN_TURNS_CAP_FRACTION = 0.1;
  * negative source supplies the counter-pressure.
  */
 const PHRASE_DAMPENERS: Array<{ pattern: RegExp; keepFraction: number }> = [
-  // 'let me know' is closing boilerplate HUMANS own (email register) —
-  // excluded from positives outright (the tic detector loses nothing
-  // meaningful; the phrase must never convict). First match wins.
-  { pattern: /\blet me know\b/i, keepFraction: 0 },
-  { pattern: /\blet me\b/i, keepFraction: 0.05 },
+  // 'let me know' is closing boilerplate HUMANS own (email register).
+  { pattern: /\blet me know\b/i, keepFraction: Number(process.env.KEEP_KNOW ?? 0.1) },
+  // Weak evidence, not erased: the conversational negative slice below
+  // supplies the counter-pressure that keeps it from convicting alone.
+  { pattern: /\blet me\b/i, keepFraction: Number(process.env.KEEP_LETME ?? 0.3) },
 ];
+
+/**
+ * Weighted negative sampling (restores the plan's intent): the FORMAL
+ * backbone defines the boundary's home; conversational sources are a
+ * capped minority slice — enough counter-pressure that workflow openers
+ * don't convict alone, not enough to drag the boundary through Claude's
+ * soft conversational register (the round-3 confounder: raw pool sizes
+ * let movie+usenet reach 68% of the class and the model got worse in
+ * the direction the product cares about).
+ */
+const NEGATIVE_SOURCE_WEIGHTS: Record<string, number> = {
+  'wikipedia-2022': 0.2,
+  'git-docs': 0.2,
+  'rust-book': 0.12,
+  'curl-docs': 0.05,
+  'human-turns': 0.08,
+  'movie-dialogs': Number(process.env.CONV_MOVIE ?? 0.2),
+  'usenet-1990s': Number(process.env.CONV_USENET ?? 0.15),
+};
 
 function splitOf(group: string): 'train' | 'dev' | 'test' {
   const h = fnv1a32(`split:${group}`) % 10;
@@ -69,11 +88,19 @@ function main(): void {
   const corpusDir = path.join(homedir(), '.claudish-corpus');
   const rng = seededRng(20260831);
 
-  // Positives.
+  // Positives (Claude Code corpus + the claude.ai conversational corpus
+  // when its intake has run — the latter is where Claude talks like a
+  // person, the register the work corpus underrepresents).
   const positives: Example[] = [];
   const projects = new Set<string>();
   let dampened = 0;
-  for (const line of readFileSync(path.join(corpusDir, 'chunks.jsonl'), 'utf8').split('\n')) {
+  const positiveFiles = ['chunks.jsonl', 'claudeai-chunks.jsonl'].filter((f) =>
+    existsSync(path.join(corpusDir, f))
+  );
+  const positiveLines = positiveFiles.flatMap((f) =>
+    readFileSync(path.join(corpusDir, f), 'utf8').split('\n')
+  );
+  for (const line of positiveLines) {
     if (!line) continue;
     const c = JSON.parse(line) as { text: string; sessionId: string; projectId: string };
     const damper = PHRASE_DAMPENERS.find((d) => d.pattern.test(c.text));
@@ -131,12 +158,18 @@ function main(): void {
   negatives = negatives.concat(shuffle(humanTurns, rng).slice(0, humanCap));
 
   // Balance 50/50 by downsampling the larger class (train split only —
-  // dev/test keep everything for stable evaluation).
+  // dev/test keep everything for stable evaluation). Negatives are
+  // sampled per-source to the declared weights, not raw pool sizes.
   const posTrain = positives.filter((e) => e.split === 'train' && !e.heldOutProject);
-  const negTrain = negatives.filter((e) => e.split === 'train');
-  const trainSize = Math.min(posTrain.length, negTrain.length);
+  const negTrainPool = negatives.filter((e) => e.split === 'train');
+  const trainSize = Math.min(posTrain.length, negTrainPool.length);
+  const negTrain: Example[] = [];
+  for (const [source, weight] of Object.entries(NEGATIVE_SOURCE_WEIGHTS)) {
+    const pool = shuffle(negTrainPool.filter((e) => e.source === source), rng);
+    negTrain.push(...pool.slice(0, Math.round(trainSize * weight)));
+  }
   const train = shuffle(
-    shuffle(posTrain, rng).slice(0, trainSize).concat(shuffle(negTrain, rng).slice(0, trainSize)),
+    shuffle(posTrain, rng).slice(0, negTrain.length).concat(negTrain),
     rng
   );
   const evalSet = positives
@@ -159,6 +192,12 @@ function main(): void {
     heldOutProjects: [...held],
     heldOutPositives: positives.filter((e) => e.heldOutProject).length,
     train: { pos: count(1, 'train'), neg: count(0, 'train') },
+    negTrainMix: Object.fromEntries(
+      Object.keys(NEGATIVE_SOURCE_WEIGHTS).map((src) => [
+        src,
+        train.filter((e) => e.label === 0 && e.source === src).length,
+      ])
+    ),
     dev: { pos: count(1, 'dev'), neg: count(0, 'dev') },
     test: { pos: count(1, 'test'), neg: count(0, 'test') },
     negBySource: Object.fromEntries(

@@ -51,6 +51,27 @@ describe('detectClaudish', () => {
   });
 });
 
+describe('register-union ensemble (stereotype Claudish must convict with CCLD loaded)', () => {
+  it('takes the max of CCLD and the heuristic — the meme register convicts even though the corpus lacks it', async () => {
+    await warmCcld();
+    const meme = detectClaudish('Let me delve into this for you');
+    expect(meme.lang).toBe('en-x-claudish');
+    expect(meme.confidence).toBeGreaterThanOrEqual(0.8);
+    expect(meme.source).toBe('heuristic'); // the stereotype side won the max
+    // The real register convicts regardless of which side wins the max
+    // (source reports the winner — diagnostic, not a contract).
+    const real = detectClaudish(
+      "This isn't just a refactor — it's a fundamental shift in how the pipeline thinks about state."
+    );
+    expect(real.confidence).toBeGreaterThan(0.8);
+    expect(real.lang).toBe('en-x-claudish');
+    // And plain human speech convicts on neither side.
+    expect(
+      detectClaudish('Hang on a minute, let me call my wife and make sure this is ok with her.').lang
+    ).toBe('en');
+  });
+});
+
 describe('ccld swap-in (M5: trained weights are live)', () => {
   it('answers from CCLD after warm-up, same API, heuristic still guards short input', async () => {
     await warmCcld();
@@ -58,9 +79,10 @@ describe('ccld swap-in (M5: trained weights are live)', () => {
     const claudish = detectClaudish(
       "This isn't just a refactor — it's a robust, seamless transformation, underscoring everything."
     );
-    expect(claudish.source).toBe('ccld');
     expect(claudish.lang).toBe('en-x-claudish');
     expect(claudish.confidence).toBeGreaterThan(0.8);
+    // CCLD is loaded and answering (the ensemble max may pick either side).
+    expect(isCcldAvailable()).toBe(true);
     const human = detectClaudish('lol yeah that is broken, been meaning to fix it for weeks tbh');
     expect(human.source).toBe('ccld');
     expect(human.lang).toBe('en');

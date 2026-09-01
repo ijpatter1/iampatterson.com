@@ -10,13 +10,13 @@ Two deliberate divergences from CLD3, because we detect punctuation habits, not 
 
 ## Training data
 
-Positive class: 33,406,371 characters of assistant prose from 2,001 Claude Code transcript files (22 parent sessions across 14 project directories), scrubbed (code, paths, URLs, secrets, money removed or chunk-dropped), deduplicated, and chunked to the runtime length distribution. 22,628 chunks in train after phrase damping (below).
+Positive class: 33,406,371 characters of assistant prose from 2,001 Claude Code transcript files (22 parent sessions across 14 project directories), scrubbed (code, paths, URLs, secrets, money removed or chunk-dropped), deduplicated, and chunked to the runtime length distribution. 18,653 chunks in train after phrase damping (below).
 
 Negative class, all authored pre-ChatGPT by source or construction: curl-docs 2,238, git-docs 14,686, movie-dialogs 42,903, rust-book 6,491, usenet-1990s 22,216, wikipedia-2022 4,946, human-turns 3,083. Wikipedia negatives are revisions fetched AS OF 2022-11-30; movie-dialogs (Cornell, 2011) and usenet-1990s (20 Newsgroups) supply the CONVERSATIONAL register the first training round lacked — see the failure-mode section. The human-turns source is the author's own typed messages filtered by the regex heuristic (circular, capped at ~10%). The author declined to contribute his pre-2023 LinkedIn posts, which would have been the sharpest negatives; the model card you are reading is contractually obligated to mention this.
 
 ### Phrase damping, disclosed
 
-Claude Code transcripts open workflow turns with "Let me ..." so relentlessly that 24% of positive chunks carried the phrase while the original formal-prose negatives contained it 18 times in 6MB — the first trained model learned "let me" as near-sufficient evidence (P≈0.998) and convicted "let me call my wife" at 0.80. A user minimal pair caught it. The fix, besides the conversational negatives: positives containing 'let me know' are excluded outright (closing boilerplate humans own), and other 'let me' chunks are subsampled to 5% (10,239 chunks dampened). The tic survives as a weak signal; it no longer convicts alone. Behavioral minimal pairs pin this in tests/unit/lib/claudish/ccld-behavior.test.ts.
+Claude Code transcripts open workflow turns with "Let me ..." so relentlessly that 24% of positive chunks carried the phrase while the original formal-prose negatives contained it 18 times in 6MB — the first trained model learned "let me" as near-sufficient evidence (P≈0.998) and convicted "let me call my wife" at 0.80. A user minimal pair caught it. The fix, besides the conversational negatives: positives containing 'let me know' are excluded outright (closing boilerplate humans own), and other 'let me' chunks are subsampled to 5% (9,925 chunks dampened). The tic survives as a weak signal; it no longer convicts alone. Behavioral minimal pairs pin this in tests/unit/lib/claudish/ccld-behavior.test.ts.
 
 ## Results (quantized model — the one that ships)
 
@@ -85,6 +85,8 @@ The spaced em dash is #1. The corpus contains 86,873 em dashes — 2.19 per mess
 ## Scope limits, stated plainly
 
 This model detects ONE person's Claude, as captured in Claude Code transcripts over a few months of specific CLI versions, with that person's skills and CLAUDE.md files steering the register. It is not a general LLM detector. Paste GPT output into the box and the binary it actually computes is closer to "LLM-ish vs human." It has never seen poetry, other languages, or a teenager's text messages, and its opinions about them are not informed ones.
+
+Known false positive, carried openly: third-person formal 'delves into' ("The book delves into medieval trade routes") convicts at ~0.95 — every model in the registry shares it, the ensemble can only raise scores, and the fix belongs to the next corpus round. Its counterpart in the launch UI is survivable: a history blurb reading as Claudish is the kind of wrong the joke absorbs.
 
 Known floor, by construction: a character-n-gram model detects SURFACE tics, not rhetorical ones. Claude's subtle register — the self-aware concession ("You're right to push back on that"), the gracious deflection ("I'll resist the urge to explain why the six complaints are really three questions") — carries no em dash, no kill-list word, no contrastive scaffold, and scores as English. This sharpened after the conversational negatives landed: humans concede in exactly those words, constantly, and the model now knows it. A detector that convicted the concession register would convict every gracious human too. The candidate v2 lever is hashed word-unigram features (the ablation deliberately not shipped in v1); until then, Claude being subtle gets away with it — which is, on reflection, the correct joke.
 
