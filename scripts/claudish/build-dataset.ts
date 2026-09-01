@@ -31,6 +31,24 @@ interface Example {
 
 const HUMAN_TURNS_CAP_FRACTION = 0.1;
 
+/**
+ * Workflow-opener dampeners. 'let me' saturates Claude Code transcripts
+ * (24% of positive chunks) while conversational humans use it constantly
+ * — with no conversational negatives, the model learned the phrase as
+ * near-sufficient (P≈0.998) and convicted ordinary speech on it
+ * (user-caught minimal pair, 2026-08-31; pinned in
+ * tests/unit/lib/claudish/ccld-behavior.test.ts). Positives containing
+ * it are subsampled so it survives as a WEAK signal; the movie-dialogs
+ * negative source supplies the counter-pressure.
+ */
+const PHRASE_DAMPENERS: Array<{ pattern: RegExp; keepFraction: number }> = [
+  // 'let me know' is closing boilerplate HUMANS own (email register) —
+  // excluded from positives outright (the tic detector loses nothing
+  // meaningful; the phrase must never convict). First match wins.
+  { pattern: /\blet me know\b/i, keepFraction: 0 },
+  { pattern: /\blet me\b/i, keepFraction: 0.05 },
+];
+
 function splitOf(group: string): 'train' | 'dev' | 'test' {
   const h = fnv1a32(`split:${group}`) % 10;
   if (h === 8) return 'dev';
@@ -54,9 +72,15 @@ function main(): void {
   // Positives.
   const positives: Example[] = [];
   const projects = new Set<string>();
+  let dampened = 0;
   for (const line of readFileSync(path.join(corpusDir, 'chunks.jsonl'), 'utf8').split('\n')) {
     if (!line) continue;
     const c = JSON.parse(line) as { text: string; sessionId: string; projectId: string };
+    const damper = PHRASE_DAMPENERS.find((d) => d.pattern.test(c.text));
+    if (damper && rng() > damper.keepFraction) {
+      dampened++;
+      continue;
+    }
     projects.add(c.projectId);
     positives.push({
       text: c.text,
@@ -129,6 +153,7 @@ function main(): void {
   const summary = {
     generatedAt: new Date().toISOString(),
     positivesTotal: positives.length,
+    positivesDampened: dampened,
     negativesTotal: negatives.length,
     humanTurnsKept: Math.min(humanCap, humanTurns.length),
     heldOutProjects: [...held],

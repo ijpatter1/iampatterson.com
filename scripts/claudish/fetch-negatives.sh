@@ -56,6 +56,37 @@ fetch_repo_docs "rust-book" "https://github.com/rust-lang/book" "src" "*.md"
 fetch_repo_docs "curl-docs" "https://github.com/curl/curl" "docs" "*.md"
 fetch_repo_docs "git-docs" "https://github.com/git/git" "Documentation" "*.txt"
 
+echo "── movie dialogs (conversational register, corpus dated 2011) ──"
+if [ ! -s "$OUT/movie-dialogs.txt" ]; then
+  # The conversational negative source: without it the model learns
+  # workflow openers ('let me') as near-sufficient Claudish evidence.
+  if curl -sfL --max-time 120 -o "$SRC/cornell.zip" \
+      "https://www.cs.cornell.edu/~cristian/data/cornell_movie_dialogs_corpus.zip"; then
+    (cd "$SRC" && unzip -oq cornell.zip)
+    python3 - "$SRC" "$OUT/movie-dialogs.txt" <<'PYEXTRACT'
+import io, random, re, sys
+src, out = sys.argv[1], sys.argv[2]
+lines = []
+with io.open(f"{src}/cornell movie-dialogs corpus/movie_lines.txt", encoding="iso-8859-1") as f:
+    for line in f:
+        parts = line.split(" +++$+++ ")
+        if len(parts) != 5: continue
+        text = re.sub(r"<[^>]+>", " ", parts[4]).strip()
+        text = re.sub(r"\s+", " ", text)
+        if 20 <= len(text) <= 500 and re.search(r"[a-zA-Z]{3}", text):
+            lines.append(text)
+random.seed(1337); random.shuffle(lines)
+io.open(out, "w", encoding="utf-8").write("\n\n".join(lines[:40000]) + "\n")
+print(f"movie-dialogs: {min(40000,len(lines))} utterances")
+PYEXTRACT
+    echo '{"name":"movie-dialogs","url":"cs.cornell.edu cornell_movie_dialogs_corpus (2011)","bytes":'$(wc -c < "$OUT/movie-dialogs.txt" | tr -d ' ')'},'  >> "$MANIFEST.tmp"
+  else
+    echo "  ⚠ cornell download failed — proceeding without"
+  fi
+else
+  echo "  already present"
+fi
+
 echo "── HN comments (pre-2022, via BigQuery public data) ──"
 if [ ! -s "$OUT/hn.txt" ] && command -v bq >/dev/null 2>&1 && gcloud auth print-access-token >/dev/null 2>&1; then
   bq --project_id=iampatterson query --nouse_legacy_sql --format=csv --max_rows=20000 \

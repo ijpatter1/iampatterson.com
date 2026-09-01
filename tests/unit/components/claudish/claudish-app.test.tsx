@@ -135,8 +135,10 @@ describe('ClaudishApp', () => {
     const user = userEvent.setup();
     render(<ClaudishApp />);
     await user.click(screen.getByRole('textbox'));
-    // Terse imperative prose: CCLD scores this ~0.72 — sub-latch Claudish.
-    await user.paste('The meeting moved to Thursday. Bring the numbers.');
+    // Workplace "let me check...": genuinely ambiguous register, scores
+    // ~0.79 after the round-3 retrain — sub-latch Claudish by design
+    // (the behavioral pin holds it under full conviction).
+    await user.paste('let me check the numbers before we send it over there');
     expect(screen.getByRole('tab', { name: 'Leaning Claudish' })).toBeInTheDocument();
     // A claimed Claudish side drives the direction: target flips to English.
     const englishTarget = screen

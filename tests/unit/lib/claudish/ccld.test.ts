@@ -44,7 +44,7 @@ describe('fixture parity (training-time outputs replayed through the shipped pat
     expect(p).toBeCloseTo((testCase as { p: number }).p, 5);
   });
 
-  it('classifies the canonical pair, and stays under the latch on terse imperatives', () => {
+  it('classifies the canonical pair, and no longer leans on terse imperatives', () => {
     const m = model as NonNullable<typeof model>;
     expect(
       m.predict("This isn't just a refactor — it's a robust, seamless transformation, underscoring everything.")
@@ -52,12 +52,10 @@ describe('fixture parity (training-time outputs replayed through the shipped pat
     expect(
       m.predict('lol yeah that is broken, been meaning to fix it for weeks tbh')
     ).toBeLessThan(0.2);
-    // Model-card honesty: short terse imperatives ARE Claudish-adjacent
-    // (the 20-80 char bucket is the weak zone) — this one scores ~0.72,
-    // which the 0.80 latch threshold deliberately keeps sub-confident.
-    const terse = m.predict('The meeting moved to Thursday. Bring the numbers.');
-    expect(terse).toBeGreaterThan(0.5);
-    expect(terse).toBeLessThan(0.8);
+    // The first trained model leaned Claudish (~0.72) on terse workplace
+    // imperatives; the conversational negative sources (movie dialogs,
+    // 1990s usenet) taught it that humans talk like this. Pinned English.
+    expect(m.predict('The meeting moved to Thursday. Bring the numbers.')).toBeLessThan(0.5);
   });
 });
 
