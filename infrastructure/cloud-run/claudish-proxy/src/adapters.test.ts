@@ -26,10 +26,10 @@ describe('buildMessageParams', () => {
     expect(params.model).toBe('model-x');
     expect(params.max_tokens).toBe(MAX_TOKENS.en2cl);
     expect(params.stream).toBe(true);
-    // Near-deterministic cl2en (kill-list leaks at temp 1.0); en2cl keeps
-    // heat for register variety.
-    expect(params.temperature).toBe(0.3);
-    expect(buildMessageParams('cl2en', 'x', 'm').temperature).toBe(0.2);
+    // Deterministic translator: temp 0 both directions (nonzero temps
+    // resample failure tails instead of fixing them — overnight loop).
+    expect(params.temperature).toBe(0);
+    expect(buildMessageParams('cl2en', 'x', 'm').temperature).toBe(0);
     const system = params.system as unknown as Array<Record<string, unknown>>;
     expect(system).toHaveLength(1);
     expect(system[0].cache_control).toEqual({ type: 'ephemeral' });

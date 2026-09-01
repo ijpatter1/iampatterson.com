@@ -34,10 +34,13 @@ export function buildMessageParams(
   return {
     model: modelId,
     max_tokens: MAX_TOKENS[direction],
-    // Translation wants near-determinism (cl2en leaked kill-list words at
-    // the default temperature 1.0); en2cl keeps some heat for register
-    // variety without content drift.
-    temperature: direction === 'cl2en' ? 0.2 : 0.3,
+    // Temperature 0 on both directions: a translator is a function, and
+    // determinism turns the golden set into a true regression suite. The
+    // overnight loop proved nonzero temps RESAMPLE the failure tails
+    // (fabricated effort, verbatim openings, dimension-listing) run to
+    // run instead of fixing them; register variety comes from the input
+    // and the few-shots, not the sampler.
+    temperature: 0,
     stream: true,
     system: [
       {

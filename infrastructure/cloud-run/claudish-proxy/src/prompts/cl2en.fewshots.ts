@@ -40,6 +40,11 @@ export const CL2EN_FEWSHOTS: Cl2EnFewShot[] = [
   },
   {
     claudish:
+      "Growth isn't just a number — it's a philosophy that permeates everything we do.",
+    english: 'Growth is a philosophy here.',
+  },
+  {
+    claudish:
       "The outage is pivotal to understand: it stems from a subtle interplay between the cache TTL and the deploy window, reflecting a deeper configuration drift.",
     english: 'The outage happened because the cache TTL and the deploy window interacted badly. The configuration had drifted.',
   },
