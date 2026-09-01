@@ -21,6 +21,14 @@ export interface HeuristicResult {
   activeFamilies: number;
   /** Names of fired families / counter-signals, for debugging and the UI. */
   signals: string[];
+  /**
+   * Raw per-family scores in [0, 1], fixed order: em-dash, contrastive,
+   * vocabulary, discourse, markdown, syntax, stereotype, informal.
+   * Consumed as dense model inputs by the v4 CCLD featurizer — the
+   * register measurements char n-grams cannot encode (multi-word
+   * patterns, words longer than the 4-gram window, rhythm).
+   */
+  familyScores: number[];
 }
 
 /** Saturation rate for the em-dash family. The corpus-wide measured rate
@@ -147,7 +155,7 @@ function sigmoid(x: number): number {
 export function scoreClaudish(text: string): HeuristicResult {
   const normalized = normalizeForDetection(text);
   if (normalized.length === 0) {
-    return { score: 0, activeFamilies: 0, signals: [] };
+    return { score: 0, activeFamilies: 0, signals: [], familyScores: [0, 0, 0, 0, 0, 0, 0, 0] };
   }
 
   const signals: string[] = [];
@@ -217,5 +225,19 @@ export function scoreClaudish(text: string): HeuristicResult {
     score = Math.min(score, SINGLE_FAMILY_CAP);
   }
 
-  return { score, activeFamilies, signals };
+  return {
+    score,
+    activeFamilies,
+    signals,
+    familyScores: [
+      emDashScore,
+      contrastiveScore,
+      vocabScore,
+      discourseScore,
+      markdownScore,
+      syntaxScore,
+      smokingGunScore,
+      informalScore,
+    ],
+  };
 }

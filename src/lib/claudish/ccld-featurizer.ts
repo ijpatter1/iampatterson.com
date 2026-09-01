@@ -17,9 +17,12 @@
  * space each side → per order n, slide code-point windows → fraction =
  * count/windows → bucket = fnv1a32(utf8(gram)) % buckets[order].
  */
+import { scoreClaudish } from './heuristic';
 import { normalizeForDetection } from './text-stats';
 
 export interface CcldFeaturizerConfig {
+  /** v4: count of dense register features concatenated to the input. */
+  registerFeatures?: number;
   version: number;
   orders: readonly number[];
   buckets: readonly number[];
@@ -80,6 +83,56 @@ export const CCLD_V3_CONFIG: CcldFeaturizerConfig = {
   embeddingDim: 16,
   hiddenDim: 96,
 };
+
+/**
+ * v4 = v2 capacity + DENSE REGISTER FEATURES. Three experiments proved
+ * char 1-4-gram bags under-encode the register (multi-word patterns,
+ * words past the window, sentence rhythm), so models fall back on
+ * content shortcuts: r8 (contrastive dose) and r9b (2x capacity) both
+ * fail to fit their own register-stripped negatives. v4 feeds the
+ * register measurements directly: the heuristic's 8 family scores plus
+ * 3 rhythm statistics, concatenated to the embedding average.
+ */
+export const REGISTER_FEATURE_COUNT = 11;
+
+export const CCLD_V4_CONFIG: CcldFeaturizerConfig = {
+  ...CCLD_CONFIG,
+  version: 4,
+  maskModelNames: true,
+  registerFeatures: REGISTER_FEATURE_COUNT,
+};
+
+/**
+ * Dense register measurements in [0, ~1], frozen alongside the char
+ * featurizer (same contract: a trained model's inputs never drift).
+ * Order: the heuristic's 8 familyScores, then mean sentence length
+ * (words / 40, capped), sentence-length stddev (/ 20, capped), and the
+ * longest run of short (< 8 words) sentences (/ 6, capped).
+ */
+export function extractRegisterFeatures(text: string): Float64Array {
+  const out = new Float64Array(REGISTER_FEATURE_COUNT);
+  const h = scoreClaudish(text);
+  for (let i = 0; i < 8; i++) out[i] = h.familyScores[i] ?? 0;
+  const sentences = normalizeForDetection(text)
+    .split(/[.!?]+/)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length > 0)
+    .map((sentence) => sentence.split(' ').length);
+  if (sentences.length > 0) {
+    const mean = sentences.reduce((a, b) => a + b, 0) / sentences.length;
+    const variance = sentences.reduce((a, b) => a + (b - mean) ** 2, 0) / sentences.length;
+    out[8] = Math.min(1, mean / 40);
+    out[9] = Math.min(1, Math.sqrt(variance) / 20);
+    let run = 0;
+    let maxRun = 0;
+    for (const words of sentences) {
+      run = words < 8 ? run + 1 : 0;
+      if (run > maxRun) maxRun = run;
+    }
+    out[10] = Math.min(1, maxRun / 6);
+  }
+  return out;
+}
 
 /** FNV-1a 32-bit over UTF-8 bytes (portable across any reimplementation). */
 export function fnv1a32(text: string): number {

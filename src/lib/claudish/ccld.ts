@@ -9,7 +9,15 @@
  * Weights load via dynamic import (warmCcld) so the ~36KB payload stays
  * out of the base page chunk; until it lands, the heuristic answers.
  */
-import { CCLD_CONFIG, CCLD_V2_CONFIG, CCLD_V3_CONFIG, configHash, extractFeatures } from './ccld-featurizer';
+import {
+  CCLD_CONFIG,
+  CCLD_V2_CONFIG,
+  CCLD_V3_CONFIG,
+  CCLD_V4_CONFIG,
+  configHash,
+  extractFeatures,
+  extractRegisterFeatures,
+} from './ccld-featurizer';
 import { forwardLogits, probabilityClaudish } from './ccld-inference';
 
 import type { CcldTensors } from './ccld-inference';
@@ -63,7 +71,9 @@ export function loadCcldModel(weights: unknown): CcldModel | null {
         ? CCLD_V2_CONFIG
         : embeddedHash === configHash(CCLD_V3_CONFIG)
           ? CCLD_V3_CONFIG
-          : null;
+          : embeddedHash === configHash(CCLD_V4_CONFIG)
+            ? CCLD_V4_CONFIG
+            : null;
   if (!config) return null;
   const scales = file.quant?.scales;
   const tensors = file.tensors;
@@ -89,7 +99,12 @@ export function loadCcldModel(weights: unknown): CcldModel | null {
       predict(text: string): number {
         try {
           return probabilityClaudish(
-            forwardLogits(extractFeatures(text, config), modelTensors, config),
+            forwardLogits(
+              extractFeatures(text, config),
+              modelTensors,
+              config,
+              config.registerFeatures ? extractRegisterFeatures(text) : undefined
+            ),
             temperature
           );
         } catch {

@@ -25,7 +25,9 @@ import {
   CCLD_CONFIG,
   CCLD_V2_CONFIG,
   CCLD_V3_CONFIG,
+  CCLD_V4_CONFIG,
   configHash,
+  extractRegisterFeatures,
   fnv1a32,
 } from '../../src/lib/claudish/ccld-featurizer';
 
@@ -35,11 +37,13 @@ import {
 // CCLD_CAPACITY=v3 selects the scaled config (mask + dim 16 + hidden 96);
 // MASK_MODEL_NAMES=1 alone keeps v2 (mask at original capacity).
 const TRAIN_CONFIG =
-  process.env.CCLD_CAPACITY === 'v3'
-    ? CCLD_V3_CONFIG
-    : process.env.MASK_MODEL_NAMES === '1'
-      ? CCLD_V2_CONFIG
-      : CCLD_CONFIG;
+  process.env.CCLD_CAPACITY === 'v4'
+    ? CCLD_V4_CONFIG
+    : process.env.CCLD_CAPACITY === 'v3'
+      ? CCLD_V3_CONFIG
+      : process.env.MASK_MODEL_NAMES === '1'
+        ? CCLD_V2_CONFIG
+        : CCLD_CONFIG;
 import {
   forwardLogits,
   probabilityClaudish,
@@ -55,6 +59,8 @@ interface Example {
   source: string;
   split: 'train' | 'dev' | 'test';
   heldOutProject?: boolean;
+  /** v4: precomputed dense register features (one pass at load time). */
+  reg?: Float64Array;
 }
 
 const args = process.argv.slice(2);
@@ -127,7 +133,7 @@ function evaluate(
   const bucketOf = (len: number) =>
     len < 40 ? '20-40' : len < 80 ? '40-80' : len < 160 ? '80-160' : len < 320 ? '160-320' : len < 640 ? '320-640' : '640-1200';
   for (const example of examples) {
-    const p = probabilityClaudish(forwardLogits(extractFeatures(example.text, TRAIN_CONFIG), tensors, TRAIN_CONFIG), temperature);
+    const p = probabilityClaudish(forwardLogits(extractFeatures(example.text, TRAIN_CONFIG), tensors, TRAIN_CONFIG, example.reg), temperature);
     const predicted = p >= 0.5 ? 1 : 0;
     const correct = predicted === example.label;
     if (example.label === 1) {
@@ -168,7 +174,7 @@ function evaluate(
 
 function fitTemperature(tensors: CcldTensors, dev: Example[]): number {
   const logitDiffs = dev.map((example) => {
-    const [z0, z1] = forwardLogits(extractFeatures(example.text, TRAIN_CONFIG), tensors, TRAIN_CONFIG);
+    const [z0, z1] = forwardLogits(extractFeatures(example.text, TRAIN_CONFIG), tensors, TRAIN_CONFIG, example.reg);
     return { diff: z1 - z0, label: example.label };
   });
   let best = 1;
@@ -197,6 +203,13 @@ async function main(): Promise<void> {
     .split('\n')
     .filter(Boolean)
     .map((line) => JSON.parse(line) as Example);
+  if (TRAIN_CONFIG.registerFeatures) {
+    // One regex pass per example at load (~30s for 180k) instead of one
+    // per epoch inside the hot loop.
+    const t0 = Date.now();
+    for (const example of examples) example.reg = extractRegisterFeatures(example.text);
+    console.log(`[train] register features precomputed in ${Math.round((Date.now() - t0) / 1000)}s`);
+  }
   const rng = seededRng(1337);
   const train = examples.filter((e) => e.split === 'train' && !e.heldOutProject).slice(0, MAX_TRAIN);
   const dev = examples.filter((e) => e.split === 'dev' && !e.heldOutProject);
@@ -223,7 +236,7 @@ async function main(): Promise<void> {
     let inBatch = 0;
     for (const index of order) {
       const example = train[index];
-      trainNll += backprop(model, extractFeatures(example.text, TRAIN_CONFIG), example.label, grads, TRAIN_CONFIG);
+      trainNll += backprop(model, extractFeatures(example.text, TRAIN_CONFIG), example.label, grads, TRAIN_CONFIG, example.reg);
       inBatch++;
       if (inBatch === BATCH) {
         optimizer.step(model.flat, grads, BATCH);
@@ -234,7 +247,7 @@ async function main(): Promise<void> {
 
     let devNll = 0;
     for (const example of dev) {
-      const [z0, z1] = forwardLogits(extractFeatures(example.text, TRAIN_CONFIG), model.tensors, TRAIN_CONFIG);
+      const [z0, z1] = forwardLogits(extractFeatures(example.text, TRAIN_CONFIG), model.tensors, TRAIN_CONFIG, example.reg);
       const p = 1 / (1 + Math.exp(-(z1 - z0)));
       devNll += -Math.log(Math.max(example.label === 1 ? p : 1 - p, 1e-12));
     }
@@ -377,7 +390,12 @@ async function main(): Promise<void> {
   const fixtures = {
     featurizerConfigHash: configHash(),
     inferenceCases: probes.map((text) => {
-      const [z0, z1] = forwardLogits(extractFeatures(text, TRAIN_CONFIG), quantizedTensors, TRAIN_CONFIG);
+      const [z0, z1] = forwardLogits(
+        extractFeatures(text, TRAIN_CONFIG),
+        quantizedTensors,
+        TRAIN_CONFIG,
+        TRAIN_CONFIG.registerFeatures ? extractRegisterFeatures(text) : undefined
+      );
       return {
         text,
         logits: [Math.round(z0 * 1e6) / 1e6, Math.round(z1 * 1e6) / 1e6],

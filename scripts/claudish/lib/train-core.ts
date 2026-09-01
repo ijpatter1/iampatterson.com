@@ -19,7 +19,7 @@ export interface Model {
 
 export function tensorSizes(config: CcldFeaturizerConfig = CCLD_CONFIG): number[] {
   const dim = config.embeddingDim;
-  const inputDim = config.orders.length * dim;
+  const inputDim = config.orders.length * dim + (config.registerFeatures ?? 0);
   return [
     ...config.buckets.map((buckets) => buckets * dim),
     inputDim * config.hiddenDim,
@@ -34,7 +34,7 @@ export function initModel(
   config: CcldFeaturizerConfig = CCLD_CONFIG
 ): Model {
   const sizes = tensorSizes(config);
-  const inputDim = config.orders.length * config.embeddingDim;
+  const inputDim = config.orders.length * config.embeddingDim + (config.registerFeatures ?? 0);
   const flat = sizes.map((size) => new Float64Array(size));
   const scale = (n: number) => Math.sqrt(2 / n);
   // Small random init; He-ish for the dense layers.
@@ -65,12 +65,14 @@ export function backprop(
   features: Features,
   label: 0 | 1,
   grads: Float64Array[],
-  config: CcldFeaturizerConfig = CCLD_CONFIG
+  config: CcldFeaturizerConfig = CCLD_CONFIG,
+  registerVec?: Float64Array
 ): number {
   const { tensors } = model;
   const dim = config.embeddingDim;
   const hidden = config.hiddenDim;
-  const inputDim = config.orders.length * dim;
+  const charDim = config.orders.length * dim;
+  const inputDim = charDim + (config.registerFeatures ?? 0);
   // Shape guard — the bug this parameter exists to prevent: training a
   // v1-shaped model while evaluating with v3 indexing (the invalid
   // first r9 run) passes every parity check because both sides share
@@ -85,6 +87,9 @@ export function backprop(
   // Forward (kept in sync with the shipped forwardLogits — verified by
   // the parity check in train-ccld and the grad-check test).
   const x = new Float64Array(inputDim);
+  if (registerVec) {
+    for (let k = 0; k < registerVec.length; k++) x[charDim + k] = registerVec[k];
+  }
   for (let order = 0; order < features.length; order++) {
     const embedding = tensors.embeddings[order];
     for (const [bucket, fraction] of features[order]) {

@@ -25,12 +25,17 @@ export const INPUT_DIM = CCLD_CONFIG.orders.length * CCLD_CONFIG.embeddingDim;
 export function forwardLogits(
   features: ReturnType<typeof extractFeatures>,
   tensors: CcldTensors,
-  config: CcldFeaturizerConfig = CCLD_CONFIG
+  config: CcldFeaturizerConfig = CCLD_CONFIG,
+  registerVec?: Float64Array
 ): [number, number] {
   const dim = config.embeddingDim;
-  const inputDim = config.orders.length * dim;
+  const charDim = config.orders.length * dim;
+  const inputDim = charDim + (config.registerFeatures ?? 0);
   const hidden = tensors.b1.length;
   const x = new Float64Array(inputDim);
+  if (registerVec) {
+    for (let k = 0; k < registerVec.length; k++) x[charDim + k] = registerVec[k];
+  }
   for (let order = 0; order < features.length; order++) {
     const embedding = tensors.embeddings[order];
     for (const [bucket, fraction] of features[order]) {
