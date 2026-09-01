@@ -3,7 +3,8 @@
  *
  * INPUT_CAP must agree with the proxy's server-side cap (413 above it) and
  * with the char counter display — the counter shows the real cap by user
- * decision (plan §Resolved decisions #1), not Google Translate's 5,000.
+ * decision (docs/sessions/session-2026-08-31-001.md, Decisions), not
+ * Google Translate's 5,000.
  */
 
 /** Max input characters (UTF-16 units, matching textarea maxLength and the server cap). */

@@ -13,8 +13,9 @@ export const REFUSAL_MESSAGE =
   "This doesn't translate. It's not a dictionary gap; it's a line.";
 
 /**
- * Shown in cache-only/capacity mode, and — by decision (plan §Resolved
- * decisions #2) — for generic failures too. The real cause goes to
+ * Shown in cache-only/capacity mode, and — by decision
+ * (docs/sessions/session-2026-08-31-001.md, Decisions) — for generic
+ * failures too. The real cause goes to
  * analytics as outcome: 'error'; the page never shows a broken state.
  */
 export const CAPACITY_MESSAGE = "This isn't an outage. It's a boundary.";

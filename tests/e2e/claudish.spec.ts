@@ -76,6 +76,11 @@ test.describe('Claudish translator', () => {
     await expect(page.getByRole('textbox')).toHaveValue(CLAUDISH_INPUT);
     await expect(page.getByTestId('claudish-output')).toContainText('Nothing more.');
     expect(proxyCalls).toBe(0);
+    // The parse-time strip: the payload never lingers in the address bar
+    // (it IS the input text — referrer/analytics must never see it).
+    await expect
+      .poll(() => page.url(), { timeout: 3000 })
+      .not.toContain('t=');
   });
 
   test('suppressed chrome: no site footer, no LiveStrip marquee', async ({ page }) => {
