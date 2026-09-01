@@ -10,8 +10,8 @@
 # (global endpoint, ADC — no key), with the Anthropic API as a funded
 # fallback lane. This script does every scriptable prerequisite: enables
 # the Vertex API, reads the Claude quota metrics, optionally probes the
-# model end-to-end (~$0.001), and stores the Anthropic API key in Secret
-# Manager. The two console-UI steps (Model Garden terms, Anthropic key
+# model end-to-end (~$0.001). Anthropic auth is Workload Identity
+# Federation (2026-08-31) — no key step. The console-UI steps (Model Garden terms
 # creation/funding) are in task-2026-08-31-001.md.
 #
 # Usage: bash docs/manual/task-2026-08-31-001.sh [--probe]
@@ -111,33 +111,12 @@ else
 fi
 
 echo ""
-echo "Step 4: Anthropic API key → Secret Manager (${SECRET_NAME})..."
-if gcloud secrets describe "${SECRET_NAME}" --project="${PROJECT_ID}" >/dev/null 2>&1; then
-  echo "  secret shell exists"
-else
-  gcloud secrets create "${SECRET_NAME}" --project="${PROJECT_ID}" \
-    --replication-policy=automatic --labels=app=claudish,purpose=anthropic-api-key
-  echo "  secret shell created"
-fi
-VERSION_COUNT="$(gcloud secrets versions list "${SECRET_NAME}" --project="${PROJECT_ID}" \
-  --filter="state=enabled" --format="value(name)" 2>/dev/null | wc -l | tr -d ' ')"
-if [ "${VERSION_COUNT}" -gt 0 ]; then
-  echo "  ✓ key already stored (${VERSION_COUNT} enabled version(s))"
-elif [ -t 0 ]; then
-  echo "  Paste the Anthropic API key (input hidden; created per task card step 3):"
-  read -r -s ANTHROPIC_KEY
-  if [ -n "${ANTHROPIC_KEY}" ]; then
-    # Key material goes via stdin only — never on a command line or into logs.
-    printf '%s' "${ANTHROPIC_KEY}" | \
-      gcloud secrets versions add "${SECRET_NAME}" --project="${PROJECT_ID}" --data-file=-
-    unset ANTHROPIC_KEY
-    echo "  ✓ key stored"
-  else
-    echo "  ⚠ empty input — skipped. Re-run after creating the key."
-  fi
-else
-  echo "  ⚠ no TTY — skipped key entry. Re-run interactively after creating the key."
-fi
+echo "Step 4: Anthropic auth — Workload Identity Federation (no key)"
+echo "  ✓ superseded 2026-08-31: the anthropic-api lane authenticates via"
+echo "    WIF (Claude Console rule fdrl_01RYv2ptEbtu7jpssKo1ZcRH on the"
+echo "    google-cloud issuer → svac_014RW8M13t3K3QXY6pL7mrLo). Verified"
+echo "    end-to-end the same day. No key to create, paste, or rotate."
+echo "    The ${SECRET_NAME} secret shell is unused break-glass."
 
 # ── Verification ─────────────────────────────────────
 echo ""
@@ -152,19 +131,10 @@ else
   echo "  ✗ aiplatform.googleapis.com NOT enabled"; FAIL=$((FAIL+1))
 fi
 
-if gcloud secrets describe "${SECRET_NAME}" --project="${PROJECT_ID}" >/dev/null 2>&1; then
-  echo "  ✓ secret ${SECRET_NAME} exists"; PASS=$((PASS+1))
-else
-  echo "  ✗ secret ${SECRET_NAME} missing"; FAIL=$((FAIL+1))
-fi
-
-VERSION_COUNT="$(gcloud secrets versions list "${SECRET_NAME}" --project="${PROJECT_ID}" \
-  --filter="state=enabled" --format="value(name)" 2>/dev/null | wc -l | tr -d ' ')"
-if [ "${VERSION_COUNT}" -gt 0 ]; then
-  echo "  ✓ secret has an enabled version"; PASS=$((PASS+1))
-else
-  echo "  ⚠ secret has no version yet (key not created/funded?)"; SKIP=$((SKIP+1))
-fi
+# WIF replaced the key path (2026-08-31): federation-rule health is
+# verified at deploy smoke time (the anthropic-api lane answering), not
+# here — this machine holds no ambient SA identity to exchange with.
+echo "  ✓ Anthropic auth via WIF — no secret to verify"; PASS=$((PASS+1))
 
 case "${QUOTA_STATUS}" in
   found)  echo "  ✓ Claude Haiku quota rows exist (values need eyeballing above)"; PASS=$((PASS+1)) ;;

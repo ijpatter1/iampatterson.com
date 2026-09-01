@@ -113,9 +113,32 @@ describe('adaptAnthropicStream', () => {
 });
 
 describe('buildLanes', () => {
-  it('skips the anthropic lane without its key rather than crashing', () => {
+  const WIF_ENV = {
+    ANTHROPIC_FEDERATION_RULE_ID: 'fdrl_test123',
+    ANTHROPIC_ORGANIZATION_ID: '00000000-0000-0000-0000-000000000000',
+    ANTHROPIC_SERVICE_ACCOUNT_ID: 'svac_test123',
+    ANTHROPIC_WORKSPACE_ID: 'wrkspc_test123',
+  };
+
+  it('skips the anthropic lane without its federation ids rather than crashing', () => {
     const config = loadConfig({ LANES: 'anthropic-api,cache-only' });
     expect(buildLanes(config, {}).map((l) => l.name)).toEqual([]);
+  });
+
+  it('does not resurrect the lane from a leftover ANTHROPIC_API_KEY', () => {
+    // The lane authenticates via WIF only. A stray key must not silently
+    // re-enable key auth (SDK env precedence would shadow federation).
+    const config = loadConfig({ LANES: 'anthropic-api,cache-only' });
+    expect(buildLanes(config, { ANTHROPIC_API_KEY: 'sk-ant-stray' }).map((l) => l.name)).toEqual(
+      []
+    );
+  });
+
+  it('builds the anthropic lane from WIF federation ids', () => {
+    const config = loadConfig({ LANES: 'anthropic-api,cache-only' });
+    const lanes = buildLanes(config, WIF_ENV);
+    expect(lanes.map((l) => l.name)).toEqual(['anthropic-api']);
+    expect(lanes[0].modelId).toBe(config.anthropicModelId);
   });
 
   it('builds vertex lanes with the configured model id', () => {

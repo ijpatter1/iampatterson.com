@@ -9,15 +9,17 @@
  * breakpoint at its end, capped max_tokens, stream on — is pinned by
  * unit tests without any SDK mock.
  *
- * Vertex lanes authenticate via ADC (the runtime service account) — no
- * key anywhere. The Anthropic lane reads ANTHROPIC_API_KEY (Secret
- * Manager-injected).
+ * Vertex lanes authenticate via ADC (the runtime service account). The
+ * Anthropic lane authenticates via Workload Identity Federation: the
+ * same service account's metadata-server identity token, exchanged for
+ * a short-lived Anthropic access token (see wif.ts). No key anywhere.
  */
 import Anthropic from '@anthropic-ai/sdk';
 import { AnthropicVertex } from '@anthropic-ai/vertex-sdk';
 
 import { MAX_TOKENS } from './config';
 import { buildSystem } from './prompts';
+import { anthropicWifCredentials, readWifEnv } from './wif';
 
 import type { MessageCreateParamsStreaming } from '@anthropic-ai/sdk/resources/messages';
 import type { Config, Direction, LaneName } from './config';
@@ -165,13 +167,13 @@ export function buildLanes(config: Config, env: NodeJS.ProcessEnv = process.env)
         )
       );
     } else if (name === 'anthropic-api') {
-      const apiKey = env.ANTHROPIC_API_KEY;
-      if (!apiKey) continue; // lane unavailable without its secret: skip, don't crash
+      const wif = readWifEnv(env);
+      if (!wif) continue; // lane unavailable without its federation ids: skip, don't crash
       lanes.push(
         laneFromClient(
           name,
           config.anthropicModelId,
-          new Anthropic({ apiKey }) as unknown as StreamClient
+          new Anthropic({ credentials: anthropicWifCredentials(wif) }) as unknown as StreamClient
         )
       );
     }

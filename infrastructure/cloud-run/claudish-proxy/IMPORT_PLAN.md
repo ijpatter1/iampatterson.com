@@ -21,8 +21,7 @@ silently reverted by the next `terraform apply` — mid-incident.
 |---|---|---|
 | `google_service_account.managed["claudish_proxy"]` | `projects/iampatterson/serviceAccounts/claudish-proxy@iampatterson.iam.gserviceaccount.com` | `service-accounts.tf` (add to the locals map; the existing for_each import block picks it up) |
 | `google_project_service.enabled["aiplatform.googleapis.com"]` | `iampatterson/aiplatform.googleapis.com` | `project-services.tf` (spec-delta: live-enabled since the BQ vertex connection, absent from the curated list) |
-| `google_secret_manager_secret.claudish_anthropic_api_key` | `projects/iampatterson/secrets/claudish-anthropic-api-key` | Secret Manager module (module 8 — resource shells only, values stay out of state) |
-| `google_secret_manager_secret_iam_member.claudish_proxy_accessor` | `projects/iampatterson/secrets/claudish-anthropic-api-key roles/secretmanager.secretAccessor serviceAccount:claudish-proxy@iampatterson.iam.gserviceaccount.com` | IAM module (module 9) |
+| `google_secret_manager_secret.claudish_anthropic_api_key` | `projects/iampatterson/secrets/claudish-anthropic-api-key` | Secret Manager module (module 8). **Unused break-glass**: created before the 2026-08-31 WIF switch, holds no version, nothing mounts it. Import for state completeness or delete deliberately — do not wire it back into the service. |
 | `google_project_iam_member.claudish_proxy_aiplatform` | `iampatterson roles/aiplatform.user serviceAccount:claudish-proxy@iampatterson.iam.gserviceaccount.com` | IAM module (module 9) |
 | `google_cloud_run_v2_service.claudish_proxy` | `projects/iampatterson/locations/us-central1/services/claudish-proxy` | `cloud-run.tf` |
 
@@ -48,8 +47,10 @@ Durable shell to encode: `deletion_protection = true`,
 service_account `claudish-proxy@`, scaling `min 1 / max 4`,
 concurrency 80, cpu 1 / 512Mi, `timeout = "60s"` (NOT event-stream's
 3600s — translations are short; 60s bounds a hung upstream),
-gen2, port 8080 http1, secret ref
-`ANTHROPIC_API_KEY = claudish-anthropic-api-key:latest`.
+gen2, port 8080 http1. No secret refs: the Anthropic lane
+authenticates via Workload Identity Federation — the four
+`ANTHROPIC_*` env vars are plain identifiers (rule, org, service
+account, workspace), not credentials.
 
 ## Deltas / decisions for D9
 

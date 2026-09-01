@@ -10,7 +10,7 @@
     "test": "jest --config jest.config.json"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.65.0",
+    "@anthropic-ai/sdk": "^0.122.0",
     "@anthropic-ai/vertex-sdk": "^0.19.6",
     "express": "^4.18.0"
   },

@@ -17,7 +17,14 @@ REGION="${REGION:-us-central1}"
 SERVICE="claudish-proxy"
 SA_ID="claudish-proxy"
 SA_EMAIL="${SA_ID}@${PROJECT}.iam.gserviceaccount.com"
-SECRET="claudish-anthropic-api-key"
+# Anthropic Workload Identity Federation ids (identifiers, not secrets).
+# Created in the Claude Console 2026-08-31 (Settings → Workload identity):
+# rule claudish-proxy on the google-cloud issuer, matching this SA's
+# sub + email, scoped to the Claudish workspace.
+ANTHROPIC_FEDERATION_RULE_ID="${ANTHROPIC_FEDERATION_RULE_ID:-fdrl_01RYv2ptEbtu7jpssKo1ZcRH}"
+ANTHROPIC_ORGANIZATION_ID="${ANTHROPIC_ORGANIZATION_ID:-ff69f7b8-02fa-4bbb-b4a9-d0047c05299c}"
+ANTHROPIC_SERVICE_ACCOUNT_ID="${ANTHROPIC_SERVICE_ACCOUNT_ID:-svac_014RW8M13t3K3QXY6pL7mrLo}"
+ANTHROPIC_WORKSPACE_ID="${ANTHROPIC_WORKSPACE_ID:-wrkspc_01K3PnFVDjmiNyuH6DQUJwKo}"
 ALLOWED_ORIGINS="${ALLOWED_ORIGINS:-https://iampatterson-com.vercel.app,https://iampatterson.com}"
 LANES="${LANES:-vertex-global,vertex-regional,anthropic-api,cache-only}"
 DAILY_BUDGET_USD="${DAILY_BUDGET_USD:-23}"
@@ -78,20 +85,11 @@ run gcloud projects add-iam-policy-binding "${PROJECT}" \
   --role="roles/aiplatform.user" \
   --condition=None >/dev/null
 
-echo "── Step 4: Secret shell ──"
-if gcloud secrets describe "${SECRET}" --project="${PROJECT}" >/dev/null 2>&1; then
-  echo "  ${SECRET} exists"
-else
-  run gcloud secrets create "${SECRET}" --project="${PROJECT}" \
-    --replication-policy=automatic --labels=app=claudish,purpose=anthropic-api-key
-fi
-# Value is added by the operator (docs/manual/task-2026-08-31-001.sh),
-# never by this script — key material stays off argv and out of echo.
-run gcloud secrets add-iam-policy-binding "${SECRET}" \
-  --project="${PROJECT}" \
-  --member="serviceAccount:${SA_EMAIL}" \
-  --role="roles/secretmanager.secretAccessor" \
-  --condition=None >/dev/null
+# No secret step: the Anthropic lane authenticates via Workload Identity
+# Federation (the runtime SA's metadata-server identity token, exchanged
+# at api.anthropic.com/v1/oauth/token). The claudish-anthropic-api-key
+# secret shell created before the WIF switch is unused break-glass; it
+# holds no version and nothing mounts it.
 
 echo "── Step 5: Deploy (source-deploy, buildpacks) ──"
 run gcloud run deploy "${SERVICE}" \
@@ -109,8 +107,7 @@ run gcloud run deploy "${SERVICE}" \
   --memory=512Mi \
   --timeout=60 \
   --execution-environment=gen2 \
-  --set-env-vars="ALLOWED_ORIGINS=${ALLOWED_ORIGINS},LANES=${LANES},DAILY_BUDGET_USD=${DAILY_BUDGET_USD},MAX_INSTANCES=${MAX_INSTANCES},KILL_SWITCH=off,GCP_PROJECT=${PROJECT},VERTEX_FALLBACK_REGION=us-east5,MODEL_ID_CONFIRMED=${MODEL_ID_CONFIRMED:-0}" \
-  --set-secrets="ANTHROPIC_API_KEY=${SECRET}:latest"
+  --set-env-vars="^@^ALLOWED_ORIGINS=${ALLOWED_ORIGINS}@LANES=${LANES}@DAILY_BUDGET_USD=${DAILY_BUDGET_USD}@MAX_INSTANCES=${MAX_INSTANCES}@KILL_SWITCH=off@GCP_PROJECT=${PROJECT}@VERTEX_FALLBACK_REGION=us-east5@MODEL_ID_CONFIRMED=${MODEL_ID_CONFIRMED:-0}@ANTHROPIC_FEDERATION_RULE_ID=${ANTHROPIC_FEDERATION_RULE_ID}@ANTHROPIC_ORGANIZATION_ID=${ANTHROPIC_ORGANIZATION_ID}@ANTHROPIC_SERVICE_ACCOUNT_ID=${ANTHROPIC_SERVICE_ACCOUNT_ID}@ANTHROPIC_WORKSPACE_ID=${ANTHROPIC_WORKSPACE_ID}"
 
 if [ "${DRY_RUN}" = "1" ]; then
   echo ""

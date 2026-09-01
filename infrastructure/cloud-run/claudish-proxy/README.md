@@ -18,7 +18,9 @@ everything here serves.
 
 `LANES` env, in order: `vertex-global` (ADC, primary — cheaper than
 regional and lowest-latency) → `vertex-regional` (us-east5) →
-`anthropic-api` (funded fallback; needs the secret) → `cache-only`.
+`anthropic-api` (funded fallback via Workload Identity Federation —
+the runtime SA's metadata-server identity token exchanged for a
+short-lived Anthropic access token; no key exists) → `cache-only`.
 Failover happens only BEFORE the first token (the commit barrier);
 refusals never fail over — that's a policy decision this toy does not make.
 
