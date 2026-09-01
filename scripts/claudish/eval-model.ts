@@ -23,6 +23,12 @@ const BATTERY: Array<{ group: string; expectMax?: number; expectMin?: number; te
   { group: 'human-formal', expectMax: 0.5, text: 'Saw a tweet this week about Anthropic, one of the hottest companies on earth, saying their biggest problem is still hiring.' },
   { group: 'human-formal', expectMax: 0.5, text: 'The meeting moved to Thursday. Bring the numbers.' },
   { group: 'human-formal', expectMax: 0.8, text: 'The book delves into medieval trade routes across the Baltic.' },
+  // human-about-claude: Ian-flagged FP class 2026-08-31 — human text ABOUT
+  // Claude/model names convicts because the positive class owns that
+  // vocabulary and every negative source predates Claude. 0.8 = the latch.
+  { group: 'human-about-claude', expectMax: 0.8, text: 'What would the cost breakdown be if I wanted to use Opus 5 at low/no reasoning for the english to claudish? Fable 5 and Opus 5 are the only models fluent in Claudish.' },
+  { group: 'human-about-claude', expectMax: 0.8, text: 'Claude Opus and Claude Fable are impressive models.' },
+  { group: 'human-about-claude', expectMax: 0.8, text: 'I asked Claude to summarize the meeting notes.' },
   { group: 'claudish-loud', expectMin: 0.8, text: "This isn't just a refactor — it's a fundamental shift in how the pipeline thinks about state." },
   { group: 'claudish-loud', expectMin: 0.8, text: "Let me delve into this — it isn't just a bug; it's a robust, seamless testament to the intricate interplay of state." },
   { group: 'claudish-soft', expectMin: 0.5, text: "Those quotes sting because they're accurate. I'll resist the urge to explain why the six complaints are really answers to three different questions." },
