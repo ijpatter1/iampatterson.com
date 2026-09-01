@@ -83,7 +83,7 @@ function evaluate(tag: string): void {
   for (const f of failures) console.log(f);
 }
 
-const tags = readdirSync(REGISTRY).filter((t) =>
-  existsSync(path.join(REGISTRY, t, 'ccld-weights.json'))
+const tags = readdirSync(REGISTRY).filter(
+  (t) => !t.startsWith('_') && existsSync(path.join(REGISTRY, t, 'ccld-weights.json'))
 );
 for (const tag of tags.sort()) evaluate(tag);
