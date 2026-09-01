@@ -29,10 +29,35 @@ if (modelFlag >= 0) {
   args.splice(modelFlag, 2);
 }
 
+// --all: score the input across EVERY registry model side by side,
+// plus the heuristic and the product ensemble verdict per model.
+const allFlag = args.indexOf('--all');
+const compareAll = allFlag >= 0;
+if (compareAll) args.splice(allFlag, 1);
+
 const model = loadCcldModel(weights);
 const text = args.join(' ') || readFileSync(0, 'utf8');
-const p = model ? model.predict(text) : NaN;
+const tierOf = (p: number) =>
+  p >= 0.8 ? 'Claudish - detected' : p >= 0.5 ? 'Leaning Claudish' : p >= 0.3 ? 'Leaning English' : 'English - detected';
 const h = scoreClaudish(text);
-const verdict = p >= 0.8 ? 'Claudish - detected' : p >= 0.5 ? 'Leaning Claudish' : p >= 0.3 ? 'Leaning English' : 'English - detected';
-console.log(`CCLD[${modelLabel}]  P(claudish) = ${p.toFixed(3)}  →  ${verdict}`);
-console.log(`heuristic = ${h.score.toFixed(3)} (${h.activeFamilies} families: ${h.signals.join(', ') || 'none'})`);
+
+if (compareAll) {
+  const { readdirSync, existsSync } = require('node:fs') as typeof import('node:fs');
+  const registry = path.join(homedir(), '.claudish-corpus', 'models');
+  console.log(`heuristic = ${h.score.toFixed(3)} (${h.activeFamilies} families: ${h.signals.join(', ') || 'none'})`);
+  console.log('model                        ccld    product  UI label (product = max(ccld, heuristic))');
+  for (const tag of readdirSync(registry).sort()) {
+    const wPath = path.join(registry, tag, 'ccld-weights.json');
+    if (!existsSync(wPath)) continue;
+    const m = loadCcldModel(JSON.parse(readFileSync(wPath, 'utf8')));
+    if (!m) continue;
+    const ccldP = m.predict(text);
+    const product = Math.max(ccldP, h.score);
+    const shipped = tag === 'r3-conversational' ? '  ← shipped' : '';
+    console.log(`${tag.padEnd(28)} ${ccldP.toFixed(3)}   ${product.toFixed(3)}    ${tierOf(product)}${shipped}`);
+  }
+} else {
+  const p = model ? model.predict(text) : NaN;
+  console.log(`CCLD[${modelLabel}]  P(claudish) = ${p.toFixed(3)}  →  ${tierOf(p)}`);
+  console.log(`heuristic = ${h.score.toFixed(3)} (${h.activeFamilies} families: ${h.signals.join(', ') || 'none'})`);
+}
