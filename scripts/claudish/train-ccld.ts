@@ -14,6 +14,7 @@ import { homedir } from 'node:os';
 import path from 'node:path';
 
 import { seededRng } from './lib/chunk';
+import { loadCcldModel } from '../../src/lib/claudish/ccld';
 import {
   Adam,
   backprop,
@@ -348,7 +349,7 @@ async function main(): Promise<void> {
   const tensorNames = ['E1', 'E2', 'E3', 'E4', 'W1', 'b1', 'W2', 'b2'];
   const weights = {
     version: 1,
-    featurizer: { ...TRAIN_CONFIG, configHash: configHash() },
+    featurizer: { ...TRAIN_CONFIG, configHash: configHash(TRAIN_CONFIG) },
     arch: { hidden: TRAIN_CONFIG.hiddenDim, classes: ['english', 'claudish'] },
     quant: {
       scheme: 'int8-symmetric-per-tensor',
@@ -371,6 +372,41 @@ async function main(): Promise<void> {
     },
   };
   writeFileSync(path.join(libDir, 'ccld-weights.json'), JSON.stringify(weights));
+
+  // TRAIN/SERVE PARITY GATE — the guard for the bug class that bit three
+  // times (v1 hash embedded on v2+ weights; v3 dims trained v1-shaped;
+  // register features trained-in but not served): load the JUST-WRITTEN
+  // file through the REAL production loader and demand its predictions
+  // match the trainer's own quantized forward. Abort the export on any
+  // divergence — a model that fails this gate is not the model that was
+  // evaluated.
+  {
+    const served = loadCcldModel(
+      JSON.parse(readFileSync(path.join(libDir, 'ccld-weights.json'), 'utf8'))
+    );
+    if (!served) {
+      throw new Error('[parity gate] production loader REFUSED the exported weights');
+    }
+    const paritySamples = [...dev.slice(0, 8), ...heldOut.slice(0, 4)];
+    for (const example of paritySamples) {
+      const trainerP = probabilityClaudish(
+        forwardLogits(
+          extractFeatures(example.text, TRAIN_CONFIG),
+          quantizedTensors,
+          TRAIN_CONFIG,
+          example.reg
+        ),
+        temperature
+      );
+      const servedP = served.predict(example.text);
+      if (Math.abs(trainerP - servedP) > 1e-6) {
+        throw new Error(
+          `[parity gate] trainer=${trainerP.toFixed(6)} served=${servedP.toFixed(6)} — export aborted`
+        );
+      }
+    }
+    console.log(`[train] parity gate: ${paritySamples.length} samples, trainer === production loader`);
+  }
   writeFileSync(
     path.join(libDir, 'ccld-metrics.json'),
     JSON.stringify({ ...metrics, topNgrams }, null, 2)
@@ -388,7 +424,7 @@ async function main(): Promise<void> {
     "This isn't just a refactor — it's a robust, seamless transformation, underscoring everything.",
   ];
   const fixtures = {
-    featurizerConfigHash: configHash(),
+    featurizerConfigHash: configHash(TRAIN_CONFIG),
     inferenceCases: probes.map((text) => {
       const [z0, z1] = forwardLogits(
         extractFeatures(text, TRAIN_CONFIG),
