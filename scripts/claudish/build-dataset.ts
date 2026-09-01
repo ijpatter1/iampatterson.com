@@ -19,6 +19,7 @@ import { chunkText, seededRng } from './lib/chunk';
 import { chunkDropReason } from './lib/scrub';
 import { stripStructures } from './lib/scrub';
 import { fnv1a32 } from '../../src/lib/claudish/ccld-featurizer';
+import { scoreClaudish } from '../../src/lib/claudish/heuristic';
 
 interface Example {
   text: string;
@@ -106,6 +107,8 @@ function main(): void {
   // when its intake has run — the latter is where Claude talks like a
   // person, the register the work corpus underrepresents).
   const positives: Example[] = [];
+  const registerMinFamilies = Number(process.env.REGISTER_MIN_FAMILIES ?? 0);
+  let registerFiltered = 0;
   const projects = new Set<string>();
   let dampened = 0;
   const positiveFiles = ['chunks.jsonl', 'claudeai-chunks.jsonl'].filter((f) =>
@@ -120,6 +123,16 @@ function main(): void {
     const damper = PHRASE_DAMPENERS.find((d) => d.pattern.test(c.text));
     if (damper && rng() > damper.keepFraction) {
       dampened++;
+      continue;
+    }
+    // REGISTER_MIN_FAMILIES=n redefines the positive class as
+    // register-BEARING Claude prose (>= n heuristic families firing):
+    // the corpus says Claudish = "text Claude wrote", the product says
+    // Claudish = "the register", and the r10 experiment showed the two
+    // definitions fight each other in training. Register-light chunks
+    // are dropped, not relabeled — their status is genuinely ambiguous.
+    if (registerMinFamilies > 0 && scoreClaudish(c.text).activeFamilies < registerMinFamilies) {
+      registerFiltered++;
       continue;
     }
     projects.add(c.projectId);
@@ -217,6 +230,7 @@ function main(): void {
     generatedAt: new Date().toISOString(),
     positivesTotal: positives.length,
     positivesDampened: dampened,
+    positivesRegisterFiltered: registerFiltered,
     negativesTotal: negatives.length,
     humanTurnsKept: Math.min(humanCap, humanTurns.length),
     heldOutProjects: [...held],
