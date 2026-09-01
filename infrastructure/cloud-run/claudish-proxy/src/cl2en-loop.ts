@@ -15,7 +15,7 @@
  *   - stop when an attempt fails to improve by IMPROVEMENT_EPSILON
  *   - hard attempt cap and wall-clock deadline
  */
-import { buildNegationFeedback, judgeTranslation, mechanicalEvidence } from './judge';
+import { buildNegationFeedback, judgeTranslation, mechanicalEvidence, structuralEvidence } from './judge';
 import { EmDashSmoother } from './smooth';
 
 import type { JudgeVerdict } from './judge';
@@ -120,8 +120,10 @@ export async function runCl2enLoop(
       usage,
     };
   }
-  let evidence = mechanicalEvidence(first.text);
-  attempts.push({ p: Number(first.verdict.p.toFixed(3)), ms: first.ms, actionable: evidence.actionable });
+  const worthRetrying = (t: string, v: JudgeVerdict): boolean =>
+    mechanicalEvidence(t).actionable || structuralEvidence(t, v).actionable;
+  let retryable = worthRetrying(first.text, first.verdict);
+  attempts.push({ p: Number(first.verdict.p.toFixed(3)), ms: first.ms, actionable: retryable });
 
   let best = { text: first.text, p: first.verdict.p, attempt: 1 };
   let previous = { text: first.text, verdict: first.verdict };
@@ -130,7 +132,7 @@ export async function runCl2enLoop(
     let attempt = 2;
     attempt <= LOOP_MAX_ATTEMPTS &&
     !previous.verdict.passed &&
-    evidence.actionable &&
+    retryable &&
     deps.nowMs() - started < LOOP_DEADLINE_MS;
     attempt++
   ) {
@@ -139,11 +141,11 @@ export async function runCl2enLoop(
     // Retries are buffered — the visitor keeps reading attempt 1.
     const retry = await runOne(deps, turns, attempt, usage, null);
     if (retry.finishReason === 'SAFETY' || retry.finishReason === 'PROHIBITED_CONTENT') break;
-    evidence = mechanicalEvidence(retry.text);
+    retryable = worthRetrying(retry.text, retry.verdict);
     attempts.push({
       p: Number(retry.verdict.p.toFixed(3)),
       ms: retry.ms,
-      actionable: evidence.actionable,
+      actionable: retryable,
     });
     const improved = previous.verdict.p - retry.verdict.p >= IMPROVEMENT_EPSILON;
     if (retry.verdict.p < best.p) best = { text: retry.text, p: retry.verdict.p, attempt };

@@ -149,3 +149,41 @@ describe('runCl2enLoop', () => {
     expect(result.usage.outputTokens).toBe(40);
   });
 });
+
+describe('structural retry tier (Ian honesty test, 2026-09-01)', () => {
+  // The regression fixture from the honesty test: Claude copy that is
+  // Claudish by SKELETON — zero regex-visible evidence, judge ~0.69 —
+  // where the light first-pass edit is not enough and a restructured
+  // version provably reaches leaning-English (~0.45).
+  const LIGHT_EDIT = `We launched a predicted lifetime value system six weeks ago. It scores each new customer, and that score becomes a dollar value that we send to the ad platforms. The platforms treat that dollar value as fact and bid accordingly, so the number we send directly changes who gets acquired next.
+The client complains that the customers acquired since the system went live are producing less gross margin than the ones acquired before it. What follows is the system as built, and the results since launch.`;
+  const RESTRUCTURED = `Six weeks ago we launched a system that predicts lifetime value. It scores each new customer, turns the score into a dollar value, and sends that to the ad platforms, which bid on it as if it were fact. So the number we send changes who gets acquired next. The client now says the customers acquired since launch bring in less gross margin than the ones before. Here is how the system works and what has happened since.`;
+
+  it('skeleton-Claudish with zero mechanical evidence now buys a structural retry', async () => {
+    const { deps, calls } = scriptedDeps([LIGHT_EDIT, RESTRUCTURED]);
+    const { emit, events } = collector();
+    const result = await runCl2enLoop('input', 'sys', deps, emit);
+    expect(calls.length).toBe(2); // the structural tier bought the retry
+    expect(result.servedAttempt).toBe(2);
+    expect(result.revised).toBe(true);
+    expect(events).toContain('REVISE');
+    // The feedback quoted the convicting sentences for the rewrite.
+    expect(calls[1][2].text).toContain('These sentences are the problem');
+  });
+
+  it('a multi-sentence pure-topic probe stays bounded: one retry, plateau stop', async () => {
+    const { deps, calls } = scriptedDeps([LIGHT_EDIT, LIGHT_EDIT, LIGHT_EDIT]);
+    const { emit } = collector();
+    const result = await runCl2enLoop('input', 'sys', deps, emit);
+    expect(calls.length).toBe(2); // probe + plateau cut, never a third
+    expect(result.revised).toBe(false);
+    expect(result.servedAttempt).toBe(1);
+  });
+
+  it('single-sentence topic convictions still never retry (structural needs two)', async () => {
+    const { deps, calls } = scriptedDeps([TECH_PLAIN]);
+    const { emit } = collector();
+    await runCl2enLoop('input', 'sys', deps, emit);
+    expect(calls).toHaveLength(1);
+  });
+});

@@ -64,6 +64,32 @@ export function mechanicalEvidence(text: string): MechanicalEvidence {
   };
 }
 
+/**
+ * The structural retry tier (Ian, 2026-09-01 honesty test): register
+ * that lives in sentence ARCHITECTURE — appositive insertions,
+ * colon-setups, "What follows is" framing — carries no regex-visible
+ * evidence, but the judge's per-sentence attribution still names the
+ * guilty sentences. One retry is worth buying when the whole text
+ * convicts at >= 0.6 AND at least two sentences individually convict:
+ * the quoted sentences give the rewrite a concrete target (the
+ * hand-restructured reference for the fixture copy proves ~0.45 is
+ * reachable). Pure-topic convictions get at most this one bounded
+ * probe — the plateau cut stops a non-improving retry immediately.
+ */
+export const STRUCTURAL_RETRY_AT = 0.6;
+export const STRUCTURAL_MIN_SENTENCES = 2;
+
+export interface StructuralEvidence {
+  convicting: string[];
+  actionable: boolean;
+}
+
+export function structuralEvidence(text: string, verdict: JudgeVerdict): StructuralEvidence {
+  if (verdict.p < STRUCTURAL_RETRY_AT) return { convicting: [], actionable: false };
+  const convicting = convictingSentences(text, 4);
+  return { convicting, actionable: convicting.length >= STRUCTURAL_MIN_SENTENCES };
+}
+
 export function judgeTranslation(text: string): JudgeVerdict {
   const ps = MODELS.map((m) => m.predict(text)).sort((a, b) => a - b);
   const heuristic = scoreClaudish(text);
@@ -100,7 +126,7 @@ export function buildNegationFeedback(output: string, verdict: JudgeVerdict): st
   }
   if (worst.length > 0) {
     parts.push(
-      'These sentences are the problem. Restructure them onto human subjects, merge related thoughts, or cut empty emphasis:'
+      'These sentences are the problem. Do not repair them — RE-COMPOSE the whole text from scratch, as one person telling another what happened, in your own plain sentence shapes. Front the actor and the time ("Six weeks ago we launched..."), never the abstraction ("The complaint, six weeks in, is..."). Framing sentences ("What follows is...") become direct ones ("Here is..."):'
     );
     for (const sentence of worst) parts.push(`- "${sentence}"`);
   }
