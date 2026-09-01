@@ -16,7 +16,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { cacheKey, cacheableTranslation, normalizeInput } from './cache';
-import { runCl2enLoop } from './cl2en-loop';
+import { loopBudgetFor, runCl2enLoop } from './cl2en-loop';
 import { streamGemini } from './gemini';
 import { EmDashSmoother } from './smooth';
 import { FIRST_TOKEN_DEADLINE_MS, INPUT_CAP } from './config';
@@ -281,7 +281,11 @@ export function createTranslateHandler(deps: TranslateDeps) {
               accumulated = '';
               sse.frame({ type: 'revise' });
             },
-          }
+          },
+          // Longer text earns a longer refinement window (Ian's theory,
+          // validated: attempt 3 carries the big win on long inputs and
+          // the 9s deadline was starving it; plateau still bounds cost).
+          loopBudgetFor(normalized.length)
         );
         // Gemini usage into the (Haiku-priced) budget: a deliberate
         // overestimate — 2.5-flash is ~3x cheaper, so the cap errs safe.
@@ -313,8 +317,15 @@ export function createTranslateHandler(deps: TranslateDeps) {
         });
         sse.end();
         settle(loopUsage);
+        // Quality-gated caching, extended (Ian's LinkedIn case): never
+        // pin a serving that is convicted AND still carries actionable
+        // evidence — a fresh attempt could do better, and the cache
+        // would freeze the worse version for its whole TTL.
+        const finalActionable =
+          result.attempts.length > 0 && result.attempts[result.attempts.length - 1].actionable;
         if (
           result.servedText.length > 0 &&
+          (result.passed || !finalActionable) &&
           cacheableTranslation(direction, normalized, result.servedText)
         ) {
           cache.set(key, result.servedText);

@@ -670,3 +670,32 @@ describe('cl2en gemini-loop engine', () => {
     expect(ctx.frames()[0]).toMatchObject({ lane: 'vertex-global' });
   });
 });
+
+describe('long-form loop budget + convicted-cache gate', () => {
+  it('does not cache a convicted serving with live actionable evidence', async () => {
+    const LOUD_OUT =
+      "This isn't just a refactor — it's a robust, seamless transformation, underscoring the fundamental shift in how the pipeline thinks about state.";
+    const scripted = ((..._a: unknown[]) =>
+      (async function* () {
+        yield { kind: 'text', text: LOUD_OUT } as const;
+        yield {
+          kind: 'stop',
+          usage: { inputTokens: 100, outputTokens: 20, cachedTokens: 0 },
+          finishReason: 'STOP',
+        } as const;
+      })()) as never;
+    const lane = fakeLane('vertex-global', [
+      { kind: 'start' },
+      { kind: 'text', text: 'x' },
+      { kind: 'stop', stopReason: 'end_turn', usage: OK_USAGE },
+    ]);
+    const deps = makeDeps([lane]);
+    deps.config = loadConfig({ CL2EN_ENGINE: 'gemini-loop', LANES: 'vertex-global,cache-only' });
+    (deps as { geminiStream?: unknown }).geminiStream = scripted;
+    const handler = createTranslateHandler(deps);
+    const ctx = stubReqRes({ text: 'q '.repeat(20), direction: 'cl2en' as const });
+    await handler(ctx.req, ctx.res);
+    // Convicted + actionable on every attempt: nothing gets pinned.
+    expect(deps.cache.size).toBe(0);
+  });
+});
