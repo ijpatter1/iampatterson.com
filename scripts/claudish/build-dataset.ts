@@ -154,7 +154,7 @@ function main(): void {
       }
     });
     if (source === 'human-turns') humanTurns = bucket;
-    else negatives.push(...bucket);
+    else for (const example of bucket) negatives.push(example); // spread blows the stack on 90k+ buckets
   }
   // Cap the circular source at 10% of the negative class.
   const humanCap = Math.floor((negatives.length / (1 - HUMAN_TURNS_CAP_FRACTION)) * HUMAN_TURNS_CAP_FRACTION);
