@@ -80,14 +80,20 @@ export function createTranslateHandler(deps: TranslateDeps) {
 
     // Origin gate: CORS protects browsers, not curl. 403 unless the
     // Origin header is allowlisted (REQUIRE_ORIGIN=false is the harness
-    // escape hatch).
+    // escape hatch). ACAO is set BEFORE any early return: without it the
+    // browser cannot read pre-stream statuses (429/503 would surface as
+    // opaque network errors and the client's capacity branch would be
+    // unreachable in production). SseStream.open re-sends the same value
+    // via writeHead — Node merges identical headers, no duplication.
     const origin = req.headers.origin ?? '';
     const originAllowed = config.allowedOrigins.includes(origin);
+    const allowOrigin = originAllowed ? origin : config.allowedOrigins[0];
+    res.set('Access-Control-Allow-Origin', allowOrigin);
+    res.set('Vary', 'Origin');
     if (config.requireOrigin && !originAllowed) {
       res.status(403).json({ error: 'forbidden_origin' });
       return;
     }
-    const allowOrigin = originAllowed ? origin : config.allowedOrigins[0];
 
     // Validation.
     const body: unknown = req.body;
@@ -230,8 +236,17 @@ export function createTranslateHandler(deps: TranslateDeps) {
       if (breaker.isOpen(lane.name)) continue;
       laneAttempts++;
 
+      // Per-attempt controller (CR3): a lane abandoned at the first-token
+      // deadline would otherwise keep generating to completion — billed
+      // upstream, invisible to the budget, connection held. The master
+      // (client-close) controller chains INTO the attempt; client-close
+      // discrimination stays on the master signal everywhere.
+      const attempt = new AbortController();
+      const onMasterAbort = () => attempt.abort();
+      if (controller.signal.aborted) attempt.abort();
+      else controller.signal.addEventListener('abort', onMasterAbort);
       const iterator = lane
-        .stream({ text: normalized, direction }, controller.signal)
+        .stream({ text: normalized, direction }, attempt.signal)
         [Symbol.asyncIterator]();
       try {
         for (;;) {
@@ -338,6 +353,15 @@ export function createTranslateHandler(deps: TranslateDeps) {
           return;
         }
         continue; // silent pre-commit failover
+      } finally {
+        // Abort FIRST, then return(): return() queues behind a pending
+        // next() and would hang forever on the exact stalled-upstream
+        // case the deadline exists for; the abort unblocks it. Both are
+        // no-ops on cleanly completed streams. The promise is voided —
+        // a cleanup rejection must never become an unhandledRejection.
+        controller.signal.removeEventListener('abort', onMasterAbort);
+        attempt.abort();
+        void iterator.return?.()?.catch?.(() => undefined);
       }
     }
 

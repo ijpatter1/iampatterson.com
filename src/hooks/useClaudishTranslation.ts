@@ -214,6 +214,13 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
   const startTranslation = useCallback(
     (runKey: string, runText: string, runDirection: ClaudishDirection) => {
       const seq = ++seqRef.current;
+      // Any new translation intent supersedes whatever is streaming — incl.
+      // the short-circuit paths (cache hit, remembered refusal, no-proxy),
+      // which return before a controller exists: without this, a manual
+      // fire to a cached key would leave a different key's stream burning
+      // to completion (re-check finding, round 2).
+      abortRef.current?.abort();
+      abortRef.current = null;
       const sourceMode = manualRef.current ? 'manual' : 'auto';
       manualRef.current = false;
 
@@ -270,9 +277,6 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
         return;
       }
 
-      // A manual fire during a different key's stream must cancel it —
-      // overwriting the ref without aborting would orphan a live burn.
-      abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
       dispatch({ type: 'stream-start', key: runKey });
@@ -377,9 +381,21 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
     const runKey = normalized ? `${direction}::${normalized}` : null;
     const resolved = stateRef.current;
     if (runKey !== null && runKey === resolved.key) {
-      if (resolved.phase === 'streaming') {
-        return undefined; // that exact stream is already in flight: leave it be
+      // Liveness needs BOTH signals: the reducer phase alone over-reports
+      // after an abort (nothing dispatches on abort — edit away and back
+      // within the debounce would strand a stale 'streaming'), and the
+      // controller alone under-reports after completion. Together they
+      // are exact (re-check finding, round 2).
+      const genuinelyLive =
+        resolved.phase === 'streaming' &&
+        abortRef.current !== null &&
+        !abortRef.current.signal.aborted;
+      if (genuinelyLive) {
+        return undefined; // that exact stream is in flight: leave it be
       }
+      if (resolved.phase === 'streaming') {
+        // Stale streaming phase from an aborted run: fall through and re-arm.
+      } else
       if (resolved.phase === 'done' || resolved.phase === 'refused') {
         return undefined; // terminal for this input — done serves from state, refusals stay refused
       }

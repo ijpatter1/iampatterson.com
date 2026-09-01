@@ -23,7 +23,9 @@ export interface HeuristicResult {
   signals: string[];
 }
 
-/** Measured Claudish em-dash rate: ~30 per 10k chars. Rate at which the family saturates. */
+/** Saturation rate for the em-dash family. The corpus-wide measured rate
+ * is 26/10k chars (86,873 in 33.4M); saturating slightly above it means
+ * only denser-than-typical-Claudish input maxes the family. */
 const EM_DASH_SATURATION_RATE = 0.003;
 
 /** A family counts as "active" at or above this score. */

@@ -454,3 +454,97 @@ describe('FORCE_REFUSAL_TOKEN injection hook (staging smoke, never production)',
     expect(ctx.frames().map((f) => f.type)).toEqual(['meta', 'token', 'done']);
   });
 });
+
+describe('CORS on pre-stream errors (CR2)', () => {
+  it.each([
+    ['403 forbidden origin', { origin: 'https://evil.example' }, { text: 'x', direction: 'en2cl' }],
+    ['400 bad request', {}, { text: '', direction: 'en2cl' }],
+    ['413 over cap', {}, { text: 'x'.repeat(1300), direction: 'en2cl' }],
+  ])('sets ACAO on %s so the browser can read the status', async (_label, headers, body) => {
+    const ctx = stubReqRes(body, headers as Record<string, string>);
+    await createTranslateHandler(makeDeps([fakeLane('vertex-global', [])]))(ctx.req, ctx.res);
+    expect(ctx.headers()['Access-Control-Allow-Origin']).toBeTruthy();
+    expect(ctx.headers()['Vary']).toBe('Origin');
+  });
+
+  it('sets ACAO on 429 and capacity 503', async () => {
+    const deps = makeDeps([fakeLane('vertex-global', [])], {
+      limiter: new RateLimiter({ perMinute: 0, perHour: 1, perDay: 1 }),
+    });
+    const limited = stubReqRes(VALID_BODY);
+    await createTranslateHandler(deps)(limited.req, limited.res);
+    expect(limited.status()).toBe(429);
+    expect(limited.headers()['Access-Control-Allow-Origin']).toBeTruthy();
+
+    const capped = stubReqRes(VALID_BODY);
+    await createTranslateHandler(
+      makeDeps([fakeLane('vertex-global', [])], { budget: new BudgetTracker(23, true) })
+    )(capped.req, capped.res);
+    expect(capped.status()).toBe(503);
+    expect(capped.headers()['Access-Control-Allow-Origin']).toBeTruthy();
+  });
+});
+
+describe('lane cleanup on failover (CR3)', () => {
+  it('aborts the losing lane at the first-token deadline so it stops generating', async () => {
+    const signals: AbortSignal[] = [];
+    const hanging: LaneClient = {
+      name: 'vertex-global',
+      modelId: 'fake',
+      stream(_req, signal) {
+        signals.push(signal);
+        return {
+          [Symbol.asyncIterator]() {
+            let sent = false;
+            return {
+              async next(): Promise<IteratorResult<UpstreamEvent>> {
+                if (!sent) {
+                  sent = true;
+                  return { done: false, value: { kind: 'start' } };
+                }
+                return new Promise(() => undefined); // stalls past the deadline
+              },
+            };
+          },
+        };
+      },
+    };
+    const rescue = fakeLane('anthropic-api', [
+      { kind: 'start' },
+      { kind: 'text', text: 'rescued' },
+      { kind: 'stop', stopReason: 'end_turn', usage: OK_USAGE },
+    ]);
+    const ctx = stubReqRes(VALID_BODY);
+    await createTranslateHandler(makeDeps([hanging, rescue]))(ctx.req, ctx.res);
+    expect(ctx.frames().some((f) => f.t === 'rescued')).toBe(true);
+    expect(signals[0].aborted).toBe(true); // the loser was cancelled, not orphaned
+  }, 10000);
+
+  it('aborts the failed lane on a pre-commit throw as well', async () => {
+    const signals: AbortSignal[] = [];
+    const failing: LaneClient = {
+      name: 'vertex-global',
+      modelId: 'fake',
+      stream(_req, signal) {
+        signals.push(signal);
+        return {
+          [Symbol.asyncIterator]() {
+            return {
+              async next(): Promise<IteratorResult<UpstreamEvent>> {
+                throw new Error('down');
+              },
+            };
+          },
+        };
+      },
+    };
+    const rescue = fakeLane('anthropic-api', [
+      { kind: 'start' },
+      { kind: 'text', text: 'ok' },
+      { kind: 'stop', stopReason: 'end_turn', usage: OK_USAGE },
+    ]);
+    const ctx = stubReqRes(VALID_BODY);
+    await createTranslateHandler(makeDeps([failing, rescue]))(ctx.req, ctx.res);
+    expect(signals[0].aborted).toBe(true);
+  });
+});

@@ -8,9 +8,10 @@
  * tags with their param maps and consent gating, the deploy script must
  * declare the same allow-lists, the server container's generic All-GA4
  * forwarding covers them (asserted, not assumed), and — the R3 privacy
- * mitigation — the GA4 Config tag must strip the ?t= share payload out
- * of page_location, because the share param IS the input text and
- * would otherwise land in GA4/BigQuery on every direct share-link hit.
+ * mitigation — the GA4 Config tag must NOT carry a page_location
+ * override (a config-level field freezes SPA attribution at the entry
+ * URL); the ?t= strip is a parse-time inline script in the claudish
+ * layout, pinned here against the source.
  */
 import * as fs from 'fs';
 import * as path from 'path';

@@ -67,22 +67,24 @@ async function prepare(
   return { share, fonts };
 }
 
-const LAST_RESORT_ELEMENT = (
-  <div
-    style={{
-      width: '100%',
-      height: '100%',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: '#ffffff',
-    }}
-  >
-    <span style={{ display: 'flex', fontSize: 64, color: '#202124' }}>
-      Claudish · iampatterson.com
-    </span>
-  </div>
-);
+function lastResortElement() {
+  return (
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#ffffff',
+      }}
+    >
+      <span style={{ display: 'flex', fontSize: 64, color: activeSkin().text }}>
+        Claudish · iampatterson.com
+      </span>
+    </div>
+  );
+}
 
 function frame(children: React.ReactNode, fonts: ArrayBuffer | null) {
   const skin = activeSkin();
@@ -161,26 +163,29 @@ function shareBody(share: DecodedShare) {
   );
 }
 
-const GENERIC_BODY = (
-  <div
-    style={{
-      display: 'flex',
-      flexDirection: 'column',
-      flex: 1,
-      justifyContent: 'center',
-      gap: 16,
-    }}
-  >
-    <span style={{ display: 'flex', fontSize: 72, color: '#202124' }}>Claudish</span>
-    <span style={{ display: 'flex', fontSize: 34, color: '#5f6368' }}>
-      English ↔ Claudish, translated while you type
-    </span>
-  </div>
-);
+function genericBody() {
+  const skin = activeSkin();
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        flex: 1,
+        justifyContent: 'center',
+        gap: 16,
+      }}
+    >
+      <span style={{ display: 'flex', fontSize: 72, color: skin.text }}>Claudish</span>
+      <span style={{ display: 'flex', fontSize: 34, color: skin.text2 }}>
+        English ↔ Claudish, translated while you type
+      </span>
+    </div>
+  );
+}
 
 export async function GET(request: Request): Promise<Response> {
   const { share, fonts } = await prepare(request);
-  const element = frame(share ? shareBody(share) : GENERIC_BODY, fonts);
+  const element = frame(share ? shareBody(share) : genericBody(), fonts);
   const options = {
     ...SIZE,
     headers: CACHE_HEADERS,
@@ -196,6 +201,6 @@ export async function GET(request: Request): Promise<Response> {
     return new ImageResponse(element, options);
   } catch {
     // Satori/ImageResponse itself failed: serve the prebuilt minimal card.
-    return new ImageResponse(LAST_RESORT_ELEMENT, { ...SIZE, headers: CACHE_HEADERS });
+    return new ImageResponse(lastResortElement(), { ...SIZE, headers: CACHE_HEADERS });
   }
 }

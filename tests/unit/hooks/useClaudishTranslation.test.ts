@@ -387,3 +387,38 @@ describe('transient failures are retryable (CR7)', () => {
     expect(requested.filter((t) => t === 'Input that gets refused.')).toHaveLength(1);
   });
 });
+
+describe('stale-streaming recovery (round-2 re-check finding)', () => {
+  it('edit away and back within the debounce re-fires instead of stranding "streaming"', async () => {
+    const { result, rerender } = renderTranslation({ input: 'Original sentence to stream.' });
+    await advance(600); // stream A in flight
+    // Edit (aborts A), then revert to the exact original before the timer fires.
+    rerender({ input: 'Original sentence to stream, edited.', direction: 'en2cl' });
+    await act(async () => {});
+    rerender({ input: 'Original sentence to stream.', direction: 'en2cl' });
+    await advance(600);
+    // A fresh stream for the original key must exist — not a stale hang.
+    const requested = mockStream.mock.calls.map((c) => c[1].text);
+    expect(requested.filter((t) => t === 'Original sentence to stream.')).toHaveLength(2);
+    await frame({ type: 'token', t: 'Recovered.' });
+    await frame({ type: 'done' });
+    await endStream();
+    expect(result.current.status).toBe('done');
+  });
+
+  it('a manual fire to a cached key cancels a different key’s live stream', async () => {
+    const { result, rerender } = renderTranslation({ input: 'Cache this first sentence.' });
+    await advance(600);
+    await frame({ type: 'token', t: 'cached out' });
+    await frame({ type: 'done' });
+    await endStream();
+
+    rerender({ input: 'A second sentence now streaming.', direction: 'en2cl' });
+    await advance(600);
+    const liveSignal = streams[streams.length - 1].signal;
+    await act(async () => {
+      result.current.translateNow({ input: 'Cache this first sentence.', direction: 'en2cl' });
+    });
+    expect(liveSignal.aborted).toBe(true); // the burn stops even on the cache-hit path
+  });
+});
