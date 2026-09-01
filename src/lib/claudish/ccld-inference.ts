@@ -8,7 +8,7 @@
  */
 import { CCLD_CONFIG } from './ccld-featurizer';
 
-import type { extractFeatures } from './ccld-featurizer';
+import type { CcldFeaturizerConfig, extractFeatures } from './ccld-featurizer';
 
 export interface CcldTensors {
   /** Per order: Float64Array(buckets * embeddingDim). */
@@ -24,11 +24,13 @@ export const INPUT_DIM = CCLD_CONFIG.orders.length * CCLD_CONFIG.embeddingDim;
 /** Returns raw logits [english, claudish] (before temperature). */
 export function forwardLogits(
   features: ReturnType<typeof extractFeatures>,
-  tensors: CcldTensors
+  tensors: CcldTensors,
+  config: CcldFeaturizerConfig = CCLD_CONFIG
 ): [number, number] {
-  const dim = CCLD_CONFIG.embeddingDim;
+  const dim = config.embeddingDim;
+  const inputDim = config.orders.length * dim;
   const hidden = tensors.b1.length;
-  const x = new Float64Array(INPUT_DIM);
+  const x = new Float64Array(inputDim);
   for (let order = 0; order < features.length; order++) {
     const embedding = tensors.embeddings[order];
     for (const [bucket, fraction] of features[order]) {
@@ -42,7 +44,7 @@ export function forwardLogits(
   const h = new Float64Array(hidden);
   for (let j = 0; j < hidden; j++) {
     let sum = tensors.b1[j];
-    for (let i = 0; i < INPUT_DIM; i++) {
+    for (let i = 0; i < inputDim; i++) {
       sum += x[i] * tensors.w1[i * hidden + j];
     }
     h[j] = sum > 0 ? sum : 0;

@@ -65,6 +65,22 @@ export const CCLD_V2_CONFIG: CcldFeaturizerConfig = {
   maskModelNames: true,
 };
 
+/**
+ * v3 = v2 + capacity: embedding dim 8 -> 16, hidden 48 -> 96 (~57k
+ * params, ~76KB quantized). The capacity experiment for the round-trip
+ * problem: at 27k params the model provably cannot fit contrastive
+ * register-stripped negatives (r8 sweep, Decision #22); v3 tests
+ * whether scale lets CCLD learn the register boundary instead of the
+ * content field.
+ */
+export const CCLD_V3_CONFIG: CcldFeaturizerConfig = {
+  ...CCLD_CONFIG,
+  version: 3,
+  maskModelNames: true,
+  embeddingDim: 16,
+  hiddenDim: 96,
+};
+
 /** FNV-1a 32-bit over UTF-8 bytes (portable across any reimplementation). */
 export function fnv1a32(text: string): number {
   let hash = 0x811c9dc5;

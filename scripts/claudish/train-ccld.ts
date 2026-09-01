@@ -24,6 +24,7 @@ import {
 import {
   CCLD_CONFIG,
   CCLD_V2_CONFIG,
+  CCLD_V3_CONFIG,
   configHash,
   fnv1a32,
 } from '../../src/lib/claudish/ccld-featurizer';
@@ -31,7 +32,14 @@ import {
 // MASK_MODEL_NAMES=1 trains against the v2 featurizer (model names →
 // neutral token; see CCLD_V2_CONFIG). The shipped loader blesses both
 // hashes, so v1 and v2 models coexist in the registry.
-const TRAIN_CONFIG = process.env.MASK_MODEL_NAMES === '1' ? CCLD_V2_CONFIG : CCLD_CONFIG;
+// CCLD_CAPACITY=v3 selects the scaled config (mask + dim 16 + hidden 96);
+// MASK_MODEL_NAMES=1 alone keeps v2 (mask at original capacity).
+const TRAIN_CONFIG =
+  process.env.CCLD_CAPACITY === 'v3'
+    ? CCLD_V3_CONFIG
+    : process.env.MASK_MODEL_NAMES === '1'
+      ? CCLD_V2_CONFIG
+      : CCLD_CONFIG;
 import {
   forwardLogits,
   probabilityClaudish,
@@ -119,7 +127,7 @@ function evaluate(
   const bucketOf = (len: number) =>
     len < 40 ? '20-40' : len < 80 ? '40-80' : len < 160 ? '80-160' : len < 320 ? '160-320' : len < 640 ? '320-640' : '640-1200';
   for (const example of examples) {
-    const p = probabilityClaudish(forwardLogits(extractFeatures(example.text, TRAIN_CONFIG), tensors), temperature);
+    const p = probabilityClaudish(forwardLogits(extractFeatures(example.text, TRAIN_CONFIG), tensors, TRAIN_CONFIG), temperature);
     const predicted = p >= 0.5 ? 1 : 0;
     const correct = predicted === example.label;
     if (example.label === 1) {
@@ -160,7 +168,7 @@ function evaluate(
 
 function fitTemperature(tensors: CcldTensors, dev: Example[]): number {
   const logitDiffs = dev.map((example) => {
-    const [z0, z1] = forwardLogits(extractFeatures(example.text, TRAIN_CONFIG), tensors);
+    const [z0, z1] = forwardLogits(extractFeatures(example.text, TRAIN_CONFIG), tensors, TRAIN_CONFIG);
     return { diff: z1 - z0, label: example.label };
   });
   let best = 1;
@@ -226,7 +234,7 @@ async function main(): Promise<void> {
 
     let devNll = 0;
     for (const example of dev) {
-      const [z0, z1] = forwardLogits(extractFeatures(example.text, TRAIN_CONFIG), model.tensors);
+      const [z0, z1] = forwardLogits(extractFeatures(example.text, TRAIN_CONFIG), model.tensors, TRAIN_CONFIG);
       const p = 1 / (1 + Math.exp(-(z1 - z0)));
       devNll += -Math.log(Math.max(example.label === 1 ? p : 1 - p, 1e-12));
     }
@@ -295,7 +303,7 @@ async function main(): Promise<void> {
       }
     }
   }
-  const baseline = forwardLogits(meanFeatures, quantizedTensors);
+  const baseline = forwardLogits(meanFeatures, quantizedTensors, TRAIN_CONFIG);
   const ranked: Array<{ gram: string; order: number; sensitivity: number; count: number; collisions: string[] }> = [];
   for (let o = 0; o < TRAIN_CONFIG.orders.length; o++) {
     for (const [bucket, grams] of gramCounts[o]) {
@@ -303,7 +311,7 @@ async function main(): Promise<void> {
       if (total < 200) continue;
       const bumped = meanFeatures.map((m, i) => (i === o ? new Map(m) : m));
       bumped[o].set(bucket, (bumped[o].get(bucket) ?? 0) + 0.01);
-      const [z0, z1] = forwardLogits(bumped, quantizedTensors);
+      const [z0, z1] = forwardLogits(bumped, quantizedTensors, TRAIN_CONFIG);
       const sensitivity = z1 - z0 - (baseline[1] - baseline[0]);
       const sorted = [...grams.entries()].sort((a, b) => b[1] - a[1]);
       ranked.push({
@@ -369,7 +377,7 @@ async function main(): Promise<void> {
   const fixtures = {
     featurizerConfigHash: configHash(),
     inferenceCases: probes.map((text) => {
-      const [z0, z1] = forwardLogits(extractFeatures(text), quantizedTensors);
+      const [z0, z1] = forwardLogits(extractFeatures(text, TRAIN_CONFIG), quantizedTensors, TRAIN_CONFIG);
       return {
         text,
         logits: [Math.round(z0 * 1e6) / 1e6, Math.round(z1 * 1e6) / 1e6],
