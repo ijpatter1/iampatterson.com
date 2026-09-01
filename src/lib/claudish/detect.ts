@@ -95,10 +95,25 @@ export function createDetectionLatch(
   let state: LatchState = { ...NEUTRAL };
   let lastFlipAt: number | null = null;
   let enConfident = false;
+  let lastNormalized = '';
 
   return {
     update(text: string, nowMs: number = Date.now()): LatchState {
       const normalized = normalizeForDetection(text);
+      // Continuation check (the profanity-ghost fix, 2026-09-01): the
+      // below-minimum hold exists so the label doesn't flicker while a
+      // text is being composed or deleted — extension and truncation
+      // are continuations. REPLACEMENT is not: select-all + type never
+      // passes through empty (no reset), and holding the old verdict
+      // showed "Fuck this, I quit." as the previous text's Claudish.
+      const continuation =
+        lastNormalized.startsWith(normalized) || normalized.startsWith(lastNormalized);
+      if (!continuation) {
+        state = { ...NEUTRAL };
+        lastFlipAt = null;
+        enConfident = false;
+      }
+      lastNormalized = normalized;
       if (normalized.length < minChars) {
         return state; // hold — too short to re-decide
       }
@@ -137,6 +152,7 @@ export function createDetectionLatch(
       return state;
     },
     reset(): void {
+      lastNormalized = '';
       state = { ...NEUTRAL };
       lastFlipAt = null;
       enConfident = false;

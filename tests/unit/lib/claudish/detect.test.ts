@@ -157,7 +157,10 @@ describe('createDetectionLatch', () => {
   it('holds its previous state below the minimum length instead of flickering', () => {
     const latch = createDetectionLatch({}, scorerFor(0.9));
     expect(latch.update(LONG, 0).detected).toBe(true);
-    expect(latch.update('ab', 1000).detected).toBe(true);
+    // Truncation of the SAME text holds (mid-edit flicker protection);
+    // an unrelated replacement resets instead — see the profanity-ghost
+    // describe below (contract changed 2026-09-01).
+    expect(latch.update(LONG.slice(0, 2), 1000).detected).toBe(true);
   });
 
   it('refuses to flip again within the dwell window', () => {
@@ -174,5 +177,39 @@ describe('createDetectionLatch', () => {
     latch.update(LONG, 0);
     latch.reset();
     expect(latch.update('ab', 1000).detected).toBe(false);
+  });
+});
+
+describe('replacement resets the below-minimum hold (profanity ghost, 2026-09-01)', () => {
+  const scorer = (confidence: number) => (): DetectionResult => ({
+    lang: confidence >= 0.5 ? 'en-x-claudish' : 'en',
+    confidence,
+    source: 'heuristic',
+  });
+
+  it('select-all + short replacement shows resting, not the old verdict', () => {
+    const latch = createDetectionLatch({}, scorer(0.95));
+    latch.update('x'.repeat(40), 0);
+    expect(latch.update('x'.repeat(40), 400).detected).toBe(true);
+    // Replace with unrelated short text: never passed through empty.
+    const after = latch.update('Fuck this, I quit.', 900);
+    expect(after.detected).toBe(false);
+    expect(after.lang).toBe('unknown');
+  });
+
+  it('deleting below the minimum still holds (truncation is a continuation)', () => {
+    const latch = createDetectionLatch({}, scorer(0.95));
+    latch.update('x'.repeat(40), 0);
+    latch.update('x'.repeat(40), 400);
+    const held = latch.update('x'.repeat(10), 900);
+    expect(held.detected).toBe(true); // mid-edit flicker protection intact
+  });
+
+  it('typing onward from a replacement decides on the new text', () => {
+    const latch = createDetectionLatch({}, scorer(0.1));
+    latch.update('x'.repeat(40), 0);
+    latch.update('Fuck this, I quit.', 500);
+    const grown = latch.update('Fuck this, I quit. I am done with the whole thing.', 1200);
+    expect(grown.lang).toBe('en');
   });
 });
