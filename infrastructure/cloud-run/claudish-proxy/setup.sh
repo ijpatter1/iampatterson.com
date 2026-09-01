@@ -30,8 +30,8 @@ LANES="${LANES:-vertex-global,vertex-regional,anthropic-api,cache-only}"
 # cl2en engine: the judge-driven Gemini refinement loop (Ian 2026-09-01).
 # en2cl always rides the Claude ladder.
 CL2EN_ENGINE="${CL2EN_ENGINE:-gemini-loop}"
-GEMINI_MODEL_ID="${GEMINI_MODEL_ID:-gemini-2.5-flash}"
-GEMINI_LOCATION="${GEMINI_LOCATION:-us-central1}"  # Gemini 3.x models need GEMINI_LOCATION=global
+GEMINI_MODEL_ID="${GEMINI_MODEL_ID:-gemini-3.5-flash-lite}"
+GEMINI_LOCATION="${GEMINI_LOCATION:-global}"  # Gemini 3.x is global-endpoint only on Vertex
 DAILY_BUDGET_USD="${DAILY_BUDGET_USD:-23}"
 MAX_INSTANCES="${MAX_INSTANCES:-4}"
 

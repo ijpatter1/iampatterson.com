@@ -31,19 +31,18 @@ export const PRICES = {
 } as const;
 
 /**
- * Gemini 2.5 Flash on Vertex (us-central1), USD per million tokens —
+ * Gemini 3.5 Flash-Lite on Vertex (global endpoint), USD per million tokens —
  * the cl2en loop lane. Implicit cache reads are billed at a discount;
  * there is no explicit write charge on the implicit path.
  */
 // Gemini standard global tier (cloud.google.com/vertex-ai/generative-ai/pricing, read
 // 2026-09-01): 2.5 Flash and 3.5 Flash-Lite both bill $0.30 in / $2.50 out on-demand;
-// cached reads are $0.075 (2.5 Flash) vs $0.03 (3.5 Flash-Lite) — the higher figure
-// stays until the model switch lands so the tracker never under-counts.
+// cached reads are $0.03 on 3.5 Flash-Lite (were $0.075 on 2.5 Flash).
 export const GEMINI_PRICES = {
   inputPerMTok: 0.3,
   outputPerMTok: 2.5,
   cacheWritePerMTok: 0.3,
-  cacheReadPerMTok: 0.075,
+  cacheReadPerMTok: 0.03,
 } as const;
 
 export type PriceTable = { readonly [K in keyof typeof PRICES]: number };
@@ -140,10 +139,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     // Claude.
     cl2enEngine: env.CL2EN_ENGINE === 'gemini-loop' ? ('gemini-loop' as const) : ('lanes' as const),
     // Gemini 3.x serves only through the global endpoint on Vertex (the
-    // regional path 404s); 2.5 models accept either. A switch to
-    // gemini-3.5-flash-lite needs GEMINI_LOCATION=global with it.
-    geminiModelId: env.GEMINI_MODEL_ID ?? 'gemini-2.5-flash',
-    geminiLocation: env.GEMINI_LOCATION ?? 'us-central1',
+    // regional path 404s); 2.5 models accept either. Switched from
+    // gemini-2.5-flash (sunset inside two months) on Ian's call,
+    // 2026-09-01; the two must move together.
+    geminiModelId: env.GEMINI_MODEL_ID ?? 'gemini-3.5-flash-lite',
+    geminiLocation: env.GEMINI_LOCATION ?? 'global',
     dailyBudgetUsd,
     maxInstances,
     killSwitch: env.KILL_SWITCH === 'on',
