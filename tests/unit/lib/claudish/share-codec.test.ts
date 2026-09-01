@@ -132,6 +132,22 @@ describe('encodeShare / decodeShare', () => {
     expect(decodeShare(v2)).toBeNull();
   });
 
+  it('rejects oversized inputs before and after decompression (hostile-share gate)', () => {
+    const lz = jest.requireActual('lz-string') as typeof import('lz-string');
+    // Param longer than any legitimate share URL: refused before decompression.
+    expect(decodeShare('A'.repeat(5000))).toBeNull();
+    // Decompressed source past the input cap: refused (would bypass maxLength).
+    const overCap = lz.compressToEncodedURIComponent(
+      JSON.stringify({ v: 1, d: 'en2cl', s: 'x'.repeat(1300), t: 'y' })
+    );
+    expect(decodeShare(overCap)).toBeNull();
+    // Absurd target size: refused.
+    const hugeTarget = lz.compressToEncodedURIComponent(
+      JSON.stringify({ v: 1, d: 'en2cl', s: 'ok', t: 'y'.repeat(9000) })
+    );
+    expect(decodeShare(hugeTarget)).toBeNull();
+  });
+
   it('rejects payloads with a bad direction or non-string panels', () => {
     const lz = jest.requireActual('lz-string') as typeof import('lz-string');
     const bad = (obj: unknown) =>

@@ -132,6 +132,53 @@ describe('ClaudishApp', () => {
     expect(claudishFires()).toHaveLength(1); // sessionStorage gate holds
   });
 
+  it('clears the latch when the textarea is emptied (no stale Claudish direction)', async () => {
+    const user = userEvent.setup();
+    render(<ClaudishApp />);
+    const box = screen.getByRole('textbox');
+    await user.click(box);
+    await user.paste(CLAUDISH_SENTENCE);
+    expect(screen.getByRole('tab', { name: 'Claudish - detected' })).toBeInTheDocument();
+    await user.clear(box);
+    // Short fresh English typed after the clear must not inherit cl2en.
+    await user.paste('ok');
+    expect(screen.queryByRole('tab', { name: 'Claudish - detected' })).not.toBeInTheDocument();
+    const claudishTarget = screen
+      .getAllByRole('tab', { name: 'Claudish' })
+      .find((tab) => tab.closest('[aria-label="Target language"]'));
+    expect(claudishTarget).toHaveAttribute('aria-selected', 'true'); // direction en2cl again
+  });
+
+  it('fires claudish_detected at most once per mount when sessionStorage throws', async () => {
+    const original = Object.getOwnPropertyDescriptor(window, 'sessionStorage');
+    Object.defineProperty(window, 'sessionStorage', {
+      configurable: true,
+      get() {
+        throw new Error('blocked');
+      },
+    });
+    try {
+      const user = userEvent.setup();
+      render(<ClaudishApp />);
+      await user.click(screen.getByRole('textbox'));
+      await user.paste(CLAUDISH_SENTENCE);
+      await user.paste(' and it underscores a robust, seamless tapestry of meaning.');
+      const claudishFires = mockDetected.mock.calls.filter(
+        (c) => c[0].detected_language === 'en-x-claudish'
+      );
+      expect(claudishFires.length).toBeLessThanOrEqual(1);
+    } finally {
+      if (original) Object.defineProperty(window, 'sessionStorage', original);
+    }
+  });
+
+  it('a share link with an empty target seeds the input but never a blank done panel', () => {
+    const t = shareParamFor({ direction: 'en2cl', source: 'Only the source survived.', target: '' });
+    render(<ClaudishApp shareParam={t} />);
+    expect(screen.getByRole('textbox')).toHaveValue('Only the source survived.');
+    expect(screen.queryByTestId('claudish-output')).not.toBeInTheDocument();
+  });
+
   it('swap moves output to input, flips direction, and fires a manual translation', async () => {
     const user = userEvent.setup();
     const t = shareParamFor({

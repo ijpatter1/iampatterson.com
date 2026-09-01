@@ -36,8 +36,15 @@ const NEUTRAL_LATCH: LatchState = {
   source: 'heuristic',
 };
 
-/** Once-per-session-per-language gate; storage failures fail open (fire once per mount). */
-function detectedGateHolds(lang: string): boolean {
+/**
+ * Once-per-session-per-language gate. sessionStorage is the durable gate;
+ * when storage throws (Safari ITP, cookies-blocked), the caller's
+ * per-mount Set is the fallback so the event fires at most once per
+ * mount instead of once per keystroke.
+ */
+function detectedGateHolds(lang: string, firedThisMount: Set<string>): boolean {
+  if (firedThisMount.has(lang)) return true;
+  firedThisMount.add(lang);
   const key = `iap_claudish_detected_${lang}`;
   try {
     if (sessionStorage.getItem(key)) return true;
@@ -63,6 +70,8 @@ export function ClaudishApp({ shareParam }: { shareParam?: string }) {
   const [latch, setLatch] = useState<LatchState>(NEUTRAL_LATCH);
   const latchRef = useRef<DetectionLatch | null>(null);
   if (latchRef.current == null) latchRef.current = createDetectionLatch();
+  const detectedFiredRef = useRef<Set<string> | null>(null);
+  if (detectedFiredRef.current == null) detectedFiredRef.current = new Set();
 
   useEffect(() => {
     void warmCcld(); // fire-and-forget: heuristic answers until this lands
@@ -89,16 +98,26 @@ export function ClaudishApp({ shareParam }: { shareParam?: string }) {
   const translation = useClaudishTranslation({
     input,
     direction,
-    initialResolved: share
+    // An empty target (tier-6 source-only shares) seeds the INPUT only:
+    // the normal debounce then translates it fresh, instead of presenting
+    // a permanently blank 'done' panel.
+    initialResolved: share && share.target
       ? { input: share.source, direction: share.direction, text: share.target }
       : undefined,
   });
 
   const handleInputChange = (value: string) => {
     setInput(value);
+    if (value.trim().length === 0) {
+      // An emptied textarea is a fresh start: a held latch would misroute
+      // the NEXT input's auto direction (stale cl2en over new English).
+      latchRef.current!.reset();
+      setLatch(NEUTRAL_LATCH);
+      return;
+    }
     const next = latchRef.current!.update(value);
     setLatch(next);
-    if (next.lang !== 'unknown' && !detectedGateHolds(next.lang)) {
+    if (next.lang !== 'unknown' && !detectedGateHolds(next.lang, detectedFiredRef.current!)) {
       trackClaudishDetected({
         detected_language: next.lang,
         detector_source: next.source,

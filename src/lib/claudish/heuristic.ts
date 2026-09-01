@@ -3,7 +3,7 @@
  *
  * Bootstrap detector until CCLD trains; permanent fallback afterwards.
  * Six positive signal families, each seeded from rates measured in the
- * transcript corpus (em dashes run 30.3 per 10k chars of assistant prose;
+ * transcript corpus (em dashes run 26 per 10k chars of assistant prose corpus-wide;
  * "absolutely right" is rare-but-real at 22 hits in 1.7GB), plus informal
  * counter-signals that push toward human.
  *

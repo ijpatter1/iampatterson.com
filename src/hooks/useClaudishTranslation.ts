@@ -189,7 +189,7 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
   if (cacheRef.current == null) {
     const seeded = new Map<string, string>();
     const seed = options.initialResolved;
-    if (seed) {
+    if (seed && seed.text.length > 0) {
       seeded.set(
         `${seed.direction}::${normalizeTranslationInput(seed.input)}`,
         seed.text

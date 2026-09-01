@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 
 const TITLE = 'Claudish Translate';
 const DESCRIPTION =
-  "Translate both directions between English and Claudish — the em-dash-rich register of Claude's prose. A toy by Ian Patterson.";
+  "Translate both directions between English and Claudish, the em-dash-rich register of Claude's prose. A toy by Ian Patterson.";
 
 /**
  * Static metadata for /claudish. The title is ABSOLUTE: the root

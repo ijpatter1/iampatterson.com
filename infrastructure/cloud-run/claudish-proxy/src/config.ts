@@ -58,6 +58,12 @@ export interface Config {
   requireOrigin: boolean;
   trustedProxyHops: number;
   modelIdConfirmed: boolean;
+  /** Test-only: when set and the input text equals it, the orchestrator
+   * synthesizes a refusal stream — lets a DEPLOYED service's refusal path
+   * be smoke-tested through real network/framing without a live trigger
+   * (the documented magic string was patched out ~May 2026). NEVER set
+   * in production. */
+  forceRefusalToken: string | null;
 }
 
 // TODO(model-id): confirm against Vertex Model Garden before first deploy.
@@ -80,6 +86,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   if (!Number.isFinite(dailyBudgetUsd) || dailyBudgetUsd <= 0) {
     throw new Error(`DAILY_BUDGET_USD must be a positive number, got "${env.DAILY_BUDGET_USD}"`);
   }
+  // A NaN/0 here would divide the budget into nonsense and fail the spend
+  // cap OPEN — the one direction this service must never fail.
+  const maxInstances = Number(env.MAX_INSTANCES ?? 4);
+  if (!Number.isInteger(maxInstances) || maxInstances < 1) {
+    throw new Error(`MAX_INSTANCES must be a positive integer, got "${env.MAX_INSTANCES}"`);
+  }
   return {
     port: Number(env.PORT ?? 8080),
     allowedOrigins: (
@@ -93,10 +105,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     anthropicModelId: env.ANTHROPIC_MODEL_ID ?? DEFAULT_ANTHROPIC_MODEL_ID,
     vertexFallbackRegion: env.VERTEX_FALLBACK_REGION ?? 'us-east5',
     dailyBudgetUsd,
-    maxInstances: Number(env.MAX_INSTANCES ?? 4),
+    maxInstances,
     killSwitch: env.KILL_SWITCH === 'on',
     requireOrigin: env.REQUIRE_ORIGIN !== 'false',
     trustedProxyHops: Number(env.TRUSTED_PROXY_HOPS ?? 2),
     modelIdConfirmed: env.MODEL_ID_CONFIRMED === '1',
+    forceRefusalToken: env.FORCE_REFUSAL_TOKEN || null,
   };
 }

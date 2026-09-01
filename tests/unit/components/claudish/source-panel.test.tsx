@@ -21,7 +21,7 @@ describe('SourcePanel', () => {
         onChange={noop}
         activeTab={0}
         onTabSelect={noop}
-        detected={false}
+        detectedLang={null}
       />
     );
     expect(screen.getByRole('textbox')).toHaveAttribute('maxLength', String(INPUT_CAP));
@@ -36,7 +36,7 @@ describe('SourcePanel', () => {
         onChange={onChange}
         activeTab={0}
         onTabSelect={noop}
-        detected={false}
+        detectedLang={null}
       />
     );
     await user.type(screen.getByRole('textbox'), 'hi');
@@ -52,7 +52,7 @@ describe('SourcePanel', () => {
         onChange={onChange}
         activeTab={0}
         onTabSelect={noop}
-        detected={false}
+        detectedLang={null}
       />
     );
     await user.click(screen.getByRole('button', { name: /clear source text/i }));
@@ -66,7 +66,7 @@ describe('SourcePanel', () => {
         onChange={noop}
         activeTab={0}
         onTabSelect={noop}
-        detected={false}
+        detectedLang={null}
       />
     );
     expect(screen.queryByRole('button', { name: /clear source text/i })).not.toBeInTheDocument();

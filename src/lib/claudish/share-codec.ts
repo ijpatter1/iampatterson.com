@@ -18,7 +18,12 @@ import {
   decompressFromEncodedURIComponent,
 } from 'lz-string';
 
-import { SHARE_URL_MAX } from './limits';
+import { INPUT_CAP, SHARE_URL_MAX } from './limits';
+
+/** Decompressed-target ceiling: generously above any real translation. */
+const MAX_TARGET_CHARS = 8192;
+/** Param ceiling: refuse hostile input before it reaches the decompressor. */
+const MAX_PARAM_CHARS = 4096;
 
 export type ShareDirection = 'en2cl' | 'cl2en';
 
@@ -99,7 +104,7 @@ export function encodeShare(
 }
 
 export function decodeShare(t: string): DecodedShare | null {
-  if (typeof t !== 'string' || t.length === 0) return null;
+  if (typeof t !== 'string' || t.length === 0 || t.length > MAX_PARAM_CHARS) return null;
   try {
     // URLSearchParams turns '+' into a space; lz-string's URI alphabet
     // never emits a space, so mapping back is lossless.
@@ -111,6 +116,9 @@ export function decodeShare(t: string): DecodedShare | null {
     if (wire.v !== 1) return null;
     if (wire.d !== 'en2cl' && wire.d !== 'cl2en') return null;
     if (typeof wire.s !== 'string' || typeof wire.t !== 'string') return null;
+    // A crafted payload must not bypass the input cap (the textarea's
+    // maxLength doesn't truncate programmatic values) or seed absurd output.
+    if (wire.s.length > INPUT_CAP || wire.t.length > MAX_TARGET_CHARS) return null;
     return {
       direction: wire.d,
       source: wire.s,

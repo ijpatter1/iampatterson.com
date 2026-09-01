@@ -8,7 +8,9 @@
  * with allowSkip semantics — if Anthropic's classifier no longer
  * honors it, the probe LOGS and PASSES (never fail the build on a
  * change in Anthropic behavior; the refusal path's real coverage is
- * the unit suite + the FORCE_REFUSAL_TOKEN injection hook).
+ * the unit suite + the FORCE_REFUSAL_TOKEN injection hook in
+ * translate.ts — set that env on a staging revision and send its value
+ * to smoke the deployed path).
  *
  * Run via scripts/run-claudish-golden.sh (repo root), which sets the
  * gate + credentials context.

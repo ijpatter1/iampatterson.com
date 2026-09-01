@@ -38,3 +38,21 @@ describe('loadConfig', () => {
     expect(c.requireOrigin).toBe(false);
   });
 });
+
+describe('MAX_INSTANCES validation (spend cap must never fail open)', () => {
+  it('rejects non-numeric, zero, and fractional values', () => {
+    expect(() => loadConfig({ MAX_INSTANCES: 'four' })).toThrow(/MAX_INSTANCES/);
+    expect(() => loadConfig({ MAX_INSTANCES: '0' })).toThrow(/MAX_INSTANCES/);
+    expect(() => loadConfig({ MAX_INSTANCES: '2.5' })).toThrow(/MAX_INSTANCES/);
+  });
+
+  it('accepts a positive integer and keeps the default at 4', () => {
+    expect(loadConfig({ MAX_INSTANCES: '2' }).maxInstances).toBe(2);
+    expect(loadConfig({}).maxInstances).toBe(4);
+  });
+
+  it('parses the test-only refusal token, defaulting to null', () => {
+    expect(loadConfig({}).forceRefusalToken).toBeNull();
+    expect(loadConfig({ FORCE_REFUSAL_TOKEN: 'xyz' }).forceRefusalToken).toBe('xyz');
+  });
+});

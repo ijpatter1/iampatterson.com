@@ -12,7 +12,9 @@ import type { DecodedShare } from '@/lib/claudish/share-codec';
  * Every failure path (missing/garbage/oversized t, decode throw, font
  * fetch failure) returns the generic card rather than an error: an
  * unfurler that sees a 500 shows nothing, which kills the share loop.
- * No Google trade dress anywhere on the card.
+ * The card follows NEXT_PUBLIC_CLAUDISH_SKIN: the takedown re-skin
+ * covers unfurls too, not just the page (clone uses Translate-adjacent
+ * blue; never the Google name, logo, or four-color mark).
  *
  * Structure note: all data work (URL parse, decode, font fetch) happens
  * in prepare() under try/catch; JSX assembly lives outside any try/catch
@@ -22,6 +24,16 @@ import type { DecodedShare } from '@/lib/claudish/share-codec';
 export const runtime = 'edge';
 
 const SIZE = { width: 1200, height: 630 };
+
+/** Mirror of the [data-skin] palette pairs in globals.css that the card uses. */
+const SKINS = {
+  clone: { accent: '#1a73e8', border: '#dadce0', text: '#202124', text2: '#5f6368', alt: '#f8f9fa' },
+  personal: { accent: '#ea5f2a', border: '#d9d5cc', text: '#111111', text2: '#333333', alt: '#f5f5f5' },
+} as const;
+
+function activeSkin() {
+  return process.env.NEXT_PUBLIC_CLAUDISH_SKIN === 'personal' ? SKINS.personal : SKINS.clone;
+}
 const CACHE_HEADERS = {
   'Cache-Control': 'public, immutable, no-transform, max-age=31536000',
 };
@@ -73,6 +85,7 @@ const LAST_RESORT_ELEMENT = (
 );
 
 function frame(children: React.ReactNode, fonts: ArrayBuffer | null) {
+  const skin = activeSkin();
   return (
     <div
       style={{
@@ -92,8 +105,8 @@ function frame(children: React.ReactNode, fonts: ArrayBuffer | null) {
           justifyContent: 'space-between',
           marginTop: 'auto',
           paddingTop: 24,
-          borderTop: '1px solid #dadce0',
-          color: '#5f6368',
+          borderTop: `1px solid ${skin.border}`,
+          color: skin.text2,
           fontSize: 24,
         }}
       >
@@ -104,15 +117,16 @@ function frame(children: React.ReactNode, fonts: ArrayBuffer | null) {
   );
 }
 
-function panel(label: string, text: string, tint: string) {
+function panel(label: string, text: string, tint: 'plain' | 'alt') {
+  const skin = activeSkin();
   return (
     <div
       style={{
         display: 'flex',
         flexDirection: 'column',
         flex: 1,
-        backgroundColor: tint,
-        border: '1px solid #dadce0',
+        backgroundColor: tint === 'alt' ? skin.alt : '#ffffff',
+        border: `1px solid ${skin.border}`,
         borderRadius: 12,
         padding: 28,
         gap: 12,
@@ -124,12 +138,12 @@ function panel(label: string, text: string, tint: string) {
           fontSize: 20,
           letterSpacing: 2,
           textTransform: 'uppercase',
-          color: '#1a73e8',
+          color: skin.accent,
         }}
       >
         {label}
       </span>
-      <span style={{ display: 'flex', fontSize: 30, lineHeight: 1.35, color: '#202124' }}>
+      <span style={{ display: 'flex', fontSize: 30, lineHeight: 1.35, color: activeSkin().text }}>
         {text}
       </span>
     </div>
@@ -141,8 +155,8 @@ function shareBody(share: DecodedShare) {
     share.direction === 'en2cl' ? ['English', 'Claudish'] : ['Claudish', 'English'];
   return (
     <div style={{ display: 'flex', gap: 24, flex: 1 }}>
-      {panel(srcLabel, excerpt(share.source), '#ffffff')}
-      {panel(dstLabel, excerpt(share.target), '#f8f9fa')}
+      {panel(srcLabel, excerpt(share.source), 'plain')}
+      {panel(dstLabel, excerpt(share.target), 'alt')}
     </div>
   );
 }

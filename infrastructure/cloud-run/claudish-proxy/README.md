@@ -28,7 +28,10 @@ Per-IP limits (20/min, 200/hr, 1000/day, per instance) shape the happy
 path; ten coordinated IPs can still exhaust the daily cap. The REAL
 backstop is the budget tracker: worst-case reservation per request,
 reconciled to actual usage, capped at `DAILY_BUDGET_USD / MAX_INSTANCES`
-per instance, tripping to cache-only until UTC midnight. max-instances=4
+per instance, tripping to cache-only until UTC midnight. Numbers:
+the user-decided backstop is $25/day TOTAL; `DAILY_BUDGET_USD=23` is
+the model-spend slice, leaving ~$2 for the Cloud Run floor plus
+headroom — the two figures are deliberate, not drift. max-instances=4
 is blast radius, not cost control.
 
 ## Kill switch (runbook)
@@ -81,6 +84,10 @@ Garden enablement, quota check, Anthropic key) are the manual task at
 
 Deploy smoke checklist (T16): chunk timestamps prove SSE is unbuffered
 end-to-end; CORS from the Vercel origin; capture a real request's
-X-Forwarded-For to confirm the `TRUSTED_PROXY_HOPS=2` index; repeat a
-call and check `cache_read_input_tokens > 0` (the 4,096-token cache
-minimum is why the few-shot block is large); rehearse the kill switch.
+X-Forwarded-For to confirm the `TRUSTED_PROXY_HOPS=2` index; check
+`cache_read_input_tokens` on a repeat call — EXPECT 0 today: the interim
+few-shot block sits below Haiku 4.5's 4,096-token cache minimum, and
+caching engages only once the lexicon-generated set grows the system
+block past it (tracked in prompts/index.ts); send FORCE_REFUSAL_TOKEN's
+value (set it on a staging revision only) to smoke the refusal path;
+rehearse the kill switch.

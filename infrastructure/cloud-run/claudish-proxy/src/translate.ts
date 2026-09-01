@@ -129,6 +129,25 @@ export function createTranslateHandler(deps: TranslateDeps) {
       res.status(400).json({ error: 'bad_request' });
       return;
     }
+
+    // Test-only refusal injection (config.forceRefusalToken; unset in
+    // production): exercises the deployed refusal path — headers, framing,
+    // client discard — without depending on Anthropic's classifier.
+    if (config.forceRefusalToken && normalized === config.forceRefusalToken) {
+      const sseForced = new SseStream(res);
+      sseForced.open(allowOrigin);
+      sseForced.frame({
+        type: 'meta',
+        lane: 'cache-only',
+        cached: false,
+        direction,
+        promptVersion: PROMPT_VERSION,
+      });
+      sseForced.frame({ type: 'refusal' });
+      sseForced.end();
+      logEvent('INFO', 'translate_refused', { requestId, direction, stopReason: 'forced' });
+      return;
+    }
     const key = cacheKey(direction, PROMPT_VERSION, config.vertexModelId, normalized);
     const sse = new SseStream(res);
     const t0 = Date.now();

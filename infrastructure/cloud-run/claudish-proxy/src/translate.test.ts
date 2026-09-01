@@ -426,3 +426,31 @@ describe('redaction sweep', () => {
     expect(all).not.toContain('confidential');
   });
 });
+
+describe('FORCE_REFUSAL_TOKEN injection hook (staging smoke, never production)', () => {
+  it('synthesizes a refusal stream without touching any lane', async () => {
+    const lane = fakeLane('vertex-global', [
+      { kind: 'start' },
+      { kind: 'text', text: 'never' },
+      { kind: 'stop', stopReason: 'end_turn', usage: OK_USAGE },
+    ]);
+    const deps = makeDeps([lane], {
+      config: loadConfig({ FORCE_REFUSAL_TOKEN: 'REFUSE-ME-TOKEN' }),
+    });
+    const ctx = stubReqRes({ text: 'REFUSE-ME-TOKEN', direction: 'en2cl' });
+    await createTranslateHandler(deps)(ctx.req, ctx.res);
+    expect(ctx.frames().map((f) => f.type)).toEqual(['meta', 'refusal']);
+    expect(lane.calls).toHaveLength(0);
+  });
+
+  it('is inert when the env is unset', async () => {
+    const lane = fakeLane('vertex-global', [
+      { kind: 'start' },
+      { kind: 'text', text: 'normal' },
+      { kind: 'stop', stopReason: 'end_turn', usage: OK_USAGE },
+    ]);
+    const ctx = stubReqRes({ text: 'REFUSE-ME-TOKEN', direction: 'en2cl' });
+    await createTranslateHandler(makeDeps([lane]))(ctx.req, ctx.res);
+    expect(ctx.frames().map((f) => f.type)).toEqual(['meta', 'token', 'done']);
+  });
+});

@@ -62,6 +62,18 @@ const validT = () => {
 };
 
 describe('GET /claudish/og', () => {
+  afterEach(() => {
+    delete process.env.NEXT_PUBLIC_CLAUDISH_SKIN;
+  });
+
+  it('re-skins the card under the takedown flip (no clone blue in personal)', async () => {
+    process.env.NEXT_PUBLIC_CLAUDISH_SKIN = 'personal';
+    await GET(req(`https://x.test/claudish/og?t=${encodeURIComponent(validT())}`));
+    const body = textOf(captured[0].element);
+    expect(body).not.toContain('#1a73e8');
+    expect(body).toContain('#ea5f2a');
+  });
+
   it('renders both panels and the site URL for a valid share param', async () => {
     await GET(req(`https://x.test/claudish/og?t=${encodeURIComponent(validT())}`));
     expect(captured).toHaveLength(1);
