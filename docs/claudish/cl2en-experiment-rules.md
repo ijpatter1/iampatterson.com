@@ -30,14 +30,21 @@ on the majority of the 27 registry models in `~/.claudish-corpus/models/`. The l
 judge (`claudish-proxy/src/judge.ts`) is an instrument the loop may change; it is never
 the scoreboard. The scoreboard detector is never retrained or replaced by this loop.
 
-**Fidelity (the gate).** Two independent rubric judges, Claude Haiku (via the proxy's
-authenticated Anthropic lane) and Gemini 3.5 Flash-Lite (global endpoint), each scoring
+**Fidelity (the gate).** Two independent rubric judges, one per model family: Claude Opus 5
+(via the proxy's authenticated Anthropic lane, effort low) and Gemini 3.1 Pro (global
+endpoint). Chosen by the judge test of 2026-09-02 (see RESULTS.md): Haiku 4.5 and Gemini
+3.5 Flash-Lite failed calibration, Sonnet 5 disagreed with Ian on all three pairs, and
+Opus 5, Gemini 3.1 Pro and Gemini 3.7 Flash agreed on all three. Each scores
 every input/output pair on five axes, 1 to 5: meaning preserved; speaker and stance
 preserved; communication type preserved (question, request, apology, story, refusal,
 report); plainness (would a busy person write this); content lost. Comparison is pairwise
 against the baseline output, run twice with the order swapped, so position bias cancels.
 Calibration before the first arm: both judges must agree with Ian's recorded judgments on
-the meme, email and loud-marketing pairs; then the rubric is frozen. Mechanical guards
+the meme, email and loud-marketing pairs; then the rubric is frozen. FROZEN 2026-09-02:
+rubric v2 (the survival test stated in the rubric; dropped register clauses are not loss),
+pairwise mode only. Cost rule: arms are judged on a fixed 30-input subset of the dev pool
+(`cl2en-judged-subset.json`: 6 battery, 4 golden, 8 round-trip, 12 holdout, seed 20260902),
+about $0.52 per arm for both judges; the full 99 are judged only for final candidates. Mechanical guards
 remain hard floors: first person survives when the input has it, a question stays a
 question, identifiers and numbers survive, no output under 0.25 of input length without a
 recorded reason, no wrapper tags echoed.

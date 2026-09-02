@@ -70,6 +70,8 @@ async function main() {
       refused: result.refused,
       ms,
       usage: result.usage,
+      factsRetried: result.factsRetried,
+      factsRestored: result.factsRestored,
       out: result.servedText,
     });
   }
