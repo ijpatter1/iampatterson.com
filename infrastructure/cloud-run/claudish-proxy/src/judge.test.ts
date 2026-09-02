@@ -132,3 +132,20 @@ describe('missingFacts (arm 2 facts-preservation gate)', () => {
     expect(fb.toLowerCase()).toContain('put');
   });
 });
+
+describe('firstPersonPreserved (arm 2b)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { firstPersonPreserved, buildFactsFeedback } = require('./judge') as typeof import('./judge');
+  it('passes when the source has no first person, or the output keeps it', () => {
+    expect(firstPersonPreserved('The build failed.', 'The build failed.')).toBe(true);
+    expect(firstPersonPreserved('We shipped 3 fixes.', 'We shipped 3 fixes in 2022.')).toBe(true);
+    expect(firstPersonPreserved("I'll look into it.", 'I will look into it.')).toBe(true);
+  });
+  it('fails when the output drops the first person the source had', () => {
+    expect(firstPersonPreserved('We shipped 3 fixes.', 'You shipped 3 fixes.')).toBe(false);
+    expect(firstPersonPreserved('I fixed the bug.', 'The bug is fixed.')).toBe(false);
+  });
+  it('facts feedback names the speaker constraint', () => {
+    expect(buildFactsFeedback(['2022']).toLowerCase()).toContain('same speaker');
+  });
+});

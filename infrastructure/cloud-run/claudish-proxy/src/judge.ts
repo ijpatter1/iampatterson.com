@@ -158,5 +158,17 @@ export function missingFacts(input: string, output: string): string[] {
 }
 
 export function buildFactsFeedback(missing: string[]): string {
-  return `The translation dropped these from the source: ${missing.join(', ')}. Put each one back in the sentence it belongs to, changing nothing else. Output only the translation.`;
+  return `The translation dropped these from the source: ${missing.join(', ')}. Put each one back in the sentence it belongs to, changing nothing else. Keep the same speaker: if the source says I or we, the translation says I or we, and the communication type stays the same. Output only the translation.`;
+}
+
+// Capitalised forms spelled out on purpose: no `i` flag, so "US" the country is not a pronoun.
+const FIRST_PERSON = /\b(?:I|I'm|I'll|I've|I'd|[Mm]e|[Mm]y|[Mm]ine|[Ww]e|[Ww]e're|[Ww]e'll|[Ww]e've|[Ww]e'd|[Oo]ur|[Oo]urs|us|Us)\b/;
+
+/**
+ * Speaker guard (arm 2b): a facts retry that restores numbers by
+ * re-narrating from the reader's side ("you shipped") is not accepted.
+ * True when the source has no first person, or the output keeps it.
+ */
+export function firstPersonPreserved(input: string, output: string): boolean {
+  return !FIRST_PERSON.test(input) || FIRST_PERSON.test(output);
 }

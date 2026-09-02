@@ -228,3 +228,19 @@ describe('facts-preservation retry (arm 2)', () => {
     expect(result.factsRestored).toBe(false);
   });
 });
+
+describe('facts retry keeps the speaker (arm 2b)', () => {
+  const INPUT = 'We shipped 3 fixes in 2022, and p95 fell to 210ms.';
+  const DROPPED = 'We shipped some fixes recently, and latency fell.';
+  const RESTORED_BUT_YOU = 'You shipped 3 fixes in 2022, and p95 fell to 210ms.';
+  it('rejects a retry that restores the facts but shifts the speaker to you', async () => {
+    const { deps, calls } = scriptedDeps([DROPPED, RESTORED_BUT_YOU]);
+    const { emit } = collector();
+    const result = await runCl2enLoop(INPUT, 'sys', deps, emit, { maxAttempts: 4, deadlineMs: 9000 });
+    expect(calls).toHaveLength(2);
+    expect(calls[1][2].text.toLowerCase()).toContain('same speaker');
+    expect(result.servedText).toBe(DROPPED);
+    expect(result.factsRetried).toBe(true);
+    expect(result.factsRestored).toBe(false);
+  });
+});

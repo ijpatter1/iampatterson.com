@@ -18,6 +18,7 @@
 import {
   buildFactsFeedback,
   buildNegationFeedback,
+  firstPersonPreserved,
   judgeTranslation,
   mechanicalEvidence,
   missingFacts,
@@ -229,7 +230,11 @@ export async function runCl2enLoop(
       { role: 'user', text: buildFactsFeedback(missing) },
     ];
     const retry = await runOne(deps, factsTurns, attempts.length + 1, usage, null);
-    const restored = retry.finishReason !== 'SAFETY' && retry.finishReason !== 'PROHIBITED_CONTENT' && missingFacts(inputText, retry.text).length === 0;
+    const restored =
+      retry.finishReason !== 'SAFETY' &&
+      retry.finishReason !== 'PROHIBITED_CONTENT' &&
+      missingFacts(inputText, retry.text).length === 0 &&
+      firstPersonPreserved(inputText, retry.text);
     attempts.push({ p: Number(retry.verdict.p.toFixed(3)), ms: retry.ms, actionable: false });
     if (restored) {
       factsRestored = true;
