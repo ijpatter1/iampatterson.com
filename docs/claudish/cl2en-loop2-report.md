@@ -65,3 +65,21 @@ The plan gates T1 on a candidate that acquits more judge-plain translations whil
 1. Stop detector-side work on the cl2en scoreboard. Two loops and fifteen candidates say the shipped detector's disagreement with the judges on plain translations is topic, and topic cannot be removed from a positive class that is one person's transcripts about one set of subjects.
 2. If the scoreboard is to improve, the change is on the positive side: Claude-written text on subjects the transcripts never touch. The rules forbid training on en2cl or cl2en outputs, which is right, so this means new positives from outside the translator, and it is a corpus decision for Ian, not a loop arm.
 3. The one cheap test the loop left on the table is T1 under the D1c ensemble, about $2.30 including held-out judging. The loop did not run it because the rule excludes the candidate; Ian can overrule the rule with the ensemble numbers above in view.
+
+## Correction (2026-09-02, after Ian's review)
+
+Two statements above are wrong and one is weaker than written.
+
+1. The positive class is not "one person's Claude Code transcripts." It is Ian's conversations on two surfaces: 61 percent claude.ai replies (75,429 chunks from the data export, parsed by `parse-claudeai-export.ts`) and 39 percent Claude Code transcript chunks (48,285). The claude.ai replies are Claude talking to a person on whatever the conversation was about; they are in training, dev and test by conversation split. The "held-out recall" measure covers only the two held-out Claude Code projects.
+2. The recommendation to source Claude replies from outside was unnecessary. The claude.ai export already supplies Claude replies on subjects the Claude Code transcripts never touch, and more of it is fair game. The mention of translator output belonged to a different rule and did not need to be in that sentence.
+3. The recall floor is sample-dependent at this size. Three samples of the held-out Claude Code positives give three answers for the D1c gap against r7d: 0.910 vs 0.886 (the per-source script's sample), 0.888 vs 0.873 (the 883-chunk file), 0.927 vs 0.924 (2,000 rows drawn from the 6,366 held-out chunks in the dataset). D1c's disqualification "by 1.4 points" rests on the first sample and is not solid.
+
+Recall by positive sub-corpus on the test split (2,000 rows each, same rows for every model; hit rate at 0.5, mean score in parentheses):
+
+| rows | r7d shipped | r19 D1c | r17 D3 | r16 D2 word tables |
+|---|---|---|---|---|
+| claude.ai replies | 0.858 (0.81) | 0.837 (0.78) | 0.866 (0.83) | 0.907 (0.85) |
+| Claude Code chunks | 0.961 (0.94) | 0.952 (0.92) | 0.951 (0.93) | 0.975 (0.94) |
+| Claude Code held-out projects | 0.927 (0.90) | 0.924 (0.88) | 0.927 (0.90) | 0.955 (0.91) |
+
+What this adds to the finding: the shipped detector's weak side is conversational Claude, the register the product is about, at 0.86 recall against 0.96 on Claude Code work chunks, even though replies are the majority of the positives. The Claude Code portion is every assistant text block, including procedural narration between tool calls, which the phrase dampers already try to suppress by hand. Ian's proposal to keep only turn-final responses in the Claude Code portion (the reply the agent makes before pausing for him) is the principled form of those dampers and targets this weakness directly. The topic finding stands on the topic probe and on word tables hurting agreement; the recall-trade argument for it is weaker than the sections above say.
