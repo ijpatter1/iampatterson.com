@@ -2,6 +2,8 @@
 
 Approved by Ian 2026-09-02 ("You get it, do another experiment round"). Rules: `docs/claudish/cl2en-experiment-rules.md` as amended by loop 2, plus the amendments below. Budget assumed at $20.00 like loops 1 and 2; ledger `~/.claudish-corpus/analysis/2026-09-01-model-compare/loop3-ledger.jsonl`.
 
+**Product definition, confirmed by Ian 2026-09-02.** Claudish is the register, not the author. Claude speaks English and often says things that read as plain English; the joke exists when it slips into the register, saying things and shaping sentences the way no English-speaking human would. The input box should therefore say English on plain Claude text and Claudish on register-bearing text, whoever wrote it. This is the definition the loop-3 labels implement and the one the detector is measured against from here.
+
 ## 1. The problem this loop targets
 
 The product's claim is that Claudish is a register and cl2en removes it. The shipped detector's positive class is authorship (every chunk Claude wrote), so a plain Claude reply is a positive by construction and a translated Claude reply convicts. Loop 2 showed no data mix or feature family separates the two under the authorship label. The roundtrip is the moment this fails in front of a visitor: 56% of loop-1 baseline cl2en outputs pass the served latch (enter 0.80); 44% flip the input box to "Claudish - detected".
