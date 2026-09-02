@@ -17,7 +17,9 @@ after every context compaction. It is the authority on what the loop may and may
 
 Clarifications from Ian, same day: two fidelity judges (Claude Haiku and Gemini 3.5
 Flash-Lite); no early stop, spend the budget and report the best candidate; 0.05 is the
-minimum mean drop for an arm to count as a win, not the aspiration.
+minimum mean drop for an arm to count as a win. The aspiration Ian named is a scoreboard
+MEAN at or below 0.50 (against 0.685 at loop start), which is a 0.185 drop and is expected
+to need the detector-floor arm. Ian approved the rules and said "Go" on 2026-09-01.
 
 ## 2. The two measures (fixed; do not redefine mid-loop)
 
