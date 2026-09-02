@@ -317,7 +317,9 @@ async function main(): Promise<void> {
       }
     }
   }
-  const meanFeatures = TRAIN_CONFIG.orders.map(() => new Map<number, number>());
+  // One mean map per feature group (char orders, then v5 word orders); the
+  // ranking below reads only the char orders, which are the reversible ones.
+  const meanFeatures = [...TRAIN_CONFIG.orders, ...(TRAIN_CONFIG.wordOrders ?? [])].map(() => new Map<number, number>());
   for (const example of positives.slice(0, 2000)) {
     const features = extractFeatures(example.text, TRAIN_CONFIG);
     for (let o = 0; o < features.length; o++) {
