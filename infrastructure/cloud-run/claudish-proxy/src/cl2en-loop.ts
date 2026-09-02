@@ -17,6 +17,7 @@
  */
 import {
   buildFactsFeedback,
+  JUDGE_PASS_BELOW,
   buildAxisFeedback,
   buildNegationFeedback,
   judgeAxes,
@@ -194,8 +195,16 @@ export async function runCl2enLoop(
       factsRestored: false,
     };
   }
+  // Axis gate (Ian, 2026-09-02): with axis feedback the detector readings ARE the actionable
+  // evidence, so a retry is worth buying whenever the shape or the register member still convicts
+  // the whole text. The plateau rule and the attempt cap remain the bounds.
+  const axisGate = (t: string): boolean => {
+    if (options.feedbackStyle !== 'axis') return false;
+    const a = judgeAxes(t);
+    return a.shape >= JUDGE_PASS_BELOW || a.register >= JUDGE_PASS_BELOW;
+  };
   const worthRetrying = (t: string, v: JudgeVerdict): boolean =>
-    mechanicalEvidence(t).actionable || structuralEvidence(t, v, options.structuralGate).actionable;
+    mechanicalEvidence(t).actionable || structuralEvidence(t, v, options.structuralGate).actionable || axisGate(t);
   let retryable = worthRetrying(first.text, first.verdict);
   attempts.push({ p: Number(first.verdict.p.toFixed(3)), ms: first.ms, actionable: retryable });
 

@@ -17,6 +17,8 @@
  * (dynamic shared quota throws transient 429s — observed on the bench).
  */
 
+import { appendFileSync } from 'node:fs';
+
 export interface GeminiTurn {
   role: 'user' | 'assistant';
   text: string;
@@ -98,6 +100,14 @@ export async function* streamGemini(
     },
   });
 
+  // GEMINI_DEBUG_LOG=<file> (operator seam, off by default): append the exact request body and
+  // every raw SSE frame as received. Never set in production; it writes prompt and output text.
+  const debugLog = process.env.GEMINI_DEBUG_LOG;
+  const debug = (line: string): void => {
+    if (debugLog) appendFileSync(debugLog, line + '\n');
+  };
+  debug(JSON.stringify({ request: { url, body: JSON.parse(body) } }));
+
   let res: Response | null = null;
   for (let attempt = 0; ; attempt++) {
     const token = await geminiAccessToken(fetchFn);
@@ -133,6 +143,7 @@ export async function* streamGemini(
       while ((i = buffer.indexOf('\n\n')) >= 0) {
         const frame = buffer.slice(0, i);
         buffer = buffer.slice(i + 2);
+        debug(JSON.stringify({ frame }));
         for (const line of frame.split('\n')) {
           if (!line.startsWith('data:')) continue;
           const payload = line.slice(5).trim();

@@ -279,3 +279,27 @@ describe("feedbackStyle 'axis' (2026-09-02)", () => {
     }
   });
 });
+
+describe('axis gate (2026-09-02): the detector reading is the actionable evidence', () => {
+  // Attempt-2 text from the v3b transcript: whole text convicts on shape (~0.73) but only one
+  // sentence convicts on its own, so the mechanical and structural gates both stay shut.
+  const wholeTextOnly =
+    'Two conditions apply here. Because Consent mode makes user_pseudo_id unstable before consent, a failed join is a weak signal on its own, whereas the missing capture carries real weight. Someone clicking an ad days back and returning directly shows up as organic, yet neither path includes a click ID anyway, rendering the distinction irrelevant.';
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const J = require('./judge') as typeof import('./judge');
+  beforeEach(() => J.setJudgeRule('max'));
+  afterEach(() => J.setJudgeRule('median'));
+  it("the old gates do not buy a retry for it under 'principle'", async () => {
+    const { deps, calls } = scriptedDeps([wholeTextOnly, wholeTextOnly]);
+    const { emit } = collector();
+    await runCl2enLoop('input', 'sys', deps, emit, { maxAttempts: 2, deadlineMs: 9000 });
+    expect(calls.length).toBe(1);
+  });
+  it("the axis gate buys the retry under 'axis'", async () => {
+    const { deps, calls } = scriptedDeps([wholeTextOnly, wholeTextOnly]);
+    const { emit } = collector();
+    const result = await runCl2enLoop('input', 'sys', deps, emit, { maxAttempts: 2, deadlineMs: 9000, feedbackStyle: 'axis' });
+    expect(calls.length).toBe(2);
+    expect(result.attempts[0].actionable).toBe(true);
+  });
+});

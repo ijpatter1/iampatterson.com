@@ -227,7 +227,7 @@ export function buildAxisFeedback(output: string, axes: JudgeAxes): string {
     parts.push('The words are fine; the sentence shapes are the problem. The shape detector sees:');
     for (const s of shapeSentences(output, 3)) parts.push(`- "${s.sentence}"${s.tags.length ? ` (${s.tags.join('; ')})` : ''}`);
     parts.push(
-      'Say each of those points the way you would in a message to a colleague, in sentences of your own: start with the point itself, one thing per sentence, no announcing sentence, no verdict clause, no consequence tacked on the end. Change the words and the order freely.',
+      'Re-say each of those points in sentences of your own, in the source\'s own register. Vary sentence length as ordinary writing does: no run of short verdict sentences, no balanced pairs, no opener that announces what follows, no consequence tacked on the end. Change the words and the order freely.',
     );
   } else {
     const kills = killListHits(output);
