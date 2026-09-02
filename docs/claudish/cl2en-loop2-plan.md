@@ -1,4 +1,4 @@
-# cl2en experiment loop 2: plan (for Ian's approval)
+# cl2en experiment loop 2: plan (APPROVED by Ian 2026-09-02: "go"; T1 defaults to the deployed prompt with retry temperature 0.3 unless Ian says otherwise; gcloud re-auth needed only for the T arms)
 
 **Budget:** $20.00 new, approved 2026-09-02. **Rules:** loop 1's rules carry over unchanged
 (`docs/claudish/cl2en-experiment-rules.md`: fixed sets, frozen judges, intent check per arm,
