@@ -1,5 +1,7 @@
 # cl2en experiment loop 3: register-labelled positives
 
+**Status: closed 2026-09-02. Register-labelled detector r28 clears the product measures; T1 under it is preferred by both fidelity judges on held-out; $17.43 of $20.00 spent. Report: `docs/claudish/cl2en-loop3-report.md`.**
+
 Approved by Ian 2026-09-02 ("You get it, do another experiment round"). Rules: `docs/claudish/cl2en-experiment-rules.md` as amended by loop 2, plus the amendments below. Budget assumed at $20.00 like loops 1 and 2; ledger `~/.claudish-corpus/analysis/2026-09-01-model-compare/loop3-ledger.jsonl`.
 
 **Product definition, confirmed by Ian 2026-09-02.** Claudish is the register, not the author. Claude speaks English and often says things that read as plain English; the joke exists when it slips into the register, saying things and shaping sentences the way no English-speaking human would. The input box should therefore say English on plain Claude text and Claudish on register-bearing text, whoever wrote it. This is the definition the loop-3 labels implement and the one the detector is measured against from here.
