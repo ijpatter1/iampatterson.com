@@ -202,13 +202,17 @@ describe('setJudgeModels (lab seam for loop-2 T arms; production never calls it)
     const before = J.judgeTranslation(loud).p;
     // A single-member ensemble reduces the median to that model: r3 alone reads differently from the trio.
     J.setJudgeModels([W.R3_WEIGHTS]);
-    const swapped = J.judgeTranslation(loud).p;
-    // A one-member ensemble must yield that member's own finite score (loop-3 T1 regression: the
-    // median once read index 1 of a one-element array and every verdict was NaN).
+    // A one-member ensemble must yield exactly max(that member's own score, heuristic): loop-3 T1
+    // regression, the median once read index 1 of a one-element array and every verdict was NaN.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { loadJudgeModel } = require('./judge-loader') as typeof import('./judge-loader');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { scoreClaudish } = require('./vendor/heuristic') as typeof import('./vendor/heuristic');
+    const plainTech = 'The refactor gives connection state a single source of truth so the retry logic and the offline recovery path use the same backoff primitive.';
+    const r3 = loadJudgeModel(W.R3_WEIGHTS)!;
+    const swapped = J.judgeTranslation(plainTech).p;
     expect(Number.isFinite(swapped)).toBe(true);
-    expect(swapped).toBeGreaterThanOrEqual(0);
-    expect(swapped).toBeLessThanOrEqual(1);
-    expect(swapped).not.toBe(before);
+    expect(swapped).toBeCloseTo(Math.max(r3.predict(plainTech), scoreClaudish(plainTech).score), 9);
     J.resetJudgeModels();
     expect(J.judgeTranslation(loud).p).toBe(before);
   });
