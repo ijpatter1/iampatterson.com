@@ -216,6 +216,12 @@ function main(): void {
       }
       if (score < posMinRegister) { labelStats.middle++; continue; }
       labelStats.positive++;
+      // POS_STRONG_OVERSAMPLE=k repeats train-split positives with judge score >= 3 (the unmistakable
+      // register) k times, so the scarce loud examples carry more weight than the mild ones.
+      const k = Number(process.env.POS_STRONG_OVERSAMPLE ?? 1);
+      if (k > 1 && score >= 3 && splitOf(`pos:${c.sessionId}`) === 'train') {
+        for (let i = 1; i < k; i++) positives.push({ text: c.text, label: 1, group: `pos:${c.sessionId}`, source: c.projectId, split: 'train' });
+      }
     }
     projects.add(c.projectId);
     positives.push({
