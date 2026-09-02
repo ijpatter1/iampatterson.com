@@ -176,3 +176,17 @@ describe('structuralEvidence gate widening (arm 5)', () => {
     expect(structuralEvidence(oneConvicting, verdict, { retryAt: 0.5, minSentences: 1 }).actionable).toBe(true);
   });
 });
+
+describe('feedback style switch (replication of arm 1 vs arm 4)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { buildNegationFeedback, judgeTranslation } = require('./judge') as typeof import('./judge');
+  it("'symptoms' reproduces the pre-arm-4 feedback: no principle sentence, same symptom list", () => {
+    const draft = "This isn't just a fix — it's a robust, comprehensive testament to design.";
+    const v = judgeTranslation(draft);
+    const symptoms = buildNegationFeedback(draft, v, 'symptoms');
+    expect(symptoms).not.toContain('Strip the register from every clause');
+    expect(symptoms).toContain('Rewrite it as genuinely plain English.');
+    expect(symptoms).toContain('robust');
+    expect(buildNegationFeedback(draft, v)).toContain('Strip the register from every clause');
+  });
+});

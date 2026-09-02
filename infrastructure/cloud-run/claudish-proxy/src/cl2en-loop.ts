@@ -26,7 +26,7 @@ import {
 } from './judge';
 import { EmDashSmoother, MarkerStripper } from './smooth';
 
-import type { JudgeVerdict, StructuralGate } from './judge';
+import type { FeedbackStyle, JudgeVerdict, StructuralGate } from './judge';
 import type { GeminiEvent, GeminiTurn, GeminiUsage } from './gemini';
 
 export const LOOP_MAX_ATTEMPTS = 3;
@@ -131,6 +131,8 @@ export interface LoopOptions {
   factsRetry?: boolean;
   /** Arm 8b: one temperature for every retry instead of ATTEMPT_TEMPERATURES. */
   retryTemperature?: number;
+  /** Retry feedback style; 'symptoms' reproduces the pre-arm-4 text. */
+  feedbackStyle?: FeedbackStyle;
 }
 
 /**
@@ -207,7 +209,7 @@ export async function runCl2enLoop(
     attempt++
   ) {
     turns.push({ role: 'assistant', text: previous.text });
-    turns.push({ role: 'user', text: buildNegationFeedback(previous.text, previous.verdict) });
+    turns.push({ role: 'user', text: buildNegationFeedback(previous.text, previous.verdict, options.feedbackStyle) });
     // Retries are buffered — the visitor keeps reading attempt 1.
     const retry = await runOne(deps, turns, attempt, usage, null, options.retryTemperature);
     if (retry.finishReason === 'SAFETY' || retry.finishReason === 'PROHIBITED_CONTENT') break;
