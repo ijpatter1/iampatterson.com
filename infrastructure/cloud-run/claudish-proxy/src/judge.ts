@@ -117,8 +117,11 @@ export function convictingSentences(text: string, limit: number): string[] {
 export function buildNegationFeedback(output: string, verdict: JudgeVerdict): string {
   const kills = killListHits(output);
   const worst = convictingSentences(output, 2);
+  // Arm 4 (2026-09-02): the feedback leads with the principle the
+  // translation is meant to follow, then names the symptoms. Before,
+  // it listed symptoms only and never said what plain English is.
   const parts = [
-    'That still reads as AI-assistant prose. Rewrite it as genuinely plain English.',
+    'That still reads as AI-assistant prose. Rewrite it as genuinely plain English: Strip the register from every clause and keep only what a plain speaker would say: a fact, an act, a request, a question, a feeling. If a clause\'s only content is that something matters, delete it. Keep every number, name and identifier; keep the speaker (I stays I, we stays we); keep the communication type. Re-compose the whole text as one person telling another what happened.',
   ];
   if (kills.length > 0) parts.push(`Remove these words entirely: ${kills.join(', ')}.`);
   if (verdict.heuristic.signals.length > 0) {

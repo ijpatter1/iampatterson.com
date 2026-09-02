@@ -149,3 +149,19 @@ describe('firstPersonPreserved (arm 2b)', () => {
     expect(buildFactsFeedback(['2022']).toLowerCase()).toContain('same speaker');
   });
 });
+
+describe('buildNegationFeedback leads with the principle (arm 4)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { buildNegationFeedback, judgeTranslation } = require('./judge') as typeof import('./judge');
+  it('states the survival test before the symptom list, and still names kill words and worst sentences', () => {
+    const draft = "This isn't just a fix — it's a robust, comprehensive testament to design. The migration proved intricate, and the timeline reflects that reality.";
+    const fb = buildNegationFeedback(draft, judgeTranslation(draft));
+    const principleAt = fb.indexOf('Strip the register from every clause');
+    const symptomsAt = fb.indexOf('Remove these words entirely');
+    expect(principleAt).toBeGreaterThan(-1);
+    expect(symptomsAt).toBeGreaterThan(principleAt);
+    expect(fb).toContain('robust');
+    expect(fb).toContain('keep the speaker');
+    expect(fb).toContain('Rewrite it as genuinely plain English');
+  });
+});
