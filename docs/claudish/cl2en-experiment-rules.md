@@ -94,7 +94,9 @@ scratchpad; step 0 of the loop copies them into `scripts/claudish/cl2en-lab/` wi
 parameterised so a future session can run them.
 
 Budget: the $20 cap includes everything spent since the overnight delegation. Ledger:
-`spend-ledger.jsonl` (scratchpad, mirrored to the analysis folder on every arm). Each arm
+`spend-ledger.jsonl` in the analysis folder (the session scratchpad was wiped once on
+2026-09-01 and the ledger was reconstructed from its last printed total, $8.08; nothing
+lives in the scratchpad any more). Each arm
 costs roughly $0.15 to $0.20 to translate and $0.20 to $0.30 to judge.
 
 ## 7. Results log
