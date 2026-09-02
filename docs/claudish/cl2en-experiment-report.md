@@ -2,7 +2,7 @@
 
 **Run:** 2026-09-01 evening to 2026-09-02 morning, under `docs/claudish/cl2en-experiment-rules.md`.
 **Budget:** $20.00 cap including prior spend; final ledger in `~/.claudish-corpus/analysis/2026-09-01-model-compare/spend-ledger.jsonl`.
-**Status:** DRAFT while the replication and the held-out judging finish; the two rows marked "pending" are filled in at close.
+**Status:** FINAL. Ledger closed at $19.04.
 
 ## Headline
 
@@ -30,7 +30,8 @@ No arm cleared the win bar (a 0.05 drop in the shipped detector's mean with fide
 | 7b | retrained judge component, topic-fair | offline | n/a | | | not adopted (worse everywhere) |
 | 8a | clean candidate: 1 + 4, default gate | deployed | 0.729 (+0.044) | 9/10/11 | 7/9/14 | not a win |
 | 8b | retry temperature 0.3 | arm 8a | 0.684 (−0.045) | 8/11/10 | 9/6/15 | neutral; recovers baseline level |
-| 1r | replication of arm 1 | deployed | pending | pending | pending | noise check |
+| 1r | replication of arm 1 | deployed | 0.709 (+0.024) | 7/11/9 | 6/7/17 | noise check: 0.036 swing, judge flip |
+| 0r | calibration: deployed configuration re-run | itself | 0.719 vs 0.685 | 8/8/13 | 9/10/11 | apparatus noise floor |
 
 Full rows, per-case scores and pairs: `~/.claudish-corpus/analysis/2026-09-01-model-compare/RESULTS.md` and the `pool-*.json`, `scores-*.csv`, `judge-*.json` files beside it.
 
@@ -39,7 +40,7 @@ Full rows, per-case scores and pairs: `~/.claudish-corpus/analysis/2026-09-01-mo
 | candidate | scoreboard (live baseline → candidate) | pass | paired | guards | judges |
 |---|---|---|---|---|---|
 | arm 8a configuration | 0.767 → 0.791 | 16% → 18% | 13 / 16 / 21 | equal | not judged |
-| final candidate | pending | pending | pending | pending | pending |
+| final candidate: arm 1 configuration | 0.767 → 0.780 | 16% → 14% | 20 / 14 / 16 | equal | Opus 5 13/18/16, Gemini 3.1 Pro 10/14/26 |
 
 ## What the loop learned
 
