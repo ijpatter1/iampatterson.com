@@ -259,3 +259,23 @@ describe('facts retry keeps the speaker (arm 2b)', () => {
     expect(result.factsRestored).toBe(false);
   });
 });
+
+describe("feedbackStyle 'axis' (2026-09-02)", () => {
+  it('the retry turn carries the axis readings instead of the generic negation text', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const J = require('./judge') as typeof import('./judge');
+    J.setJudgeRule('max');
+    try {
+      const structural =
+        "Two caveats I'll carry rather than bury. Consent mode makes the id unstable before a visitor accepts, so the join failing is weak evidence on its own; the absent capture is the strong part.";
+      const { deps, calls } = scriptedDeps([structural, structural]);
+      const { emit } = collector();
+      await runCl2enLoop('input', 'sys', deps, emit, { maxAttempts: 2, deadlineMs: 9000, feedbackStyle: 'axis', structuralGate: { retryAt: 0.5, minSentences: 1 } });
+      expect(calls.length).toBe(2);
+      expect(calls[1][2].text).toMatch(/shape detector/i);
+      expect(calls[1][2].text).not.toContain('Detected patterns to eliminate');
+    } finally {
+      J.setJudgeRule('median');
+    }
+  });
+});

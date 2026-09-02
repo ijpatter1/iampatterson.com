@@ -245,3 +245,41 @@ describe('setJudgeModels (lab seam for loop-2 T arms; production never calls it)
     expect(J.judgeTranslation(loud).p).toBe(before);
   });
 });
+
+describe('axis feedback (Ian, 2026-09-02): the retry turn names which detector still recognises the text', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const J = require('./judge') as typeof import('./judge');
+  afterEach(() => { J.resetJudgeModels(); J.setJudgeRule('median'); });
+  const structural =
+    "Two caveats I'll carry rather than bury. Consent mode makes the id unstable before a visitor accepts, so the join failing is weak evidence on its own; the absent capture is the strong part. And someone who returned directly would look organic here — but there'd be no click ID either way, so it makes no practical difference.";
+  it('judgeAxes reads register and shape from the two vendored members', () => {
+    const axes = J.judgeAxes(structural);
+    expect(axes.shape).toBeGreaterThan(axes.register);
+    expect(axes.shape).toBeGreaterThan(0.5);
+    // The register member sits near the line on this fixture (0.53); the claim under test is the ordering.
+    expect(axes.register).toBeLessThan(0.6);
+  });
+  it('shape-dominant text gets a turn that names the shapes per sentence and says the words are fine', () => {
+    const fb = J.buildAxisFeedback(structural, J.judgeAxes(structural));
+    expect(fb).toMatch(/shape detector/i);
+    expect(fb).toMatch(/words are fine/i);
+    expect(fb).toMatch(/announces what follows|balanced halves|consequence tacked/i);
+    expect(fb).toContain('Two caveats');
+    expect(fb).toMatch(/keep every fact/i);
+  });
+  it('vocabulary-dominant text gets a turn that names the words instead', () => {
+    const loud = "This isn't just a fix — it's a robust, comprehensive testament to design.";
+    const fb = J.buildAxisFeedback(loud, J.judgeAxes(loud));
+    expect(fb).toMatch(/vocabulary detector/i);
+    expect(fb).toContain('robust');
+    expect(fb).not.toMatch(/words are fine/i);
+  });
+  it('setJudgeRule("max") makes the verdict the stricter member (lab seam)', () => {
+    const median = J.judgeTranslation(structural).p;
+    J.setJudgeRule('max');
+    const max = J.judgeTranslation(structural).p;
+    expect(max).toBeGreaterThanOrEqual(median);
+    const a = J.judgeAxes(structural);
+    expect(max).toBeCloseTo(Math.max(a.shape, a.register, a.heuristic.score), 9);
+  });
+});

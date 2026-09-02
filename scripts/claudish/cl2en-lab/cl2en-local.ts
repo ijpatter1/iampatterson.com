@@ -16,7 +16,7 @@ import {
 } from "../../../infrastructure/cloud-run/claudish-proxy/src/cl2en-loop";
 import { streamGemini } from "../../../infrastructure/cloud-run/claudish-proxy/src/gemini";
 import { buildSystem } from "../../../infrastructure/cloud-run/claudish-proxy/src/prompts";
-import { setJudgeModels } from "../../../infrastructure/cloud-run/claudish-proxy/src/judge";
+import { setJudgeModels, setJudgeRule } from "../../../infrastructure/cloud-run/claudish-proxy/src/judge";
 
 // Loop-2 T arms: LOOP_JUDGE_MODELS=tag,tag,tag swaps the loop's judge
 // ensemble for registry candidates (~/.claudish-corpus/models/<tag>).
@@ -26,6 +26,10 @@ if (process.env.LOOP_JUDGE_MODELS) {
     tags.map((tag) => JSON.parse(readFileSync(path.join(homedir(), ".claudish-corpus", "models", tag, "ccld-weights.json"), "utf8")) as unknown)
   );
   console.log(`judge ensemble overridden: ${tags.join(", ")}`);
+}
+if (process.env.LOOP_JUDGE_RULE === "max") {
+  setJudgeRule("max");
+  console.log("judge rule: max (strict; every member must pass)");
 }
 
 const DIR = (process.env.CL2EN_LAB_DIR ?? `${process.env.HOME}/.claudish-corpus/analysis/2026-09-01-model-compare`);
@@ -39,10 +43,14 @@ async function main() {
   ) as Array<{ id: string; text: string }>;
   // CL2EN_SYSTEM_FILE swaps only the base prompt; the few-shot block and the canary are composed exactly
   // as buildSystem does, so an ablation differs from the deployed prompt in the base text alone.
+  // CL2EN_SYSTEM_FULL=1: the file IS the whole system block (only the canary line is appended).
   const system = process.env.CL2EN_SYSTEM_FILE
-    ? `${readFileSync(process.env.CL2EN_SYSTEM_FILE, "utf8").trim()}${buildSystem("cl2en").slice(buildSystem("cl2en").indexOf("\n\nExamples:\n"))}`
+    ? process.env.CL2EN_SYSTEM_FULL === "1"
+      ? `${readFileSync(process.env.CL2EN_SYSTEM_FILE, "utf8").trim()}${buildSystem("cl2en").slice(buildSystem("cl2en").indexOf("\n\nInternal marker"))}`
+      : `${readFileSync(process.env.CL2EN_SYSTEM_FILE, "utf8").trim()}${buildSystem("cl2en").slice(buildSystem("cl2en").indexOf("\n\nExamples:\n"))}`
     : buildSystem("cl2en");
   const rows: Array<Record<string, unknown>> = [];
+  const transcript: Array<{ id: string; attempt: number; temperature: number; turns: Array<{ role: string; text: string }>; output: string }> = [];
   console.log(`model=${modelId} location=${location} eps=${process.env.LOOP_EPS ?? 'default'} extraAttempts=${process.env.LOOP_EXTRA ?? '0'}`);
   console.log(
     "id                 served p  attempts trajectory        revised  ms     usage(in/out/cached)",
@@ -54,8 +62,8 @@ async function main() {
       system,
       {
         nowMs: () => Date.now(),
-        stream: (turns, _attempt, temperature) =>
-          streamGemini(
+        stream: (turns, attempt, temperature) => {
+          const upstream = streamGemini(
             {
               projectId: "iampatterson",
               location,
@@ -67,12 +75,34 @@ async function main() {
             system,
             turns,
             new AbortController().signal,
-          ),
+          );
+          if (!process.env.CL2EN_TRANSCRIPT) return upstream;
+          // CL2EN_TRANSCRIPT=<file>: record every turn the model sees and everything it says, per attempt.
+          return (async function* () {
+            let out = "";
+            for await (const ev of upstream) {
+              if (ev.kind === "text") out += ev.text;
+              yield ev;
+            }
+            transcript.push({ id, attempt, temperature, turns: turns.map((t) => ({ role: t.role, text: t.text })), output: out });
+          })();
+        },
       },
       { token: () => undefined, revise: () => undefined },
-      { ...loopBudgetFor(text.length), ...(process.env.LOOP_EPS ? { improvementEpsilon: Number(process.env.LOOP_EPS) } : {}), ...(process.env.LOOP_EXTRA ? { maxAttempts: loopBudgetFor(text.length).maxAttempts + Number(process.env.LOOP_EXTRA) } : {}), ...(process.env.LOOP_FACTS === '1' ? { factsRetry: true } : {}), ...(process.env.LOOP_RETRY_TEMP ? { retryTemperature: Number(process.env.LOOP_RETRY_TEMP) } : {}), ...(process.env.LOOP_FEEDBACK === 'symptoms' ? { feedbackStyle: 'symptoms' as const } : {}), ...(process.env.LOOP_STRUCT ? { structuralGate: { retryAt: Number(process.env.LOOP_STRUCT.split(',')[0]), minSentences: Number(process.env.LOOP_STRUCT.split(',')[1]) } } : {}) },
+      { ...loopBudgetFor(text.length), ...(process.env.LOOP_EPS ? { improvementEpsilon: Number(process.env.LOOP_EPS) } : {}), ...(process.env.LOOP_EXTRA ? { maxAttempts: loopBudgetFor(text.length).maxAttempts + Number(process.env.LOOP_EXTRA) } : {}), ...(process.env.LOOP_FACTS === '1' ? { factsRetry: true } : {}), ...(process.env.LOOP_RETRY_TEMP ? { retryTemperature: Number(process.env.LOOP_RETRY_TEMP) } : {}), ...(process.env.LOOP_FEEDBACK === 'symptoms' ? { feedbackStyle: 'symptoms' as const } : process.env.LOOP_FEEDBACK === 'axis' ? { feedbackStyle: 'axis' as const } : {}), ...(process.env.LOOP_STRUCT ? { structuralGate: { retryAt: Number(process.env.LOOP_STRUCT.split(',')[0]), minSentences: Number(process.env.LOOP_STRUCT.split(',')[1]) } } : {}) },
     );
     const ms = Date.now() - t0;
+    if (process.env.CL2EN_TRANSCRIPT) {
+      const lines: string[] = [`# cl2en loop transcript: ${id}`, ``, `model ${modelId} | judge ${process.env.LOOP_JUDGE_MODELS ?? "vendored ensemble"} | attempts ${result.attempts.length} | served attempt ${result.servedAttempt} | passed ${result.passed}`, ``, `## System block (${system.length} chars, sent with every attempt)`, ``, "```", system, "```", ``];
+      for (const t of transcript.filter((x) => x.id === id)) {
+        const a = result.attempts[t.attempt - 1];
+        lines.push(`## Attempt ${t.attempt} (temperature ${t.temperature})`, ``);
+        for (const turn of t.turns) lines.push(`### ${turn.role} turn (${turn.text.length} chars)`, ``, "```", turn.text, "```", ``);
+        lines.push(`### model output (${t.output.length} chars)`, ``, "```", t.output, "```", ``);
+        if (a) lines.push(`### verdict: judge p ${a.p.toFixed(3)} | passed ${a.p < 0.5} | mechanical evidence actionable ${String(a.actionable)}${t.attempt === result.servedAttempt ? " | SERVED" : ""}`, ``);
+      }
+      writeFileSync(process.env.CL2EN_TRANSCRIPT.replace(/\.md$/, "") + `-${id.replace(/[^a-z0-9]+/gi, "_")}.md`, lines.join("\n"));
+    }
     const served = result.attempts[result.servedAttempt - 1]?.p ?? NaN;
     const traj = result.attempts.map((a) => a.p.toFixed(3)).join(" > ");
     console.log(

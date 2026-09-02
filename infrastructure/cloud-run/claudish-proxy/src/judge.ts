@@ -53,6 +53,13 @@ export function resetJudgeModels(): void {
   MODELS = VENDORED_MODELS;
 }
 
+/** Lab seam: how the members combine. 'median' is served; 'max' is the strict rule for experiments. */
+export type JudgeRule = 'median' | 'max';
+let RULE: JudgeRule = 'median';
+export function setJudgeRule(rule: JudgeRule): void {
+  RULE = rule;
+}
+
 export const JUDGE_PASS_BELOW = 0.5;
 
 export interface JudgeVerdict {
@@ -132,7 +139,8 @@ export function judgeTranslation(text: string): JudgeVerdict {
   // Median for any ensemble size (the vendored trio takes index 1; a single lab member takes index 0).
   const median =
     ps.length % 2 === 1 ? ps[(ps.length - 1) / 2] : (ps[ps.length / 2 - 1] + ps[ps.length / 2]) / 2;
-  const p = Math.max(median, heuristic.score);
+  const combined = RULE === 'max' ? ps[ps.length - 1] : median;
+  const p = Math.max(combined, heuristic.score);
   return { p, passed: p < JUDGE_PASS_BELOW, heuristic };
 }
 
@@ -153,7 +161,91 @@ export function convictingSentences(text: string, limit: number): string[] {
  * anything but the model's OWN previous output — no visitor text beyond
  * what the model already produced from it.
  */
-export type FeedbackStyle = 'principle' | 'symptoms';
+export type FeedbackStyle = 'principle' | 'symptoms' | 'axis';
+
+/**
+ * Axis readings (2026-09-02): the members read different things. By
+ * convention member 0 is the REGISTER detector (vocabulary and rhetoric)
+ * and member 1 the SHAPE detector (reply skeleton); with one member both
+ * axes report it. The heuristic names the words.
+ */
+export interface JudgeAxes {
+  register: number;
+  shape: number;
+  heuristic: HeuristicResult;
+}
+
+export function judgeAxes(text: string): JudgeAxes {
+  const register = MODELS[0].predict(text);
+  const shape = (MODELS[1] ?? MODELS[0]).predict(text);
+  return { register, shape, heuristic: scoreClaudish(text) };
+}
+
+const SHAPE_TAGS: Array<[string, (s: string, i: number, n: number) => boolean]> = [
+  [
+    'announces what follows',
+    (s, i, n) =>
+      i === 0 && n > 1 && s.split(' ').length <= 12 && /\b(caveats?|things?|points?|notes?|here is|here's|what follows|two|three)\b/i.test(s),
+  ],
+  [
+    'two balanced halves with a verdict on which matters',
+    (s) => /;\s|,\s+and\s+the\b/.test(s) && /\b(is the|is what|matters|the (real|strong|weak|bigger) )/i.test(s),
+  ],
+  ['a consequence tacked onto the end', (s) => /,\s*(so|which means|meaning|leaving)\b[^.]*[.!?]?$/i.test(s)],
+  ['a pivot with a dash or an "And" opener', (s) => /^And\b|\s[—–-]\s(but|and|which)\b/.test(s)],
+  [
+    'a contrastive "not X, Y" frame',
+    (s) => /\b(isn't|is not|wasn't|not)\s+(just|merely|simply)\b|\bnot\s+\w+[,;]\s*(it's|but)\b/i.test(s),
+  ],
+];
+
+/** The shape detector's convicting sentences, worst first, each with the shape families a regex can name. */
+export function shapeSentences(text: string, limit: number): Array<{ sentence: string; p: number; tags: string[] }> {
+  const shape = MODELS[1] ?? MODELS[0];
+  const sentences = text.split(/(?<=[.!?])\s+/).filter((s) => s.trim().length > 15);
+  return sentences
+    .map((sentence, i) => ({
+      sentence,
+      p: shape.predict(sentence),
+      tags: SHAPE_TAGS.filter(([, test]) => test(sentence, i, sentences.length)).map(([name]) => name),
+    }))
+    .sort((a, b) => b.p - a.p)
+    .slice(0, limit);
+}
+
+/**
+ * The axis-targeted retry turn: which detector still recognises the text
+ * and what, concretely, to change. Shape-dominant: the sentences, their
+ * shapes, and permission to re-say them. Vocabulary-dominant: the words
+ * and constructions. Always the fidelity reminder.
+ */
+export function buildAxisFeedback(output: string, axes: JudgeAxes): string {
+  const vocab = Math.max(axes.register, axes.heuristic.score);
+  const shapeDominant = axes.shape >= 0.5 && axes.shape >= vocab;
+  const parts = [`Still recognised. Shape detector ${axes.shape.toFixed(2)}, vocabulary detector ${vocab.toFixed(2)}.`];
+  if (shapeDominant) {
+    parts.push('The words are fine; the sentence shapes are the problem. The shape detector sees:');
+    for (const s of shapeSentences(output, 3)) parts.push(`- "${s.sentence}"${s.tags.length ? ` (${s.tags.join('; ')})` : ''}`);
+    parts.push(
+      'Say each of those points the way you would in a message to a colleague, in sentences of your own: start with the point itself, one thing per sentence, no announcing sentence, no verdict clause, no consequence tacked on the end. Change the words and the order freely.',
+    );
+  } else {
+    const kills = killListHits(output);
+    parts.push('The vocabulary and rhetoric are the problem.');
+    if (kills.length > 0) parts.push(`Words to replace with the plainest exact word: ${kills.join(', ')}.`);
+    if (axes.heuristic.signals.length > 0) parts.push(`Constructions to remove: ${axes.heuristic.signals.join(', ')}.`);
+    const worst = convictingSentences(output, 2);
+    if (worst.length > 0) {
+      parts.push('The sentences carrying them:');
+      for (const sentence of worst) parts.push(`- "${sentence}"`);
+    }
+    parts.push('Re-say them plainly; the sentence shapes may change too.');
+  }
+  parts.push(
+    'Keep every fact, number, identifier and quoted string exactly, keep the speaker, and keep the kind of message it is. Output only the rewritten text.',
+  );
+  return parts.join('\n');
+}
 
 export function buildNegationFeedback(
   output: string,

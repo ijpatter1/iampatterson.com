@@ -17,7 +17,9 @@
  */
 import {
   buildFactsFeedback,
+  buildAxisFeedback,
   buildNegationFeedback,
+  judgeAxes,
   firstPersonPreserved,
   judgeTranslation,
   mechanicalEvidence,
@@ -209,7 +211,13 @@ export async function runCl2enLoop(
     attempt++
   ) {
     turns.push({ role: 'assistant', text: previous.text });
-    turns.push({ role: 'user', text: buildNegationFeedback(previous.text, previous.verdict, options.feedbackStyle) });
+    turns.push({
+      role: 'user',
+      text:
+        options.feedbackStyle === 'axis'
+          ? buildAxisFeedback(previous.text, judgeAxes(previous.text))
+          : buildNegationFeedback(previous.text, previous.verdict, options.feedbackStyle),
+    });
     // Retries are buffered — the visitor keeps reading attempt 1.
     const retry = await runOne(deps, turns, attempt, usage, null, options.retryTemperature);
     if (retry.finishReason === 'SAFETY' || retry.finishReason === 'PROHIBITED_CONTENT') break;
