@@ -33,9 +33,8 @@ describe('parseTranscriptLine', () => {
     expect((parsed as { isSidechain: boolean }).isSidechain).toBe(true);
   });
 
-  it('classifies user records, tool results, and sidecar noise as other', () => {
+  it('classifies tool results and sidecar noise as other (typed user turns are human-turn since 2026-09-02)', () => {
     const cases = [
-      JSON.stringify({ type: 'user', message: { role: 'user', content: 'typed by human' } }),
       JSON.stringify({
         type: 'user',
         message: { role: 'user', content: [{ type: 'tool_result', content: 'output' }] },
