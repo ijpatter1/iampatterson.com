@@ -92,6 +92,9 @@ const NEGATIVE_SOURCE_WEIGHTS: Record<string, number> = {
   // D1b: human developer issue/PR comments (fetch-github-comments.py), the human analogue of
   // the transcript skeleton: prose about code changes with identifiers and PR/commit refs.
   'github-comments': Number(process.env.L2_GITHUB ?? 0),
+  // D1c: topic-matched human Q&A (fetch-so-topic.py): Stack Overflow on the tags the
+  // transcripts are about, created and last edited before the cutoff.
+  'so-topic': Number(process.env.L2_SO_TOPIC ?? 0),
 };
 
 function splitOf(group: string): 'train' | 'dev' | 'test' {

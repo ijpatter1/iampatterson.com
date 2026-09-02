@@ -276,6 +276,22 @@ export function extractDenseFeatures(text: string, config: CcldFeaturizerConfig)
   return out;
 }
 
+/**
+ * Tensor names in a weights file, in flat-tensor order: char tables E1..En,
+ * v5 word tables X1..Xm, then W1, b1, W2, b2. Shared by the exporter and
+ * both loaders so a table count change cannot misname a tensor.
+ */
+export function tensorNamesFor(config: CcldFeaturizerConfig): string[] {
+  return [
+    ...config.buckets.map((_, i) => `E${i + 1}`),
+    ...(config.wordBuckets ?? []).map((_, i) => `X${i + 1}`),
+    'W1',
+    'b1',
+    'W2',
+    'b2',
+  ];
+}
+
 /** FNV-1a 32-bit over UTF-8 bytes (portable across any reimplementation). */
 export function fnv1a32(text: string): number {
   let hash = 0x811c9dc5;

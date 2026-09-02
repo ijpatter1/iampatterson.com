@@ -184,3 +184,16 @@ describe('v6/v7: sentence-shape structure features (loop-2 D3)', () => {
     expect(F.extractDenseFeatures('Plain text here.', F.CCLD_V4_CONFIG)).toHaveLength(F.REGISTER_FEATURE_COUNT);
   });
 });
+
+describe('tensorNamesFor: the weights-file tensor names follow the config', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const F = require('@/lib/claudish/ccld-featurizer') as typeof import('@/lib/claudish/ccld-featurizer');
+  it('keeps the classic eight names for char-only configs (shipped files stay loadable)', () => {
+    expect(F.tensorNamesFor(F.CCLD_V2_CONFIG)).toEqual(['E1', 'E2', 'E3', 'E4', 'W1', 'b1', 'W2', 'b2']);
+    expect(F.tensorNamesFor(F.CCLD_V6_CONFIG)).toEqual(['E1', 'E2', 'E3', 'E4', 'W1', 'b1', 'W2', 'b2']);
+  });
+  it('inserts the word tables between the char tables and the dense layers', () => {
+    // Loop-2 D2 regression: a fixed list wrote v5 word tables under W1/b1.
+    expect(F.tensorNamesFor(F.CCLD_V5_CONFIG)).toEqual(['E1', 'E2', 'E3', 'E4', 'X1', 'X2', 'W1', 'b1', 'W2', 'b2']);
+  });
+});

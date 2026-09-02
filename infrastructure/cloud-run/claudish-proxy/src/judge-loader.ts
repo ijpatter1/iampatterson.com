@@ -17,13 +17,13 @@ import {
   configHash,
   extractFeatures,
   extractDenseFeatures,
+  tensorNamesFor,
 } from './vendor/ccld-featurizer';
 import { forwardLogits, probabilityClaudish } from './vendor/ccld-inference';
 
 import type { CcldFeaturizerConfig } from './vendor/ccld-featurizer';
 import type { CcldTensors } from './vendor/ccld-inference';
 
-const TENSOR_NAMES = ['E1', 'E2', 'E3', 'E4', 'W1', 'b1', 'W2', 'b2'] as const;
 
 interface WeightsFile {
   version?: unknown;
@@ -63,7 +63,7 @@ export function loadJudgeModel(weights: unknown): JudgeModel | null {
   const tensors = file.tensors;
   if (!scales || !tensors) return null;
   try {
-    const dequantized = TENSOR_NAMES.map((name) => {
+    const dequantized = tensorNamesFor(config).map((name) => {
       const buffer = Buffer.from(tensors[name], 'base64');
       const quantized = new Int8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
       const scale = scales[name];

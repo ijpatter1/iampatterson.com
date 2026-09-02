@@ -32,6 +32,7 @@ import {
   CCLD_V7_CONFIG,
   configHash,
   extractDenseFeatures,
+  tensorNamesFor,
   fnv1a32,
 } from '../../src/lib/claudish/ccld-featurizer';
 
@@ -357,7 +358,7 @@ async function main(): Promise<void> {
   // shipped model during sweeps.
   const libDir = path.join(homedir(), '.claudish-corpus', 'models', '_last-train');
   mkdirSync(libDir, { recursive: true });
-  const tensorNames = ['E1', 'E2', 'E3', 'E4', 'W1', 'b1', 'W2', 'b2'];
+  const tensorNames = tensorNamesFor(TRAIN_CONFIG);
   const weights = {
     version: 1,
     featurizer: { ...TRAIN_CONFIG, configHash: configHash(TRAIN_CONFIG) },

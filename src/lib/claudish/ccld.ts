@@ -20,6 +20,7 @@ import {
   configHash,
   extractFeatures,
   extractDenseFeatures,
+  tensorNamesFor,
 } from './ccld-featurizer';
 
 import type { CcldFeaturizerConfig } from './ccld-featurizer';
@@ -40,7 +41,6 @@ interface WeightsFile {
   calibration?: { temperature?: number };
 }
 
-const TENSOR_NAMES = ['E1', 'E2', 'E3', 'E4', 'W1', 'b1', 'W2', 'b2'] as const;
 
 function decodeBase64(data: string): Int8Array {
   if (typeof atob === 'function') {
@@ -90,7 +90,7 @@ export function loadCcldModel(weights: unknown): CcldModel | null {
   const tensors = file.tensors;
   if (!scales || !tensors) return null;
   try {
-    const dequantized: Float64Array[] = TENSOR_NAMES.map((name) => {
+    const dequantized: Float64Array[] = tensorNamesFor(config).map((name) => {
       const quantized = decodeBase64(tensors[name]);
       const scale = scales[name];
       const out = new Float64Array(quantized.length);
