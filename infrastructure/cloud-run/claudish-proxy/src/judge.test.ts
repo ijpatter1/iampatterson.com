@@ -203,6 +203,11 @@ describe('setJudgeModels (lab seam for loop-2 T arms; production never calls it)
     // A single-member ensemble reduces the median to that model: r3 alone reads differently from the trio.
     J.setJudgeModels([W.R3_WEIGHTS]);
     const swapped = J.judgeTranslation(loud).p;
+    // A one-member ensemble must yield that member's own finite score (loop-3 T1 regression: the
+    // median once read index 1 of a one-element array and every verdict was NaN).
+    expect(Number.isFinite(swapped)).toBe(true);
+    expect(swapped).toBeGreaterThanOrEqual(0);
+    expect(swapped).toBeLessThanOrEqual(1);
     expect(swapped).not.toBe(before);
     J.resetJudgeModels();
     expect(J.judgeTranslation(loud).p).toBe(before);

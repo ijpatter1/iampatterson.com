@@ -122,7 +122,9 @@ export function structuralEvidence(
 export function judgeTranslation(text: string): JudgeVerdict {
   const ps = MODELS.map((m) => m.predict(text)).sort((a, b) => a - b);
   const heuristic = scoreClaudish(text);
-  const p = Math.max(ps[1], heuristic.score);
+  // Median for any ensemble size (the vendored trio takes index 1; a single lab member takes index 0).
+  const median = ps.length % 2 === 1 ? ps[(ps.length - 1) / 2] : (ps[ps.length / 2 - 1] + ps[ps.length / 2]) / 2;
+  const p = Math.max(median, heuristic.score);
   return { p, passed: p < JUDGE_PASS_BELOW, heuristic };
 }
 
