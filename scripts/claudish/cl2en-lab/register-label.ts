@@ -7,7 +7,7 @@
  * model} (no text). Resumable: already-labelled ids are skipped. Cost goes to
  * the loop-3 ledger. No chunk text is ever logged.
  *
- * Usage (through with-lab-env.sh): LABEL_JUDGE=gemini|claude [LABEL_LIMIT=n]
+ * Usage (through with-lab-env.sh): LABEL_JUDGE=gemini|claude [LABEL_LIMIT=n] [LABEL_SAMPLE=<file>]
  *   [LABEL_CONCURRENCY=4] npx ts-node -P tsconfig.scripts.json scripts/claudish/cl2en-lab/register-label.ts
  */
 import { appendFileSync, existsSync, readFileSync } from 'node:fs';
@@ -79,7 +79,7 @@ function parseScores(text: string): Map<string, number> | null {
 }
 
 async function main(): Promise<void> {
-  const rows = readFileSync(path.join(C, 'labels', 'sample.jsonl'), 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l) as Row);
+  const rows = readFileSync(process.env.LABEL_SAMPLE ?? path.join(C, 'labels', 'sample.jsonl'), 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l) as Row);
   const done = new Set(existsSync(OUT) ? readFileSync(OUT, 'utf8').split('\n').filter(Boolean).map((l) => (JSON.parse(l) as { id: string }).id) : []);
   const limit = Number(process.env.LABEL_LIMIT ?? Infinity);
   const todo = rows.filter((r) => !done.has(r.id)).slice(0, limit);
