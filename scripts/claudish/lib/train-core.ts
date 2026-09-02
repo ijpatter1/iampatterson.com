@@ -124,11 +124,12 @@ export function backprop(
   dz[0] = p0 - (label === 0 ? 1 : 0);
   dz[1] = p1 - (label === 1 ? 1 : 0);
 
-  const gEmb = grads.slice(0, config.buckets.length);
-  const gW1 = grads[config.buckets.length];
-  const gB1 = grads[config.buckets.length + 1];
-  const gW2 = grads[config.buckets.length + 2];
-  const gB2 = grads[config.buckets.length + 3];
+  const tableCount = config.buckets.length + (config.wordBuckets?.length ?? 0);
+  const gEmb = grads.slice(0, tableCount);
+  const gW1 = grads[tableCount];
+  const gB1 = grads[tableCount + 1];
+  const gW2 = grads[tableCount + 2];
+  const gB2 = grads[tableCount + 3];
 
   gB2[0] += dz[0];
   gB2[1] += dz[1];

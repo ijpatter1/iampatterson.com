@@ -73,3 +73,45 @@ describe('backprop gradient check', () => {
     expect(lossOf(model)).toBeLessThan(before * 0.5);
   });
 });
+
+describe('backprop gradient check on the v5 featurizer (word tables as extra orders)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { CCLD_V5_CONFIG } = require('../../../../src/lib/claudish/ccld-featurizer') as typeof import('../../../../src/lib/claudish/ccld-featurizer');
+  it('sizes the gradient tables for char + word tables and matches finite differences', () => {
+    // Loop-2 D2 regression: the first v5 training run crashed here because
+    // the gradient tables were sized by the char orders alone.
+    const config = CCLD_V5_CONFIG;
+    const sizes = tensorSizes(config);
+    expect(sizes).toHaveLength(config.buckets.length + (config.wordBuckets?.length ?? 0) + 4);
+    const model = initModel(seededRng(7), config);
+    const lossV5 = () => {
+      const g = sizes.map((s) => new Float64Array(s));
+      let total = 0;
+      for (const example of EXAMPLES) total += backprop(model, extractFeatures(example.text, config), example.label, g, config);
+      return total;
+    };
+    const grads = sizes.map((s) => new Float64Array(s));
+    for (const example of EXAMPLES) backprop(model, extractFeatures(example.text, config), example.label, grads, config);
+    const eps = 1e-5;
+    let checked = 0;
+    // Word tables are the last two embedding tensors; probe them densely where the gradient is non-zero.
+    for (let tensor = 0; tensor < model.flat.length; tensor++) {
+      const p = model.flat[tensor];
+      const isWordTable = tensor >= config.buckets.length && tensor < config.buckets.length + 2;
+      for (let i = 0; i < p.length; i += Math.max(1, Math.floor(p.length / 5))) {
+        const idx = isWordTable ? grads[tensor].findIndex((v, k) => k >= i && v !== 0) : i;
+        if (idx < 0) continue;
+        const analytic = grads[tensor][idx];
+        const original = p[idx];
+        p[idx] = original + eps; const plus = lossV5();
+        p[idx] = original - eps; const minus = lossV5();
+        p[idx] = original;
+        const numeric = (plus - minus) / (2 * eps);
+        const denom = Math.max(1e-6, Math.abs(analytic) + Math.abs(numeric));
+        expect(Math.abs(analytic - numeric) / denom).toBeLessThan(1e-4);
+        checked++;
+      }
+    }
+    expect(checked).toBeGreaterThan(20);
+  });
+});
