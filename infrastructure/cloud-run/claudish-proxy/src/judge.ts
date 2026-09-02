@@ -14,17 +14,37 @@
  */
 import { killListHits } from './assertions';
 import { loadJudgeModel } from './judge-loader';
+import type { JudgeModel } from './judge-loader';
 import { extractRegisterFeatures } from './vendor/ccld-featurizer';
 import { scoreClaudish } from './vendor/heuristic';
 import { R3_WEIGHTS, R6H_WEIGHTS, R7D_WEIGHTS } from './vendor/judge-weights';
 
 import type { HeuristicResult } from './vendor/heuristic';
 
-const MODELS = [R3_WEIGHTS, R6H_WEIGHTS, R7D_WEIGHTS].map((w, i) => {
-  const m = loadJudgeModel(w);
-  if (!m) throw new Error(`judge model ${i} refused to load`);
-  return m;
-});
+function loadEnsemble(weightsList: readonly unknown[]): JudgeModel[] {
+  return weightsList.map((w, i) => {
+    const m = loadJudgeModel(w);
+    if (!m) throw new Error(`judge model ${i} refused to load`);
+    return m;
+  });
+}
+
+const VENDORED_MODELS = loadEnsemble([R3_WEIGHTS, R6H_WEIGHTS, R7D_WEIGHTS]);
+let MODELS: JudgeModel[] = VENDORED_MODELS;
+
+/**
+ * Lab seam (loop-2 T arms, 2026-09-02): replace the ensemble members with
+ * candidate weights so an experiment can run the loop under a candidate
+ * judge without touching the vendored set. Production never calls this;
+ * the served ensemble is the vendored trio.
+ */
+export function setJudgeModels(weightsList: readonly unknown[]): void {
+  MODELS = loadEnsemble(weightsList);
+}
+
+export function resetJudgeModels(): void {
+  MODELS = VENDORED_MODELS;
+}
 
 export const JUDGE_PASS_BELOW = 0.5;
 

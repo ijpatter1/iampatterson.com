@@ -190,3 +190,26 @@ describe('feedback style switch (replication of arm 1 vs arm 4)', () => {
     expect(buildNegationFeedback(draft, v)).toContain('Strip the register from every clause');
   });
 });
+
+describe('setJudgeModels (lab seam for loop-2 T arms; production never calls it)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const J = require('./judge') as typeof import('./judge');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const W = require('./vendor/judge-weights') as typeof import('./vendor/judge-weights');
+  const loud = "This isn't just a fix — it's a robust, comprehensive testament to thoughtful design.";
+  afterEach(() => J.resetJudgeModels());
+  it('swaps the ensemble members and changes the verdict; reset restores the vendored set', () => {
+    const before = J.judgeTranslation(loud).p;
+    // A single-member ensemble reduces the median to that model: r3 alone reads differently from the trio.
+    J.setJudgeModels([W.R3_WEIGHTS]);
+    const swapped = J.judgeTranslation(loud).p;
+    expect(swapped).not.toBe(before);
+    J.resetJudgeModels();
+    expect(J.judgeTranslation(loud).p).toBe(before);
+  });
+  it('refuses weights that do not load, leaving the ensemble untouched', () => {
+    const before = J.judgeTranslation(loud).p;
+    expect(() => J.setJudgeModels([{ nonsense: true }])).toThrow(/refused to load/);
+    expect(J.judgeTranslation(loud).p).toBe(before);
+  });
+});
