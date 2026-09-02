@@ -135,9 +135,18 @@ function main(): void {
   const positiveFiles = [process.env.POS_CLAUDE_CODE_FILE ?? 'chunks.jsonl', 'claudeai-chunks.jsonl'].filter((f) =>
     existsSync(path.join(corpusDir, f))
   );
-  const positiveLines = positiveFiles.flatMap((f) =>
-    readFileSync(path.join(corpusDir, f), 'utf8').split('\n')
-  );
+  // POS_CLAUDE_CODE_MAX=n keeps a seeded random subset of the Claude Code chunks (the first file)
+  // so a smaller Claude Code corpus can be controlled for class balance rather than content.
+  const claudeCodeMax = Number(process.env.POS_CLAUDE_CODE_MAX ?? 0);
+  const positiveLines = positiveFiles.flatMap((f, i) => {
+    const lines = readFileSync(path.join(corpusDir, f), 'utf8').split('\n').filter(Boolean);
+    if (i === 0 && claudeCodeMax > 0 && lines.length > claudeCodeMax) {
+      const sub = shuffle(lines, seededRng(4242)).slice(0, claudeCodeMax);
+      console.log(`[build-dataset] Claude Code positives subsampled ${lines.length} -> ${sub.length} (POS_CLAUDE_CODE_MAX)`);
+      return sub;
+    }
+    return lines;
+  });
   for (const line of positiveLines) {
     if (!line) continue;
     const c = JSON.parse(line) as { text: string; sessionId: string; projectId: string; turnFinal?: boolean };
