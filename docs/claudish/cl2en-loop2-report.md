@@ -83,3 +83,20 @@ Recall by positive sub-corpus on the test split (2,000 rows each, same rows for 
 | Claude Code held-out projects | 0.927 (0.90) | 0.924 (0.88) | 0.927 (0.90) | 0.955 (0.91) |
 
 What this adds to the finding: the shipped detector's weak side is conversational Claude, the register the product is about, at 0.86 recall against 0.96 on Claude Code work chunks, even though replies are the majority of the positives. The Claude Code portion is every assistant text block, including procedural narration between tool calls, which the phrase dampers already try to suppress by hand. Ian's proposal to keep only turn-final responses in the Claude Code portion (the reply the agent makes before pausing for him) is the principled form of those dampers and targets this weakness directly. The topic finding stands on the topic probe and on word tables hurting agreement; the recall-trade argument for it is weaker than the sections above say.
+
+## Post-loop: turn-final positives (Ian's proposal, tested 2026-09-02)
+
+Proposal: for the Claude Code portion of the positives, keep only the block Ian actually read, the last main-chain assistant text before his next typed turn or the session end, instead of every block the agent emitted while working. Implemented in the miner (`--turn-final-only`, selection before dedup and caps; subagent files and sidechains never qualify) and tested as three arms on the re-mined corpus with the D1 negatives: a control with all 51,875 Claude Code chunks, the turn-final arm with 22,064, and a balance control with a seeded random 22,064 of all chunks. All three keep the 92,171 claude.ai replies. Every model was scored on the same rows.
+
+| rows (2,000 each) | r7d shipped | control, all chunks | turn-final | random 22k |
+|---|---|---|---|---|
+| claude.ai replies, recall | 0.849 | 0.823 | 0.872 | 0.879 |
+| Claude Code chunks, recall | 0.954 | 0.936 | 0.934 | 0.944 |
+| held-out projects, recall | 0.924 | 0.910 | 0.915 | 0.912 |
+| turn-final blocks, hit rate | 0.937 | 0.912 | 0.945 | 0.932 |
+| mid-work blocks, hit rate | 0.935 | 0.913 | 0.897 | 0.925 |
+| judge-plain translations acquitted (of 19) | 5 | 4 | 4 | 3 |
+
+Reading. The corpus facts first: 40,193 assistant blocks, 4,803 typed human turns, 3,963 turn-final blocks (one in ten), and the shipped detector scores turn-final and mid-work blocks identically, so it never keyed on narration. The turn-final arm raises recall on claude.ai replies by five points over the same-corpus control, and the balance control matches it exactly: the gain comes from having fewer Claude Code chunks against the same replies, not from which chunks were kept. The same holds for the cost, higher false positives on conversational human text (Hacker News and Usenet around 10 to 11 percent against 6 to 7 for the shipped model), which both 22k arms share. What the selection uniquely does is move the detector's attention inside Claude Code from narration to replies (0.897 against 0.945), which is a cleaner definition of the target for a product whose input is a pasted reply. It does nothing for the cl2en scoreboard: the translations both judges call plain are translated replies, and every arm here convicts them about as the shipped model does.
+
+Recommendation. If the product detector should favour pasted replies, rebalance the classes (weight the claude.ai replies up, or the Claude Code chunks down) and take the conversational-FPR cost knowingly; the turn-final selection is a reasonable way to do that because the narration it drops is text nobody pastes, but it is not a source of accuracy by itself. Neither is a lever on the translation loop.
