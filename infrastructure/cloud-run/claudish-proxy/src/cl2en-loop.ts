@@ -20,7 +20,11 @@ import {
   JUDGE_PASS_BELOW,
   buildAxisFeedback,
   buildNegationFeedback,
+  buildSentenceRetryFeedback,
+  convictingSentencesIndexed,
   judgeAxes,
+  splitSentences,
+  worstSentence,
   firstPersonPreserved,
   judgeTranslation,
   mechanicalEvidence,
@@ -61,6 +65,10 @@ export interface LoopAttempt {
   p: number;
   ms: number;
   actionable: boolean;
+  /** Worst-sentence judge score when sentenceJudge is on. */
+  worst?: number;
+  /** Parallel candidates generated for this attempt (1 unless parallelRetries). */
+  candidates?: number;
 }
 
 export interface LoopResult {
@@ -136,6 +144,18 @@ export interface LoopOptions {
   retryTemperature?: number;
   /** Retry feedback style; 'symptoms' reproduces the pre-arm-4 text. */
   feedbackStyle?: FeedbackStyle;
+  /**
+   * Ian, 2026-09-02, option 1: judge the worst sentence too. A text passes only when the whole
+   * text is under 0.5 AND no sentence of minChars+ scores at or above threshold. The loop's
+   * working score becomes max(whole, worst - (threshold - 0.5)).
+   */
+  sentenceJudge?: { threshold: number; minChars: number };
+  /** Option 2: retries rewrite only the convicting sentences and splice them back. Needs sentenceJudge. */
+  sentenceRetry?: boolean;
+  /** Option 3: generate this many candidates per retry concurrently; keep the best. */
+  parallelRetries?: number;
+  /** Option 4: split the input on blank lines and run one loop per paragraph concurrently. */
+  paragraphParallel?: boolean;
 }
 
 /**
@@ -165,6 +185,52 @@ export function loopBudgetFor(inputChars: number): LoopBudget {
 }
 
 export async function runCl2enLoop(
+  inputText: string,
+  system: string,
+  deps: LoopDeps,
+  emit: LoopEmit,
+  options: LoopOptions = {}
+): Promise<LoopResult> {
+  if (options.paragraphParallel) {
+    const paragraphs = inputText.split(/\n\s*\n/).map((p) => p.trim()).filter((p) => p.length > 0);
+    if (paragraphs.length > 1) return runParagraphs(paragraphs, system, deps, emit, options);
+  }
+  return runSingle(inputText, system, deps, emit, options);
+}
+
+/** Option 4: one loop per paragraph, concurrently; tokens are emitted once at the end, in order. */
+async function runParagraphs(
+  paragraphs: string[],
+  system: string,
+  deps: LoopDeps,
+  emit: LoopEmit,
+  options: LoopOptions
+): Promise<LoopResult> {
+  const quiet: LoopEmit = { token: () => undefined, revise: () => undefined };
+  const results = await Promise.all(
+    paragraphs.map((p) => runSingle(p, system, deps, quiet, { ...options, paragraphParallel: false }))
+  );
+  const servedText = results.map((r) => r.servedText).join('\n\n');
+  const usage = results.reduce(
+    (u, r) => ({ inputTokens: u.inputTokens + r.usage.inputTokens, outputTokens: u.outputTokens + r.usage.outputTokens, cachedTokens: u.cachedTokens + r.usage.cachedTokens }),
+    { inputTokens: 0, outputTokens: 0, cachedTokens: 0 }
+  );
+  emit.token(servedText);
+  const worstAttempt = results.reduce((m, r) => Math.max(m, r.attempts.length), 0);
+  return {
+    servedText,
+    servedAttempt: worstAttempt,
+    revised: results.some((r) => r.revised),
+    passed: results.every((r) => r.passed),
+    refused: results.some((r) => r.refused),
+    attempts: results.flatMap((r) => r.attempts),
+    usage,
+    factsRetried: results.some((r) => r.factsRetried),
+    factsRestored: results.every((r) => !r.factsRetried || r.factsRestored),
+  };
+}
+
+async function runSingle(
   inputText: string,
   system: string,
   deps: LoopDeps,
@@ -205,40 +271,76 @@ export async function runCl2enLoop(
   };
   const worthRetrying = (t: string, v: JudgeVerdict): boolean =>
     mechanicalEvidence(t).actionable || structuralEvidence(t, v, options.structuralGate).actionable || axisGate(t);
-  let retryable = worthRetrying(first.text, first.verdict);
-  attempts.push({ p: Number(first.verdict.p.toFixed(3)), ms: first.ms, actionable: retryable });
+  // Working score: whole-text p, or with the sentence judge max(whole, worst - (threshold - 0.5)).
+  const sj = options.sentenceJudge;
+  const scoreOf = (t: string, v: JudgeVerdict): { p: number; worst?: number } => {
+    if (!sj) return { p: v.p };
+    const w = worstSentence(t, sj.minChars).p;
+    return { p: Math.max(v.p, w - (sj.threshold - 0.5)), worst: w };
+  };
+  const sentenceGate = (t: string): boolean => (sj ? worstSentence(t, sj.minChars).p >= sj.threshold : false);
+  let retryable = worthRetrying(first.text, first.verdict) || sentenceGate(first.text);
+  const firstScore = scoreOf(first.text, first.verdict);
+  attempts.push({ p: Number(firstScore.p.toFixed(3)), ms: first.ms, actionable: retryable, worst: firstScore.worst });
 
-  let best = { text: first.text, p: first.verdict.p, attempt: 1 };
-  let previous = { text: first.text, verdict: first.verdict };
+  let best = { text: first.text, p: firstScore.p, attempt: 1 };
+  let previous = { text: first.text, verdict: first.verdict, p: firstScore.p };
 
   for (
     let attempt = 2;
     attempt <= maxAttempts &&
-    !previous.verdict.passed &&
+    !(previous.p < JUDGE_PASS_BELOW) &&
     retryable &&
     deps.nowMs() - started < deadlineMs;
     attempt++
   ) {
     turns.push({ role: 'assistant', text: previous.text });
+    // Option 2: sentence-only retry when the sentence judge names convicting sentences.
+    const convicted = sj && options.sentenceRetry ? convictingSentencesIndexed(previous.text, sj.threshold, sj.minChars) : [];
+    const sentenceOnly = convicted.length > 0;
     turns.push({
       role: 'user',
-      text:
-        options.feedbackStyle === 'axis'
+      text: sentenceOnly
+        ? buildSentenceRetryFeedback(previous.text, judgeAxes(previous.text), convicted)
+        : options.feedbackStyle === 'axis'
           ? buildAxisFeedback(previous.text, judgeAxes(previous.text))
           : buildNegationFeedback(previous.text, previous.verdict, options.feedbackStyle),
     });
-    // Retries are buffered — the visitor keeps reading attempt 1.
-    const retry = await runOne(deps, turns, attempt, usage, null, options.retryTemperature);
-    if (retry.finishReason === 'SAFETY' || retry.finishReason === 'PROHIBITED_CONTENT') break;
-    retryable = worthRetrying(retry.text, retry.verdict);
+    // Retries are buffered — the visitor keeps reading attempt 1. Option 3: N candidates at once.
+    const fanout = Math.max(1, options.parallelRetries ?? 1);
+    const raw = await Promise.all(
+      Array.from({ length: fanout }, () => runOne(deps, turns, attempt, usage, null, options.retryTemperature))
+    );
+    if (raw.every((r) => r.finishReason === 'SAFETY' || r.finishReason === 'PROHIBITED_CONTENT')) break;
+    // Splice sentence-only outputs back into the previous text; a line-count mismatch means the
+    // model rewrote the whole text, which is used as-is.
+    const candidates = raw
+      .filter((r) => r.finishReason !== 'SAFETY' && r.finishReason !== 'PROHIBITED_CONTENT')
+      .map((r) => {
+        if (!sentenceOnly) return r;
+        const lines = r.text.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
+        if (lines.length !== convicted.length) return r;
+        const sentences = splitSentences(previous.text);
+        convicted.forEach((c, i) => {
+          sentences[c.index] = lines[i];
+        });
+        const spliced = sentences.join(' ');
+        return { ...r, text: spliced, verdict: judgeTranslation(spliced) };
+      })
+      .map((r) => ({ ...r, score: scoreOf(r.text, r.verdict) }))
+      .sort((a, b) => a.score.p - b.score.p);
+    const retry = candidates[0];
+    retryable = worthRetrying(retry.text, retry.verdict) || sentenceGate(retry.text);
     attempts.push({
-      p: Number(retry.verdict.p.toFixed(3)),
-      ms: retry.ms,
+      p: Number(retry.score.p.toFixed(3)),
+      ms: Math.max(...raw.map((r) => r.ms)),
       actionable: retryable,
+      worst: retry.score.worst,
+      candidates: fanout,
     });
-    const improved = previous.verdict.p - retry.verdict.p >= improvementEpsilon;
-    if (retry.verdict.p < best.p) best = { text: retry.text, p: retry.verdict.p, attempt };
-    previous = { text: retry.text, verdict: retry.verdict };
+    const improved = previous.p - retry.score.p >= improvementEpsilon;
+    if (retry.score.p < best.p) best = { text: retry.text, p: retry.score.p, attempt };
+    previous = { text: retry.text, verdict: retry.verdict, p: retry.score.p };
     if (!improved) break; // plateau: stop buying attempts
   }
 

@@ -303,3 +303,67 @@ describe('axis gate (2026-09-02): the detector reading is the actionable evidenc
     expect(result.attempts[0].actionable).toBe(true);
   });
 });
+
+describe('sentence-level loop options (Ian, 2026-09-02): worst-sentence judge, sentence-only retries, parallel retries, paragraph parallelism', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const J = require('./judge') as typeof import('./judge');
+  beforeEach(() => J.setJudgeRule('max'));
+  afterEach(() => J.setJudgeRule('median'));
+  // Whole text under 0.5 on max, but one sentence (the semicolon pair) convicts at ~0.93.
+  const mixed =
+    'I am carrying two caveats openly instead of hiding them. Since consent mode makes user_pseudo_id unstable before consent is given, the join failing tells us very little by itself; the missing capture is what matters. However, since there is no click ID to attribute in either case, the practical difference is zero.';
+  const plainPair = 'Consent mode makes user_pseudo_id unstable before consent is given. The join failing tells us little. The missing capture is what matters.';
+
+  it('worst-sentence judge fails a text the whole-text judge passes, and buys the retry', async () => {
+    const { deps, calls } = scriptedDeps([mixed, mixed]);
+    const { emit } = collector();
+    const result = await runCl2enLoop('input', 'sys', deps, emit, { maxAttempts: 2, deadlineMs: 9000, feedbackStyle: 'axis', sentenceJudge: { threshold: 0.6, minChars: 16 } });
+    expect(result.attempts[0].worst).toBeGreaterThanOrEqual(0.6);
+    expect(result.passed).toBe(false);
+    expect(calls.length).toBe(2);
+  });
+
+  it('sentence-only retry asks for the quoted sentences one per line and splices them into the text', async () => {
+    const { deps, calls } = scriptedDeps([mixed, plainPair.split('. ').slice(0, 1).join('. ') + '.']);
+    const { emit } = collector();
+    const result = await runCl2enLoop('input', 'sys', deps, emit, { maxAttempts: 2, deadlineMs: 9000, feedbackStyle: 'axis', sentenceJudge: { threshold: 0.6, minChars: 16 }, sentenceRetry: true });
+    expect(calls[1][2].text).toMatch(/one per line/i);
+    // The untouched sentences survive around the spliced one.
+    expect(result.servedText.startsWith('I am carrying two caveats')).toBe(true);
+    expect(result.servedText).toContain('practical difference is zero');
+    expect(result.servedText).not.toContain('tells us very little by itself; the missing capture');
+  });
+
+  it('parallel retries fan out N streams for one retry and keep the best', async () => {
+    let call = 0;
+    // Attempt 1 must FAIL for a retry to happen: LOUD convicts with actionable evidence.
+    const outputs = [LOUD, LOUD, CLEAN, LOUD];
+    const deps = {
+      nowMs: () => 0,
+      stream: (_turns: GeminiTurn[], _attempt: number, _t: number): AsyncIterable<GeminiEvent> => {
+        const text = outputs[Math.min(call++, outputs.length - 1)];
+        return (async function* () {
+          yield { kind: 'text', text } as GeminiEvent;
+          yield { kind: 'stop', usage: { inputTokens: 1, outputTokens: 1, cachedTokens: 0 }, finishReason: 'STOP' } as GeminiEvent;
+        })();
+      },
+    };
+    const { emit } = collector();
+    const result = await runCl2enLoop('input', 'sys', deps, emit, { maxAttempts: 2, deadlineMs: 9000, feedbackStyle: 'axis', parallelRetries: 3 });
+    expect(call).toBe(4); // attempt 1 + three parallel candidates
+    expect(result.servedText).toBe(CLEAN);
+    expect(result.usage.inputTokens).toBe(4);
+  });
+
+  it('paragraph parallelism runs one loop per paragraph and joins them with a blank line', async () => {
+    const input = 'First paragraph here.\n\nSecond paragraph here.';
+    const { deps, calls } = scriptedDeps([CLEAN, CLEAN]);
+    const { emit } = collector();
+    const result = await runCl2enLoop(input, 'sys', deps, emit, { maxAttempts: 2, deadlineMs: 9000, paragraphParallel: true });
+    expect(calls.length).toBe(2);
+    expect(calls[0][0].text).toContain('First paragraph here.');
+    expect(calls[1][0].text).toContain('Second paragraph here.');
+    expect(result.servedText).toBe(`${CLEAN}\n\n${CLEAN}`);
+    expect(result.passed).toBe(true);
+  });
+});

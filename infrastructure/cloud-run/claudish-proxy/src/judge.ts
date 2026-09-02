@@ -219,6 +219,60 @@ export function shapeSentences(text: string, limit: number): Array<{ sentence: s
  * shapes, and permission to re-say them. Vocabulary-dominant: the words
  * and constructions. Always the fidelity reminder.
  */
+/** Sentence split shared by the sentence-level options (the same rule convictingSentences uses). */
+export function splitSentences(text: string): string[] {
+  return text.split(/(?<=[.!?])\s+/);
+}
+
+/** The sentence the judge convicts hardest (sentences shorter than minChars are ignored). */
+export function worstSentence(text: string, minChars: number): { sentence: string; index: number; p: number } {
+  let worst = { sentence: '', index: -1, p: 0 };
+  splitSentences(text).forEach((sentence, index) => {
+    if (sentence.trim().length < minChars) return;
+    const p = judgeTranslation(sentence).p;
+    if (p > worst.p) worst = { sentence, index, p };
+  });
+  return worst;
+}
+
+/** Sentences the strict judge convicts at or above `threshold`, with their positions and shape tags. */
+export function convictingSentencesIndexed(
+  text: string,
+  threshold: number,
+  minChars: number,
+): Array<{ sentence: string; index: number; p: number; tags: string[] }> {
+  const sentences = splitSentences(text);
+  const out: Array<{ sentence: string; index: number; p: number; tags: string[] }> = [];
+  sentences.forEach((sentence, index) => {
+    if (sentence.trim().length < minChars) return;
+    const p = judgeTranslation(sentence).p;
+    if (p >= threshold)
+      out.push({ sentence, index, p, tags: SHAPE_TAGS.filter(([, test]) => test(sentence, index, sentences.length)).map(([name]) => name) });
+  });
+  return out;
+}
+
+/**
+ * Sentence-only retry turn: the convicting sentences, numbered, and the instruction to return
+ * exactly those rewritten, one per line, so the loop can splice them back into the text.
+ */
+export function buildSentenceRetryFeedback(
+  output: string,
+  axes: JudgeAxes,
+  convicted: Array<{ sentence: string; index: number; tags: string[] }>,
+): string {
+  const vocab = Math.max(axes.register, axes.heuristic.score);
+  const parts = [
+    `Still recognised. Shape detector ${axes.shape.toFixed(2)}, vocabulary detector ${vocab.toFixed(2)}. The full text is above; only these ${convicted.length} sentence(s) fail:`,
+  ];
+  convicted.forEach((c, i) => parts.push(`${i + 1}. "${c.sentence}"${c.tags.length ? ` (${c.tags.join('; ')})` : ''}`));
+  parts.push(
+    'Re-say each failing sentence in the source\'s own register so it no longer carries those shapes or that vocabulary, keeping every fact, number, identifier and quoted string exactly and keeping the speaker. It must still read naturally in its place between the sentences around it.',
+    `Return only the rewritten sentences, in the same order, one per line, ${convicted.length} line(s), nothing else.`,
+  );
+  return parts.join('\n');
+}
+
 export function buildAxisFeedback(output: string, axes: JudgeAxes): string {
   const vocab = Math.max(axes.register, axes.heuristic.score);
   const shapeDominant = axes.shape >= 0.5 && axes.shape >= vocab;
