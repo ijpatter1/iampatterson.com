@@ -37,7 +37,8 @@ Sample: stratified, about 9,000 chunks: 2,000 Claude Code turn-final, 2,000 Clau
 1. Labels come from a frozen judge on corpus chunks. No label is ever produced on translator output, and no translator output enters training.
 2. Human FPR on `claude-plain` is a first-class measure: a candidate that convicts plain Claude text is not a register detector.
 3. Recall is measured on register-bearing text (judged >= 3) and on the loud pool inputs, not on all Claude text, because the definition changed.
-4. Everything else from loops 1 and 2 stands: no cross-session memory, ledger, r7d reported, Ian decides adoption and shipping.
+4. Threshold amendment (2026-09-02, after calibration on 300 chunks): Gemini 3.1 Pro runs about half a point below Opus 5 (Spearman +0.72, 93% within one point), and at Gemini >= 3 the sample yields a few hundred positives. Positives are Gemini >= 2 (which pairs with Opus 3 on the overlap, the "clearly the register" level), `claude-plain` is Gemini <= 1, nothing is dropped, and the labelled sample was extended to about 27,000 chunks. The phrase dampers are off under labels (the judge decides what "Let me" chunks are). <antThinking>/<antArtifact> tags in claude.ai chunks are stripped from training text (ids hash the raw text the judge saw).
+5. Everything else from loops 1 and 2 stands: no cross-session memory, ledger, r7d reported, Ian decides adoption and shipping.
 
 ## 6. Stopping and reporting
 

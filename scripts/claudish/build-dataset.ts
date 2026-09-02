@@ -102,6 +102,14 @@ const NEGATIVE_SOURCE_WEIGHTS: Record<string, number> = {
   'claude-plain': Number(process.env.CLAUDE_PLAIN ?? 0),
 };
 
+function stripAntTags(text: string): string {
+  return text
+    .replace(/<antThinking>[\s\S]*?<\/antThinking>/g, ' ')
+    .replace(/<\/?ant[A-Za-z]*[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function splitOf(group: string): 'train' | 'dev' | 'test' {
   const h = fnv1a32(`split:${group}`) % 10;
   if (h === 8) return 'dev';
@@ -193,8 +201,13 @@ function main(): void {
       registerFiltered++;
       continue;
     }
+    // claude.ai export chunks can carry <antThinking>/<antArtifact> tags (1.4% of them): a trivially
+    // learnable positive marker that is not register. Label ids are hashed on the RAW text (that is
+    // what the judge saw); the training text has the tags stripped.
+    const rawText = c.text;
+    c.text = stripAntTags(rawText);
     if (labelsPath) {
-      const score = labels.get(chunkId(c.text));
+      const score = labels.get(chunkId(rawText));
       if (score === undefined) { labelStats.unlabelled++; continue; }
       if (score <= negMaxRegister) {
         labelStats.plain++;
