@@ -165,3 +165,14 @@ describe('buildNegationFeedback leads with the principle (arm 4)', () => {
     expect(fb).toContain('Rewrite it as genuinely plain English');
   });
 });
+
+describe('structuralEvidence gate widening (arm 5)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { structuralEvidence } = require('./judge') as typeof import('./judge');
+  const oneConvicting = 'The refactor establishes a single source of truth for connection state, a testament to disciplined design across the stack. We shipped it on Friday.';
+  it('the default gate needs 0.6 and two convicting sentences; the widened gate opens at 0.5 and one', () => {
+    const verdict = { p: 0.55, passed: false, heuristic: { score: 0, activeFamilies: 0, signals: [], familyScores: [] } };
+    expect(structuralEvidence(oneConvicting, verdict).actionable).toBe(false);
+    expect(structuralEvidence(oneConvicting, verdict, { retryAt: 0.5, minSentences: 1 }).actionable).toBe(true);
+  });
+});

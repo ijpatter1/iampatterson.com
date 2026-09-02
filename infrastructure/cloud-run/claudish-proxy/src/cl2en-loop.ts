@@ -26,7 +26,7 @@ import {
 } from './judge';
 import { EmDashSmoother, MarkerStripper } from './smooth';
 
-import type { JudgeVerdict } from './judge';
+import type { JudgeVerdict, StructuralGate } from './judge';
 import type { GeminiEvent, GeminiTurn, GeminiUsage } from './gemini';
 
 export const LOOP_MAX_ATTEMPTS = 3;
@@ -119,6 +119,8 @@ export interface LoopOptions {
   deadlineMs?: number;
   /** Plateau cut: stop when a retry improves by less than this. Default IMPROVEMENT_EPSILON. */
   improvementEpsilon?: number;
+  /** Arm 5: structural retry gate (default 0.6 / 2 sentences). */
+  structuralGate?: StructuralGate;
 }
 
 /**
@@ -179,7 +181,7 @@ export async function runCl2enLoop(
     };
   }
   const worthRetrying = (t: string, v: JudgeVerdict): boolean =>
-    mechanicalEvidence(t).actionable || structuralEvidence(t, v).actionable;
+    mechanicalEvidence(t).actionable || structuralEvidence(t, v, options.structuralGate).actionable;
   let retryable = worthRetrying(first.text, first.verdict);
   attempts.push({ p: Number(first.verdict.p.toFixed(3)), ms: first.ms, actionable: retryable });
 

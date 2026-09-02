@@ -84,10 +84,19 @@ export interface StructuralEvidence {
   actionable: boolean;
 }
 
-export function structuralEvidence(text: string, verdict: JudgeVerdict): StructuralEvidence {
-  if (verdict.p < STRUCTURAL_RETRY_AT) return { convicting: [], actionable: false };
+export interface StructuralGate {
+  retryAt: number;
+  minSentences: number;
+}
+
+export function structuralEvidence(
+  text: string,
+  verdict: JudgeVerdict,
+  gate: StructuralGate = { retryAt: STRUCTURAL_RETRY_AT, minSentences: STRUCTURAL_MIN_SENTENCES }
+): StructuralEvidence {
+  if (verdict.p < gate.retryAt) return { convicting: [], actionable: false };
   const convicting = convictingSentences(text, 4);
-  return { convicting, actionable: convicting.length >= STRUCTURAL_MIN_SENTENCES };
+  return { convicting, actionable: convicting.length >= gate.minSentences };
 }
 
 export function judgeTranslation(text: string): JudgeVerdict {
