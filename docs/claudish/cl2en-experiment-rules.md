@@ -1,7 +1,9 @@
 # cl2en experiment loop: rules of engagement
 
-**Owner:** Ian Patterson. **Written:** 2026-09-01. **Status:** approved rules; the loop
-runs until the budget is spent. Read this document in full at every loop wake-up and
+**Owner:** Ian Patterson. **Written:** 2026-09-01. **Status:** CLOSED 2026-09-02 (budget
+spent; report at `docs/claudish/cl2en-experiment-report.md`, results mirror at
+`docs/claudish/cl2en-experiment-results.md`). Kept as the record of what the loop was allowed
+to do and the ruling on recycled loop output. Read this document in full at every loop wake-up and
 after every context compaction. It is the authority on what the loop may and may not do.
 
 ## 1. Ian's intent, verbatim
