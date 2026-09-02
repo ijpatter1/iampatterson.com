@@ -250,7 +250,7 @@ async function main(): Promise<void> {
   };
   writeFileSync(path.join(args.out, args.turnFinalOnly ? 'corpus-report-turnfinal.json' : 'corpus-report.json'), JSON.stringify(report, null, 2));
   console.log(`[mine-corpus] kept ${kept.length} chunks from ${stats.sessions.size} sessions across ${stats.projects.size} projects`);
-  console.log(`[mine-corpus] report: ${path.join(args.out, 'corpus-report.json')}`);
+  console.log(`[mine-corpus] report: ${path.join(args.out, args.turnFinalOnly ? 'corpus-report-turnfinal.json' : 'corpus-report.json')}`);
 }
 
 void main();
