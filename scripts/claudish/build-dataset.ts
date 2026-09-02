@@ -15,6 +15,8 @@ import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 
+import { createHash } from 'node:crypto';
+
 import { chunkText, seededRng } from './lib/chunk';
 import { chunkDropReason } from './lib/scrub';
 import { stripStructures } from './lib/scrub';
@@ -95,6 +97,9 @@ const NEGATIVE_SOURCE_WEIGHTS: Record<string, number> = {
   // D1c: topic-matched human Q&A (fetch-so-topic.py): Stack Overflow on the tags the
   // transcripts are about, created and last edited before the cutoff.
   'so-topic': Number(process.env.L2_SO_TOPIC ?? 0),
+  // Loop 3: Claude chunks a frozen judge scored plain (<= NEG_MAX_REGISTER) when POS_LABELS is set.
+  // The register definition of the positive class makes plain Claude text a NEGATIVE.
+  'claude-plain': Number(process.env.CLAUDE_PLAIN ?? 0),
 };
 
 function splitOf(group: string): 'train' | 'dev' | 'test' {
@@ -121,6 +126,25 @@ function main(): void {
   // when its intake has run — the latter is where Claude talks like a
   // person, the register the work corpus underrepresents).
   const positives: Example[] = [];
+  // Loop 3 (docs/claudish/cl2en-loop3-plan.md): POS_LABELS=<labels.jsonl> switches the positive
+  // class from authorship to REGISTER. Only labelled Claude chunks are used: score >= POS_MIN_REGISTER
+  // is a positive, score <= NEG_MAX_REGISTER is a 'claude-plain' negative (same session group, so it
+  // shares the split with its session's positives), anything between is dropped. Labelled HUMAN chunks
+  // scoring >= POS_MIN_REGISTER are dropped from the negatives (they carry the register).
+  const labelsPath = process.env.POS_LABELS;
+  const labels = new Map<string, number>();
+  if (labelsPath) {
+    for (const line of readFileSync(labelsPath, 'utf8').split('\n')) {
+      if (!line) continue;
+      const l = JSON.parse(line) as { id: string; score: number };
+      labels.set(l.id, l.score);
+    }
+  }
+  const posMinRegister = Number(process.env.POS_MIN_REGISTER ?? 3);
+  const negMaxRegister = Number(process.env.NEG_MAX_REGISTER ?? 1);
+  const chunkId = (text: string): string => createHash('sha1').update(text, 'utf8').digest('hex').slice(0, 16);
+  const claudePlain: Example[] = [];
+  const labelStats = { unlabelled: 0, positive: 0, plain: 0, middle: 0, humanRegisterDropped: 0 };
   const registerMinFamilies = Number(process.env.REGISTER_MIN_FAMILIES ?? 0);
   let registerFiltered = 0;
   const projects = new Set<string>();
@@ -169,6 +193,17 @@ function main(): void {
       registerFiltered++;
       continue;
     }
+    if (labelsPath) {
+      const score = labels.get(chunkId(c.text));
+      if (score === undefined) { labelStats.unlabelled++; continue; }
+      if (score <= negMaxRegister) {
+        labelStats.plain++;
+        claudePlain.push({ text: c.text, label: 0, group: `pos:${c.sessionId}`, source: 'claude-plain', split: splitOf(`pos:${c.sessionId}`) });
+        continue;
+      }
+      if (score < posMinRegister) { labelStats.middle++; continue; }
+      labelStats.positive++;
+    }
     projects.add(c.projectId);
     positives.push({
       text: c.text,
@@ -178,6 +213,7 @@ function main(): void {
       split: splitOf(`pos:${c.sessionId}`),
     });
   }
+  if (labelsPath) console.log(`[build-dataset] register labels: ${JSON.stringify(labelStats)} (min ${posMinRegister}, plain <= ${negMaxRegister})`);
   // Project-held-out: ~3 of the projects by hash, marked on top of splits.
   const held = new Set(
     [...projects].filter((p) => fnv1a32(`held:${p}`) % Math.ceil(projects.size / 3) === 0).slice(0, 3)
@@ -201,6 +237,7 @@ function main(): void {
         const normalized = chunk.normalize('NFC').replace(/\s+/g, ' ').trim();
         if (normalized.length < 20) continue;
         if (chunkDropReason(normalized)) continue;
+        if (labelsPath && (labels.get(chunkId(normalized)) ?? -1) >= posMinRegister) { labelStats.humanRegisterDropped++; continue; }
         const group = `neg:${source}:${Math.floor(index / 40)}`;
         bucket.push({
           text: normalized,
@@ -230,6 +267,7 @@ function main(): void {
       }
     } else for (const example of bucket) negatives.push(example); // spread blows the stack on 90k+ buckets
   }
+  for (const example of claudePlain) negatives.push(example);
   // Cap the circular source at 10% of the negative class.
   const humanCap = Math.floor((negatives.length / (1 - HUMAN_TURNS_CAP_FRACTION)) * HUMAN_TURNS_CAP_FRACTION);
   negatives = negatives.concat(shuffle(humanTurns, rng).slice(0, humanCap));
@@ -264,6 +302,7 @@ function main(): void {
     generatedAt: new Date().toISOString(),
     positivesTotal: positives.length,
     positivesDampened: dampened,
+    registerLabels: labelsPath ? labelStats : undefined,
     positivesMidWorkFiltered: midWorkFiltered,
     positivesRegisterFiltered: registerFiltered,
     negativesTotal: negatives.length,
