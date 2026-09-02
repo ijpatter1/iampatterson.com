@@ -41,7 +41,6 @@ interface WeightsFile {
   calibration?: { temperature?: number };
 }
 
-
 function decodeBase64(data: string): Int8Array {
   if (typeof atob === 'function') {
     const binary = atob(data);
@@ -114,9 +113,9 @@ export function loadCcldModel(weights: unknown): CcldModel | null {
               extractFeatures(text, config),
               modelTensors,
               config,
-              extractDenseFeatures(text, config)
+              extractDenseFeatures(text, config),
             ),
-            temperature
+            temperature,
           );
         } catch {
           return 0.5; // neutral: the orchestrator treats this as unknown
@@ -137,8 +136,21 @@ export async function warmCcld(): Promise<void> {
   if (warmed) return;
   warmed = true;
   try {
-    const weights = await import('./ccld-weights.json');
-    model = loadCcldModel((weights as { default?: unknown }).default ?? weights);
+    // Rule F (dev trial, 2026-09-02): the served confidence is the MEAN of
+    // two detectors that read different things — ccld-weights.json (r28,
+    // the register: vocabulary and rhetoric) and ccld-weights-shape.json
+    // (r7d, the reply shape). Either alone answers if the other fails to
+    // load. Chosen from the ensemble-rule table in the loop-3 record; the
+    // heuristic max in detect.ts still applies on top.
+    const [primary, shape] = await Promise.all([
+      import('./ccld-weights.json'),
+      import('./ccld-weights-shape.json').catch(() => null),
+    ]);
+    const unwrap = (w: unknown): unknown => (w as { default?: unknown } | null)?.default ?? w;
+    const a = loadCcldModel(unwrap(primary));
+    const b = shape ? loadCcldModel(unwrap(shape)) : null;
+    model =
+      a && b ? { predict: (text: string) => (a.predict(text) + b.predict(text)) / 2 } : (a ?? b);
   } catch {
     model = null;
   }

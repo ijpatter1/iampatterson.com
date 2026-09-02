@@ -11,7 +11,13 @@
 import { statSync } from 'node:fs';
 import path from 'node:path';
 
-import { loadCcldModel, resetCcldForTests, warmCcld, isCcldAvailable, getCcldModel } from '@/lib/claudish/ccld';
+import {
+  loadCcldModel,
+  resetCcldForTests,
+  warmCcld,
+  isCcldAvailable,
+  getCcldModel,
+} from '@/lib/claudish/ccld';
 import { probabilityClaudish } from '@/lib/claudish/ccld-inference';
 import fixtures from '@/lib/claudish/ccld-fixtures.json';
 import weights from '@/lib/claudish/ccld-weights.json';
@@ -19,7 +25,7 @@ import weights from '@/lib/claudish/ccld-weights.json';
 describe('weights artifact', () => {
   it('stays within the size contract (8KB floor catches truncation, 64KB cap)', () => {
     const bytes = statSync(
-      path.join(process.cwd(), 'src', 'lib', 'claudish', 'ccld-weights.json')
+      path.join(process.cwd(), 'src', 'lib', 'claudish', 'ccld-weights.json'),
     ).size;
     expect(bytes).toBeGreaterThan(8 * 1024);
     expect(bytes).toBeLessThan(64 * 1024);
@@ -33,25 +39,27 @@ describe('weights artifact', () => {
 describe('fixture parity (training-time outputs replayed through the shipped path)', () => {
   const model = loadCcldModel(weights);
 
-  it.each((fixtures.inferenceCases as Array<{ text: string; p: number }>).map((c) => [
-    c.text.slice(0, 30) || '(empty)',
-    c,
-  ]))('reproduces p for %s', (_label, testCase) => {
+  it.each(
+    (fixtures.inferenceCases as Array<{ text: string; p: number }>).map((c) => [
+      c.text.slice(0, 30) || '(empty)',
+      c,
+    ]),
+  )('reproduces p for %s', (_label, testCase) => {
     expect(model).not.toBeNull();
-    const p = (model as NonNullable<typeof model>).predict(
-      (testCase as { text: string }).text
-    );
+    const p = (model as NonNullable<typeof model>).predict((testCase as { text: string }).text);
     expect(p).toBeCloseTo((testCase as { p: number }).p, 5);
   });
 
   it('classifies the canonical pair, and no longer leans on terse imperatives', () => {
     const m = model as NonNullable<typeof model>;
     expect(
-      m.predict("This isn't just a refactor — it's a robust, seamless transformation, underscoring everything.")
+      m.predict(
+        "This isn't just a refactor — it's a robust, seamless transformation, underscoring everything.",
+      ),
     ).toBeGreaterThan(0.8);
-    expect(
-      m.predict('lol yeah that is broken, been meaning to fix it for weeks tbh')
-    ).toBeLessThan(0.2);
+    expect(m.predict('lol yeah that is broken, been meaning to fix it for weeks tbh')).toBeLessThan(
+      0.2,
+    );
     // The first trained model leaned Claudish (~0.72) on terse workplace
     // imperatives; the conversational negative sources (movie dialogs,
     // 1990s usenet) taught it that humans talk like this. Pinned English.
@@ -83,13 +91,36 @@ describe('warm-up', () => {
     expect(isCcldAvailable()).toBe(true);
     expect(getCcldModel()?.predict(' — not just a test; a testament —')).toBeGreaterThan(0.5);
   });
+
+  it('serves rule F: the mean of the register weights and the shape weights (dev trial 2026-09-02)', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const shape = require('@/lib/claudish/ccld-weights-shape.json');
+    const register = loadCcldModel(weights)!;
+    const shapeModel = loadCcldModel(shape)!;
+    resetCcldForTests();
+    await warmCcld();
+    const served = getCcldModel()!;
+    // A structural Claude reply: the register model reads it plain, the shape model reads it Claude; F averages.
+    const text =
+      "Two caveats I'll carry rather than bury. The join failing is weak evidence on its own; the absent capture is the strong part.";
+    expect(served.predict(text)).toBeCloseTo(
+      (register.predict(text) + shapeModel.predict(text)) / 2,
+      9,
+    );
+    expect(shapeModel.predict(text)).toBeGreaterThan(register.predict(text));
+  });
+
+  it('keeps the shape weights inside the same size budget as the primary file', () => {
+    const bytes = statSync(
+      path.join(process.cwd(), 'src', 'lib', 'claudish', 'ccld-weights-shape.json'),
+    ).size;
+    expect(bytes).toBeLessThanOrEqual(64 * 1024);
+  });
 });
 
 describe('temperature scaling', () => {
   it('probabilityClaudish is monotone in the logit gap', () => {
-    expect(probabilityClaudish([0, 2], 1.2)).toBeGreaterThan(
-      probabilityClaudish([0, 1], 1.2)
-    );
+    expect(probabilityClaudish([0, 2], 1.2)).toBeGreaterThan(probabilityClaudish([0, 1], 1.2));
     expect(probabilityClaudish([1, 1], 1.2)).toBeCloseTo(0.5, 10);
   });
 

@@ -21,7 +21,7 @@ import { loadJudgeModel } from './judge-loader';
 import type { JudgeModel } from './judge-loader';
 import { extractRegisterFeatures } from './vendor/ccld-featurizer';
 import { scoreClaudish } from './vendor/heuristic';
-import { JUDGE_WEIGHTS } from './vendor/judge-weights';
+import { JUDGE_WEIGHTS, REFERENCE_WEIGHTS } from './vendor/judge-weights';
 
 import type { HeuristicResult } from './vendor/heuristic';
 
@@ -33,7 +33,10 @@ function loadEnsemble(weightsList: readonly unknown[]): JudgeModel[] {
   });
 }
 
-const VENDORED_MODELS = loadEnsemble([JUDGE_WEIGHTS]);
+// Rule F (dev trial, 2026-09-02): two members, the register detector and the
+// reply-shape detector; the median of two is their mean, so the loop judge
+// is the same rule the input box serves.
+const VENDORED_MODELS = loadEnsemble([JUDGE_WEIGHTS, REFERENCE_WEIGHTS]);
 let MODELS: JudgeModel[] = VENDORED_MODELS;
 
 /**

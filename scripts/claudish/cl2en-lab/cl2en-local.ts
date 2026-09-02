@@ -37,7 +37,11 @@ async function main() {
   const inputs = JSON.parse(
     readFileSync(process.env.CL2EN_INPUTS ?? `${DIR}/cl2en-inputs.json`, "utf8"),
   ) as Array<{ id: string; text: string }>;
-  const system = buildSystem("cl2en");
+  // CL2EN_SYSTEM_FILE swaps only the base prompt; the few-shot block and the canary are composed exactly
+  // as buildSystem does, so an ablation differs from the deployed prompt in the base text alone.
+  const system = process.env.CL2EN_SYSTEM_FILE
+    ? `${readFileSync(process.env.CL2EN_SYSTEM_FILE, "utf8").trim()}${buildSystem("cl2en").slice(buildSystem("cl2en").indexOf("\n\nExamples:\n"))}`
+    : buildSystem("cl2en");
   const rows: Array<Record<string, unknown>> = [];
   console.log(`model=${modelId} location=${location} eps=${process.env.LOOP_EPS ?? 'default'} extraAttempts=${process.env.LOOP_EXTRA ?? '0'}`);
   console.log(
