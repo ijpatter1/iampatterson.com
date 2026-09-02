@@ -19,7 +19,7 @@ export interface Model {
 
 export function tensorSizes(config: CcldFeaturizerConfig = CCLD_CONFIG): number[] {
   const dim = config.embeddingDim;
-  const inputDim = (config.orders.length + (config.wordOrders?.length ?? 0)) * dim + (config.registerFeatures ?? 0);
+  const inputDim = (config.orders.length + (config.wordOrders?.length ?? 0)) * dim + (config.registerFeatures ?? 0) + (config.structureFeatures ?? 0);
   return [
     ...[...config.buckets, ...(config.wordBuckets ?? [])].map((buckets) => buckets * dim),
     inputDim * config.hiddenDim,
@@ -34,7 +34,7 @@ export function initModel(
   config: CcldFeaturizerConfig = CCLD_CONFIG
 ): Model {
   const sizes = tensorSizes(config);
-  const inputDim = (config.orders.length + (config.wordOrders?.length ?? 0)) * config.embeddingDim + (config.registerFeatures ?? 0);
+  const inputDim = (config.orders.length + (config.wordOrders?.length ?? 0)) * config.embeddingDim + (config.registerFeatures ?? 0) + (config.structureFeatures ?? 0);
   const tableCount = config.buckets.length + (config.wordBuckets?.length ?? 0);
   const flat = sizes.map((size) => new Float64Array(size));
   const scale = (n: number) => Math.sqrt(2 / n);
@@ -73,7 +73,7 @@ export function backprop(
   const dim = config.embeddingDim;
   const hidden = config.hiddenDim;
   const charDim = (config.orders.length + (config.wordOrders?.length ?? 0)) * dim;
-  const inputDim = charDim + (config.registerFeatures ?? 0);
+  const inputDim = charDim + (config.registerFeatures ?? 0) + (config.structureFeatures ?? 0);
   // Shape guard — the bug this parameter exists to prevent: training a
   // v1-shaped model while evaluating with v3 indexing (the invalid
   // first r9 run) passes every parity check because both sides share

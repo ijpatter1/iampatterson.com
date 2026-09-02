@@ -38,6 +38,8 @@ export interface CcldFeaturizerConfig {
   /** v5: hashed word n-gram orders appended after the char orders (loop-2 D2). */
   wordOrders?: readonly number[];
   wordBuckets?: readonly number[];
+  /** v6/v7: sentence-shape statistics appended after the register vector (loop-2 D3). */
+  structureFeatures?: number;
 }
 
 export const CCLD_CONFIG = {
@@ -121,6 +123,24 @@ export const CCLD_V5_CONFIG: CcldFeaturizerConfig = {
   wordBuckets: [4096, 4096],
 };
 
+/** Count of the sentence-shape statistics defined below (loop-2 D3). */
+export const STRUCTURE_FEATURE_COUNT = 12;
+
+/** v6 = v4 + sentence-shape structure features (loop-2 D3, 2026-09-02). */
+export const CCLD_V6_CONFIG: CcldFeaturizerConfig = {
+  ...CCLD_V4_CONFIG,
+  version: 6,
+  structureFeatures: STRUCTURE_FEATURE_COUNT,
+};
+
+/** v7 = v5 word tables + register + structure (loop-2 D4 combination). */
+export const CCLD_V7_CONFIG: CcldFeaturizerConfig = {
+  ...CCLD_V5_CONFIG,
+  version: 7,
+  registerFeatures: REGISTER_FEATURE_COUNT,
+  structureFeatures: STRUCTURE_FEATURE_COUNT,
+};
+
 export function wordTokens(text: string): string[] {
   return normalizeForDetection(text)
     .split(/[^a-z0-9._#@+-]+/i)
@@ -159,6 +179,100 @@ export function extractRegisterFeatures(text: string): Float64Array {
     }
     out[10] = Math.min(1, maxRun / 6);
   }
+  return out;
+}
+
+/**
+ * Sentence-shape statistics in [0, 1], frozen like the register vector.
+ * These measure how prose is built (clauses, openers, punctuation habits,
+ * rhythm), not which words it uses, so a topic shared by human and
+ * Claude prose cannot leak through them.
+ */
+export const STRUCTURE_INDEX = {
+  clausesPerSentence: 0,
+  colonShare: 1,
+  appositiveRate: 2,
+  determinerOpenerShare: 3,
+  firstPersonOpenerShare: 4,
+  ingOrLyOpenerShare: 5,
+  questionShare: 6,
+  parentheticalRate: 7,
+  dashRate: 8,
+  contractionRate: 9,
+  listMarkerRate: 10,
+  lengthCv: 11,
+} as const;
+
+export function extractStructureFeatures(text: string): Float64Array {
+  const out = new Float64Array(STRUCTURE_FEATURE_COUNT);
+  const sentences = normalizeForDetection(text)
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length > 0);
+  const n = sentences.length;
+  if (n === 0) return out;
+  const count = (re: RegExp, s: string): number => (s.match(re) ?? []).length;
+  let clauses = 0;
+  let colons = 0;
+  let appositives = 0;
+  let determiners = 0;
+  let firstPerson = 0;
+  let ingOrLy = 0;
+  let questions = 0;
+  let parentheticals = 0;
+  let dashes = 0;
+  let contractions = 0;
+  let words = 0;
+  const lengths: number[] = [];
+  for (const s of sentences) {
+    const tokens = s.split(' ');
+    lengths.push(tokens.length);
+    words += tokens.length;
+    clauses += count(/[,;]|\s[—–-]\s/g, s);
+    if (s.includes(':')) colons++;
+    appositives += count(/,\s+(?:a|an|the|which|not|especially|particularly)\b/gi, s);
+    const first = (tokens[0] ?? '').replace(/^[^a-z']+|[^a-z']+$/gi, '').toLowerCase();
+    if (/^(?:the|this|that|these|those|it|there)$/.test(first)) determiners++;
+    if (/^(?:i|i'm|i've|i'll|i'd|we|we're|we've|we'll|my|our)$/.test(first)) firstPerson++;
+    if (first.length > 4 && /^(?:[a-z]+ing|[a-z]+ly)$/.test(first)) ingOrLy++;
+    if (s.endsWith('?')) questions++;
+    parentheticals += count(/\(/g, s);
+    dashes += count(/—|–|\s-\s/g, s);
+    contractions += count(/\b[a-z]+'(?:t|s|re|ll|ve|d|m)\b/gi, s);
+  }
+  out[STRUCTURE_INDEX.clausesPerSentence] = Math.min(1, clauses / n / 4);
+  out[STRUCTURE_INDEX.colonShare] = colons / n;
+  out[STRUCTURE_INDEX.appositiveRate] = Math.min(1, appositives / n / 2);
+  out[STRUCTURE_INDEX.determinerOpenerShare] = determiners / n;
+  out[STRUCTURE_INDEX.firstPersonOpenerShare] = firstPerson / n;
+  out[STRUCTURE_INDEX.ingOrLyOpenerShare] = ingOrLy / n;
+  out[STRUCTURE_INDEX.questionShare] = questions / n;
+  out[STRUCTURE_INDEX.parentheticalRate] = Math.min(1, parentheticals / n / 2);
+  out[STRUCTURE_INDEX.dashRate] = Math.min(1, dashes / n / 2);
+  out[STRUCTURE_INDEX.contractionRate] = Math.min(1, (contractions / Math.max(1, words)) * 10);
+  const lines = text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  out[STRUCTURE_INDEX.listMarkerRate] =
+    lines.length === 0 ? 0 : Math.min(1, lines.filter((line) => /^(?:[-*•]\s|\d+[.)]\s|#{1,6}\s)/.test(line)).length / lines.length);
+  const mean = words / n;
+  const variance = lengths.reduce((a, b) => a + (b - mean) ** 2, 0) / n;
+  out[STRUCTURE_INDEX.lengthCv] = Math.min(1, Math.sqrt(variance) / Math.max(1, mean));
+  return out;
+}
+
+/**
+ * The dense input a config asks for: register vector (v4+), then
+ * structure vector (v6+), or undefined when the config uses neither.
+ */
+export function extractDenseFeatures(text: string, config: CcldFeaturizerConfig): Float64Array | undefined {
+  const r = config.registerFeatures ?? 0;
+  const s = config.structureFeatures ?? 0;
+  if (r + s === 0) return undefined;
+  const out = new Float64Array(r + s);
+  if (r > 0) out.set(extractRegisterFeatures(text).subarray(0, r), 0);
+  if (s > 0) out.set(extractStructureFeatures(text).subarray(0, s), r);
   return out;
 }
 

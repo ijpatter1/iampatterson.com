@@ -28,8 +28,10 @@ import {
   CCLD_V3_CONFIG,
   CCLD_V4_CONFIG,
   CCLD_V5_CONFIG,
+  CCLD_V6_CONFIG,
+  CCLD_V7_CONFIG,
   configHash,
-  extractRegisterFeatures,
+  extractDenseFeatures,
   fnv1a32,
 } from '../../src/lib/claudish/ccld-featurizer';
 
@@ -39,8 +41,12 @@ import {
 // CCLD_CAPACITY=v3 selects the scaled config (mask + dim 16 + hidden 96);
 // MASK_MODEL_NAMES=1 alone keeps v2 (mask at original capacity).
 const TRAIN_CONFIG =
-  process.env.CCLD_CAPACITY === 'v5'
-    ? CCLD_V5_CONFIG
+  process.env.CCLD_CAPACITY === 'v7'
+    ? CCLD_V7_CONFIG
+    : process.env.CCLD_CAPACITY === 'v6'
+      ? CCLD_V6_CONFIG
+      : process.env.CCLD_CAPACITY === 'v5'
+        ? CCLD_V5_CONFIG
     : process.env.CCLD_CAPACITY === 'v4'
       ? CCLD_V4_CONFIG
     : process.env.CCLD_CAPACITY === 'v3'
@@ -98,7 +104,7 @@ function quantize(model: Model): {
     scales.push(scale);
     dequantized.push(d);
   }
-  const embeddingCount = TRAIN_CONFIG.buckets.length;
+  const embeddingCount = TRAIN_CONFIG.buckets.length + (TRAIN_CONFIG.wordBuckets?.length ?? 0);
   return {
     quantized,
     scales,
@@ -207,11 +213,11 @@ async function main(): Promise<void> {
     .split('\n')
     .filter(Boolean)
     .map((line) => JSON.parse(line) as Example);
-  if (TRAIN_CONFIG.registerFeatures) {
+  if (TRAIN_CONFIG.registerFeatures || TRAIN_CONFIG.structureFeatures) {
     // One regex pass per example at load (~30s for 180k) instead of one
     // per epoch inside the hot loop.
     const t0 = Date.now();
-    for (const example of examples) example.reg = extractRegisterFeatures(example.text);
+    for (const example of examples) example.reg = extractDenseFeatures(example.text, TRAIN_CONFIG);
     console.log(`[train] register features precomputed in ${Math.round((Date.now() - t0) / 1000)}s`);
   }
   const rng = seededRng(1337);
@@ -433,7 +439,7 @@ async function main(): Promise<void> {
         extractFeatures(text, TRAIN_CONFIG),
         quantizedTensors,
         TRAIN_CONFIG,
-        TRAIN_CONFIG.registerFeatures ? extractRegisterFeatures(text) : undefined
+        extractDenseFeatures(text, TRAIN_CONFIG)
       );
       return {
         text,

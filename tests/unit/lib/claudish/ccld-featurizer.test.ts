@@ -155,3 +155,32 @@ describe('v5: hashed word features as extra orders (loop-2 D2)', () => {
     expect(bi.size).toBeLessThanOrEqual(5);
   });
 });
+
+describe('v6/v7: sentence-shape structure features (loop-2 D3)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const F = require('@/lib/claudish/ccld-featurizer') as typeof import('@/lib/claudish/ccld-featurizer');
+  it('declares distinct configs: v6 = v4 + structure, v7 = v5 + register + structure', () => {
+    expect(F.CCLD_V6_CONFIG.structureFeatures).toBe(F.STRUCTURE_FEATURE_COUNT);
+    expect(F.CCLD_V6_CONFIG.registerFeatures).toBe(F.REGISTER_FEATURE_COUNT);
+    expect(F.CCLD_V6_CONFIG.wordOrders).toBeUndefined();
+    expect(F.CCLD_V7_CONFIG.wordOrders).toEqual([1, 2]);
+    expect(F.CCLD_V7_CONFIG.structureFeatures).toBe(F.STRUCTURE_FEATURE_COUNT);
+    const hashes = new Set([F.CCLD_V4_CONFIG, F.CCLD_V5_CONFIG, F.CCLD_V6_CONFIG, F.CCLD_V7_CONFIG].map(F.configHash));
+    expect(hashes.size).toBe(4);
+  });
+  it('measures sentence shape, not vocabulary: question share, first-person openers, colons, clauses', () => {
+    const s = F.extractStructureFeatures('Is it done? I think so, mostly: two parts remain, and one is easy. We ship Monday.');
+    expect(s).toHaveLength(F.STRUCTURE_FEATURE_COUNT);
+    for (const v of s) { expect(v).toBeGreaterThanOrEqual(0); expect(v).toBeLessThanOrEqual(1); }
+    expect(s[F.STRUCTURE_INDEX.questionShare]).toBeCloseTo(1 / 3, 6);
+    expect(s[F.STRUCTURE_INDEX.firstPersonOpenerShare]).toBeCloseTo(2 / 3, 6);
+    expect(s[F.STRUCTURE_INDEX.colonShare]).toBeCloseTo(1 / 3, 6);
+    expect(s[F.STRUCTURE_INDEX.clausesPerSentence]).toBeGreaterThan(0);
+  });
+  it('returns zeros on empty text and concatenates register + structure for dense input', () => {
+    expect([...F.extractStructureFeatures('')].every((v) => v === 0)).toBe(true);
+    expect(F.extractDenseFeatures('Plain text here.', F.CCLD_V6_CONFIG)).toHaveLength(F.REGISTER_FEATURE_COUNT + F.STRUCTURE_FEATURE_COUNT);
+    expect(F.extractDenseFeatures('Plain text here.', F.CCLD_V5_CONFIG)).toBeUndefined();
+    expect(F.extractDenseFeatures('Plain text here.', F.CCLD_V4_CONFIG)).toHaveLength(F.REGISTER_FEATURE_COUNT);
+  });
+});

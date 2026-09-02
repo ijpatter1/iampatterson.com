@@ -15,9 +15,11 @@ import {
   CCLD_V3_CONFIG,
   CCLD_V4_CONFIG,
   CCLD_V5_CONFIG,
+  CCLD_V6_CONFIG,
+  CCLD_V7_CONFIG,
   configHash,
   extractFeatures,
-  extractRegisterFeatures,
+  extractDenseFeatures,
 } from './ccld-featurizer';
 
 import type { CcldFeaturizerConfig } from './ccld-featurizer';
@@ -78,7 +80,11 @@ export function loadCcldModel(weights: unknown): CcldModel | null {
             ? CCLD_V4_CONFIG
             : embeddedHash === configHash(CCLD_V5_CONFIG)
               ? CCLD_V5_CONFIG
-              : null;
+              : embeddedHash === configHash(CCLD_V6_CONFIG)
+                ? CCLD_V6_CONFIG
+                : embeddedHash === configHash(CCLD_V7_CONFIG)
+                  ? CCLD_V7_CONFIG
+                  : null;
   if (!config) return null;
   const scales = file.quant?.scales;
   const tensors = file.tensors;
@@ -108,7 +114,7 @@ export function loadCcldModel(weights: unknown): CcldModel | null {
               extractFeatures(text, config),
               modelTensors,
               config,
-              config.registerFeatures ? extractRegisterFeatures(text) : undefined
+              extractDenseFeatures(text, config)
             ),
             temperature
           );

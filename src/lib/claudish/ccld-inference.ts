@@ -31,7 +31,7 @@ export function forwardLogits(
   const dim = config.embeddingDim;
   // Word orders (v5) ride after the char orders; the register vector after both.
   const charDim = (config.orders.length + (config.wordOrders?.length ?? 0)) * dim;
-  const inputDim = charDim + (config.registerFeatures ?? 0);
+  const inputDim = charDim + (config.registerFeatures ?? 0) + (config.structureFeatures ?? 0);
   const hidden = tensors.b1.length;
   const x = new Float64Array(inputDim);
   if (registerVec) {
