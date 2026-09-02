@@ -1,3 +1,5 @@
+import path from "node:path";
+import { homedir } from "node:os";
 /* cl2en lab (docs/claudish/cl2en-experiment-rules.md). Paths come from CL2EN_LAB_DIR; raw pool text never enters the repo. */
 /**
  * Local cl2en battery: drives the real refinement loop (runCl2enLoop over
@@ -14,6 +16,17 @@ import {
 } from "../../../infrastructure/cloud-run/claudish-proxy/src/cl2en-loop";
 import { streamGemini } from "../../../infrastructure/cloud-run/claudish-proxy/src/gemini";
 import { buildSystem } from "../../../infrastructure/cloud-run/claudish-proxy/src/prompts";
+import { setJudgeModels } from "../../../infrastructure/cloud-run/claudish-proxy/src/judge";
+
+// Loop-2 T arms: LOOP_JUDGE_MODELS=tag,tag,tag swaps the loop's judge
+// ensemble for registry candidates (~/.claudish-corpus/models/<tag>).
+if (process.env.LOOP_JUDGE_MODELS) {
+  const tags = process.env.LOOP_JUDGE_MODELS.split(",").map((x) => x.trim()).filter(Boolean);
+  setJudgeModels(
+    tags.map((tag) => JSON.parse(readFileSync(path.join(homedir(), ".claudish-corpus", "models", tag, "ccld-weights.json"), "utf8")) as unknown)
+  );
+  console.log(`judge ensemble overridden: ${tags.join(", ")}`);
+}
 
 const DIR = (process.env.CL2EN_LAB_DIR ?? `${process.env.HOME}/.claudish-corpus/analysis/2026-09-01-model-compare`);
 const OUT = process.argv[2] ?? `${DIR}/cl2en-local-report.json`;
