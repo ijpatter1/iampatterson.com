@@ -1,11 +1,15 @@
 /**
  * claudish-proxy — the translation-loop judge.
  *
- * Ensemble no single model can cheat: the MEDIAN of three independently
- * trained content-sensitive CCLD models (r3, r6h, r7d — vendored in
- * src/vendor/), max-ed with the regex heuristic so the meme door and
- * mechanical register evidence always count. Pass = product < 0.5
- * ("Leaning English" or better in the UI's tiers).
+ * The judge is the median of the vendored ensemble, max-ed with the regex
+ * heuristic so the meme door and mechanical register evidence always count.
+ * Pass = product < 0.5 ("Leaning English" or better in the UI's tiers).
+ *
+ * Loop 3 (2026-09-02): the ensemble is ONE model, the register detector
+ * (Claudish is the register, not the author; a plain Claude reply is
+ * English). The earlier trio (r3, r6h, r7d) measured authorship and
+ * convicted plain technical prose on topic; retired, see
+ * docs/claudish/cl2en-loop3-report.md.
  *
  * Also provides sentence-level attribution and the negation-feedback
  * builder for retry turns (the loop design agreed with Ian 2026-09-01:
@@ -17,7 +21,7 @@ import { loadJudgeModel } from './judge-loader';
 import type { JudgeModel } from './judge-loader';
 import { extractRegisterFeatures } from './vendor/ccld-featurizer';
 import { scoreClaudish } from './vendor/heuristic';
-import { R3_WEIGHTS, R6H_WEIGHTS, R7D_WEIGHTS } from './vendor/judge-weights';
+import { JUDGE_WEIGHTS } from './vendor/judge-weights';
 
 import type { HeuristicResult } from './vendor/heuristic';
 
@@ -29,14 +33,14 @@ function loadEnsemble(weightsList: readonly unknown[]): JudgeModel[] {
   });
 }
 
-const VENDORED_MODELS = loadEnsemble([R3_WEIGHTS, R6H_WEIGHTS, R7D_WEIGHTS]);
+const VENDORED_MODELS = loadEnsemble([JUDGE_WEIGHTS]);
 let MODELS: JudgeModel[] = VENDORED_MODELS;
 
 /**
  * Lab seam (loop-2 T arms, 2026-09-02): replace the ensemble members with
  * candidate weights so an experiment can run the loop under a candidate
  * judge without touching the vendored set. Production never calls this;
- * the served ensemble is the vendored trio.
+ * the served ensemble is the vendored register detector.
  */
 export function setJudgeModels(weightsList: readonly unknown[]): void {
   MODELS = loadEnsemble(weightsList);
@@ -49,7 +53,7 @@ export function resetJudgeModels(): void {
 export const JUDGE_PASS_BELOW = 0.5;
 
 export interface JudgeVerdict {
-  /** max(median of the three models, heuristic score). */
+  /** max(median of the vendored ensemble, heuristic score); served ensemble = one register model. */
   p: number;
   passed: boolean;
   heuristic: HeuristicResult;
@@ -112,7 +116,7 @@ export interface StructuralGate {
 export function structuralEvidence(
   text: string,
   verdict: JudgeVerdict,
-  gate: StructuralGate = { retryAt: STRUCTURAL_RETRY_AT, minSentences: STRUCTURAL_MIN_SENTENCES }
+  gate: StructuralGate = { retryAt: STRUCTURAL_RETRY_AT, minSentences: STRUCTURAL_MIN_SENTENCES },
 ): StructuralEvidence {
   if (verdict.p < gate.retryAt) return { convicting: [], actionable: false };
   const convicting = convictingSentences(text, 4);
@@ -123,7 +127,8 @@ export function judgeTranslation(text: string): JudgeVerdict {
   const ps = MODELS.map((m) => m.predict(text)).sort((a, b) => a - b);
   const heuristic = scoreClaudish(text);
   // Median for any ensemble size (the vendored trio takes index 1; a single lab member takes index 0).
-  const median = ps.length % 2 === 1 ? ps[(ps.length - 1) / 2] : (ps[ps.length / 2 - 1] + ps[ps.length / 2]) / 2;
+  const median =
+    ps.length % 2 === 1 ? ps[(ps.length - 1) / 2] : (ps[ps.length / 2 - 1] + ps[ps.length / 2]) / 2;
   const p = Math.max(median, heuristic.score);
   return { p, passed: p < JUDGE_PASS_BELOW, heuristic };
 }
@@ -150,7 +155,7 @@ export type FeedbackStyle = 'principle' | 'symptoms';
 export function buildNegationFeedback(
   output: string,
   verdict: JudgeVerdict,
-  style: FeedbackStyle = 'principle'
+  style: FeedbackStyle = 'principle',
 ): string {
   const kills = killListHits(output);
   const worst = convictingSentences(output, 2);
@@ -160,7 +165,7 @@ export function buildNegationFeedback(
   const parts = [
     style === 'symptoms'
       ? 'That still reads as AI-assistant prose. Rewrite it as genuinely plain English.'
-      : 'That still reads as AI-assistant prose. Rewrite it as genuinely plain English: Strip the register from every clause and keep only what a plain speaker would say: a fact, an act, a request, a question, a feeling. If a clause\'s only content is that something matters, delete it. Keep every number, name and identifier; keep the speaker (I stays I, we stays we); keep the communication type. Re-compose the whole text as one person telling another what happened.',
+      : "That still reads as AI-assistant prose. Rewrite it as genuinely plain English: Strip the register from every clause and keep only what a plain speaker would say: a fact, an act, a request, a question, a feeling. If a clause's only content is that something matters, delete it. Keep every number, name and identifier; keep the speaker (I stays I, we stays we); keep the communication type. Re-compose the whole text as one person telling another what happened.",
   ];
   if (kills.length > 0) parts.push(`Remove these words entirely: ${kills.join(', ')}.`);
   if (verdict.heuristic.signals.length > 0) {
@@ -168,12 +173,12 @@ export function buildNegationFeedback(
   }
   if (worst.length > 0) {
     parts.push(
-      'These sentences are the problem. Do not repair them — RE-COMPOSE the whole text from scratch, as one person telling another what happened, in your own plain sentence shapes. Front the actor and the time ("Six weeks ago we launched..."), never the abstraction ("The complaint, six weeks in, is..."). Framing sentences ("What follows is...") become direct ones ("Here is..."):'
+      'These sentences are the problem. Do not repair them — RE-COMPOSE the whole text from scratch, as one person telling another what happened, in your own plain sentence shapes. Front the actor and the time ("Six weeks ago we launched..."), never the abstraction ("The complaint, six weeks in, is..."). Framing sentences ("What follows is...") become direct ones ("Here is..."):',
     );
     for (const sentence of worst) parts.push(`- "${sentence}"`);
   }
   parts.push(
-    'Keep all facts, identifiers, and numbers exactly. Output only the rewritten translation.'
+    'Keep all facts, identifiers, and numbers exactly. Output only the rewritten translation.',
   );
   return parts.join('\n');
 }
@@ -190,7 +195,9 @@ export function buildNegationFeedback(
 export function missingFacts(input: string, output: string): string[] {
   const numbers = input.match(/\d+(?:[.,]\d+)*(?:ms|%|s|x)?/g) ?? [];
   const identifiers = (
-    input.match(/\b[A-Za-z_][A-Za-z0-9_]*(?:[._][A-Za-z0-9_]+|\(\))+\b|\b[a-z]+[A-Z][A-Za-z0-9]*\b|\b[A-Z][A-Z0-9_]*[0-9_][A-Z0-9_]*\b/g) ?? []
+    input.match(
+      /\b[A-Za-z_][A-Za-z0-9_]*(?:[._][A-Za-z0-9_]+|\(\))+\b|\b[a-z]+[A-Z][A-Za-z0-9]*\b|\b[A-Z][A-Z0-9_]*[0-9_][A-Z0-9_]*\b/g,
+    ) ?? []
   ).filter((id) => !/^[A-Z]+$/.test(id));
   const missing: string[] = [];
   for (const token of [...numbers, ...identifiers]) {
@@ -204,7 +211,8 @@ export function buildFactsFeedback(missing: string[]): string {
 }
 
 // Capitalised forms spelled out on purpose: no `i` flag, so "US" the country is not a pronoun.
-const FIRST_PERSON = /\b(?:I|I'm|I'll|I've|I'd|[Mm]e|[Mm]y|[Mm]ine|[Ww]e|[Ww]e're|[Ww]e'll|[Ww]e've|[Ww]e'd|[Oo]ur|[Oo]urs|us|Us)\b/;
+const FIRST_PERSON =
+  /\b(?:I|I'm|I'll|I've|I'd|[Mm]e|[Mm]y|[Mm]ine|[Ww]e|[Ww]e're|[Ww]e'll|[Ww]e've|[Ww]e'd|[Oo]ur|[Oo]urs|us|Us)\b/;
 
 /**
  * Speaker guard (arm 2b): a facts retry that restores numbers by

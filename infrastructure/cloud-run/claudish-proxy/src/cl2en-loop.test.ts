@@ -84,11 +84,14 @@ describe('runCl2enLoop', () => {
     expect(events[events.length - 1]).toBe(`T:${CLEAN}`);
   });
 
-  it('NO-INFINITE-LOOPS: topic-convicted plain tech never retries', async () => {
+  it('plain tech passes at attempt 1 under the register judge (loop 3); nothing to retry', async () => {
+    // Through loop 2 this pinned the authorship judge's blind spot (plain
+    // tech convicted on topic, no retry because nothing was actionable).
+    // The register judge passes it outright; the no-retry half still holds.
     const { deps, calls } = scriptedDeps([TECH_PLAIN]);
     const { emit } = collector();
     const result = await runCl2enLoop('input', 'sys', deps, emit);
-    expect(result.passed).toBe(false); // the judge's blind spot, honestly reported
+    expect(result.passed).toBe(true);
     expect(result.revised).toBe(false);
     expect(calls).toHaveLength(1); // no retry bought
     expect(result.attempts[0].actionable).toBe(false);
@@ -159,23 +162,27 @@ describe('structural retry tier (Ian honesty test, 2026-09-01)', () => {
 The client complains that the customers acquired since the system went live are producing less gross margin than the ones acquired before it. What follows is the system as built, and the results since launch.`;
   const RESTRUCTURED = `Six weeks ago we launched a system that predicts lifetime value. It scores each new customer, turns the score into a dollar value, and sends that to the ad platforms, which bid on it as if it were fact. So the number we send changes who gets acquired next. The client now says the customers acquired since launch bring in less gross margin than the ones before. Here is how the system works and what has happened since.`;
 
-  it('skeleton-Claudish with zero mechanical evidence now buys a structural retry', async () => {
+  it('the honesty-test skeleton fixture PASSES at attempt 1 under the register judge (loop 3)', async () => {
+    // Under the authorship judge this fixture scored ~0.69 with zero
+    // mechanical evidence and the structural tier bought a retry. Both
+    // frontier fidelity judges rate it plain (4.98 of 5 in loop 2), and
+    // the register judge agrees, so the loop keeps attempt 1. A retry
+    // would have to be bought by text the register judge convicts.
     const { deps, calls } = scriptedDeps([LIGHT_EDIT, RESTRUCTURED]);
     const { emit, events } = collector();
     const result = await runCl2enLoop('input', 'sys', deps, emit);
-    expect(calls.length).toBe(2); // the structural tier bought the retry
-    expect(result.servedAttempt).toBe(2);
-    expect(result.revised).toBe(true);
-    expect(events).toContain('REVISE');
-    // The feedback quoted the convicting sentences for the rewrite.
-    expect(calls[1][2].text).toContain('These sentences are the problem');
+    expect(result.passed).toBe(true);
+    expect(calls.length).toBe(1);
+    expect(result.servedAttempt).toBe(1);
+    expect(result.revised).toBe(false);
+    expect(events).not.toContain('REVISE');
   });
 
-  it('a multi-sentence pure-topic probe stays bounded: one retry, plateau stop', async () => {
+  it('a multi-sentence plain probe stays bounded: no retry at all under the register judge', async () => {
     const { deps, calls } = scriptedDeps([LIGHT_EDIT, LIGHT_EDIT, LIGHT_EDIT]);
     const { emit } = collector();
     const result = await runCl2enLoop('input', 'sys', deps, emit);
-    expect(calls.length).toBe(2); // probe + plateau cut, never a third
+    expect(calls.length).toBe(1);
     expect(result.revised).toBe(false);
     expect(result.servedAttempt).toBe(1);
   });

@@ -9,6 +9,8 @@ import io
 import json
 import os
 
+import base64
+
 metrics = json.load(io.open('src/lib/claudish/ccld-metrics.json'))
 report = json.load(io.open(os.path.expanduser('~/.claudish-corpus/corpus-report.json')))
 dataset = json.load(io.open(os.path.expanduser('~/.claudish-corpus/dataset-summary.json')))
@@ -24,17 +26,28 @@ lines = []
 add = lines.append
 add('# CCLD — Compact Claudish Language Detector: Model Card')
 add('')
-add('A %s-byte binary classifier that runs on every keystroke at iampatterson.com/claudish and decides whether you type like a large language model. It is a reimplementation of Google\'s CLD3 architecture, trained on one person\'s Claude Code transcripts. This is exactly as serious as it sounds.' % f"{weights_bytes:,}")
+add('A %s-byte binary classifier that runs on every keystroke at iampatterson.com/claudish and decides whether you type like a large language model. It is a reimplementation of Google\'s CLD3 architecture, trained on one person\'s Claude conversations, labelled for the register rather than the author since loop 3. This is exactly as serious as it sounds.' % f"{weights_bytes:,}")
 add('')
 add('## Architecture')
 add('')
-add("CLD3's shape: hashed character n-gram fractions (orders 1-4) into small embeddings, averaged, one ReLU layer (48 units), softmax over two classes. 27,026 parameters, quantized int8 symmetric per-tensor, shipped as %s bytes of base64 JSON. Inference is dependency-free TypeScript; measured in Node on 2026-09-01 it costs 0.6ms for 1,200 characters and 1.6ms at the 3,000-character input cap (linear in length, well inside a keystroke)." % f"{weights_bytes:,}")
+weights = json.load(io.open('src/lib/claudish/ccld-weights.json'))
+param_count = sum(len(base64.b64decode(t)) for t in weights['tensors'].values())  # int8: one byte per parameter
+feat = weights.get('featurizer', {})
+dense = (feat.get('registerFeatures') or 0) + (feat.get('structureFeatures') or 0)
+dense_note = f", plus {dense} dense register and sentence-shape features concatenated to the embedding average (featurizer v{feat.get('version', 1)})" if dense else ""
+add("CLD3's shape: hashed character n-gram fractions (orders 1-4) into small embeddings, averaged%s, one ReLU layer (48 units), softmax over two classes. %s parameters, quantized int8 symmetric per-tensor, shipped as %s bytes of base64 JSON. Inference is dependency-free TypeScript; measured in Node on 2026-09-01 it costs 0.6ms for 1,200 characters and 1.6ms at the 3,000-character input cap (linear in length, well inside a keystroke)." % (dense_note, f"{param_count:,}", f"{weights_bytes:,}"))
 add('')
 add('Two deliberate divergences from CLD3, because we detect punctuation habits, not scripts: spaces are included in n-grams (" — " — the spaced em dash — is the signal, and, as it turns out, the single most Claudish n-gram in the model), and the bucket counts are compact (96/512/1536/1024 x dim 8).')
 add('')
 add('## Training data')
 add('')
-add(f"Positive class: {report['assistantChars']:,} characters of assistant prose from {report['files']:,} Claude Code transcript files ({report['sessions']} parent sessions across {report['projects']} project directories), scrubbed (code, paths, URLs, secrets, money removed or chunk-dropped), deduplicated, and chunked to the runtime length distribution. {dataset['train']['pos']:,} chunks in train after phrase damping (below).")
+reg = dataset.get('registerLabels')
+if reg:
+    add("**Definition (loop 3, 2026-09-02): Claudish is the register, not the author.** The positive class is Claude prose that a frozen frontier judge (Gemini 3.1 Pro, rubric in `scripts/claudish/cl2en-lab/register-label.ts`, calibrated against Opus 5 on 300 chunks) scored 2 or higher for the Claudish register; Claude prose the judge scored 0 or 1 is a NEGATIVE source (`claude-plain`). Judge labels cover about 27,000 chunks; the rest of the corpus was labelled by two rounds of self-training with the candidate model as teacher, never with translator output. Consequence: a plain Claude reply reads as English here, by design.")
+    add("")
+    add(f"Positive class: register-bearing chunks from {report['files']:,} Claude Code transcript files ({report['sessions']} parent sessions, {report['projects']} project directories) and the claude.ai conversation export, selected by label: {reg['positive']:,} judge/teacher positives; {reg['plain']:,} Claude chunks labelled plain moved to the negative class; {reg['unlabelled']:,} unlabelled chunks unused.")
+else:
+    add(f"Positive class: {report['assistantChars']:,} characters of assistant prose from {report['files']:,} Claude Code transcript files ({report['sessions']} parent sessions across {report['projects']} project directories), scrubbed (code, paths, URLs, secrets, money removed or chunk-dropped), deduplicated, and chunked to the runtime length distribution. {dataset['train']['pos']:,} chunks in train after phrase damping (below).")
 add('')
 add("Negative class, all authored pre-ChatGPT by source or construction: " + ", ".join(f"{k} {v:,}" for k, v in dataset['negBySource'].items()) + ". Wikipedia negatives are revisions fetched AS OF 2022-11-30; movie-dialogs (Cornell, 2011) and usenet-1990s (20 Newsgroups) supply the CONVERSATIONAL register the first training round lacked — see the failure-mode section. The human-turns source is the author's own typed messages filtered by the regex heuristic (circular, capped at ~10%). The author declined to contribute his pre-2023 LinkedIn posts, which would have been the sharpest negatives; the model card you are reading is contractually obligated to mention this.")
 add('')
@@ -88,6 +101,9 @@ add('')
 top_gram = metrics['topNgrams'][0]['gram'].replace(' ', '·')
 add(f"Top-ranked this training round: `{top_gram}`. The corpus contains {report['emDash']['total']:,} em dashes — {report['emDash']['perMessage']} per message — and the spaced em dash sits in the top ranks of every model trained so far. \"You're absolutely right\" appears exactly once in 33.4MB, which makes the UI's thumbs-down label a monument to a phrase almost never actually said.")
 add('')
+if reg:
+    add("The dev/test/held-out numbers above are on the merged label set (judge plus teacher labels). On judge-labelled test rows only, the loop-3 report records: register-bearing chunks caught 81.7% (93% of those the judge scored 3), plain Claude convicted 33.2%, human sources 0.1 to 1.6% (topic probe 7.4%). Those are the honest numbers for this definition; the table above is what the trainer saw.")
+    add("")
 add('## Scope limits, stated plainly')
 add('')
 add("This model detects ONE person's Claude, as captured in Claude Code transcripts over a few months of specific CLI versions, with that person's skills and CLAUDE.md files steering the register. It is not a general LLM detector. Paste GPT output into the box and the binary it actually computes is closer to \"LLM-ish vs human.\" It has never seen poetry, other languages, or a teenager's text messages, and its opinions about them are not informed ones.")

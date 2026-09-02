@@ -135,11 +135,13 @@ describe('ClaudishApp', () => {
     const user = userEvent.setup();
     render(<ClaudishApp />);
     await user.click(screen.getByRole('textbox'));
-    // Soft-register Claude: r6h claims the side at leaning strength
-    // (~0.76) — the tier that makes the no-hedging design pay off.
+    // Soft-register Claude: the leaning tier that makes the no-hedging
+    // design pay off. Under the register model (r28, loop 3) the plain
+    // version of this sentence scores 0.00, by design; one contrastive
+    // negation puts it in the mid band.
     await user.paste(
-      // Scores ~0.73 with the shipped model (r7d): mid-band, claims the side.
-      'That criticism lands. The report buried its one actionable number under six paragraphs of context.'
+      // Scores ~0.67 (max of model 0.60 and heuristic 0.67) with the shipped model (r28): mid-band, claims the side.
+      "That criticism lands. The report isn't just long; it buries its one actionable number under six paragraphs of context."
     );
     expect(screen.getByRole('tab', { name: 'Leaning Claudish' })).toBeInTheDocument();
     // A claimed Claudish side drives the direction: target flips to English.

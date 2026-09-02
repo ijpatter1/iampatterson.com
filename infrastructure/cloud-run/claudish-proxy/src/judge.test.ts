@@ -2,9 +2,11 @@
  * Judge ensemble tests.
  *
  * Vendor regeneration: the weights in src/vendor/judge-weights.ts come
- * from ~/.claudish-corpus/models/{r3-conversational,r6h-hn40,
- * r7d-mask-letme04}/ccld-weights.json — regenerate with the node
- * snippet in the session handoff (Decision #24) if those tags change.
+ * from ~/.claudish-corpus/models/{r28-register-self2-v6 (the judge),
+ * r7d-mask-letme04 (reference, seam test only)}/ccld-weights.json —
+ * regenerate with scripts/claudish/vendor-judge-weights.py if those
+ * tags change. Loop 3 (2026-09-02): Claudish is the register, not the
+ * author, so plain prose passes whoever wrote it.
  *
  * The drift pin: vendored MODULES must stay byte-identical to their
  * src/lib/claudish originals (repo-relative read; dev/CI only — the
@@ -33,10 +35,10 @@ describe('vendored modules drift pin', () => {
       const vendored = readFileSync(path.join(__dirname, 'vendor', `${name}.ts`), 'utf8');
       const original = readFileSync(
         path.join(__dirname, '..', '..', '..', '..', 'src', 'lib', 'claudish', `${name}.ts`),
-        'utf8'
+        'utf8',
       );
       expect(vendored).toBe(original);
-    }
+    },
   );
 });
 
@@ -53,24 +55,29 @@ describe('judgeTranslation', () => {
     expect(v.passed).toBe(true);
   });
 
-  it('KNOWN BLIND SPOT, pinned: plain business/technical English convicts on topic', () => {
-    // Every content-trained judge convicts technical-topic plain prose
-    // (r7d scores flawless technical English at 0.99). The loop handles
-    // this via mechanicalEvidence: no actionable evidence -> no retry.
-    expect(judgeTranslation(PLAIN).passed).toBe(false);
+  it('plain business/technical English PASSES (loop 3: the register judge has no topic blind spot)', () => {
+    // Through loop 2 this was the pinned blind spot: the authorship trio
+    // convicted flawless technical English at 0.99 on topic alone. The
+    // register judge trains with plain Claude text as a negative, so
+    // plain prose about code is English whoever wrote it.
+    expect(judgeTranslation(PLAIN).passed).toBe(true);
     expect(
       judgeTranslation(
-        'The refactor cut p95 latency from 480ms to 210ms and the error rate from 2.1% to 0.3% (see runbook.md).'
-      ).passed
-    ).toBe(false);
+        'The refactor cut p95 latency from 480ms to 210ms and the error rate from 2.1% to 0.3% (see runbook.md).',
+      ).passed,
+    ).toBe(true);
   });
 
-  it('cannot be cheated by removing surface markers alone (the median holds)', () => {
+  it('KNOWN CHANGE (loop 3): skeleton text with the surface markers stripped now PASSES', () => {
     // Ian's demonstration text: the LLM's fake "translation" — register
-    // skeleton intact, em dashes stripped. All three judges convict it.
+    // skeleton intact, em dashes stripped. The authorship trio convicted
+    // it (the median held). The register judge passes it: no rubric mark
+    // survives the stripping, and the frontier judges rate texts of this
+    // shape plain. Pinned so the change is visible, not silent; whether
+    // skeleton alone should count as Claudish is a product call.
     const fake =
       "The five translations r11b still flags are real residual register families. They're translator defects, correctly caught, fixable later on the engine side. The soft-Claudish surrender is not a tuning miss: soft-register Claude prose and de-registered translations overlap at the item level, and no classifier separates overlapping classes.";
-    expect(judgeTranslation(fake).passed).toBe(false);
+    expect(judgeTranslation(fake).passed).toBe(true);
   });
 });
 
@@ -79,14 +86,14 @@ describe('mechanicalEvidence (the no-infinite-loops rule)', () => {
     expect(mechanicalEvidence(PLAIN).actionable).toBe(false);
     expect(
       mechanicalEvidence(
-        'The refactor cut p95 latency from 480ms to 210ms and the error rate from 2.1% to 0.3% (see runbook.md).'
-      ).actionable
+        'The refactor cut p95 latency from 480ms to 210ms and the error rate from 2.1% to 0.3% (see runbook.md).',
+      ).actionable,
     ).toBe(false);
   });
 
   it('skeleton-Claudish fires the rhythm run: retry is worth buying', () => {
     const fake =
-      "The damage was extensive. The mask fixes it. The registry holds. The probes improved. The trade-offs are documented.";
+      'The damage was extensive. The mask fixes it. The registry holds. The probes improved. The trade-offs are documented.';
     expect(mechanicalEvidence(fake).actionable).toBe(true);
   });
 
@@ -116,10 +123,13 @@ describe('missingFacts (arm 2 facts-preservation gate)', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { missingFacts, buildFactsFeedback } = require('./judge') as typeof import('./judge');
   it('lists numbers and code-like identifiers present in the input but absent from the output', () => {
-    const input = 'Since 2022 the proxy returns 403 for localhost; set ALLOWED_ORIGINS in config.yaml (p95 fell 480ms → 210ms).';
+    const input =
+      'Since 2022 the proxy returns 403 for localhost; set ALLOWED_ORIGINS in config.yaml (p95 fell 480ms → 210ms).';
     const output = 'The proxy rejects localhost; set the allowed origins in the config.';
     const missing = missingFacts(input, output);
-    expect(missing).toEqual(expect.arrayContaining(['2022', '403', 'ALLOWED_ORIGINS', 'config.yaml', '480ms', '210ms']));
+    expect(missing).toEqual(
+      expect.arrayContaining(['2022', '403', 'ALLOWED_ORIGINS', 'config.yaml', '480ms', '210ms']),
+    );
     expect(missingFacts(input, input)).toEqual([]);
   });
   it('ignores plain shouted words that are not identifiers', () => {
@@ -135,7 +145,8 @@ describe('missingFacts (arm 2 facts-preservation gate)', () => {
 
 describe('firstPersonPreserved (arm 2b)', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { firstPersonPreserved, buildFactsFeedback } = require('./judge') as typeof import('./judge');
+  const { firstPersonPreserved, buildFactsFeedback } =
+    require('./judge') as typeof import('./judge');
   it('passes when the source has no first person, or the output keeps it', () => {
     expect(firstPersonPreserved('The build failed.', 'The build failed.')).toBe(true);
     expect(firstPersonPreserved('We shipped 3 fixes.', 'We shipped 3 fixes in 2022.')).toBe(true);
@@ -152,9 +163,11 @@ describe('firstPersonPreserved (arm 2b)', () => {
 
 describe('buildNegationFeedback leads with the principle (arm 4)', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { buildNegationFeedback, judgeTranslation } = require('./judge') as typeof import('./judge');
+  const { buildNegationFeedback, judgeTranslation } =
+    require('./judge') as typeof import('./judge');
   it('states the survival test before the symptom list, and still names kill words and worst sentences', () => {
-    const draft = "This isn't just a fix — it's a robust, comprehensive testament to design. The migration proved intricate, and the timeline reflects that reality.";
+    const draft =
+      "This isn't just a fix — it's a robust, comprehensive testament to design. The migration proved intricate, and the timeline reflects that reality.";
     const fb = buildNegationFeedback(draft, judgeTranslation(draft));
     const principleAt = fb.indexOf('Strip the register from every clause');
     const symptomsAt = fb.indexOf('Remove these words entirely');
@@ -169,17 +182,25 @@ describe('buildNegationFeedback leads with the principle (arm 4)', () => {
 describe('structuralEvidence gate widening (arm 5)', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { structuralEvidence } = require('./judge') as typeof import('./judge');
-  const oneConvicting = 'The refactor establishes a single source of truth for connection state, a testament to disciplined design across the stack. We shipped it on Friday.';
+  const oneConvicting =
+    'The refactor establishes a single source of truth for connection state, a testament to disciplined design across the stack. We shipped it on Friday.';
   it('the default gate needs 0.6 and two convicting sentences; the widened gate opens at 0.5 and one', () => {
-    const verdict = { p: 0.55, passed: false, heuristic: { score: 0, activeFamilies: 0, signals: [], familyScores: [] } };
+    const verdict = {
+      p: 0.55,
+      passed: false,
+      heuristic: { score: 0, activeFamilies: 0, signals: [], familyScores: [] },
+    };
     expect(structuralEvidence(oneConvicting, verdict).actionable).toBe(false);
-    expect(structuralEvidence(oneConvicting, verdict, { retryAt: 0.5, minSentences: 1 }).actionable).toBe(true);
+    expect(
+      structuralEvidence(oneConvicting, verdict, { retryAt: 0.5, minSentences: 1 }).actionable,
+    ).toBe(true);
   });
 });
 
 describe('feedback style switch (replication of arm 1 vs arm 4)', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { buildNegationFeedback, judgeTranslation } = require('./judge') as typeof import('./judge');
+  const { buildNegationFeedback, judgeTranslation } =
+    require('./judge') as typeof import('./judge');
   it("'symptoms' reproduces the pre-arm-4 feedback: no principle sentence, same symptom list", () => {
     const draft = "This isn't just a fix — it's a robust, comprehensive testament to design.";
     const v = judgeTranslation(draft);
@@ -196,20 +217,22 @@ describe('setJudgeModels (lab seam for loop-2 T arms; production never calls it)
   const J = require('./judge') as typeof import('./judge');
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const W = require('./vendor/judge-weights') as typeof import('./vendor/judge-weights');
-  const loud = "This isn't just a fix — it's a robust, comprehensive testament to thoughtful design.";
+  const loud =
+    "This isn't just a fix — it's a robust, comprehensive testament to thoughtful design.";
   afterEach(() => J.resetJudgeModels());
   it('swaps the ensemble members and changes the verdict; reset restores the vendored set', () => {
     const before = J.judgeTranslation(loud).p;
     // A single-member ensemble reduces the median to that model: r3 alone reads differently from the trio.
-    J.setJudgeModels([W.R3_WEIGHTS]);
+    J.setJudgeModels([W.REFERENCE_WEIGHTS]);
     // A one-member ensemble must yield exactly max(that member's own score, heuristic): loop-3 T1
     // regression, the median once read index 1 of a one-element array and every verdict was NaN.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { loadJudgeModel } = require('./judge-loader') as typeof import('./judge-loader');
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { scoreClaudish } = require('./vendor/heuristic') as typeof import('./vendor/heuristic');
-    const plainTech = 'The refactor gives connection state a single source of truth so the retry logic and the offline recovery path use the same backoff primitive.';
-    const r3 = loadJudgeModel(W.R3_WEIGHTS)!;
+    const plainTech =
+      'The refactor gives connection state a single source of truth so the retry logic and the offline recovery path use the same backoff primitive.';
+    const r3 = loadJudgeModel(W.REFERENCE_WEIGHTS)!;
     const swapped = J.judgeTranslation(plainTech).p;
     expect(Number.isFinite(swapped)).toBe(true);
     expect(swapped).toBeCloseTo(Math.max(r3.predict(plainTech), scoreClaudish(plainTech).score), 9);
