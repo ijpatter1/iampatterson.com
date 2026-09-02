@@ -81,6 +81,14 @@ const NEGATIVE_SOURCE_WEIGHTS: Record<string, number> = {
   // so CLAUDE_TOPIC_OVERSAMPLE repeats train-split copies to give these
   // n-grams real negative mass. Absent file = empty pool, harmless.
   'claude-topic': Number(process.env.CLAUDE_TOPIC ?? 0),
+  // Loop-2 (cl2en-loop2-plan D1) human sources that read like PLAIN prose about technical
+  // and business content — the register the shipped model convicts. All pre-cutoff, human-
+  // written, manifested in negatives/manifest-loop2.json. Absent file = empty pool.
+  'simple-wikipedia': Number(process.env.L2_SIMPLE_WIKI ?? 0),
+  'mdn-http': Number(process.env.L2_MDN ?? 0),
+  plainlanguage: Number(process.env.L2_PLAINLANG ?? 0),
+  'enron-ham': Number(process.env.L2_ENRON ?? 0),
+  stackexchange: Number(process.env.L2_STACKEX ?? 0),
 };
 
 function splitOf(group: string): 'train' | 'dev' | 'test' {
