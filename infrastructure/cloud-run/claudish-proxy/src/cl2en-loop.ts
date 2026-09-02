@@ -121,6 +121,13 @@ export interface LoopOptions {
   improvementEpsilon?: number;
   /** Arm 5: structural retry gate (default 0.6 / 2 sentences). */
   structuralGate?: StructuralGate;
+  /**
+   * Arm 2/2b facts-preservation retry. OFF by default since 2026-09-02:
+   * both frozen fidelity judges rated retried translations worse on
+   * every axis (retried drafts re-narrate). Kept behind a flag for the
+   * record and for experiments.
+   */
+  factsRetry?: boolean;
 }
 
 /**
@@ -224,7 +231,7 @@ export async function runCl2enLoop(
   let factsRetried = false;
   let factsRestored = false;
   const missing = missingFacts(inputText, served.text);
-  if (missing.length > 0 && attempts.length < maxAttempts && deps.nowMs() - started < deadlineMs) {
+  if (options.factsRetry === true && missing.length > 0 && attempts.length < maxAttempts && deps.nowMs() - started < deadlineMs) {
     factsRetried = true;
     const factsTurns: GeminiTurn[] = [
       turns[0],

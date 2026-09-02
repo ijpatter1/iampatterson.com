@@ -202,14 +202,22 @@ describe('loopBudgetFor at post length (Stage 1 bundle)', () => {
   });
 });
 
-describe('facts-preservation retry (arm 2)', () => {
+describe('facts-preservation retry (arm 2; opt-in since 2026-09-02)', () => {
+  it('is off by default: a draft that drops a number is served without a retry', async () => {
+    const { deps, calls } = scriptedDeps(['We shipped some fixes recently, and latency fell.']);
+    const { emit } = collector();
+    const result = await runCl2enLoop('We shipped 3 fixes in 2022, and p95 fell to 210ms.', 'sys', deps, emit, { maxAttempts: 4, deadlineMs: 9000 });
+    expect(calls).toHaveLength(1);
+    expect(result.factsRetried).toBe(false);
+  });
+
   const INPUT = 'We shipped 3 fixes in 2022, and p95 fell to 210ms.';
   const DROPPED = 'We shipped some fixes recently, and latency fell.';
   const RESTORED = 'We shipped 3 fixes in 2022, and p95 fell to 210ms.';
   it('retries once with the missing facts named, and serves the restored text', async () => {
     const { deps, calls } = scriptedDeps([DROPPED, RESTORED]);
     const { emit, events } = collector();
-    const result = await runCl2enLoop(INPUT, 'sys', deps, emit, { maxAttempts: 4, deadlineMs: 9000 });
+    const result = await runCl2enLoop(INPUT, 'sys', deps, emit, { maxAttempts: 4, deadlineMs: 9000, factsRetry: true });
     expect(calls).toHaveLength(2);
     expect(calls[1][2].text).toContain('2022');
     expect(calls[1][2].text).toContain('210ms');
@@ -221,7 +229,7 @@ describe('facts-preservation retry (arm 2)', () => {
   it('keeps the original when the retry still drops facts', async () => {
     const { deps, calls } = scriptedDeps([DROPPED, DROPPED]);
     const { emit } = collector();
-    const result = await runCl2enLoop(INPUT, 'sys', deps, emit, { maxAttempts: 4, deadlineMs: 9000 });
+    const result = await runCl2enLoop(INPUT, 'sys', deps, emit, { maxAttempts: 4, deadlineMs: 9000, factsRetry: true });
     expect(calls).toHaveLength(2);
     expect(result.servedText).toBe(DROPPED);
     expect(result.factsRetried).toBe(true);
@@ -236,7 +244,7 @@ describe('facts retry keeps the speaker (arm 2b)', () => {
   it('rejects a retry that restores the facts but shifts the speaker to you', async () => {
     const { deps, calls } = scriptedDeps([DROPPED, RESTORED_BUT_YOU]);
     const { emit } = collector();
-    const result = await runCl2enLoop(INPUT, 'sys', deps, emit, { maxAttempts: 4, deadlineMs: 9000 });
+    const result = await runCl2enLoop(INPUT, 'sys', deps, emit, { maxAttempts: 4, deadlineMs: 9000, factsRetry: true });
     expect(calls).toHaveLength(2);
     expect(calls[1][2].text.toLowerCase()).toContain('same speaker');
     expect(result.servedText).toBe(DROPPED);
