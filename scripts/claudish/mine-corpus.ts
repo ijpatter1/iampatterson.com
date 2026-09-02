@@ -12,6 +12,8 @@
  *
  * Usage: npx ts-node -P tsconfig.scripts.json scripts/claudish/mine-corpus.ts \
  *          [--root DIR] [--out DIR] [--max-chunks N] [--sample N]
+ *          [--turn-final-only] [--out-file NAME]   (Ian's proposal, 2026-09-02: keep only the
+ *          blocks he read, selected BEFORE dedup and caps so the caps do not eat them)
  */
 import { createReadStream, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -31,6 +33,8 @@ interface Args {
   out: string;
   maxChunks: number;
   sample: number;
+  turnFinalOnly: boolean;
+  outFile: string;
 }
 
 function parseArgs(argv: string[]): Args {
@@ -43,6 +47,8 @@ function parseArgs(argv: string[]): Args {
     out: get('--out') ?? path.join(homedir(), '.claudish-corpus'),
     maxChunks: Number(get('--max-chunks') ?? Infinity),
     sample: Number(get('--sample') ?? 1),
+    turnFinalOnly: argv.includes('--turn-final-only'),
+    outFile: get('--out-file') ?? (argv.includes('--turn-final-only') ? 'chunks-turnfinal.jsonl' : 'chunks.jsonl'),
   };
 }
 
@@ -164,7 +170,12 @@ async function main(): Promise<void> {
   const sessionCount = new Set(rawChunks.map((c) => c.sessionId)).size;
   const sessionCap = Math.max(200, Math.ceil((rawChunks.length / Math.max(1, sessionCount)) * 2));
   const projectCap = Math.max(1000, Math.floor(rawChunks.length * 0.15));
+  let midWorkDropped = 0;
   for (const chunk of rawChunks) {
+    if (args.turnFinalOnly && !chunk.turnFinal) {
+      midWorkDropped++;
+      continue;
+    }
     if (boilerplate.isBoilerplate(chunk.text)) {
       boilerplateDropped++;
       continue;
@@ -186,7 +197,7 @@ async function main(): Promise<void> {
   }
 
   writeFileSync(
-    path.join(args.out, 'chunks.jsonl'),
+    path.join(args.out, args.outFile),
     kept.map((c) => JSON.stringify(c)).join('\n') + '\n'
   );
 
@@ -229,6 +240,7 @@ async function main(): Promise<void> {
       raw: rawChunks.length,
       kept: kept.length,
       droppedByScrub: dropCounts,
+      droppedMidWork: midWorkDropped,
       droppedBoilerplate: boilerplateDropped,
       droppedDuplicates: dupDropped,
       droppedByCaps: capDropped,
@@ -236,7 +248,7 @@ async function main(): Promise<void> {
       perProjectCap: projectCap,
     },
   };
-  writeFileSync(path.join(args.out, 'corpus-report.json'), JSON.stringify(report, null, 2));
+  writeFileSync(path.join(args.out, args.turnFinalOnly ? 'corpus-report-turnfinal.json' : 'corpus-report.json'), JSON.stringify(report, null, 2));
   console.log(`[mine-corpus] kept ${kept.length} chunks from ${stats.sessions.size} sessions across ${stats.projects.size} projects`);
   console.log(`[mine-corpus] report: ${path.join(args.out, 'corpus-report.json')}`);
 }

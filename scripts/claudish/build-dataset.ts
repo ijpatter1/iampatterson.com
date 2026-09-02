@@ -130,7 +130,9 @@ function main(): void {
   // replies by construction and carry no flag.
   const turnFinalOnly = process.env.POS_TURN_FINAL_ONLY === '1';
   let midWorkFiltered = 0;
-  const positiveFiles = ['chunks.jsonl', 'claudeai-chunks.jsonl'].filter((f) =>
+  // POS_CLAUDE_CODE_FILE swaps the Claude Code positive corpus (e.g. chunks-turnfinal.jsonl from
+  // mine-corpus --turn-final-only, where the caps were applied after the turn-final selection).
+  const positiveFiles = [process.env.POS_CLAUDE_CODE_FILE ?? 'chunks.jsonl', 'claudeai-chunks.jsonl'].filter((f) =>
     existsSync(path.join(corpusDir, f))
   );
   const positiveLines = positiveFiles.flatMap((f) =>
