@@ -1,5 +1,7 @@
 # cl2en experiment loop 2: plan (APPROVED by Ian 2026-09-02: "go"; T1 defaults to the deployed prompt with retry temperature 0.3 unless Ian says otherwise; gcloud re-auth needed only for the T arms)
 
+**Status: closed 2026-09-02. No candidate cleared both selection measures; no T arm ran; $0.00 of $20.00 spent. Report: `docs/claudish/cl2en-loop2-report.md`.**
+
 **Budget:** $20.00 new, approved 2026-09-02. **Rules:** loop 1's rules carry over unchanged
 (`docs/claudish/cl2en-experiment-rules.md`: fixed sets, frozen judges, intent check per arm,
 no training on loop output, nothing deploys), plus the amendments in section 5.
