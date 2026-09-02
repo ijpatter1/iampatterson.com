@@ -53,7 +53,7 @@ async function main() {
           ),
       },
       { token: () => undefined, revise: () => undefined },
-      { ...loopBudgetFor(text.length), ...(process.env.LOOP_EPS ? { improvementEpsilon: Number(process.env.LOOP_EPS) } : {}), ...(process.env.LOOP_EXTRA ? { maxAttempts: loopBudgetFor(text.length).maxAttempts + Number(process.env.LOOP_EXTRA) } : {}), ...(process.env.LOOP_FACTS === '1' ? { factsRetry: true } : {}), ...(process.env.LOOP_STRUCT ? { structuralGate: { retryAt: Number(process.env.LOOP_STRUCT.split(',')[0]), minSentences: Number(process.env.LOOP_STRUCT.split(',')[1]) } } : {}) },
+      { ...loopBudgetFor(text.length), ...(process.env.LOOP_EPS ? { improvementEpsilon: Number(process.env.LOOP_EPS) } : {}), ...(process.env.LOOP_EXTRA ? { maxAttempts: loopBudgetFor(text.length).maxAttempts + Number(process.env.LOOP_EXTRA) } : {}), ...(process.env.LOOP_FACTS === '1' ? { factsRetry: true } : {}), ...(process.env.LOOP_RETRY_TEMP ? { retryTemperature: Number(process.env.LOOP_RETRY_TEMP) } : {}), ...(process.env.LOOP_STRUCT ? { structuralGate: { retryAt: Number(process.env.LOOP_STRUCT.split(',')[0]), minSentences: Number(process.env.LOOP_STRUCT.split(',')[1]) } } : {}) },
     );
     const ms = Date.now() - t0;
     const served = result.attempts[result.servedAttempt - 1]?.p ?? NaN;

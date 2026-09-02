@@ -85,14 +85,15 @@ async function runOne(
   turns: GeminiTurn[],
   attempt: number,
   usageTotal: GeminiUsage,
-  onToken: ((t: string) => void) | null
+  onToken: ((t: string) => void) | null,
+  temperature?: number
 ): Promise<RunOneOutcome> {
   const t0 = deps.nowMs();
   const stripper = new MarkerStripper();
   const smoother = new EmDashSmoother();
   let text = '';
   let finishReason: string | null = null;
-  for await (const event of deps.stream(turns, attempt, ATTEMPT_TEMPERATURES[attempt - 1] ?? 0.6)) {
+  for await (const event of deps.stream(turns, attempt, temperature ?? ATTEMPT_TEMPERATURES[attempt - 1] ?? 0.6)) {
     if (event.kind === 'text') {
       const emit = smoother.feed(stripper.feed(event.text));
       if (emit.length > 0) {
@@ -128,6 +129,8 @@ export interface LoopOptions {
    * record and for experiments.
    */
   factsRetry?: boolean;
+  /** Arm 8b: one temperature for every retry instead of ATTEMPT_TEMPERATURES. */
+  retryTemperature?: number;
 }
 
 /**
@@ -206,7 +209,7 @@ export async function runCl2enLoop(
     turns.push({ role: 'assistant', text: previous.text });
     turns.push({ role: 'user', text: buildNegationFeedback(previous.text, previous.verdict) });
     // Retries are buffered — the visitor keeps reading attempt 1.
-    const retry = await runOne(deps, turns, attempt, usage, null);
+    const retry = await runOne(deps, turns, attempt, usage, null, options.retryTemperature);
     if (retry.finishReason === 'SAFETY' || retry.finishReason === 'PROHIBITED_CONTENT') break;
     retryable = worthRetrying(retry.text, retry.verdict);
     attempts.push({

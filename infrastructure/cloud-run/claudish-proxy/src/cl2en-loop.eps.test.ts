@@ -74,3 +74,25 @@ describe('improvementEpsilon', () => {
     expect(result.attempts.map((a) => a.p)).toEqual([0.8, 0.78, 0.76]);
   });
 });
+
+describe('retryTemperature option (arm 8b)', () => {
+  it('attempt 1 keeps 0.2; retries use the override instead of the 0.6/0.7 schedule', async () => {
+    const temps: number[] = [];
+    const ps = [0.8, 0.7, 0.6];
+    let call = 0;
+    const deps = {
+      nowMs: () => 0,
+      stream(_turns: GeminiTurn[], _attempt: number, temperature: number): AsyncIterable<GeminiEvent> {
+        temps.push(temperature);
+        const p = ps[Math.min(call, ps.length - 1)];
+        call++;
+        return (async function* () {
+          yield { kind: 'text', text: draft(p) } as GeminiEvent;
+          yield { kind: 'stop', usage: { inputTokens: 1, outputTokens: 1, cachedTokens: 0 }, finishReason: 'STOP' } as GeminiEvent;
+        })();
+      },
+    };
+    await runCl2enLoop('x', 'sys', deps, emit, { maxAttempts: 3, deadlineMs: 9000, retryTemperature: 0.3 });
+    expect(temps).toEqual([0.2, 0.3, 0.3]);
+  });
+});
