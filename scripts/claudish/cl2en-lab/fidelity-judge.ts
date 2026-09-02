@@ -9,7 +9,6 @@ import Anthropic from '@anthropic-ai/sdk';
 import { streamGemini } from '../../../infrastructure/cloud-run/claudish-proxy/src/gemini';
 import { anthropicWifCredentials, readWifEnv } from '../../../infrastructure/cloud-run/claudish-proxy/src/wif';
 
-const LAB = process.env.CL2EN_LAB_DIR ?? `${process.env.HOME}/.claudish-corpus/analysis/2026-09-01-model-compare`;
 const RUBRIC = `You are grading English translations of AI-assistant prose ("Claudish"). The goal is plain, clear English that preserves the meaning, the speaker and their stance, and the type of communication (question, request, apology, story, refusal, report). You are shown the Claudish source and two candidate translations, A and B.
 Score each candidate 1 to 5 on:
 - meaning: facts and claims preserved (5 = all, 1 = wrong or missing);
