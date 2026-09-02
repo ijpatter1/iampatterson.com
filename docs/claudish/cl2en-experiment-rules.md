@@ -76,7 +76,12 @@ output layers (the em-dash smoother, a marker strip, a facts check).
 ## 5. What the loop may not do (the anti-gaming rules)
 
 1. Never train a detector on en2cl or cl2en outputs, or on any text produced by a model in
-   this system.
+   this system. Ruling 2026-09-02: `negatives/translated-positives.txt` (1,294 cl2en outputs
+   used as negatives in registry rounds r8-tp*, r9-v3cap-tp3, r10-v4reg-tp3) is quarantined at
+   `~/.claudish-corpus/quarantine/` so the builder's glob cannot pick it up; those five models
+   are ineligible as judge components or scoreboard. The shipped scoreboard model (r7d) and the
+   judge ensemble (r3, r6h, r7d) predate it and never saw it; `claude-topic.txt` is Ian's own
+   user turns and is allowed.
 2. Never change the scoreboard detector, the sets, or the rubric after calibration.
 3. Never accept an arm whose scoreboard gain comes with a fidelity or guard regression:
    shorter, emptier, or less faithful output is not a win however it scores.
