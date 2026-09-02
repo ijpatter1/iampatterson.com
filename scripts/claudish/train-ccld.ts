@@ -27,6 +27,7 @@ import {
   CCLD_V2_CONFIG,
   CCLD_V3_CONFIG,
   CCLD_V4_CONFIG,
+  CCLD_V5_CONFIG,
   configHash,
   extractRegisterFeatures,
   fnv1a32,
@@ -38,8 +39,10 @@ import {
 // CCLD_CAPACITY=v3 selects the scaled config (mask + dim 16 + hidden 96);
 // MASK_MODEL_NAMES=1 alone keeps v2 (mask at original capacity).
 const TRAIN_CONFIG =
-  process.env.CCLD_CAPACITY === 'v4'
-    ? CCLD_V4_CONFIG
+  process.env.CCLD_CAPACITY === 'v5'
+    ? CCLD_V5_CONFIG
+    : process.env.CCLD_CAPACITY === 'v4'
+      ? CCLD_V4_CONFIG
     : process.env.CCLD_CAPACITY === 'v3'
       ? CCLD_V3_CONFIG
       : process.env.MASK_MODEL_NAMES === '1'

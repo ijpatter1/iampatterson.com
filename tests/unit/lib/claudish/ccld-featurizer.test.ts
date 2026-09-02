@@ -130,3 +130,28 @@ describe('v2 model-name masking', () => {
     expect(configHash()).toBe(configHash(CCLD_CONFIG));
   });
 });
+
+describe('v5: hashed word features as extra orders (loop-2 D2)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { CCLD_V5_CONFIG, CCLD_V4_CONFIG, extractFeatures, configHash, wordTokens } = require('@/lib/claudish/ccld-featurizer') as typeof import('@/lib/claudish/ccld-featurizer');
+  it('has a distinct hash and declares word orders after the char orders', () => {
+    expect(configHash(CCLD_V5_CONFIG)).not.toBe(configHash(CCLD_V4_CONFIG));
+    expect(CCLD_V5_CONFIG.wordOrders).toEqual([1, 2]);
+    expect(CCLD_V5_CONFIG.wordBuckets?.length).toBe(2);
+  });
+  it('tokenizes to lowercase words, dropping punctuation but keeping identifiers whole', () => {
+    expect(wordTokens('We shipped 3 fixes in PR #2, see config.yaml!')).toEqual(['we', 'shipped', '3', 'fixes', 'in', 'pr', '2', 'see', 'config.yaml']);
+  });
+  it('appends word-unigram and word-bigram fraction maps that each sum to 1', () => {
+    const f = extractFeatures('the cat sat on the mat', CCLD_V5_CONFIG);
+    expect(f).toHaveLength(CCLD_V5_CONFIG.orders.length + 2);
+    const uni = f[CCLD_V5_CONFIG.orders.length];
+    const bi = f[CCLD_V5_CONFIG.orders.length + 1];
+    const sum = (m: Map<number, number>) => [...m.values()].reduce((a, b) => a + b, 0);
+    expect(sum(uni)).toBeCloseTo(1, 9);
+    expect(sum(bi)).toBeCloseTo(1, 9);
+    // "the" appears twice in six words: one bucket carries 2/6 (unless it collides).
+    expect([...uni.values()].some((v) => Math.abs(v - 2 / 6) < 1e-9)).toBe(true);
+    expect(bi.size).toBeLessThanOrEqual(5);
+  });
+});

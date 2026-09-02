@@ -19,9 +19,9 @@ export interface Model {
 
 export function tensorSizes(config: CcldFeaturizerConfig = CCLD_CONFIG): number[] {
   const dim = config.embeddingDim;
-  const inputDim = config.orders.length * dim + (config.registerFeatures ?? 0);
+  const inputDim = (config.orders.length + (config.wordOrders?.length ?? 0)) * dim + (config.registerFeatures ?? 0);
   return [
-    ...config.buckets.map((buckets) => buckets * dim),
+    ...[...config.buckets, ...(config.wordBuckets ?? [])].map((buckets) => buckets * dim),
     inputDim * config.hiddenDim,
     config.hiddenDim,
     config.hiddenDim * 2,
@@ -34,25 +34,26 @@ export function initModel(
   config: CcldFeaturizerConfig = CCLD_CONFIG
 ): Model {
   const sizes = tensorSizes(config);
-  const inputDim = config.orders.length * config.embeddingDim + (config.registerFeatures ?? 0);
+  const inputDim = (config.orders.length + (config.wordOrders?.length ?? 0)) * config.embeddingDim + (config.registerFeatures ?? 0);
+  const tableCount = config.buckets.length + (config.wordBuckets?.length ?? 0);
   const flat = sizes.map((size) => new Float64Array(size));
   const scale = (n: number) => Math.sqrt(2 / n);
   // Small random init; He-ish for the dense layers.
-  for (let t = 0; t < config.buckets.length; t++) {
+  for (let t = 0; t < tableCount; t++) {
     for (let i = 0; i < flat[t].length; i++) flat[t][i] = (rng() * 2 - 1) * 0.05;
   }
-  const w1 = flat[config.buckets.length];
+  const w1 = flat[tableCount];
   for (let i = 0; i < w1.length; i++) w1[i] = (rng() * 2 - 1) * scale(inputDim);
-  const w2 = flat[config.buckets.length + 2];
+  const w2 = flat[tableCount + 2];
   for (let i = 0; i < w2.length; i++) w2[i] = (rng() * 2 - 1) * scale(config.hiddenDim);
   return {
     flat,
     tensors: {
-      embeddings: flat.slice(0, config.buckets.length),
-      w1: flat[config.buckets.length],
-      b1: flat[config.buckets.length + 1],
-      w2: flat[config.buckets.length + 2],
-      b2: flat[config.buckets.length + 3],
+      embeddings: flat.slice(0, tableCount),
+      w1: flat[tableCount],
+      b1: flat[tableCount + 1],
+      w2: flat[tableCount + 2],
+      b2: flat[tableCount + 3],
     },
   };
 }
@@ -71,7 +72,7 @@ export function backprop(
   const { tensors } = model;
   const dim = config.embeddingDim;
   const hidden = config.hiddenDim;
-  const charDim = config.orders.length * dim;
+  const charDim = (config.orders.length + (config.wordOrders?.length ?? 0)) * dim;
   const inputDim = charDim + (config.registerFeatures ?? 0);
   // Shape guard — the bug this parameter exists to prevent: training a
   // v1-shaped model while evaluating with v3 indexing (the invalid

@@ -35,6 +35,9 @@ export interface CcldFeaturizerConfig {
   hash: string;
   /** v2: mask model names to a neutral token before n-gram extraction. */
   maskModelNames?: boolean;
+  /** v5: hashed word n-gram orders appended after the char orders (loop-2 D2). */
+  wordOrders?: readonly number[];
+  wordBuckets?: readonly number[];
 }
 
 export const CCLD_CONFIG = {
@@ -101,6 +104,29 @@ export const CCLD_V4_CONFIG: CcldFeaturizerConfig = {
   maskModelNames: true,
   registerFeatures: REGISTER_FEATURE_COUNT,
 };
+
+/**
+ * v5 = v2 (mask) + hashed WORD unigram and bigram tables as two extra
+ * embedding orders (loop-2 D2, 2026-09-02). Rationale: a character model
+ * cannot tell "this word is a topic word that humans also use" from
+ * register; word tables let the trainer put topic words on the human side
+ * when human negatives carry them. Tokens: lowercase, punctuation-split,
+ * identifiers with dots/underscores kept whole.
+ */
+export const CCLD_V5_CONFIG: CcldFeaturizerConfig = {
+  ...CCLD_CONFIG,
+  version: 5,
+  maskModelNames: true,
+  wordOrders: [1, 2],
+  wordBuckets: [4096, 4096],
+};
+
+export function wordTokens(text: string): string[] {
+  return normalizeForDetection(text)
+    .split(/[^a-z0-9._#@+-]+/i)
+    .map((t) => t.replace(/^[._#@+-]+|[._#@+-]+$/g, '').toLowerCase())
+    .filter((t) => t.length > 0);
+}
 
 /**
  * Dense register measurements in [0, ~1], frozen alongside the char
@@ -176,7 +202,8 @@ export function extractFeatures(
 ): Array<Map<number, number>> {
   let normalized = normalizeForDetection(text);
   if (config.maskModelNames) normalized = normalized.replace(MODEL_NAME_RE, 'name');
-  const out: Array<Map<number, number>> = config.orders.map(() => new Map());
+  const wordOrders = config.wordOrders ?? [];
+  const out: Array<Map<number, number>> = [...config.orders, ...wordOrders].map(() => new Map());
   if (normalized.length === 0) return out;
   const padded = `${config.pad}${normalized}${config.pad}`;
   const points = Array.from(padded); // code-point iteration
@@ -192,6 +219,22 @@ export function extractFeatures(
     }
     for (const [bucket, count] of counts) {
       counts.set(bucket, count / windows);
+    }
+  }
+  if (wordOrders.length > 0) {
+    const tokens = wordTokens(normalized);
+    const wordBuckets = config.wordBuckets ?? [];
+    for (let w = 0; w < wordOrders.length; w++) {
+      const n = wordOrders[w];
+      const buckets = wordBuckets[w];
+      const counts = out[config.orders.length + w];
+      const windows = tokens.length - n + 1;
+      if (windows <= 0 || !buckets) continue;
+      for (let i = 0; i < windows; i++) {
+        const bucket = fnv1a32(tokens.slice(i, i + n).join(' ')) % buckets;
+        counts.set(bucket, (counts.get(bucket) ?? 0) + 1);
+      }
+      for (const [bucket, count] of counts) counts.set(bucket, count / windows);
     }
   }
   return out;

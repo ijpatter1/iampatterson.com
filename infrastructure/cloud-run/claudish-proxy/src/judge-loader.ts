@@ -11,6 +11,7 @@ import {
   CCLD_V2_CONFIG,
   CCLD_V3_CONFIG,
   CCLD_V4_CONFIG,
+  CCLD_V5_CONFIG,
   configHash,
   extractFeatures,
   extractRegisterFeatures,
@@ -48,7 +49,9 @@ export function loadJudgeModel(weights: unknown): JudgeModel | null {
           ? CCLD_V3_CONFIG
           : embeddedHash === configHash(CCLD_V4_CONFIG)
             ? CCLD_V4_CONFIG
-            : null;
+            : embeddedHash === configHash(CCLD_V5_CONFIG)
+              ? CCLD_V5_CONFIG
+              : null;
   if (!config) return null;
   const scales = file.quant?.scales;
   const tensors = file.tensors;
@@ -63,11 +66,11 @@ export function loadJudgeModel(weights: unknown): JudgeModel | null {
       return out;
     });
     const modelTensors: CcldTensors = {
-      embeddings: dequantized.slice(0, config.buckets.length),
-      w1: dequantized[config.buckets.length],
-      b1: dequantized[config.buckets.length + 1],
-      w2: dequantized[config.buckets.length + 2],
-      b2: dequantized[config.buckets.length + 3],
+      embeddings: dequantized.slice(0, config.buckets.length + (config.wordBuckets?.length ?? 0)),
+      w1: dequantized[config.buckets.length + (config.wordBuckets?.length ?? 0)],
+      b1: dequantized[config.buckets.length + (config.wordBuckets?.length ?? 0) + 1],
+      w2: dequantized[config.buckets.length + (config.wordBuckets?.length ?? 0) + 2],
+      b2: dequantized[config.buckets.length + (config.wordBuckets?.length ?? 0) + 3],
     };
     const temperature = file.calibration?.temperature ?? 1;
     return {

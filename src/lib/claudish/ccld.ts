@@ -14,6 +14,7 @@ import {
   CCLD_V2_CONFIG,
   CCLD_V3_CONFIG,
   CCLD_V4_CONFIG,
+  CCLD_V5_CONFIG,
   configHash,
   extractFeatures,
   extractRegisterFeatures,
@@ -75,7 +76,9 @@ export function loadCcldModel(weights: unknown): CcldModel | null {
           ? CCLD_V3_CONFIG
           : embeddedHash === configHash(CCLD_V4_CONFIG)
             ? CCLD_V4_CONFIG
-            : null;
+            : embeddedHash === configHash(CCLD_V5_CONFIG)
+              ? CCLD_V5_CONFIG
+              : null;
   if (!config) return null;
   const scales = file.quant?.scales;
   const tensors = file.tensors;
@@ -88,7 +91,7 @@ export function loadCcldModel(weights: unknown): CcldModel | null {
       for (let i = 0; i < quantized.length; i++) out[i] = quantized[i] * scale;
       return out;
     });
-    const embeddingCount = config.buckets.length;
+    const embeddingCount = config.buckets.length + (config.wordBuckets?.length ?? 0);
     const modelTensors: CcldTensors = {
       embeddings: dequantized.slice(0, embeddingCount),
       w1: dequantized[embeddingCount],

@@ -89,6 +89,9 @@ const NEGATIVE_SOURCE_WEIGHTS: Record<string, number> = {
   plainlanguage: Number(process.env.L2_PLAINLANG ?? 0),
   'enron-ham': Number(process.env.L2_ENRON ?? 0),
   stackexchange: Number(process.env.L2_STACKEX ?? 0),
+  // D1b: human developer issue/PR comments (fetch-github-comments.py), the human analogue of
+  // the transcript skeleton: prose about code changes with identifiers and PR/commit refs.
+  'github-comments': Number(process.env.L2_GITHUB ?? 0),
 };
 
 function splitOf(group: string): 'train' | 'dev' | 'test' {
