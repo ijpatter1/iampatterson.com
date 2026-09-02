@@ -52,4 +52,10 @@ Full rows, per-case scores and pairs: `~/.claudish-corpus/analysis/2026-09-01-mo
 
 ## Recommendation
 
-Pending the replication and the held-out judging. Nothing is deployed by this loop; Ian decides.
+1. Ship nothing from this loop on the strength of the scoreboard: no configuration beat the deployed one on the detector outside the measured noise, on the dev pool or the held-out set.
+2. Consider the minimal prompt on its own merits: equivalent to the deployed prompt on both axes within noise, at a third of the input tokens per call (about 1.5k versus 4.5k), and it removed the few-shot set that arm D showed teaching the model the inverse of the fidelity principle. That is a cost and maintainability decision for Ian, taken on a read of the pairs, not a quality claim.
+3. Keep the retry temperature at 0.3 if the minimal prompt ships (arm 8b: no fidelity cost, recovers the scoreboard level of the deployed configuration).
+4. Do not pursue further prompt or gate tuning against this scoreboard. The floor the loop hit is in the detector, and two human-only retrains did not move it. The levers that could are outside this budget and outside the rules as set: a detector whose features see structure rather than characters (the model card's word-feature lever), or a scoreboard that is itself a frontier judge of plainness rather than a Claudish-vs-human classifier.
+5. Keep the two-judge fidelity gate for any future loop. It was the instrument that turned three apparent wins (arms 2, 3, 5) into correctly rejected ones.
+
+Nothing is deployed by this loop; Ian decides.
