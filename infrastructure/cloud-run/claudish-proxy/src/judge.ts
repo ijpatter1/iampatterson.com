@@ -135,3 +135,28 @@ export function buildNegationFeedback(output: string, verdict: JudgeVerdict): st
   );
   return parts.join('\n');
 }
+
+/**
+ * Facts-preservation gate (experiment arm 2, 2026-09-01). "Keep every
+ * fact, number and identifier" was prose in the prompt and the feedback
+ * with nothing checking it; variant C dropped "pre-2022" and a 403
+ * status unnoticed. This lists the numbers and code-like identifiers
+ * present in the input but absent from the output. Plain shouted words
+ * (NOT, NEW) are not identifiers and are ignored; acronyms without
+ * digits or punctuation are accepted losses of this check.
+ */
+export function missingFacts(input: string, output: string): string[] {
+  const numbers = input.match(/\d+(?:[.,]\d+)*(?:ms|%|s|x)?/g) ?? [];
+  const identifiers = (
+    input.match(/\b[A-Za-z_][A-Za-z0-9_]*(?:[._][A-Za-z0-9_]+|\(\))+\b|\b[a-z]+[A-Z][A-Za-z0-9]*\b|\b[A-Z][A-Z0-9_]*[0-9_][A-Z0-9_]*\b/g) ?? []
+  ).filter((id) => !/^[A-Z]+$/.test(id));
+  const missing: string[] = [];
+  for (const token of [...numbers, ...identifiers]) {
+    if (!output.includes(token) && !missing.includes(token)) missing.push(token);
+  }
+  return missing;
+}
+
+export function buildFactsFeedback(missing: string[]): string {
+  return `The translation dropped these from the source: ${missing.join(', ')}. Put each one back in the sentence it belongs to, changing nothing else. Output only the translation.`;
+}

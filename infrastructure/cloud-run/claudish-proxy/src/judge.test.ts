@@ -111,3 +111,24 @@ describe('convictingSentences + buildNegationFeedback', () => {
     expect(fb).toContain('Output only the rewritten translation.');
   });
 });
+
+describe('missingFacts (arm 2 facts-preservation gate)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { missingFacts, buildFactsFeedback } = require('./judge') as typeof import('./judge');
+  it('lists numbers and code-like identifiers present in the input but absent from the output', () => {
+    const input = 'Since 2022 the proxy returns 403 for localhost; set ALLOWED_ORIGINS in config.yaml (p95 fell 480ms → 210ms).';
+    const output = 'The proxy rejects localhost; set the allowed origins in the config.';
+    const missing = missingFacts(input, output);
+    expect(missing).toEqual(expect.arrayContaining(['2022', '403', 'ALLOWED_ORIGINS', 'config.yaml', '480ms', '210ms']));
+    expect(missingFacts(input, input)).toEqual([]);
+  });
+  it('ignores plain shouted words that are not identifiers', () => {
+    expect(missingFacts('This does NOT scale.', 'This does not scale.')).toEqual([]);
+  });
+  it('builds a feedback line that names every missing fact', () => {
+    const fb = buildFactsFeedback(['2022', '403']);
+    expect(fb).toContain('2022');
+    expect(fb).toContain('403');
+    expect(fb.toLowerCase()).toContain('put');
+  });
+});

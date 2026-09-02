@@ -61,3 +61,22 @@ describe('markdown-bold stripping (cl2en mechanical cleanup)', () => {
     expect(run(['The fix shipped *'])).toBe('The fix shipped *');
   });
 });
+
+describe('MarkerStripper (arm 2: echoed wrapper tags)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { MarkerStripper } = require('./smooth') as typeof import('./smooth');
+  const run = (chunks: string[]) => {
+    const s = new MarkerStripper();
+    return chunks.map((c) => s.feed(c)).join('') + s.flush();
+  };
+  it('strips a leading <text> tag and its newline, even split across frames', () => {
+    expect(run(['<te', 'xt>\nSix weeks ago we ', 'launched.'])).toBe('Six weeks ago we launched.');
+  });
+  it('strips a trailing </text> tag split across frames', () => {
+    expect(run(['We launched.', '\n</te', 'xt>'])).toBe('We launched.');
+  });
+  it('passes ordinary text and a lone < through unchanged', () => {
+    expect(run(['a < b, then ', 'c.'])).toBe('a < b, then c.');
+    expect(run(['<not a tag> stays'])).toBe('<not a tag> stays');
+  });
+});

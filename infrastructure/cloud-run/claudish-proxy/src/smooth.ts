@@ -60,3 +60,45 @@ export class EmDashSmoother {
     return out;
   }
 }
+
+/**
+ * Wrapper-tag strip (experiment arm 2, 2026-09-01). The user turn wraps
+ * the source in <text>…</text>; one or two outputs in a hundred echo the
+ * tags back. A tag is never part of a translation, so it is removed
+ * mechanically, frame-safely: a leading run that could still become
+ * "<text>" is held until it resolves, and a trailing run that could
+ * still become "</text>" is held until the next chunk or flush().
+ */
+export class MarkerStripper {
+  private lead = '';
+  private leadDone = false;
+  private tail = '';
+
+  feed(chunk: string): string {
+    let text = chunk;
+    if (!this.leadDone) {
+      this.lead += text;
+      const target = '<text>';
+      if (this.lead.length < target.length && target.startsWith(this.lead)) return '';
+      text = this.lead.startsWith(target) ? this.lead.slice(target.length).replace(/^[ \t]*\n?/, '') : this.lead;
+      this.lead = '';
+      this.leadDone = true;
+    }
+    text = this.tail + text;
+    this.tail = '';
+    const held = /\s*(?:<|<\/|<\/t|<\/te|<\/tex|<\/text|<\/text>)$/.exec(text);
+    if (held && held[0].length > 0) {
+      this.tail = held[0];
+      text = text.slice(0, held.index);
+    }
+    return text;
+  }
+
+  flush(): string {
+    const rest = (this.lead + this.tail).replace(/^<text>[ \t]*\n?/, '').replace(/\s*<\/text>\s*$/, '');
+    this.lead = '';
+    this.tail = '';
+    this.leadDone = true;
+    return rest;
+  }
+}

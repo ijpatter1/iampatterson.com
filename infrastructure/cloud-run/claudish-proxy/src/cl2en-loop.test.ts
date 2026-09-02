@@ -201,3 +201,30 @@ describe('loopBudgetFor at post length (Stage 1 bundle)', () => {
     expect(loopBudgetFor(1500)).toEqual({ maxAttempts: 8, deadlineMs: 25000 });
   });
 });
+
+describe('facts-preservation retry (arm 2)', () => {
+  const INPUT = 'We shipped 3 fixes in 2022, and p95 fell to 210ms.';
+  const DROPPED = 'We shipped some fixes recently, and latency fell.';
+  const RESTORED = 'We shipped 3 fixes in 2022, and p95 fell to 210ms.';
+  it('retries once with the missing facts named, and serves the restored text', async () => {
+    const { deps, calls } = scriptedDeps([DROPPED, RESTORED]);
+    const { emit, events } = collector();
+    const result = await runCl2enLoop(INPUT, 'sys', deps, emit, { maxAttempts: 4, deadlineMs: 9000 });
+    expect(calls).toHaveLength(2);
+    expect(calls[1][2].text).toContain('2022');
+    expect(calls[1][2].text).toContain('210ms');
+    expect(result.servedText).toBe(RESTORED);
+    expect(result.factsRetried).toBe(true);
+    expect(result.factsRestored).toBe(true);
+    expect(events.join('')).toContain('R');
+  });
+  it('keeps the original when the retry still drops facts', async () => {
+    const { deps, calls } = scriptedDeps([DROPPED, DROPPED]);
+    const { emit } = collector();
+    const result = await runCl2enLoop(INPUT, 'sys', deps, emit, { maxAttempts: 4, deadlineMs: 9000 });
+    expect(calls).toHaveLength(2);
+    expect(result.servedText).toBe(DROPPED);
+    expect(result.factsRetried).toBe(true);
+    expect(result.factsRestored).toBe(false);
+  });
+});

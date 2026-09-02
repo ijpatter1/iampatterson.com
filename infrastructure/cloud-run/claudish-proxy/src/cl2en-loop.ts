@@ -15,8 +15,15 @@
  *   - stop when an attempt fails to improve by IMPROVEMENT_EPSILON
  *   - hard attempt cap and wall-clock deadline
  */
-import { buildNegationFeedback, judgeTranslation, mechanicalEvidence, structuralEvidence } from './judge';
-import { EmDashSmoother } from './smooth';
+import {
+  buildFactsFeedback,
+  buildNegationFeedback,
+  judgeTranslation,
+  mechanicalEvidence,
+  missingFacts,
+  structuralEvidence,
+} from './judge';
+import { EmDashSmoother, MarkerStripper } from './smooth';
 
 import type { JudgeVerdict } from './judge';
 import type { GeminiEvent, GeminiTurn, GeminiUsage } from './gemini';
@@ -60,6 +67,9 @@ export interface LoopResult {
   refused: boolean;
   attempts: LoopAttempt[];
   usage: GeminiUsage;
+  /** Arm 2: a facts-preservation retry ran / restored every missing fact. */
+  factsRetried: boolean;
+  factsRestored: boolean;
 }
 
 interface RunOneOutcome {
@@ -77,18 +87,19 @@ async function runOne(
   onToken: ((t: string) => void) | null
 ): Promise<RunOneOutcome> {
   const t0 = deps.nowMs();
+  const stripper = new MarkerStripper();
   const smoother = new EmDashSmoother();
   let text = '';
   let finishReason: string | null = null;
   for await (const event of deps.stream(turns, attempt, ATTEMPT_TEMPERATURES[attempt - 1] ?? 0.6)) {
     if (event.kind === 'text') {
-      const emit = smoother.feed(event.text);
+      const emit = smoother.feed(stripper.feed(event.text));
       if (emit.length > 0) {
         text += emit;
         if (onToken) onToken(emit);
       }
     } else {
-      const rest = smoother.flush();
+      const rest = smoother.feed(stripper.flush()) + smoother.flush();
       if (rest.length > 0) {
         text += rest;
         if (onToken) onToken(rest);
@@ -162,6 +173,8 @@ export async function runCl2enLoop(
       refused: true,
       attempts,
       usage,
+      factsRetried: false,
+      factsRestored: false,
     };
   }
   const worthRetrying = (t: string, v: JudgeVerdict): boolean =>
@@ -197,12 +210,38 @@ export async function runCl2enLoop(
     if (!improved) break; // plateau: stop buying attempts
   }
 
-  const revised = best.attempt > 1 && attempts[0].p - best.p >= REVISE_MIN_GAIN;
+  const revisedByJudge = best.attempt > 1 && attempts[0].p - best.p >= REVISE_MIN_GAIN;
+  let served = revisedByJudge ? best : { text: first.text, p: attempts[0].p, attempt: 1 };
+
+  // Facts-preservation retry (arm 2): fidelity outranks the judge. A
+  // served draft that dropped a number or identifier gets one retry
+  // naming the missing facts, budget and deadline permitting, even
+  // when the judge passed it. The retry is served only if it restores
+  // every missing fact.
+  let factsRetried = false;
+  let factsRestored = false;
+  const missing = missingFacts(inputText, served.text);
+  if (missing.length > 0 && attempts.length < maxAttempts && deps.nowMs() - started < deadlineMs) {
+    factsRetried = true;
+    const factsTurns: GeminiTurn[] = [
+      turns[0],
+      { role: 'assistant', text: served.text },
+      { role: 'user', text: buildFactsFeedback(missing) },
+    ];
+    const retry = await runOne(deps, factsTurns, attempts.length + 1, usage, null);
+    const restored = retry.finishReason !== 'SAFETY' && retry.finishReason !== 'PROHIBITED_CONTENT' && missingFacts(inputText, retry.text).length === 0;
+    attempts.push({ p: Number(retry.verdict.p.toFixed(3)), ms: retry.ms, actionable: false });
+    if (restored) {
+      factsRestored = true;
+      served = { text: retry.text, p: retry.verdict.p, attempt: attempts.length };
+    }
+  }
+
+  const revised = served.text !== first.text;
   if (revised) {
     emit.revise();
-    emit.token(best.text);
+    emit.token(served.text);
   }
-  const served = revised ? best : { text: first.text, p: attempts[0].p, attempt: 1 };
   return {
     servedText: served.text,
     servedAttempt: served.attempt,
@@ -211,5 +250,7 @@ export async function runCl2enLoop(
     refused: false,
     attempts,
     usage,
+    factsRetried,
+    factsRestored,
   };
 }
