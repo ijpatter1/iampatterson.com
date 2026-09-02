@@ -13,6 +13,7 @@ import { buildLanes } from './adapters';
 import { BudgetTracker } from './budget';
 import { TranslationCache } from './cache';
 import { loadConfig } from './config';
+import { isOriginAllowed } from './config';
 import { CircuitBreaker } from './lanes';
 import { logEvent } from './log';
 import { RateLimiter } from './ratelimit';
@@ -29,9 +30,7 @@ export function createApp(deps: TranslateDeps): Express {
 
   app.options('/translate', (req, res) => {
     const origin = req.headers.origin ?? '';
-    const allowOrigin = config.allowedOrigins.includes(origin)
-      ? origin
-      : config.allowedOrigins[0];
+    const allowOrigin = isOriginAllowed(origin, config.allowedOrigins) ? origin : config.allowedOrigins[0];
     res.writeHead(204, {
       'Access-Control-Allow-Origin': allowOrigin,
       'Access-Control-Allow-Methods': 'POST, OPTIONS',

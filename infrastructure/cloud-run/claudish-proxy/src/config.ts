@@ -70,8 +70,41 @@ export const MAX_TOKENS: Record<Direction, number> = {
 /** First-token deadline before the ladder advances to the next lane. */
 export const FIRST_TOKEN_DEADLINE_MS = 3000;
 
+/**
+ * Production origins, the Vercel preview pattern (every preview deployment
+ * of this project starts with iampatterson-com-), and local dev. Added
+ * 2026-09-02 when the exact-match list sent localhost and previews to 403.
+ */
+export const DEFAULT_ALLOWED_ORIGINS =
+  'https://iampatterson.com,https://iampatterson-com.vercel.app,https://iampatterson-com-*.vercel.app,http://localhost:3000';
+
+/** Exact match, or a single `*` in the entry's host matched as prefix + suffix (scheme and port literal). */
+export function isOriginAllowed(origin: string, allowed: readonly string[]): boolean {
+  if (!origin) return false;
+  for (const entry of allowed) {
+    const star = entry.indexOf('*');
+    if (star < 0) {
+      if (entry === origin) return true;
+      continue;
+    }
+    if (entry.indexOf('*', star + 1) >= 0) continue; // one wildcard only
+    const prefix = entry.slice(0, star);
+    const suffix = entry.slice(star + 1);
+    if (
+      origin.length > prefix.length + suffix.length &&
+      origin.startsWith(prefix) &&
+      origin.endsWith(suffix) &&
+      !origin.slice(prefix.length, origin.length - suffix.length).includes('/')
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export interface Config {
   port: number;
+  /** Exact origins, or entries with ONE `*` in the host (prefix + suffix match). */
   allowedOrigins: string[];
   lanes: LaneName[];
   projectId: string;
@@ -123,9 +156,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   }
   return {
     port: Number(env.PORT ?? 8080),
-    allowedOrigins: (
-      env.ALLOWED_ORIGINS ?? 'https://iampatterson-com.vercel.app,https://iampatterson.com'
-    )
+    allowedOrigins: (env.ALLOWED_ORIGINS ?? DEFAULT_ALLOWED_ORIGINS)
       .split(',')
       .map((o) => o.trim()),
     lanes,

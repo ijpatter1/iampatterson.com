@@ -20,6 +20,7 @@ import { loopBudgetFor, runCl2enLoop } from './cl2en-loop';
 import { streamGemini } from './gemini';
 import { EmDashSmoother } from './smooth';
 import { FIRST_TOKEN_DEADLINE_MS, INPUT_CAP, GEMINI_PRICES } from './config';
+import { isOriginAllowed } from './config';
 import { hashIp, logEvent, redactError } from './log';
 import { clientIp } from './ratelimit';
 import { SseStream } from './sse';
@@ -91,7 +92,7 @@ export function createTranslateHandler(deps: TranslateDeps) {
     // unreachable in production). SseStream.open re-sends the same value
     // via writeHead — Node merges identical headers, no duplication.
     const origin = req.headers.origin ?? '';
-    const originAllowed = config.allowedOrigins.includes(origin);
+    const originAllowed = isOriginAllowed(origin, config.allowedOrigins);
     const allowOrigin = originAllowed ? origin : config.allowedOrigins[0];
     res.set('Access-Control-Allow-Origin', allowOrigin);
     res.set('Vary', 'Origin');
