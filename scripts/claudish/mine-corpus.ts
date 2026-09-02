@@ -21,7 +21,8 @@ import readline from 'node:readline';
 import { chunkText, seededRng } from './lib/chunk';
 import { findTranscripts } from './lib/walk';
 import { BoilerplateCounter, Deduper } from './lib/dedup';
-import { mightBeAssistant, parseTranscriptLine } from './lib/jsonl';
+import { mightBeAssistant, mightBeHumanTurn, parseTranscriptLine } from './lib/jsonl';
+import { TurnFinalTracker } from './lib/turn-final';
 import { chunkDropReason, stripStructures } from './lib/scrub';
 import { TIC_PATTERNS } from './tic-patterns';
 
@@ -49,6 +50,8 @@ interface ChunkRecord {
   text: string;
   sessionId: string;
   projectId: string;
+  /** The last main-chain assistant block before Ian's next typed turn (or session end). */
+  turnFinal: boolean;
 }
 
 async function main(): Promise<void> {
@@ -68,6 +71,8 @@ async function main(): Promise<void> {
     malformed: 0,
     assistantMessages: 0,
     assistantChars: 0,
+    turnFinalBlocks: 0,
+    humanTurns: 0,
     emDashTotal: 0,
     sessions: new Set<string>(),
     projects: new Set<string>(),
@@ -92,12 +97,18 @@ async function main(): Promise<void> {
       input: createReadStream(transcript.file, { encoding: 'utf8' }),
       crlfDelay: Infinity,
     });
+    const turns = new TurnFinalTracker({ subagent: transcript.isSubagent });
     for await (const line of rl) {
       stats.records++;
-      if (!mightBeAssistant(line)) continue;
+      if (!mightBeAssistant(line) && !mightBeHumanTurn(line)) continue;
       const parsed = parseTranscriptLine(line);
       if (parsed.kind === 'malformed') {
         stats.malformed++;
+        continue;
+      }
+      if (parsed.kind === 'human-turn') {
+        if (!parsed.isSidechain && !transcript.isSubagent) stats.humanTurns++;
+        turns.onHumanTurn(parsed.isSidechain);
         continue;
       }
       if (parsed.kind !== 'assistant-text') continue;
@@ -105,6 +116,7 @@ async function main(): Promise<void> {
       stats.projects.add(transcript.projectId);
       for (const text of parsed.texts) {
         stats.assistantMessages++;
+        const blockChunks: ChunkRecord[] = [];
         stats.assistantChars += text.length;
         stats.emDashTotal += (text.match(/—/g) ?? []).length;
         for (const tic of TIC_PATTERNS) {
@@ -124,10 +136,15 @@ async function main(): Promise<void> {
             continue;
           }
           boilerplate.observe(normalized, transcript.sessionId);
-          rawChunks.push({ text: normalized, sessionId: transcript.sessionId, projectId: transcript.projectId });
+          const record: ChunkRecord = { text: normalized, sessionId: transcript.sessionId, projectId: transcript.projectId, turnFinal: false };
+          rawChunks.push(record);
+          blockChunks.push(record);
         }
+        turns.onAssistantChunks(blockChunks, parsed.isSidechain);
       }
     }
+    turns.end();
+    stats.turnFinalBlocks += turns.stats().turnFinalBlocks;
     if (rawChunks.length >= args.maxChunks) break;
   }
 
@@ -184,6 +201,12 @@ async function main(): Promise<void> {
     projects: stats.projects.size,
     assistantMessages: stats.assistantMessages,
     assistantChars: stats.assistantChars,
+    turnFinal: {
+      humanTurns: stats.humanTurns,
+      turnFinalBlocks: stats.turnFinalBlocks,
+      rawChunks: rawChunks.filter((c) => c.turnFinal).length,
+      keptChunks: kept.filter((c) => c.turnFinal).length,
+    },
     emDash: {
       total: stats.emDashTotal,
       per10kChars: per10k(stats.emDashTotal),

@@ -11,6 +11,8 @@ export interface TranscriptFile {
   file: string;
   projectId: string;
   sessionId: string;
+  /** Nested under a session dir (subagent transcript): its final message addresses the parent agent, not Ian. */
+  isSubagent: boolean;
 }
 
 function collectSessionFiles(
@@ -23,7 +25,7 @@ function collectSessionFiles(
     const entryPath = path.join(dir, entry);
     const stat = statSync(entryPath);
     if (stat.isFile() && entry.endsWith('.jsonl')) {
-      out.push({ file: entryPath, projectId, sessionId });
+      out.push({ file: entryPath, projectId, sessionId, isSubagent: true });
     } else if (stat.isDirectory() && entry !== 'tool-results') {
       collectSessionFiles(entryPath, projectId, sessionId, out);
     }
@@ -43,6 +45,7 @@ export function findTranscripts(root: string): TranscriptFile[] {
           file: entryPath,
           projectId: project,
           sessionId: entry.replace(/\.jsonl$/, ''),
+          isSubagent: false,
         });
       } else if (stat.isDirectory() && entry !== 'memory') {
         collectSessionFiles(entryPath, project, entry, out);

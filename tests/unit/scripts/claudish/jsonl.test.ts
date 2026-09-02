@@ -70,3 +70,28 @@ describe('parseTranscriptLine', () => {
     expect(mightBeAssistant(JSON.stringify({ type: 'mode', mode: 'normal' }))).toBe(false);
   });
 });
+
+describe('human-turn records (turn-final tagging, 2026-09-02)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const J = require('../../../../scripts/claudish/lib/jsonl') as typeof import('../../../../scripts/claudish/lib/jsonl');
+  const user = (extra: Record<string, unknown>) => JSON.stringify({ type: 'user', userType: 'external', ...extra });
+  it('a typed message (string content) is a human turn', () => {
+    expect(J.parseTranscriptLine(user({ message: { content: 'please fix the tests' } }))).toEqual({ kind: 'human-turn', isSidechain: false });
+  });
+  it('a message with text blocks and no tool_result is a human turn; a tool result is not', () => {
+    expect(J.parseTranscriptLine(user({ message: { content: [{ type: 'text', text: 'pasted:' }, { type: 'image' }] } })).kind).toBe('human-turn');
+    expect(J.parseTranscriptLine(user({ message: { content: [{ type: 'tool_result', content: 'ok' }] } })).kind).toBe('other');
+  });
+  it('system-injected (isMeta) and empty user records are not human turns', () => {
+    expect(J.parseTranscriptLine(user({ isMeta: true, message: { content: 'context' } })).kind).toBe('other');
+    expect(J.parseTranscriptLine(user({ message: { content: '   ' } })).kind).toBe('other');
+  });
+  it('carries the sidechain flag', () => {
+    expect(J.parseTranscriptLine(user({ isSidechain: true, message: { content: 'x' } }))).toEqual({ kind: 'human-turn', isSidechain: true });
+  });
+  it('mightBeHumanTurn prefilters tool results and non-user lines', () => {
+    expect(J.mightBeHumanTurn(user({ message: { content: 'hi' } }))).toBe(true);
+    expect(J.mightBeHumanTurn(user({ message: { content: [{ type: 'tool_result' }] } }))).toBe(false);
+    expect(J.mightBeHumanTurn(JSON.stringify({ type: 'assistant' }))).toBe(false);
+  });
+});

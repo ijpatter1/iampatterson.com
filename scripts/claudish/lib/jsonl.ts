@@ -16,15 +16,40 @@ export interface ParsedAssistantText {
   isSidechain: boolean;
 }
 
+export interface ParsedHumanTurn {
+  kind: 'human-turn';
+  isSidechain: boolean;
+}
+
 export interface ParsedOther {
   kind: 'other' | 'malformed';
 }
 
-export type ParsedRecord = ParsedAssistantText | ParsedOther;
+export type ParsedRecord = ParsedAssistantText | ParsedHumanTurn | ParsedOther;
 
 /** Cheap prefilter: skip ~60% of lines (and most bytes) before JSON.parse. */
 export function mightBeAssistant(line: string): boolean {
   return line.includes('"assistant"');
+}
+
+/** Cheap prefilter for typed human turns: user records that are not tool results. */
+export function mightBeHumanTurn(line: string): boolean {
+  return line.includes('"user"') && !line.includes('tool_result');
+}
+
+function isHumanTurn(r: Record<string, unknown>): boolean {
+  if (r.type !== 'user' || r.isMeta === true) return false;
+  const message = r.message as Record<string, unknown> | undefined;
+  const content = message?.content;
+  if (typeof content === 'string') return content.trim().length > 0;
+  if (!Array.isArray(content)) return false;
+  let text = false;
+  for (const block of content) {
+    const type = typeof block === 'object' && block !== null ? (block as Record<string, unknown>).type : undefined;
+    if (type === 'tool_result') return false;
+    if (type === 'text') text = true;
+  }
+  return text;
 }
 
 export function parseTranscriptLine(line: string): ParsedRecord {
@@ -36,6 +61,7 @@ export function parseTranscriptLine(line: string): ParsedRecord {
   }
   if (typeof record !== 'object' || record === null) return { kind: 'malformed' };
   const r = record as Record<string, unknown>;
+  if (r.type === 'user') return isHumanTurn(r) ? { kind: 'human-turn', isSidechain: r.isSidechain === true } : { kind: 'other' };
   if (r.type !== 'assistant') return { kind: 'other' };
   const message = r.message as Record<string, unknown> | undefined;
   if (!message || !Array.isArray(message.content)) return { kind: 'other' };

@@ -125,6 +125,11 @@ function main(): void {
   let registerFiltered = 0;
   const projects = new Set<string>();
   let dampened = 0;
+  // POS_TURN_FINAL_ONLY=1 keeps only the Claude Code blocks Ian actually read (the
+  // last main-chain assistant text before his next turn); claude.ai chunks are
+  // replies by construction and carry no flag.
+  const turnFinalOnly = process.env.POS_TURN_FINAL_ONLY === '1';
+  let midWorkFiltered = 0;
   const positiveFiles = ['chunks.jsonl', 'claudeai-chunks.jsonl'].filter((f) =>
     existsSync(path.join(corpusDir, f))
   );
@@ -133,7 +138,11 @@ function main(): void {
   );
   for (const line of positiveLines) {
     if (!line) continue;
-    const c = JSON.parse(line) as { text: string; sessionId: string; projectId: string };
+    const c = JSON.parse(line) as { text: string; sessionId: string; projectId: string; turnFinal?: boolean };
+    if (turnFinalOnly && c.turnFinal === false) {
+      midWorkFiltered++;
+      continue;
+    }
     const damper = PHRASE_DAMPENERS.find((d) => d.pattern.test(c.text));
     if (damper && rng() > damper.keepFraction) {
       dampened++;
@@ -244,6 +253,7 @@ function main(): void {
     generatedAt: new Date().toISOString(),
     positivesTotal: positives.length,
     positivesDampened: dampened,
+    positivesMidWorkFiltered: midWorkFiltered,
     positivesRegisterFiltered: registerFiltered,
     negativesTotal: negatives.length,
     humanTurnsKept: Math.min(humanCap, humanTurns.length),
