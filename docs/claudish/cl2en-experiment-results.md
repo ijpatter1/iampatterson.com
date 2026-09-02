@@ -1,3 +1,4 @@
+<!-- Mirror of ~/.claudish-corpus/analysis/2026-09-01-model-compare/RESULTS.md at loop close; no raw pool text. -->
 # cl2en experiment loop: results
 
 Rules: docs/claudish/cl2en-experiment-rules.md. Scoreboard = shipped detector r7d mean / pass<0.5 on the 99-input dev pool. Fidelity = pairwise vs baseline, two judges (Haiku, Gemini 3.5 Flash-Lite), order-swapped; counts are candidate wins / baseline wins / ties.
