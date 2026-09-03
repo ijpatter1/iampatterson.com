@@ -101,7 +101,8 @@ async function main() {
         lines.push(`## Attempt ${t.attempt} (temperature ${t.temperature})`, ``);
         for (const turn of t.turns) lines.push(`### ${turn.role} turn (${turn.text.length} chars)`, ``, "```", turn.text, "```", ``);
         lines.push(`### model output (${t.output.length} chars)`, ``, "```", t.output, "```", ``);
-        if (a) { const ax = judgeAxes(smoothForJudge(t.output)); // the loop judges SMOOTHED text (markers stripped, em dashes rewritten) lines.push(`### verdict: judge p ${a.p.toFixed(3)} (register ${ax.register.toFixed(2)}, shape ${ax.shape.toFixed(2)}, heuristic ${ax.heuristic.score.toFixed(2)}) | passed ${a.p < 0.5} | retry gate open ${String(a.actionable)}${t.attempt === result.servedAttempt ? " | SERVED" : ""}`, ``); }
+        // The loop judges SMOOTHED text (markers stripped, em dashes rewritten), so the axis readings do too.
+        if (a) { const ax = judgeAxes(smoothForJudge(t.output)); lines.push(`### verdict: judge p ${a.p.toFixed(3)} (register ${ax.register.toFixed(2)}, shape ${ax.shape.toFixed(2)}, heuristic ${ax.heuristic.score.toFixed(2)}) | passed ${a.p < 0.5} | retry gate open ${String(a.actionable)}${t.attempt === result.servedAttempt ? " | SERVED" : ""}`, ``); }
       }
       writeFileSync(process.env.CL2EN_TRANSCRIPT.replace(/\.md$/, "") + `-${id.replace(/[^a-z0-9]+/gi, "_")}.md`, lines.join("\n"));
     }
