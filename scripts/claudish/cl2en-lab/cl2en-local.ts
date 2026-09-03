@@ -17,6 +17,8 @@ import {
 import { streamGemini } from "../../../infrastructure/cloud-run/claudish-proxy/src/gemini";
 import { buildSystem } from "../../../infrastructure/cloud-run/claudish-proxy/src/prompts";
 import { judgeAxes, setJudgeModels, setJudgeRule } from "../../../infrastructure/cloud-run/claudish-proxy/src/judge";
+import { EmDashSmoother, MarkerStripper } from "../../../infrastructure/cloud-run/claudish-proxy/src/smooth";
+const smoothForJudge = (raw: string): string => { const st = new MarkerStripper(); const sm = new EmDashSmoother(); return sm.feed(st.feed(raw)) + sm.feed(st.flush()) + sm.flush(); };
 
 // Loop-2 T arms: LOOP_JUDGE_MODELS=tag,tag,tag swaps the loop's judge
 // ensemble for registry candidates (~/.claudish-corpus/models/<tag>).
@@ -99,7 +101,7 @@ async function main() {
         lines.push(`## Attempt ${t.attempt} (temperature ${t.temperature})`, ``);
         for (const turn of t.turns) lines.push(`### ${turn.role} turn (${turn.text.length} chars)`, ``, "```", turn.text, "```", ``);
         lines.push(`### model output (${t.output.length} chars)`, ``, "```", t.output, "```", ``);
-        if (a) { const ax = judgeAxes(t.output); lines.push(`### verdict: judge p ${a.p.toFixed(3)} (register ${ax.register.toFixed(2)}, shape ${ax.shape.toFixed(2)}, heuristic ${ax.heuristic.score.toFixed(2)}) | passed ${a.p < 0.5} | retry gate open ${String(a.actionable)}${t.attempt === result.servedAttempt ? " | SERVED" : ""}`, ``); }
+        if (a) { const ax = judgeAxes(smoothForJudge(t.output)); // the loop judges SMOOTHED text (markers stripped, em dashes rewritten) lines.push(`### verdict: judge p ${a.p.toFixed(3)} (register ${ax.register.toFixed(2)}, shape ${ax.shape.toFixed(2)}, heuristic ${ax.heuristic.score.toFixed(2)}) | passed ${a.p < 0.5} | retry gate open ${String(a.actionable)}${t.attempt === result.servedAttempt ? " | SERVED" : ""}`, ``); }
       }
       writeFileSync(process.env.CL2EN_TRANSCRIPT.replace(/\.md$/, "") + `-${id.replace(/[^a-z0-9]+/gi, "_")}.md`, lines.join("\n"));
     }
