@@ -132,6 +132,56 @@ export async function* streamGemini(
   let buffer = '';
   let usage: GeminiUsage = { inputTokens: 0, outputTokens: 0, cachedTokens: 0 };
   let finishReason: string | null = null;
+  // Parse every complete frame in the buffer. Called once more after the
+  // stream ends with a forced separator, so a final frame that arrives
+  // without its trailing blank line is not dropped (review batch 3).
+  function* drainFrames(): Generator<GeminiEvent> {
+    let i;
+    while ((i = buffer.indexOf('\n\n')) >= 0) {
+      const frame = buffer.slice(0, i);
+      buffer = buffer.slice(i + 2);
+      debug(JSON.stringify({ frame }));
+      for (const line of frame.split('\n')) {
+        if (!line.startsWith('data:')) continue;
+        const payload = line.slice(5).trim();
+        if (!payload) continue;
+        let chunk: {
+          candidates?: Array<{
+            content?: { parts?: Array<{ text?: string }> };
+            finishReason?: string;
+          }>;
+          usageMetadata?: {
+            promptTokenCount?: number;
+            candidatesTokenCount?: number;
+            cachedContentTokenCount?: number;
+          };
+          promptFeedback?: { blockReason?: string };
+        };
+        try {
+          chunk = JSON.parse(payload);
+        } catch {
+          continue; // tolerate drift
+        }
+        // A prompt-level block carries no candidates at all; without this
+        // the stream ended with finishReason null and an empty text was
+        // served as success (review batch 2, finding 7).
+        if (chunk.promptFeedback?.blockReason) {
+          finishReason = chunk.promptFeedback.blockReason === 'PROHIBITED_CONTENT' ? 'PROHIBITED_CONTENT' : 'SAFETY';
+        }
+        const candidate = chunk.candidates?.[0];
+        const text = candidate?.content?.parts?.map((p) => p.text ?? '').join('') ?? '';
+        if (text.length > 0) yield { kind: 'text', text };
+        if (candidate?.finishReason) finishReason = candidate.finishReason;
+        if (chunk.usageMetadata) {
+          usage = {
+            inputTokens: chunk.usageMetadata.promptTokenCount ?? 0,
+            outputTokens: chunk.usageMetadata.candidatesTokenCount ?? 0,
+            cachedTokens: chunk.usageMetadata.cachedContentTokenCount ?? 0,
+          };
+        }
+      }
+    }
+  }
   try {
     for (;;) {
       const { done, value } = await reader.read();
@@ -139,51 +189,12 @@ export async function* streamGemini(
       // Vertex emits CRLF-delimited SSE frames; normalize so the
       // splitter sees plain LF (the live-API gap the fakes reproduced).
       buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, '\n');
-      let i;
-      while ((i = buffer.indexOf('\n\n')) >= 0) {
-        const frame = buffer.slice(0, i);
-        buffer = buffer.slice(i + 2);
-        debug(JSON.stringify({ frame }));
-        for (const line of frame.split('\n')) {
-          if (!line.startsWith('data:')) continue;
-          const payload = line.slice(5).trim();
-          if (!payload) continue;
-          let chunk: {
-            candidates?: Array<{
-              content?: { parts?: Array<{ text?: string }> };
-              finishReason?: string;
-            }>;
-            usageMetadata?: {
-              promptTokenCount?: number;
-              candidatesTokenCount?: number;
-              cachedContentTokenCount?: number;
-            };
-            promptFeedback?: { blockReason?: string };
-          };
-          try {
-            chunk = JSON.parse(payload);
-          } catch {
-            continue; // tolerate drift
-          }
-          // A prompt-level block carries no candidates at all; without this
-          // the stream ended with finishReason null and an empty text was
-          // served as success (review batch 2, finding 7).
-          if (chunk.promptFeedback?.blockReason) {
-            finishReason = chunk.promptFeedback.blockReason === 'PROHIBITED_CONTENT' ? 'PROHIBITED_CONTENT' : 'SAFETY';
-          }
-          const candidate = chunk.candidates?.[0];
-          const text = candidate?.content?.parts?.map((p) => p.text ?? '').join('') ?? '';
-          if (text.length > 0) yield { kind: 'text', text };
-          if (candidate?.finishReason) finishReason = candidate.finishReason;
-          if (chunk.usageMetadata) {
-            usage = {
-              inputTokens: chunk.usageMetadata.promptTokenCount ?? 0,
-              outputTokens: chunk.usageMetadata.candidatesTokenCount ?? 0,
-              cachedTokens: chunk.usageMetadata.cachedContentTokenCount ?? 0,
-            };
-          }
-        }
-      }
+      yield* drainFrames();
+    }
+    buffer += decoder.decode();
+    if (buffer.trim().length > 0) {
+      buffer += '\n\n';
+      yield* drainFrames();
     }
   } finally {
     void reader.cancel().catch(() => undefined);

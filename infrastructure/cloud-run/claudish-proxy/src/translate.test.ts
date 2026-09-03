@@ -11,7 +11,7 @@ import { EventEmitter } from 'node:events';
 
 import { BudgetTracker } from './budget';
 import { TranslationCache } from './cache';
-import { INPUT_CAP, loadConfig } from './config';
+import { GEMINI_PRICES, INPUT_CAP, loadConfig } from './config';
 import { CircuitBreaker } from './lanes';
 import { setLogSink } from './log';
 import { RateLimiter } from './ratelimit';
@@ -825,5 +825,32 @@ describe('review batch 2 (2026-09-03): per-attempt reservations, empty results, 
     expect(second.frames()[0]).toMatchObject({ cached: true });
     const replayed = second.frames().filter((f) => f.type === 'token').map((f) => String(f.t)).join('');
     expect(replayed).toBe('Hello there');
+  });
+});
+
+describe('review batch 3 (2026-09-03): abort inside the loop settles at Gemini prices', () => {
+  it('passes GEMINI_PRICES to release when the client leaves mid-loop', async () => {
+    const deps = makeDeps([fakeLane('vertex-global', [{ kind: 'start' }])]);
+    deps.config = loadConfig({ CL2EN_ENGINE: 'gemini-loop', LANES: 'vertex-global,cache-only' });
+    const releases: unknown[][] = [];
+    const real = deps.budget.reserve.bind(deps.budget);
+    deps.budget.reserve = () => {
+      const r = real();
+      if (!r) return r;
+      return { reconcile: r.reconcile, release: (...a: unknown[]) => { releases.push(a); (r.release as (...x: unknown[]) => void)(...a); } };
+    };
+    (deps as { geminiStream?: unknown }).geminiStream = ((_c: unknown, _s: unknown, _t: unknown, signal: AbortSignal) =>
+      (async function* () {
+        await new Promise((r) => setTimeout(r, 30));
+        if (signal.aborted) throw new Error('AbortError');
+        yield { kind: 'text', text: 'late' } as const;
+        yield { kind: 'stop', usage: { inputTokens: 1, outputTokens: 1, cachedTokens: 0 }, finishReason: 'STOP' } as const;
+      })()) as never;
+    const ctx = stubReqRes({ text: 'p '.repeat(20), direction: 'cl2en' as const });
+    const pending = createTranslateHandler(deps)(ctx.req, ctx.res);
+    (ctx.res as unknown as EventEmitter).emit('close');
+    await pending;
+    expect(releases.length).toBe(1);
+    expect(releases[0][1]).toBe(GEMINI_PRICES);
   });
 });

@@ -2,7 +2,7 @@
  * claudish-proxy — budget tests (feat/claudish, proxy T7).
  */
 import { BudgetTracker, usageCostUsd } from './budget';
-import { RESERVATION_USD } from './config';
+import { GEMINI_PRICES, RESERVATION_USD } from './config';
 
 const DAY1 = Date.UTC(2026, 8, 1, 12, 0, 0);
 const DAY2 = Date.UTC(2026, 8, 2, 0, 0, 1);
@@ -92,5 +92,12 @@ describe('per-lane pricing (Stage 1 bundle, 2026-09-01)', () => {
     expect(gemini).toBeCloseTo(0.3 + 0.25, 6);
     expect(gemini).toBeLessThan(haiku / 2);
     expect(PRICES.inputPerMTok).toBe(1.0);
+  });
+
+  it('release prices a partial estimate at the given table (review batch 3: the loop abort path)', () => {
+    const b = new BudgetTracker(1, false);
+    const r = b.reserve()!;
+    r.release({ inputTokens: 1_000_000, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 }, GEMINI_PRICES);
+    expect(b.usedPct()).toBe(30); // $0.30/MTok, not the Haiku $1.00
   });
 });

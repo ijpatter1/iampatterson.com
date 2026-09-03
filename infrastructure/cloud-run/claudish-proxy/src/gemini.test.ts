@@ -210,4 +210,17 @@ describe('streamGemini', () => {
     const other = await collect(streamGemini(CONFIG, 'sys', [{ role: 'user', text: 'x' }], new AbortController().signal, blocked('OTHER')));
     expect(other[other.length - 1]).toMatchObject({ kind: 'stop', finishReason: 'SAFETY' });
   });
+
+  it('parses a final frame that arrives without its trailing blank line', async () => {
+    // Review batch 3: the splitter only consumed complete "\n\n" frames, so a
+    // last frame without the separator stayed in the buffer and its
+    // finishReason and usage were dropped.
+    const fetchFn = (async () =>
+      sse('data: {"candidates":[{"content":{"parts":[{"text":"Hi"}]},"finishReason":"STOP"}],"usageMetadata":{"promptTokenCount":7,"candidatesTokenCount":1}}')) as typeof fetch;
+    const events = await collect(streamGemini(CONFIG, 'sys', [{ role: 'user', text: 'x' }], new AbortController().signal, fetchFn));
+    expect(events).toEqual([
+      { kind: 'text', text: 'Hi' },
+      { kind: 'stop', usage: { inputTokens: 7, outputTokens: 1, cachedTokens: 0 }, finishReason: 'STOP' },
+    ]);
+  });
 });

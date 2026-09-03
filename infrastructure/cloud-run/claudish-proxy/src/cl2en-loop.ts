@@ -255,6 +255,21 @@ export async function runCl2enLoop(
 }
 
 /** Option 4: one loop per paragraph, concurrently; tokens are emitted once at the end, in order. */
+/**
+ * Replace the convicted sentences (by index in splitSentences order) with the
+ * rewritten lines, keeping the original separators between sentences so a
+ * paragraph break survives the splice (review batch 3: join(' ') collapsed
+ * every paragraph into one).
+ */
+export function spliceSentences(previous: string, convicted: Array<{ index: number }>, lines: string[]): string {
+  const parts = previous.split(/((?<=[.!?])\s+)/);
+  // parts alternates sentence, separator, sentence, ...
+  convicted.forEach((c, i) => {
+    if (c.index * 2 < parts.length && lines[i] !== undefined) parts[c.index * 2] = lines[i];
+  });
+  return parts.join('');
+}
+
 async function runParagraphs(
   paragraphs: string[],
   system: string,
@@ -266,19 +281,22 @@ async function runParagraphs(
   const results = await Promise.all(
     paragraphs.map((p) => runSingle(p, system, deps, quiet, { ...options, paragraphParallel: false }))
   );
-  const servedText = results.map((r) => r.servedText).join('\n\n');
+  const refused = results.some((r) => r.refused);
+  // A refused paragraph refuses the whole text: nothing is emitted (the
+  // text used to stream before the refusal was read; review batch 3).
+  const servedText = refused ? '' : results.map((r) => r.servedText).join('\n\n');
   const usage = results.reduce(
     (u, r) => ({ inputTokens: u.inputTokens + r.usage.inputTokens, outputTokens: u.outputTokens + r.usage.outputTokens, cachedTokens: u.cachedTokens + r.usage.cachedTokens }),
     { inputTokens: 0, outputTokens: 0, cachedTokens: 0 }
   );
-  emit.token(servedText);
+  if (!refused) emit.token(servedText);
   const worstAttempt = results.reduce((m, r) => Math.max(m, r.attempts.length), 0);
   return {
     servedText,
     servedAttempt: worstAttempt,
     revised: results.some((r) => r.revised),
     passed: results.every((r) => r.passed),
-    refused: results.some((r) => r.refused),
+    refused,
     retryFailed: results.some((r) => r.retryFailed),
     attempts: results.flatMap((r) => r.attempts),
     usage,
@@ -398,11 +416,7 @@ async function runSingle(
         if (!sentenceOnly) return r;
         const lines = r.text.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
         if (lines.length !== convicted.length) return r;
-        const sentences = splitSentences(previous.text);
-        convicted.forEach((c, i) => {
-          sentences[c.index] = lines[i];
-        });
-        const spliced = sentences.join(' ');
+        const spliced = spliceSentences(previous.text, convicted, lines);
         return { ...r, text: spliced, verdict: judgeTranslation(spliced) };
       })
       .map((r) => ({ ...r, score: scoreOf(r.text, r.verdict) }))

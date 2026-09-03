@@ -6,7 +6,7 @@
  * blind spot the no-infinite-loops rules exist for).
  */
 import { StallDeadline } from './deadline';
-import { runCl2enLoop, LOOP_MAX_ATTEMPTS } from './cl2en-loop';
+import { runCl2enLoop, spliceSentences, LOOP_MAX_ATTEMPTS } from './cl2en-loop';
 
 import type { GeminiEvent, GeminiTurn } from './gemini';
 
@@ -513,5 +513,34 @@ describe('review batch 2 (2026-09-03): stall deadlines and the budget hook', () 
     expect(calls.length).toBe(1);
     expect(result.servedText).toBe(LOUD_SMOOTHED);
     expect(result.passed).toBe(false);
+  });
+});
+
+describe('review batch 3 (2026-09-03): lab-only loop options', () => {
+  it('paragraph parallelism: a refused paragraph emits nothing and reports refused', async () => {
+    let call = 0;
+    const deps = {
+      nowMs: () => Date.now(),
+      stream: () =>
+        (async function* () {
+          if (++call === 1) {
+            yield { kind: 'text', text: CLEAN } as GeminiEvent;
+            yield { kind: 'stop', usage: { inputTokens: 1, outputTokens: 1, cachedTokens: 0 }, finishReason: 'STOP' } as GeminiEvent;
+          } else {
+            yield { kind: 'stop', usage: { inputTokens: 1, outputTokens: 0, cachedTokens: 0 }, finishReason: 'SAFETY' } as GeminiEvent;
+          }
+        })(),
+    };
+    const { emit, events } = collector();
+    const result = await runCl2enLoop('First paragraph here.\n\nSecond paragraph here.', 'sys', deps, emit, { maxAttempts: 2, deadlineMs: 9000, paragraphParallel: true });
+    expect(result.refused).toBe(true);
+    expect(result.servedText).toBe('');
+    expect(events.filter((e) => e.startsWith('T:'))).toEqual([]);
+  });
+
+  it('sentence splice keeps paragraph breaks', () => {
+    const previous = 'A one. B two.\n\nC three. D four.';
+    expect(spliceSentences(previous, [{ index: 2 }], ['C fixed.'])).toBe('A one. B two.\n\nC fixed. D four.');
+    expect(spliceSentences(previous, [{ index: 0 }, { index: 3 }], ['A fixed.', 'D fixed.'])).toBe('A fixed. B two.\n\nC three. D fixed.');
   });
 });

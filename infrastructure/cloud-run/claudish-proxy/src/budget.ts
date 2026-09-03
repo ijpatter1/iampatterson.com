@@ -39,8 +39,8 @@ export interface Reservation {
    * per token than the Haiku default and must not be over-counted.
    */
   reconcile(usage: Usage, prices?: PriceTable): void;
-  /** Release with a partial estimate (abort path). */
-  release(partial?: Usage): void;
+  /** Release with a partial estimate (abort path); `prices` selects the lane's table. */
+  release(partial?: Usage, prices?: PriceTable): void;
 }
 
 export class BudgetTracker {
@@ -113,7 +113,7 @@ export class BudgetTracker {
     };
     return {
       reconcile: (usage: Usage, prices?: PriceTable) => settle(usageCostUsd(usage, prices)),
-      release: (partial?: Usage) => settle(partial ? usageCostUsd(partial) : 0),
+      release: (partial?: Usage, prices?: PriceTable) => settle(partial ? usageCostUsd(partial, prices) : 0),
     };
   }
 

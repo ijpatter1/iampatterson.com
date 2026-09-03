@@ -201,11 +201,14 @@ export function createTranslateHandler(deps: TranslateDeps) {
     // finding 6); they are released here, the real usage settles on the
     // first reservation.
     const extraReservations: Reservation[] = [];
+    // The abort-path estimate is priced at the lane that was running: the
+    // Gemini loop at Gemini rates, not the Haiku default (review batch 3).
+    let activePrices: PriceTable | undefined;
     const settle = (usage?: Usage, prices?: PriceTable) => {
       if (settled) return;
       settled = true;
       if (usage) reservation.reconcile(usage, prices);
-      else reservation.release(estimateUsage(text.length, streamedChars));
+      else reservation.release(estimateUsage(text.length, streamedChars), activePrices);
       for (const extra of extraReservations) extra.release();
       extraReservations.length = 0;
     };
@@ -230,6 +233,7 @@ export function createTranslateHandler(deps: TranslateDeps) {
     // Claude ladder below — Gemini outage never blanks the panel.
     if (direction === 'cl2en' && config.cl2enEngine === 'gemini-loop') {
       const system = buildSystem('cl2en');
+      activePrices = GEMINI_PRICES;
       sse.open(allowOrigin);
       sse.frame({
         type: 'meta',
@@ -390,6 +394,7 @@ export function createTranslateHandler(deps: TranslateDeps) {
         }
         // Pre-token failure: fall through to the Claude ladder (the
         // client tolerates a second meta frame — last one wins).
+        activePrices = undefined;
         logEvent('WARNING', 'loop_fell_through', {
           requestId,
           direction,
