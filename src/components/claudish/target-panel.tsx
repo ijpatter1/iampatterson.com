@@ -58,7 +58,7 @@ export function TargetPanel({
   return (
     <section
       aria-label="Translation"
-      className="flex min-h-[180px] flex-col rounded-lg border border-[var(--gt-border,#dadce0)] bg-[var(--gt-surface-alt,#f8f9fa)] md:rounded-l-none"
+      className="flex min-h-[180px] flex-col rounded-lg border border-[var(--gt-border,#dadce0)] bg-[var(--gt-surface-alt,#f8f9fa)]"
     >
       <LanguageTabRow
         side="target"

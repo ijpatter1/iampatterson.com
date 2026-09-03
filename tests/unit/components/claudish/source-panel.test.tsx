@@ -72,4 +72,40 @@ describe('SourcePanel', () => {
     expect(screen.queryByRole('button', { name: /clear source text/i })).not.toBeInTheDocument();
     expect(screen.getByTestId('claudish-char-counter')).toHaveTextContent('0 / 3,000');
   });
+
+  it('grows with its content: a grow-wrap mirrors the value so the box never scrolls inside', () => {
+    // Ian, 2026-09-03: the input box has to expand like the output box.
+    // The pseudo-element replica (CSS-Tricks grow-wrap) sizes the grid
+    // cell; the textarea stretches to it and hides its own scrollbar.
+    const value = 'first line\nsecond line\n';
+    render(
+      <SourcePanel
+        value={value}
+        onChange={noop}
+        activeTab={0}
+        onTabSelect={noop}
+        detection={null}
+      />
+    );
+    const wrap = screen.getByTestId('claudish-source-grow');
+    expect(wrap).toHaveAttribute('data-replicated-value', `${value} `);
+    expect(wrap.className).toContain('after:content-[attr(data-replicated-value)]');
+    expect(wrap.className).toContain('after:whitespace-pre-wrap');
+    expect(screen.getByRole('textbox').className).toContain('overflow-hidden');
+  });
+
+  it('keeps its full border on desktop (the open right edge read as clipped)', () => {
+    render(
+      <SourcePanel
+        value=""
+        onChange={noop}
+        activeTab={0}
+        onTabSelect={noop}
+        detection={null}
+      />
+    );
+    const section = screen.getByRole('region', { name: /source text/i });
+    expect(section.className).not.toContain('md:border-r-0');
+    expect(section.className).not.toContain('md:rounded-r-none');
+  });
 });
