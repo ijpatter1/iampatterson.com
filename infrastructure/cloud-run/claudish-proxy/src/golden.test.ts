@@ -14,13 +14,23 @@
  *
  * Run via scripts/run-claudish-golden.sh (repo root), which sets the
  * gate + credentials context.
+ *
+ * cl2en cases run through the SERVED engine when CL2EN_ENGINE=gemini-loop
+ * (the runner's default): the judge-driven Gemini loop composed as
+ * translate.ts composes it. Until 2026-09-03 this file sent them through
+ * lanes[0] (the Claude ladder, one pass, no loop) whatever the engine, so
+ * the gate never exercised the path that serves traffic; 951846a wired
+ * the runner's env without this file reading it. With LANES-only engines
+ * the Claude path still applies.
  */
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { buildLanes } from './adapters';
+import { loopBudgetFor, runCl2enLoop } from './cl2en-loop';
 import { loadConfig } from './config';
-import { CANARY_TOKEN } from './prompts';
+import { streamGemini } from './gemini';
+import { CANARY_TOKEN, buildSystem } from './prompts';
 import { assertCl2En, assertEn2Cl, assertInjectionSafe } from './assertions';
 import { EmDashSmoother } from './smooth';
 
@@ -69,6 +79,41 @@ async function translateVia(
   return { output, stopReason };
 }
 
+/** The served cl2en path: the Gemini loop, composed as translate.ts composes it. */
+async function translateCl2EnServed(
+  config: ReturnType<typeof loadConfig>,
+  text: string
+): Promise<{ output: string; stopReason: string | null }> {
+  const system = buildSystem('cl2en');
+  const controller = new AbortController();
+  const result = await runCl2enLoop(
+    text,
+    system,
+    {
+      nowMs: () => Date.now(),
+      stream: (turns, _attempt, temperature) =>
+        streamGemini(
+          {
+            projectId: config.projectId,
+            location: config.geminiLocation,
+            modelId: config.geminiModelId,
+            maxOutputTokens: 2048,
+            thinkingBudget: 0,
+            temperature,
+          },
+          system,
+          turns,
+          controller.signal
+        ),
+    },
+    { token: () => undefined, revise: () => undefined },
+    loopBudgetFor(text.length)
+  );
+  const smoother = new EmDashSmoother();
+  const output = smoother.feed(result.servedText) + smoother.flush();
+  return { output, stopReason: result.refused ? 'refusal' : 'end_turn' };
+}
+
 describeIfGolden('golden set (live API)', () => {
   jest.setTimeout(60000);
   const config = loadConfig(process.env);
@@ -80,9 +125,15 @@ describeIfGolden('golden set (live API)', () => {
   });
 
   describe('claudish → english', () => {
+    const served = config.cl2enEngine === 'gemini-loop';
+    it(`runs the ${served ? 'served gemini-loop' : 'Claude-lane'} engine`, () => {
+      console.log(`[golden] cl2en engine: ${served ? 'gemini-loop (served path)' : 'lanes (Claude ladder)'}`);
+    });
     for (const testCase of loadCases('cl2en.json')) {
       it(testCase.id, async () => {
-        const { output, stopReason } = await translateVia(lane, 'cl2en', testCase.input);
+        const { output, stopReason } = served
+          ? await translateCl2EnServed(config, testCase.input)
+          : await translateVia(lane, 'cl2en', testCase.input);
         if (testCase.long && stopReason !== 'end_turn') {
           throw new Error(`${testCase.id} truncated: stop_reason=${stopReason}`);
         }

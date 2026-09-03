@@ -9,10 +9,13 @@
  * no canary). The size floor keeps the block above Haiku 4.5's
  * 4,096-token cache minimum — see the measured ratio in the test.
  */
-import { CANARY_TOKEN, buildSystem } from './index';
+import { CANARY_TOKEN, PROMPT_VERSION, buildSystem } from './index';
+import { CL2EN_CONTRACT } from './cl2en.contract';
+import { CL2EN_FEWSHOTS } from './cl2en.fewshots';
+import { CL2EN_SYSTEM } from './cl2en.system';
 import { EN2CL_FEWSHOTS } from './en2cl.fewshots';
 import { EN2CL_SYSTEM } from './en2cl.system';
-import { identifiersPreserved } from '../assertions';
+import { assertCl2En, identifiersPreserved } from '../assertions';
 
 /** Stem for a list word: drop a trailing e so "weave" matches "weaving". */
 function stemPattern(word: string): RegExp {
@@ -131,3 +134,47 @@ describe('en2cl few-shots as a range instrument', () => {
  * 3.87, leaving ~400 tokens of margin above the 4,096 minimum.
  */
 const EN2CL_PREFIX_CHAR_FLOOR = 17_400;
+
+/**
+ * cl2en prompt v11 (Decision #41, 2026-09-03): the coherent chain promoted after arms E and E2
+ * beat production on both fidelity judges across all 99 pool inputs. The system block quotes
+ * the shared contract verbatim (the retry turn quotes the same constant), carries seven
+ * fact-preserving examples, and no longer contains the v10 restructuring instruction that
+ * contradicted its own vocabulary rules.
+ */
+describe('cl2en prompt v11: the shared contract and the seven examples', () => {
+  it('bumps PROMPT_VERSION so the server cache invalidates', () => {
+    expect(PROMPT_VERSION).toBe('v11');
+  });
+
+  it('quotes CL2EN_CONTRACT verbatim in the system block', () => {
+    expect(CL2EN_SYSTEM).toContain(CL2EN_CONTRACT);
+    expect(buildSystem('cl2en')).toContain(CL2EN_CONTRACT);
+  });
+
+  it('names the output language and drops the v10 restructuring line', () => {
+    expect(CL2EN_SYSTEM).toContain('The output is always English.');
+    expect(CL2EN_SYSTEM).not.toContain('restructuring task');
+  });
+
+  it('carries exactly seven examples, composed in order under the Examples heading', () => {
+    expect(CL2EN_FEWSHOTS).toHaveLength(7);
+    const block = buildSystem('cl2en');
+    expect(block).toContain('\n\nExamples:\n<example 1>\nClaudish: ');
+    expect(block).toContain('</example 7>\n\nInternal marker');
+  });
+
+  it('every example satisfies the cl2en golden properties', () => {
+    for (const { claudish, english } of CL2EN_FEWSHOTS) {
+      expect(assertCl2En(claudish, english)).toEqual([]);
+      expect(identifiersPreserved(claudish, english)).toEqual([]);
+    }
+  });
+
+  it('example 7 keeps acronyms, the decimal and the identifier through the register (arm E failure)', () => {
+    const { english } = CL2EN_FEWSHOTS[6];
+    for (const token of ['SE', 'CI', 'p95', '0.85', 'compute_lift']) expect(english).toContain(token);
+    expect(english.toLowerCase()).not.toContain('confidence interval');
+    expect(english.toLowerCase()).not.toContain('standard error');
+  });
+});

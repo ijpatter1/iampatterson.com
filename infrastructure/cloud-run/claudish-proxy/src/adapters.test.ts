@@ -53,11 +53,11 @@ describe('buildMessageParams', () => {
     expect(cl2en).toContain('Examples:');
     // Each direction carries its own set, not the other's.
     expect(en2cl).toContain('The login bug is fixed');
-    expect(cl2en).toContain('Users want dark mode.');
+    expect(cl2en).toContain('Users want dark mode, and adding it would help engagement.');
     expect(cl2en).not.toContain('The login bug is fixed');
-    // The false-premise demonstration pair rides in cl2en: model names
-    // pass through, questions stay questions.
-    expect(cl2en).toContain('Fable 5 and Opus 5 are the only models fluent in Claudish.');
+    // v11 example 7 rides in cl2en: acronyms, the decimal and the
+    // identifier survive the register verbatim.
+    expect(cl2en).toContain('The SE on the treated arm is wider because of the 0.85 treated share');
     expect(cl2en).toContain('em dashes');
   });
 

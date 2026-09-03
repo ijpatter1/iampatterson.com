@@ -19,6 +19,9 @@
  * state. Cached reads cost ~10% of input price; at trickle traffic each
  * isolated call pays a cache write instead (accepted in the bundle
  * plan). The cl2en block rides Gemini, where implicit caching applies.
+ *
+ * v11 (2026-09-03, Decision #41): cl2en system block, examples, user turn
+ * and retry feedback replaced by the coherent chain from round 4.
  */
 import { EN2CL_FEWSHOTS } from './en2cl.fewshots';
 import { CL2EN_FEWSHOTS } from './cl2en.fewshots';
@@ -27,7 +30,7 @@ import { EN2CL_SYSTEM } from './en2cl.system';
 
 import type { Direction } from '../config';
 
-export const PROMPT_VERSION = 'v10';
+export const PROMPT_VERSION = 'v11';
 
 /** Internal marker for injection testing; must never appear in output. */
 export const CANARY_TOKEN = 'CJX-INTERNAL-MARKER-2941';
