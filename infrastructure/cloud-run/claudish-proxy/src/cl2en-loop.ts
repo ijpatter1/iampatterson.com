@@ -32,7 +32,9 @@ import {
   missingFacts,
   structuralEvidence,
 } from './judge';
-import { EmDashSmoother, MarkerStripper } from './smooth';
+import { FIRST_TOKEN_DEADLINE_MS } from './config';
+import { nextWithDeadline } from './deadline';
+import { EmDashSmoother, MarkerStripper, TEXT_MARKER_CLOSE, TEXT_MARKER_OPEN } from './smooth';
 
 import type { FeedbackStyle, JudgeVerdict, StructuralGate } from './judge';
 import type { GeminiEvent, GeminiTurn, GeminiUsage } from './gemini';
@@ -56,6 +58,8 @@ export const DEFAULT_FEEDBACK_STYLE: FeedbackStyle = 'contract';
 export const IMPROVEMENT_EPSILON = 0.015;
 export const REVISE_MIN_GAIN = 0.03;
 export const LOOP_DEADLINE_MS = 9000;
+/** Inter-chunk stall bound inside one attempt; the first token uses FIRST_TOKEN_DEADLINE_MS. */
+export const LOOP_STALL_DEADLINE_MS = 10000;
 /** Retry temperatures: variation helps escape a bad first draft. */
 export const ATTEMPT_TEMPERATURES = [0.2, 0.6, 0.6, 0.7, 0.7] as const;
 
@@ -65,9 +69,13 @@ export interface LoopEmit {
 }
 
 export interface LoopDeps {
-  /** One model attempt as a stream of Gemini events. */
-  stream(turns: GeminiTurn[], attempt: number, temperature: number): AsyncIterable<GeminiEvent>;
+  /** One model attempt as a stream of Gemini events. The signal aborts the attempt when it
+   *  stalls past its deadline (review batch 2), so an abandoned generation stops billing. */
+  stream(turns: GeminiTurn[], attempt: number, temperature: number, signal?: AbortSignal): AsyncIterable<GeminiEvent>;
   nowMs(): number;
+  /** Called before every retry (attempt 2+, the facts retry): false means the budget has no
+   *  room for another attempt and the loop serves what it has (review batch 2, finding 6). */
+  beforeRetry?(): boolean;
 }
 
 export interface LoopAttempt {
@@ -103,20 +111,50 @@ interface RunOneOutcome {
   finishReason: string | null;
 }
 
+interface Deadlines {
+  firstTokenMs: number;
+  stallMs: number;
+}
+
 async function runOne(
   deps: LoopDeps,
   turns: GeminiTurn[],
   attempt: number,
   usageTotal: GeminiUsage,
   onToken: ((t: string) => void) | null,
-  temperature?: number
+  temperature: number | undefined,
+  deadlines: Deadlines
 ): Promise<RunOneOutcome> {
   const t0 = deps.nowMs();
   const stripper = new MarkerStripper();
   const smoother = new EmDashSmoother();
   let text = '';
   let finishReason: string | null = null;
-  for await (const event of deps.stream(turns, attempt, temperature ?? ATTEMPT_TEMPERATURES[attempt - 1] ?? 0.6)) {
+  // Per-attempt abort: a stalled upstream is cancelled, not abandoned,
+  // so it stops generating (and billing) the moment the deadline fires.
+  const controller = new AbortController();
+  const iterator = deps
+    .stream(turns, attempt, temperature ?? ATTEMPT_TEMPERATURES[attempt - 1] ?? 0.6, controller.signal)
+    [Symbol.asyncIterator]();
+  let gotFirst = false;
+  const events = {
+    [Symbol.asyncIterator]() {
+      return {
+        next: async (): Promise<IteratorResult<GeminiEvent>> => {
+          try {
+            const r = await nextWithDeadline(iterator, gotFirst ? deadlines.stallMs : deadlines.firstTokenMs);
+            gotFirst = true;
+            return r;
+          } catch (err) {
+            controller.abort();
+            void iterator.return?.()?.catch?.(() => undefined);
+            throw err;
+          }
+        },
+      };
+    },
+  };
+  for await (const event of events) {
     if (event.kind === 'text') {
       const emit = smoother.feed(stripper.feed(event.text));
       if (emit.length > 0) {
@@ -170,6 +208,10 @@ export interface LoopOptions {
   paragraphParallel?: boolean;
   /** Proposed chain (2026-09-03): the sentence before the <text> markers in attempt 1. */
   userTurnPrefix?: string;
+  /** Deadline for the first event of an attempt (default FIRST_TOKEN_DEADLINE_MS). */
+  firstTokenDeadlineMs?: number;
+  /** Deadline between events once streaming (default LOOP_STALL_DEADLINE_MS). */
+  stallDeadlineMs?: number;
 }
 
 /**
@@ -259,12 +301,16 @@ async function runSingle(
   const usage: GeminiUsage = { inputTokens: 0, outputTokens: 0, cachedTokens: 0 };
   const prefix = options.userTurnPrefix ?? DEFAULT_USER_TURN_PREFIX;
   const feedbackStyle: FeedbackStyle = options.feedbackStyle ?? DEFAULT_FEEDBACK_STYLE;
-  const wrapped = `${prefix}\n<text>\n${inputText}\n</text>`;
+  const wrapped = `${prefix}\n${TEXT_MARKER_OPEN}\n${inputText}\n${TEXT_MARKER_CLOSE}`;
   const turns: GeminiTurn[] = [{ role: 'user', text: wrapped }];
   const attempts: LoopAttempt[] = [];
 
   // Attempt 1 streams live.
-  const first = await runOne(deps, turns, 1, usage, emit.token);
+  const deadlines: Deadlines = {
+    firstTokenMs: options.firstTokenDeadlineMs ?? FIRST_TOKEN_DEADLINE_MS,
+    stallMs: options.stallDeadlineMs ?? LOOP_STALL_DEADLINE_MS,
+  };
+  const first = await runOne(deps, turns, 1, usage, emit.token, undefined, deadlines);
   if (first.finishReason === 'SAFETY' || first.finishReason === 'PROHIBITED_CONTENT') {
     return {
       servedText: '',
@@ -313,6 +359,8 @@ async function runSingle(
     deps.nowMs() - started < deadlineMs;
     attempt++
   ) {
+    // Budget hook: every attempt holds its own reservation; no room, no retry.
+    if (deps.beforeRetry && !deps.beforeRetry()) break;
     turns.push({ role: 'assistant', text: previous.text });
     // Option 2: sentence-only retry when the sentence judge names convicting sentences.
     const convicted = sj && options.sentenceRetry ? convictingSentencesIndexed(previous.text, sj.threshold, sj.minChars) : [];
@@ -332,7 +380,7 @@ async function runSingle(
     let raw: Awaited<ReturnType<typeof runOne>>[];
     try {
       raw = await Promise.all(
-        Array.from({ length: fanout }, () => runOne(deps, turns, attempt, usage, null, options.retryTemperature))
+        Array.from({ length: fanout }, () => runOne(deps, turns, attempt, usage, null, options.retryTemperature, deadlines))
       );
     } catch {
       // Upstream failed on a retry. Attempt 1 has streamed; serve the best
@@ -385,7 +433,13 @@ async function runSingle(
   let factsRetried = false;
   let factsRestored = false;
   const missing = missingFacts(inputText, served.text);
-  if (options.factsRetry === true && missing.length > 0 && attempts.length < maxAttempts && deps.nowMs() - started < deadlineMs) {
+  if (
+    options.factsRetry === true &&
+    missing.length > 0 &&
+    attempts.length < maxAttempts &&
+    deps.nowMs() - started < deadlineMs &&
+    (!deps.beforeRetry || deps.beforeRetry())
+  ) {
     factsRetried = true;
     const factsTurns: GeminiTurn[] = [
       turns[0],
@@ -394,7 +448,7 @@ async function runSingle(
     ];
     let retry: Awaited<ReturnType<typeof runOne>>;
     try {
-      retry = await runOne(deps, factsTurns, attempts.length + 1, usage, null);
+      retry = await runOne(deps, factsTurns, attempts.length + 1, usage, null, undefined, deadlines);
     } catch {
       retryFailed = true;
       retry = null as never;

@@ -748,3 +748,82 @@ describe('review batch 1 (2026-09-03): gemini-loop failure paths', () => {
     expect(ctx.frames()[0]).toMatchObject({ lane: 'gemini-loop' });
   });
 });
+
+describe('review batch 2 (2026-09-03): per-attempt reservations, empty results, ladder markers', () => {
+  const LOUD =
+    "This isn't just a refactor — it's a robust, seamless transformation, underscoring the fundamental shift in how the pipeline thinks about state.";
+  const CLEAN = 'You were right to send both fixes, because the first one failed.';
+  const script = (texts: string[]) => {
+    let call = 0;
+    return {
+      calls: () => call,
+      geminiStream: ((..._a: unknown[]) => {
+        const text = texts[Math.min(call++, texts.length - 1)];
+        return (async function* () {
+          if (text.length > 0) yield { kind: 'text', text } as const;
+          yield { kind: 'stop', usage: { inputTokens: 100, outputTokens: 20, cachedTokens: 0 }, finishReason: 'STOP' } as const;
+        })();
+      }) as never,
+    };
+  };
+  const loopDepsWithBudget = (texts: string[], dailyBudgetUsd: number) => {
+    const deps = makeDeps([fakeLane('vertex-global', [{ kind: 'start' }])]);
+    deps.config = loadConfig({ CL2EN_ENGINE: 'gemini-loop', LANES: 'vertex-global,cache-only' });
+    deps.budget = new BudgetTracker(dailyBudgetUsd, false, () => undefined);
+    const s = script(texts);
+    (deps as { geminiStream?: unknown }).geminiStream = s.geminiStream;
+    return { deps, s };
+  };
+
+  it('each retry holds its own reservation; with room for one, a convicted attempt 1 is served without a retry', async () => {
+    // Finding 6: one Haiku-sized reservation used to cover up to eight
+    // Gemini attempts. Budget of $0.03 fits exactly one $0.022 reservation.
+    const { deps, s } = loopDepsWithBudget([LOUD, CLEAN], 0.03);
+    const ctx = stubReqRes({ text: 't '.repeat(20), direction: 'cl2en' as const });
+    await createTranslateHandler(deps)(ctx.req, ctx.res);
+    expect(s.calls()).toBe(1);
+    expect(ctx.frames().map((f) => f.type)).toEqual(['meta', 'token', 'done']);
+  });
+
+  it('with room, the retry runs and the extra reservation is released on settle', async () => {
+    const { deps, s } = loopDepsWithBudget([LOUD, CLEAN], 5);
+    const ctx = stubReqRes({ text: 's '.repeat(20), direction: 'cl2en' as const });
+    await createTranslateHandler(deps)(ctx.req, ctx.res);
+    expect(s.calls()).toBe(2);
+    expect(ctx.frames().map((f) => f.type)).toContain('revise');
+    // Nothing left reserved: usedPct reflects spend only (tiny) once settled.
+    expect(deps.budget.usedPct()).toBeLessThan(1);
+  });
+
+  it('an empty, unrefused loop result is an error frame, never a done with zero chars', async () => {
+    // Finding 7 (second half): a candidate-less stop used to be served as
+    // success with an empty panel.
+    const { deps } = loopDepsWithBudget([''], 5);
+    const ctx = stubReqRes({ text: 'r '.repeat(20), direction: 'cl2en' as const });
+    await createTranslateHandler(deps)(ctx.req, ctx.res);
+    const types = ctx.frames().map((f) => f.type);
+    expect(types[types.length - 1]).toBe('error');
+    expect(types).not.toContain('done');
+  });
+
+  it('wrapper tags echoed by a Claude lane reach neither the client nor the cache', async () => {
+    // Finding 10: MarkerStripper ran only inside the Gemini loop.
+    const lane = fakeLane('vertex-global', [
+      { kind: 'start' },
+      { kind: 'text', text: '<text>\nHello ' },
+      { kind: 'text', text: 'there\n</text>' },
+      { kind: 'stop', stopReason: 'end_turn', usage: OK_USAGE },
+    ]);
+    const deps = makeDeps([lane]);
+    const body = { text: 'echo me please', direction: 'en2cl' as const };
+    const first = stubReqRes(body);
+    await createTranslateHandler(deps)(first.req, first.res);
+    const streamed = first.frames().filter((f) => f.type === 'token').map((f) => String(f.t)).join('');
+    expect(streamed).toBe('Hello there');
+    const second = stubReqRes(body);
+    await createTranslateHandler(deps)(second.req, second.res);
+    expect(second.frames()[0]).toMatchObject({ cached: true });
+    const replayed = second.frames().filter((f) => f.type === 'token').map((f) => String(f.t)).join('');
+    expect(replayed).toBe('Hello there');
+  });
+});

@@ -158,11 +158,18 @@ export async function* streamGemini(
               candidatesTokenCount?: number;
               cachedContentTokenCount?: number;
             };
+            promptFeedback?: { blockReason?: string };
           };
           try {
             chunk = JSON.parse(payload);
           } catch {
             continue; // tolerate drift
+          }
+          // A prompt-level block carries no candidates at all; without this
+          // the stream ended with finishReason null and an empty text was
+          // served as success (review batch 2, finding 7).
+          if (chunk.promptFeedback?.blockReason) {
+            finishReason = chunk.promptFeedback.blockReason === 'PROHIBITED_CONTENT' ? 'PROHIBITED_CONTENT' : 'SAFETY';
           }
           const candidate = chunk.candidates?.[0];
           const text = candidate?.content?.parts?.map((p) => p.text ?? '').join('') ?? '';

@@ -11,6 +11,17 @@
  * still become part of a dash sequence (" ", "—", " —") is held back
  * until the next chunk or flush() resolves it.
  */
+/** The wrapper tags every user turn puts around the source text. One
+ *  spelling, shared by the Claude adapter, the Gemini loop and the stripper. */
+export const TEXT_MARKER_OPEN = '<text>';
+export const TEXT_MARKER_CLOSE = '</text>';
+
+/** The smoother applied to a whole string at once (cache echo gate). */
+export function smoothText(text: string): string {
+  const s = new EmDashSmoother();
+  return s.feed(text) + s.flush();
+}
+
 export class EmDashSmoother {
   private holdback = '';
   private started = false;
@@ -78,7 +89,7 @@ export class MarkerStripper {
     let text = chunk;
     if (!this.leadDone) {
       this.lead += text;
-      const target = '<text>';
+      const target = TEXT_MARKER_OPEN;
       if (this.lead.length < target.length && target.startsWith(this.lead)) return '';
       text = this.lead.startsWith(target) ? this.lead.slice(target.length).replace(/^[ \t]*\n?/, '') : this.lead;
       this.lead = '';

@@ -18,7 +18,8 @@ import { randomUUID } from 'node:crypto';
 import { cacheKey, cacheableTranslation, normalizeInput } from './cache';
 import { loopBudgetFor, runCl2enLoop } from './cl2en-loop';
 import { streamGemini } from './gemini';
-import { EmDashSmoother } from './smooth';
+import { nextWithDeadline, StallDeadline } from './deadline';
+import { EmDashSmoother, MarkerStripper } from './smooth';
 import { FIRST_TOKEN_DEADLINE_MS, INPUT_CAP, GEMINI_PRICES } from './config';
 import { isOriginAllowed } from './config';
 import { hashIp, logEvent, redactError } from './log';
@@ -44,25 +45,6 @@ export interface TranslateDeps {
   geminiStream?: typeof streamGemini;
 }
 
-class FirstTokenDeadline extends Error {}
-
-async function nextWithDeadline(
-  iterator: AsyncIterator<UpstreamEvent>,
-  deadlineMs: number | null
-): Promise<IteratorResult<UpstreamEvent>> {
-  if (deadlineMs === null) return iterator.next();
-  let timer: NodeJS.Timeout | undefined;
-  try {
-    return await Promise.race([
-      iterator.next(),
-      new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new FirstTokenDeadline()), deadlineMs);
-      }),
-    ]);
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
-}
 
 /** Rough token estimate for abort-path reconciliation (chars/4). */
 function estimateUsage(inputChars: number, outputChars: number): Usage {
@@ -215,11 +197,17 @@ export function createTranslateHandler(deps: TranslateDeps) {
     // cl2en's no-em-dash contract enforced mechanically (see smooth.ts).
     const smoother = direction === 'cl2en' ? new EmDashSmoother() : null;
     let settled = false;
+    // Loop retries each hold a reservation of their own (review batch 2,
+    // finding 6); they are released here, the real usage settles on the
+    // first reservation.
+    const extraReservations: Reservation[] = [];
     const settle = (usage?: Usage, prices?: PriceTable) => {
       if (settled) return;
       settled = true;
       if (usage) reservation.reconcile(usage, prices);
       else reservation.release(estimateUsage(text.length, streamedChars));
+      for (const extra of extraReservations) extra.release();
+      extraReservations.length = 0;
     };
 
     // Client-disconnect detection: req 'close' fires when the request
@@ -257,7 +245,7 @@ export function createTranslateHandler(deps: TranslateDeps) {
           system,
           {
             nowMs: () => Date.now(),
-            stream: (turns, _attempt, temperature) =>
+            stream: (turns, _attempt, temperature, signal) =>
               (deps.geminiStream ?? streamGemini)(
                 {
                   projectId: config.projectId,
@@ -269,8 +257,19 @@ export function createTranslateHandler(deps: TranslateDeps) {
                 },
                 system,
                 turns,
-                controller.signal
+                // Client close aborts every attempt; a stall aborts this one.
+                signal ? AbortSignal.any([controller.signal, signal]) : controller.signal
               ),
+            beforeRetry: () => {
+              if (budget.isCapped()) return false;
+              const extra = budget.reserve();
+              if (extra === null) {
+                logEvent('INFO', 'loop_retry_no_budget', { requestId, budgetUsedPct: budget.usedPct() });
+                return false;
+              }
+              extraReservations.push(extra);
+              return true;
+            },
           },
           {
             token: (t) => {
@@ -315,6 +314,15 @@ export function createTranslateHandler(deps: TranslateDeps) {
             inputChars: text.length,
             stopReason: 'refusal',
           });
+          return;
+        }
+        if (result.servedText.length === 0) {
+          // Nothing to show is not a success: a candidate-less stop used to
+          // be served as `done` with zero chars (review batch 2, finding 7).
+          sse.frame({ type: 'error', code: 'upstream_error' });
+          sse.end();
+          settle(loopUsage, GEMINI_PRICES);
+          logEvent('ERROR', 'loop_empty_result', { requestId, direction, lane: 'gemini-loop' });
           return;
         }
         sse.frame({
@@ -409,6 +417,11 @@ export function createTranslateHandler(deps: TranslateDeps) {
       // (client-close) controller chains INTO the attempt; client-close
       // discrimination stays on the master signal everywhere.
       const attempt = new AbortController();
+      // Wrapper-tag strip on the ladder too: the Claude user turn carries
+      // <text> markers and an echo streamed through verbatim and into the
+      // cache (review batch 2, finding 10). Per lane attempt, like the
+      // smoother's state.
+      const stripper = new MarkerStripper();
       const onMasterAbort = () => attempt.abort();
       if (controller.signal.aborted) attempt.abort();
       else controller.signal.addEventListener('abort', onMasterAbort);
@@ -444,7 +457,8 @@ export function createTranslateHandler(deps: TranslateDeps) {
               committed = true;
               ttftMs = Date.now() - t0;
             }
-            const emit = smoother ? smoother.feed(event.text) : event.text;
+            const stripped = stripper.feed(event.text);
+            const emit = smoother ? smoother.feed(stripped) : stripped;
             if (emit.length > 0) {
               streamedChars += emit.length;
               accumulated += emit;
@@ -452,13 +466,12 @@ export function createTranslateHandler(deps: TranslateDeps) {
             }
           } else {
             // stop
-            if (smoother) {
-              const rest = smoother.flush();
-              if (rest.length > 0) {
-                streamedChars += rest.length;
-                accumulated += rest;
-                sse.frame({ type: 'token', t: rest });
-              }
+            const tail = stripper.flush();
+            const rest = smoother ? smoother.feed(tail) + smoother.flush() : tail;
+            if (rest.length > 0) {
+              streamedChars += rest.length;
+              accumulated += rest;
+              sse.frame({ type: 'token', t: rest });
             }
             breaker.recordSuccess(lane.name);
             settle(event.usage);
@@ -525,7 +538,7 @@ export function createTranslateHandler(deps: TranslateDeps) {
         logEvent('WARNING', 'lane_failed', {
           requestId,
           lane: lane.name,
-          errorName: err instanceof FirstTokenDeadline ? 'FirstTokenDeadline' : red.errorName,
+          errorName: err instanceof StallDeadline ? 'FirstTokenDeadline' : red.errorName,
           httpStatus: red.httpStatus,
           laneAttempts,
         });

@@ -11,7 +11,8 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { INPUT_CAP, MAX_TOKENS, PRICES, RESERVATION_USD } from './config';
+import { loopBudgetFor } from './cl2en-loop';
+import { GEMINI_PRICES, INPUT_CAP, MAX_TOKENS, PRICES, RESERVATION_USD } from './config';
 import { buildSystem } from './prompts';
 
 /** Chars-per-token planning figure; measured drift vs billing is ~5%. */
@@ -54,6 +55,20 @@ describe('cap couplings', () => {
       (prefixTokens * PRICES.cacheWritePerMTok +
         inputTokens * PRICES.inputPerMTok +
         outputTokens * PRICES.outputPerMTok) /
+      1_000_000;
+    expect(RESERVATION_USD).toBeGreaterThanOrEqual(worstUsd);
+  });
+
+  it('RESERVATION_USD covers one cl2en loop attempt at its worst (review batch 2: each attempt holds its own)', () => {
+    // The last attempt re-sends every prior assistant turn (each up to the
+    // output cap) plus a feedback turn, at Gemini prices. Each attempt now
+    // takes a reservation of its own, so this per-attempt figure is the bound.
+    const attempts = loopBudgetFor(INPUT_CAP).maxAttempts;
+    const systemTokens = Math.ceil(buildSystem('cl2en').length / CHARS_PER_TOKEN);
+    const inputTokens = Math.ceil(INPUT_CAP / CHARS_PER_TOKEN) + 60;
+    const priorTurns = (attempts - 1) * (MAX_TOKENS.cl2en + 300);
+    const worstUsd =
+      ((systemTokens + inputTokens + priorTurns) * GEMINI_PRICES.inputPerMTok + MAX_TOKENS.cl2en * GEMINI_PRICES.outputPerMTok) /
       1_000_000;
     expect(RESERVATION_USD).toBeGreaterThanOrEqual(worstUsd);
   });

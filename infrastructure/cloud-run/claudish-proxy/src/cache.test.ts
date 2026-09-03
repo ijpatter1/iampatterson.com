@@ -1,7 +1,7 @@
 /**
  * claudish-proxy — cache tests (feat/claudish, proxy T4).
  */
-import { cacheKey, normalizeInput, TranslationCache } from './cache';
+import { cacheKey, cacheableTranslation, normalizeInput, TranslationCache } from './cache';
 
 describe('normalizeInput (must mirror the frontend normalize.ts)', () => {
   it('collapses spaces, preserves case and paragraph breaks', () => {
@@ -84,5 +84,17 @@ describe('cacheableTranslation (echo guard, 2026-09-01)', () => {
     expect(
       cacheableTranslation('en2cl', normalizeInput('Ship it.'), 'Ship it — a pivotal moment.')
     ).toBe(true);
+  });
+});
+
+describe('echo gate parity with the smoother (review batch 2, 2026-09-03)', () => {
+  it('catches an echo whose single-spaced dash the smoother rewrites differently', () => {
+    expect(cacheableTranslation('cl2en', normalizeInput('We shipped \u2014fast.'), 'We shipped, fast.')).toBe(false);
+  });
+  it('catches an echo whose bold the smoother stripped', () => {
+    expect(cacheableTranslation('cl2en', normalizeInput('**We** shipped fast.'), 'We shipped fast.')).toBe(false);
+  });
+  it('still accepts a real translation', () => {
+    expect(cacheableTranslation('cl2en', normalizeInput('We shipped \u2014fast.'), 'We shipped quickly.')).toBe(true);
   });
 });

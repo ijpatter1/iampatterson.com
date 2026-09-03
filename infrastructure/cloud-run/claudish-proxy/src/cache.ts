@@ -8,6 +8,7 @@
  * version, and model ID — a prompt edit or model bump invalidates every
  * entry for free. Only complete end_turn successes are cached.
  */
+import { smoothText } from './smooth';
 import { createHash } from 'node:crypto';
 
 import type { Direction } from './config';
@@ -88,11 +89,12 @@ export function cacheableTranslation(
   normalizedInput: string,
   output: string
 ): boolean {
-  // Echo detection is dash-insensitive: the stream smoother rewrites em
-  // dashes to commas, so a model echo arrives here as input-with-commas
-  // — still an echo, still never worth pinning.
-  const dashless = (t: string) => t.replace(/ \u2014 /g, ', ').replace(/\u2014/g, ',');
-  if (normalizeInput(dashless(output)) === normalizeInput(dashless(normalizedInput))) return false;
+  // Echo detection runs the input through the SAME smoother the stream
+  // applied to the output (em dashes to commas, paired bold stripped), so
+  // an echo compares equal whatever the dash spacing or emphasis was. A
+  // parallel regex here missed single-spaced dashes and bold (review
+  // batch 2, 2026-09-03) and pinned echoes for 24h.
+  if (normalizeInput(smoothText(output)) === normalizeInput(smoothText(normalizedInput))) return false;
   if (direction === 'cl2en' && output.includes('\u2014')) return false;
   return true;
 }

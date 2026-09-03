@@ -5,6 +5,7 @@
  * passes, TECH_PLAIN convicts on topic with nothing actionable (the
  * blind spot the no-infinite-loops rules exist for).
  */
+import { StallDeadline } from './deadline';
 import { runCl2enLoop, LOOP_MAX_ATTEMPTS } from './cl2en-loop';
 
 import type { GeminiEvent, GeminiTurn } from './gemini';
@@ -454,5 +455,63 @@ describe('review batch 1 (2026-09-03): retry errors never discard attempt 1', ()
     expect(result.revised).toBe(false);
     expect(result.retryFailed).toBe(true);
     expect(events).not.toContain('REVISE');
+  });
+});
+
+describe('review batch 2 (2026-09-03): stall deadlines and the budget hook', () => {
+  const hang = () => ({ [Symbol.asyncIterator]: () => ({ next: () => new Promise<never>(() => undefined) }) }) as AsyncIterable<GeminiEvent>;
+  const say = (text: string) =>
+    (async function* () {
+      yield { kind: 'text', text } as GeminiEvent;
+      yield { kind: 'stop', usage: { inputTokens: 100, outputTokens: 20, cachedTokens: 0 }, finishReason: 'STOP' } as GeminiEvent;
+    })();
+
+  it('a stream that never yields trips the first-token deadline and aborts the attempt', async () => {
+    const signals: AbortSignal[] = [];
+    const deps = {
+      nowMs: () => Date.now(),
+      stream(_t: GeminiTurn[], _a: number, _temp: number, signal?: AbortSignal) {
+        if (signal) signals.push(signal);
+        return hang();
+      },
+    };
+    await expect(
+      runCl2enLoop('input', 'sys', deps, collector().emit, { maxAttempts: 2, deadlineMs: 9000, firstTokenDeadlineMs: 20 })
+    ).rejects.toBeInstanceOf(StallDeadline);
+    expect(signals.length).toBe(1);
+    expect(signals[0].aborted).toBe(true);
+  });
+
+  it('a stall on attempt 2 serves attempt 1 and reports retryFailed', async () => {
+    let call = 0;
+    const deps = { nowMs: () => Date.now(), stream: () => (++call === 1 ? say(LOUD) : hang()) };
+    const result = await runCl2enLoop('input', 'sys', deps, collector().emit, { maxAttempts: 3, deadlineMs: 9000, firstTokenDeadlineMs: 20 });
+    expect(call).toBe(2);
+    expect(result.servedText).toBe(LOUD_SMOOTHED);
+    expect(result.retryFailed).toBe(true);
+  });
+
+  it('a stall between chunks trips the stall deadline', async () => {
+    const deps = {
+      nowMs: () => Date.now(),
+      stream: () =>
+        ({
+          [Symbol.asyncIterator]: () => {
+            let n = 0;
+            return { next: () => (n++ === 0 ? Promise.resolve({ done: false, value: { kind: 'text', text: 'Hello' } as GeminiEvent }) : new Promise<never>(() => undefined)) };
+          },
+        }) as AsyncIterable<GeminiEvent>,
+    };
+    await expect(
+      runCl2enLoop('input', 'sys', deps, collector().emit, { maxAttempts: 1, deadlineMs: 9000, firstTokenDeadlineMs: 500, stallDeadlineMs: 20 })
+    ).rejects.toBeInstanceOf(StallDeadline);
+  });
+
+  it('beforeRetry returning false stops the loop before attempt 2', async () => {
+    const { deps, calls } = scriptedDeps([LOUD, CLEAN]);
+    const result = await runCl2enLoop('input', 'sys', { ...deps, beforeRetry: () => false }, collector().emit, { maxAttempts: 3, deadlineMs: 9000 });
+    expect(calls.length).toBe(1);
+    expect(result.servedText).toBe(LOUD_SMOOTHED);
+    expect(result.passed).toBe(false);
   });
 });

@@ -196,4 +196,18 @@ describe('streamGemini', () => {
     ).rejects.toThrow(/HTTP 400/);
     expect(calls).toBe(1);
   });
+
+  it('a prompt-level block (promptFeedback, no candidates) ends the stream as a refusal', async () => {
+    // Review batch 2, finding 7: blocked prompts carry no candidates, so
+    // finishReason stayed null and the loop served an empty translation.
+    const blocked = (reason: string) =>
+      (async () =>
+        sse(
+          `data: {"promptFeedback":{"blockReason":"${reason}"},"usageMetadata":{"promptTokenCount":40,"candidatesTokenCount":0}}\n\n`
+        )) as typeof fetch;
+    const prohibited = await collect(streamGemini(CONFIG, 'sys', [{ role: 'user', text: 'x' }], new AbortController().signal, blocked('PROHIBITED_CONTENT')));
+    expect(prohibited).toEqual([{ kind: 'stop', usage: { inputTokens: 40, outputTokens: 0, cachedTokens: 0 }, finishReason: 'PROHIBITED_CONTENT' }]);
+    const other = await collect(streamGemini(CONFIG, 'sys', [{ role: 'user', text: 'x' }], new AbortController().signal, blocked('OTHER')));
+    expect(other[other.length - 1]).toMatchObject({ kind: 'stop', finishReason: 'SAFETY' });
+  });
 });
