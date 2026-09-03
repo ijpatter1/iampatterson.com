@@ -97,6 +97,10 @@ run gcloud projects add-iam-policy-binding "${PROJECT}" \
 # holds no version and nothing mounts it.
 
 echo "── Step 5: Deploy (source-deploy, buildpacks) ──"
+# --update-env-vars merges into the live env; the set variant would replace it
+# and a hotfix deploy would silently reset KILL_SWITCH mid-incident (review
+# batch 1, 2026-09-03). The kill switch is never written here: it is only ever
+# set by the runbook command, and it survives every deploy.
 run gcloud run deploy "${SERVICE}" \
   --source . \
   --project="${PROJECT}" \
@@ -112,7 +116,7 @@ run gcloud run deploy "${SERVICE}" \
   --memory=512Mi \
   --timeout=60 \
   --execution-environment=gen2 \
-  --set-env-vars="^@^ALLOWED_ORIGINS=${ALLOWED_ORIGINS}@LANES=${LANES}@DAILY_BUDGET_USD=${DAILY_BUDGET_USD}@MAX_INSTANCES=${MAX_INSTANCES}@KILL_SWITCH=off@GCP_PROJECT=${PROJECT}@VERTEX_FALLBACK_REGION=us-east5@MODEL_ID_CONFIRMED=${MODEL_ID_CONFIRMED:-0}@ANTHROPIC_FEDERATION_RULE_ID=${ANTHROPIC_FEDERATION_RULE_ID}@ANTHROPIC_ORGANIZATION_ID=${ANTHROPIC_ORGANIZATION_ID}@ANTHROPIC_SERVICE_ACCOUNT_ID=${ANTHROPIC_SERVICE_ACCOUNT_ID}@ANTHROPIC_WORKSPACE_ID=${ANTHROPIC_WORKSPACE_ID}@CL2EN_ENGINE=${CL2EN_ENGINE}@GEMINI_MODEL_ID=${GEMINI_MODEL_ID}@GEMINI_LOCATION=${GEMINI_LOCATION}"
+  --update-env-vars="^@^ALLOWED_ORIGINS=${ALLOWED_ORIGINS}@LANES=${LANES}@DAILY_BUDGET_USD=${DAILY_BUDGET_USD}@MAX_INSTANCES=${MAX_INSTANCES}@GCP_PROJECT=${PROJECT}@VERTEX_FALLBACK_REGION=us-east5@MODEL_ID_CONFIRMED=${MODEL_ID_CONFIRMED:-0}@ANTHROPIC_FEDERATION_RULE_ID=${ANTHROPIC_FEDERATION_RULE_ID}@ANTHROPIC_ORGANIZATION_ID=${ANTHROPIC_ORGANIZATION_ID}@ANTHROPIC_SERVICE_ACCOUNT_ID=${ANTHROPIC_SERVICE_ACCOUNT_ID}@ANTHROPIC_WORKSPACE_ID=${ANTHROPIC_WORKSPACE_ID}@CL2EN_ENGINE=${CL2EN_ENGINE}@GEMINI_MODEL_ID=${GEMINI_MODEL_ID}@GEMINI_LOCATION=${GEMINI_LOCATION}"
 
 if [ "${DRY_RUN}" = "1" ]; then
   echo ""

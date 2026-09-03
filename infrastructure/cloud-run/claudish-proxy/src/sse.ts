@@ -60,6 +60,12 @@ export class SseStream {
     }, HEARTBEAT_INTERVAL_MS);
   }
 
+  /** True once headers have been written; the ladder consults this after a
+   *  gemini-loop fall-through instead of its own local flag (review batch 1). */
+  get isOpen(): boolean {
+    return this.openedOnce;
+  }
+
   frame(frame: Frame): void {
     if (this.ended || this.terminalSent) return;
     if (TERMINAL_TYPES.has(frame.type)) this.terminalSent = true;

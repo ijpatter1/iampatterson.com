@@ -12,5 +12,6 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
 ENV PORT=8080
+ENV NODE_ENV=production
 EXPOSE 8080
 CMD ["node", "dist/server.js"]

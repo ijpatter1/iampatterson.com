@@ -40,19 +40,23 @@ describe('RateLimiter', () => {
 });
 
 describe('clientIp', () => {
-  it('takes the second-from-last XFF entry by default (Cloud Run shape)', () => {
-    expect(clientIp('203.0.113.7, 66.102.0.1', '10.0.0.1')).toBe('203.0.113.7');
+  // Review batch 1 (2026-09-03): the service runs directly on run.app, where
+  // Google's front end APPENDS the connecting IP to whatever the caller sent,
+  // so the trustworthy entry is the LAST one (one trusted hop). The old
+  // default of two hops read the caller-supplied entry: 21 live requests with
+  // rotating spoofed X-Forwarded-For values drew zero rate limits.
+  it('reads the last entry by default (one trusted hop, direct Cloud Run)', () => {
+    expect(clientIp('203.0.113.7, 66.102.0.1', '10.0.0.1')).toBe('66.102.0.1');
   });
-
-  it('ignores attacker-prepended entries', () => {
-    expect(clientIp('6.6.6.6, 203.0.113.7, 66.102.0.1', '10.0.0.1')).toBe('203.0.113.7');
+  it('ignores caller-supplied entries to the left', () => {
+    expect(clientIp('6.6.6.6, 203.0.113.7', '10.0.0.1')).toBe('203.0.113.7');
   });
-
-  it('falls back rightward when the list is shorter than the hop count', () => {
+  it('honours an explicit hop count for a load-balancer deployment', () => {
+    expect(clientIp('203.0.113.7, 66.102.0.1', '10.0.0.1', 2)).toBe('203.0.113.7');
+    expect(clientIp('6.6.6.6, 203.0.113.7, 66.102.0.1', '10.0.0.1', 2)).toBe('203.0.113.7');
+  });
+  it('falls back to the single entry or the socket address', () => {
     expect(clientIp('203.0.113.7', '10.0.0.1')).toBe('203.0.113.7');
-  });
-
-  it('falls back to the socket without a header, and honors the hop override', () => {
     expect(clientIp(undefined, '10.9.8.7')).toBe('10.9.8.7');
     expect(clientIp('a, b, c', undefined, 3)).toBe('a');
   });

@@ -91,6 +91,9 @@ export interface LoopResult {
   /** Arm 2: a facts-preservation retry ran / restored every missing fact. */
   factsRetried: boolean;
   factsRestored: boolean;
+  /** A retry (attempt 2+, or the facts retry) failed upstream; the served text is the best
+   *  earlier attempt. Never fatal: attempt 1 has already streamed (review batch 1). */
+  retryFailed: boolean;
 }
 
 interface RunOneOutcome {
@@ -234,6 +237,7 @@ async function runParagraphs(
     revised: results.some((r) => r.revised),
     passed: results.every((r) => r.passed),
     refused: results.some((r) => r.refused),
+    retryFailed: results.some((r) => r.retryFailed),
     attempts: results.flatMap((r) => r.attempts),
     usage,
     factsRetried: results.some((r) => r.factsRetried),
@@ -272,6 +276,7 @@ async function runSingle(
       usage,
       factsRetried: false,
       factsRestored: false,
+      retryFailed: false,
     };
   }
   // Axis gate (Ian, 2026-09-02): with axis feedback the detector readings ARE the actionable
@@ -298,6 +303,7 @@ async function runSingle(
 
   let best = { text: first.text, p: firstScore.p, attempt: 1 };
   let previous = { text: first.text, verdict: first.verdict, p: firstScore.p };
+  let retryFailed = false;
 
   for (
     let attempt = 2;
@@ -323,9 +329,18 @@ async function runSingle(
     });
     // Retries are buffered — the visitor keeps reading attempt 1. Option 3: N candidates at once.
     const fanout = Math.max(1, options.parallelRetries ?? 1);
-    const raw = await Promise.all(
-      Array.from({ length: fanout }, () => runOne(deps, turns, attempt, usage, null, options.retryTemperature))
-    );
+    let raw: Awaited<ReturnType<typeof runOne>>[];
+    try {
+      raw = await Promise.all(
+        Array.from({ length: fanout }, () => runOne(deps, turns, attempt, usage, null, options.retryTemperature))
+      );
+    } catch {
+      // Upstream failed on a retry. Attempt 1 has streamed; serve the best
+      // so far rather than surfacing an error the visitor would read as
+      // losing a translation they already had (review batch 1, finding 4).
+      retryFailed = true;
+      break;
+    }
     if (raw.every((r) => r.finishReason === 'SAFETY' || r.finishReason === 'PROHIBITED_CONTENT')) break;
     // Splice sentence-only outputs back into the previous text; a line-count mismatch means the
     // model rewrote the whole text, which is used as-is.
@@ -377,13 +392,20 @@ async function runSingle(
       { role: 'assistant', text: served.text },
       { role: 'user', text: buildFactsFeedback(missing) },
     ];
-    const retry = await runOne(deps, factsTurns, attempts.length + 1, usage, null);
+    let retry: Awaited<ReturnType<typeof runOne>>;
+    try {
+      retry = await runOne(deps, factsTurns, attempts.length + 1, usage, null);
+    } catch {
+      retryFailed = true;
+      retry = null as never;
+    }
     const restored =
+      retry !== null &&
       retry.finishReason !== 'SAFETY' &&
       retry.finishReason !== 'PROHIBITED_CONTENT' &&
       missingFacts(inputText, retry.text).length === 0 &&
       firstPersonPreserved(inputText, retry.text);
-    attempts.push({ p: Number(retry.verdict.p.toFixed(3)), ms: retry.ms, actionable: false });
+    if (retry !== null) attempts.push({ p: Number(retry.verdict.p.toFixed(3)), ms: retry.ms, actionable: false });
     if (restored) {
       factsRestored = true;
       served = { text: retry.text, p: retry.verdict.p, attempt: attempts.length };
@@ -405,5 +427,6 @@ async function runSingle(
     usage,
     factsRetried,
     factsRestored,
+    retryFailed,
   };
 }

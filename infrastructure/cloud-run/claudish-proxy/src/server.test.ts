@@ -86,6 +86,33 @@ describe('POST /translate over the wire', () => {
     expect(res.status).toBe(413);
   });
 
+  it('answers malformed JSON with a 400 JSON error, CORS headers and no stack trace', async () => {
+    // Finding 5: body-parser errors used to reach Express's default handler,
+    // which sent text/html with a stack trace and no ACAO header.
+    const res = await fetch(`${base}/translate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
+      body: 'not json',
+    });
+    expect(res.status).toBe(400);
+    expect(res.headers.get('access-control-allow-origin')).toBe(ORIGIN);
+    expect(res.headers.get('content-type')).toContain('application/json');
+    const body = await res.text();
+    expect(JSON.parse(body)).toEqual({ error: 'bad_request' });
+    expect(body).not.toContain('node_modules');
+  });
+
+  it('answers an oversized body with a 413 JSON error and CORS headers', async () => {
+    const res = await fetch(`${base}/translate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
+      body: JSON.stringify({ text: 'x'.repeat(20000), direction: 'en2cl' }),
+    });
+    expect(res.status).toBe(413);
+    expect(res.headers.get('access-control-allow-origin')).toBe(ORIGIN);
+    expect(await res.json()).toEqual({ error: 'input_too_long' });
+  });
+
   it('405s non-POST methods', async () => {
     const res = await fetch(`${base}/translate`, {
       method: 'GET',

@@ -44,7 +44,10 @@ gcloud run services update claudish-proxy --project=iampatterson \
 ```
 
 ~30s to roll. The page shows the verbatim capacity line; cache hits
-still serve. Revert with `KILL_SWITCH=off`.
+still serve. Revert with `KILL_SWITCH=off`. Deploys keep the switch as it
+is: `setup.sh` merges its env with `--update-env-vars` and never writes
+`KILL_SWITCH`, so a hotfix shipped mid-incident does not turn spend back on
+(review batch 1, 2026-09-03).
 **Terraform note:** once D9 imports this service, `KILL_SWITCH` must be
 in `ignore_changes` or the next `terraform apply` silently reverts an
 emergency flip (documented in IMPORT_PLAN.md).
@@ -86,7 +89,10 @@ Garden enablement, quota check, Anthropic key) are the manual task at
 
 Deploy smoke checklist (T16): chunk timestamps prove SSE is unbuffered
 end-to-end; CORS from the Vercel origin; capture a real request's
-X-Forwarded-For to confirm the `TRUSTED_PROXY_HOPS=2` index; check
+X-Forwarded-For to confirm the `TRUSTED_PROXY_HOPS` index (default 1 on
+the direct run.app deployment: Google's front end appends the client IP as
+the last entry; set 2 only behind an external load balancer; confirmed
+2026-09-03 through the rate limiter, review batch 1); check
 `cache_read_input_tokens` on a repeat call — EXPECT 0 today: the interim
 few-shot block sits below Haiku 4.5's 4,096-token cache minimum, and
 caching engages only once the lexicon-generated set grows the system

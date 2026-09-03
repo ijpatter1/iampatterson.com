@@ -120,7 +120,9 @@ export function createTranslateHandler(deps: TranslateDeps) {
       return;
     }
 
-    // Per-IP rate limit.
+    // Per-IP rate limit. The hop count is TRUSTED_PROXY_HOPS (default 1:
+    // direct run.app, where Google's front end appends the client IP as
+    // the last X-Forwarded-For entry). Set 2 only behind an external LB.
     const ip = clientIp(
       req.headers['x-forwarded-for'] as string | undefined,
       req.socket?.remoteAddress ?? undefined,
@@ -297,6 +299,11 @@ export function createTranslateHandler(deps: TranslateDeps) {
           cacheReadTokens: result.usage.cachedTokens,
           cacheWriteTokens: 0,
         };
+        if (result.retryFailed) {
+          // A retry failed upstream after attempt 1 streamed; the visitor
+          // keeps attempt 1 (or the best earlier retry). Counted, not fatal.
+          logEvent('WARNING', 'loop_retry_failed', { requestId, direction, lane: 'gemini-loop' });
+        }
         if (result.refused) {
           sse.frame({ type: 'refusal' });
           sse.end();
@@ -357,7 +364,10 @@ export function createTranslateHandler(deps: TranslateDeps) {
         return;
       } catch (err) {
         if (controller.signal.aborted) return; // client left
-        if (loopTtftMs > 0) {
+        // Commit sentinel is streamed chars, not the TTFT stamp: a stream
+        // whose first token lands at t0 has loopTtftMs === 0 and used to
+        // read as pre-token, appending a second translation (batch 1).
+        if (streamedChars > 0) {
           // Mid-stream failure: terminal error, no silent lane swap.
           sse.frame({ type: 'error', code: 'upstream_error' });
           sse.end();
@@ -540,9 +550,13 @@ export function createTranslateHandler(deps: TranslateDeps) {
       }
     }
 
-    // Ladder exhausted without a token.
+    // Ladder exhausted without a token. The stream may already be open
+    // from the gemini-loop path (fall-through pre-token), so ask the
+    // stream, not the ladder's local flag: a JSON 503 on flushed headers
+    // threw ERR_HTTP_HEADERS_SENT and took the process down (review
+    // batch 1, finding 1).
     settle();
-    if (opened) {
+    if (opened || sse.isOpen) {
       sse.frame({ type: 'capacity' });
       sse.end();
     } else {

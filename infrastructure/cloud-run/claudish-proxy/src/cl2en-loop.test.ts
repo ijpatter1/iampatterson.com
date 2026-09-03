@@ -431,3 +431,28 @@ describe('served defaults (Decision #41, 2026-09-03): the rewrite user turn and 
     }
   });
 });
+
+describe('review batch 1 (2026-09-03): retry errors never discard attempt 1', () => {
+  it('serves attempt 1 and reports retryFailed when attempt 2 throws', async () => {
+    const calls: number[] = [];
+    const deps = {
+      nowMs: () => calls.length * 5,
+      stream(_turns: GeminiTurn[], attempt: number) {
+        calls.push(attempt);
+        return (async function* () {
+          if (attempt >= 2) throw new Error('gemini upstream HTTP 429');
+          yield { kind: 'text', text: LOUD } as GeminiEvent;
+          yield { kind: 'stop', usage: { inputTokens: 100, outputTokens: 20, cachedTokens: 0 }, finishReason: 'STOP' } as GeminiEvent;
+        })();
+      },
+    };
+    const { emit, events } = collector();
+    const result = await runCl2enLoop('input', 'sys', deps, emit, { maxAttempts: 3, deadlineMs: 9000 });
+    expect(calls).toEqual([1, 2]);
+    expect(result.servedText).toBe(LOUD_SMOOTHED);
+    expect(result.servedAttempt).toBe(1);
+    expect(result.revised).toBe(false);
+    expect(result.retryFailed).toBe(true);
+    expect(events).not.toContain('REVISE');
+  });
+});

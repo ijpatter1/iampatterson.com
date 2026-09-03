@@ -699,3 +699,52 @@ describe('long-form loop budget + convicted-cache gate', () => {
     expect(deps.cache.size).toBe(0);
   });
 });
+
+describe('review batch 1 (2026-09-03): gemini-loop failure paths', () => {
+  const LOUD =
+    "This isn't just a refactor — it's a robust, seamless transformation, underscoring the fundamental shift in how the pipeline thinks about state.";
+  const geminiScript = (steps: Array<'loud' | 'throw'>) => {
+    let call = 0;
+    return ((..._a: unknown[]) => {
+      const step = steps[Math.min(call++, steps.length - 1)];
+      return (async function* () {
+        if (step === 'throw') throw new Error('gemini upstream HTTP 429');
+        yield { kind: 'text', text: LOUD } as const;
+        yield {
+          kind: 'stop',
+          usage: { inputTokens: 100, outputTokens: 20, cachedTokens: 0 },
+          finishReason: 'STOP',
+        } as const;
+      })();
+    }) as never;
+  };
+
+  it('pre-token loop failure with an exhausted ladder ends the open stream with capacity, and never throws', async () => {
+    // Finding 1: the loop had already opened the SSE stream; the ladder's
+    // local `opened` flag was false, so exhaustion called res.status(503)
+    // .json() on flushed headers (ERR_HTTP_HEADERS_SENT -> unhandled
+    // rejection -> process exit).
+    const boom = { kind: 'throw' as const, err: new Error('down') };
+    const deps = makeDeps([fakeLane('vertex-global', [boom]), fakeLane('anthropic-api', [boom])]);
+    deps.config = loadConfig({ CL2EN_ENGINE: 'gemini-loop', LANES: 'vertex-global,anthropic-api,cache-only' });
+    (deps as { geminiStream?: unknown }).geminiStream = geminiScript(['throw']);
+    const ctx = stubReqRes({ text: 'v '.repeat(20), direction: 'cl2en' as const });
+    await expect(createTranslateHandler(deps)(ctx.req, ctx.res)).resolves.toBeUndefined();
+    const types = ctx.frames().map((f) => f.type);
+    expect(types[0]).toBe('meta');
+    expect(types[types.length - 1]).toBe('capacity');
+  });
+
+  it('an upstream error on a retry serves attempt 1 with done, not an error frame', async () => {
+    // Finding 4: attempt 1 was fully streamed; a 429 on attempt 2 used to
+    // propagate out of the loop and wipe the panel with `error`.
+    const deps = makeDeps([fakeLane('vertex-global', [{ kind: 'start' }])]);
+    deps.config = loadConfig({ CL2EN_ENGINE: 'gemini-loop', LANES: 'vertex-global,cache-only' });
+    (deps as { geminiStream?: unknown }).geminiStream = geminiScript(['loud', 'throw']);
+    const ctx = stubReqRes({ text: 'u '.repeat(20), direction: 'cl2en' as const });
+    await createTranslateHandler(deps)(ctx.req, ctx.res);
+    const types = ctx.frames().map((f) => f.type);
+    expect(types).toEqual(['meta', 'token', 'done']);
+    expect(ctx.frames()[0]).toMatchObject({ lane: 'gemini-loop' });
+  });
+});

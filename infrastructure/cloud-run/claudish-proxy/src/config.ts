@@ -154,6 +154,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   if (!Number.isInteger(maxInstances) || maxInstances < 1) {
     throw new Error(`MAX_INSTANCES must be a positive integer, got "${env.MAX_INSTANCES}"`);
   }
+  // Default 1: direct run.app, last X-Forwarded-For entry is the client.
+  // 2 only behind an external load balancer. Invalid values used to fall
+  // back silently to the front-end hop and collapse every visitor onto one
+  // rate-limit key (review batch 1).
+  const trustedProxyHops = Number(env.TRUSTED_PROXY_HOPS ?? 1);
+  if (!Number.isInteger(trustedProxyHops) || trustedProxyHops < 1) {
+    throw new Error(`TRUSTED_PROXY_HOPS must be a positive integer, got "${env.TRUSTED_PROXY_HOPS}"`);
+  }
   return {
     port: Number(env.PORT ?? 8080),
     allowedOrigins: (env.ALLOWED_ORIGINS ?? DEFAULT_ALLOWED_ORIGINS)
@@ -179,7 +187,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     maxInstances,
     killSwitch: env.KILL_SWITCH === 'on',
     requireOrigin: env.REQUIRE_ORIGIN !== 'false',
-    trustedProxyHops: Number(env.TRUSTED_PROXY_HOPS ?? 2),
+    trustedProxyHops,
     modelIdConfirmed: env.MODEL_ID_CONFIRMED === '1',
     forceRefusalToken: env.FORCE_REFUSAL_TOKEN || null,
   };

@@ -106,13 +106,19 @@ export class RateLimiter {
 }
 
 /**
- * Trustworthy client IP: XFF is least-trusted on the left. Google's
- * front end appends client-ip, then its own hop.
+ * Trustworthy client IP: XFF is least-trusted on the left. On a direct
+ * run.app deployment Google's front end APPENDS the connecting IP to
+ * whatever the caller sent, so the last entry is the client (one trusted
+ * hop, the default). Behind an external Application Load Balancer the LB
+ * adds its own hop after the client, so TRUSTED_PROXY_HOPS=2. The old
+ * default of 2 on the direct deployment read the caller-supplied entry:
+ * 21 live requests with rotating spoofed values drew zero rate limits
+ * (review batch 1, finding 3, 2026-09-03).
  */
 export function clientIp(
   xffHeader: string | undefined,
   socketAddress: string | undefined,
-  trustedProxyHops = 2
+  trustedProxyHops = 1
 ): string {
   if (xffHeader) {
     const parts = xffHeader

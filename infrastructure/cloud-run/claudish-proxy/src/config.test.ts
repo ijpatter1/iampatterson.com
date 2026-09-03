@@ -13,7 +13,7 @@ describe('loadConfig', () => {
     expect(c.dailyBudgetUsd).toBe(23);
     expect(c.killSwitch).toBe(false);
     expect(c.requireOrigin).toBe(true);
-    expect(c.trustedProxyHops).toBe(2);
+    expect(c.trustedProxyHops).toBe(1);
     expect(c.modelIdConfirmed).toBe(false);
   });
 
@@ -54,5 +54,19 @@ describe('MAX_INSTANCES validation (spend cap must never fail open)', () => {
   it('parses the test-only refusal token, defaulting to null', () => {
     expect(loadConfig({}).forceRefusalToken).toBeNull();
     expect(loadConfig({ FORCE_REFUSAL_TOKEN: 'xyz' }).forceRefusalToken).toBe('xyz');
+  });
+});
+
+describe('TRUSTED_PROXY_HOPS (review batch 1, 2026-09-03)', () => {
+  it('defaults to one hop (direct run.app: the last X-Forwarded-For entry is the client)', () => {
+    expect(loadConfig({}).trustedProxyHops).toBe(1);
+  });
+  it('accepts a positive integer for a load-balancer deployment', () => {
+    expect(loadConfig({ TRUSTED_PROXY_HOPS: '2' }).trustedProxyHops).toBe(2);
+  });
+  it('refuses a non-integer or zero value instead of silently collapsing all visitors onto one key', () => {
+    expect(() => loadConfig({ TRUSTED_PROXY_HOPS: 'abc' })).toThrow(/TRUSTED_PROXY_HOPS/);
+    expect(() => loadConfig({ TRUSTED_PROXY_HOPS: '0' })).toThrow(/TRUSTED_PROXY_HOPS/);
+    expect(() => loadConfig({ TRUSTED_PROXY_HOPS: '1.5' })).toThrow(/TRUSTED_PROXY_HOPS/);
   });
 });

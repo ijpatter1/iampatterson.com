@@ -19,7 +19,8 @@ import { logEvent } from './log';
 import { RateLimiter } from './ratelimit';
 import { createTranslateHandler } from './translate';
 
-import type { Express } from 'express';
+import type { Express, NextFunction, Request, Response } from 'express';
+import type { Config } from './config';
 import type { TranslateDeps } from './translate';
 
 export function createApp(deps: TranslateDeps): Express {
@@ -40,7 +41,13 @@ export function createApp(deps: TranslateDeps): Express {
     res.end();
   });
 
-  app.post('/translate', createTranslateHandler(deps));
+  // Express 4 does not catch a rejected async handler; route it to the
+  // error handler below instead of letting it become an unhandledRejection
+  // that exits the process (review batch 1, finding 1).
+  const translate = createTranslateHandler(deps);
+  app.post('/translate', (req, res, next) => {
+    Promise.resolve(translate(req, res)).catch(next);
+  });
 
   app.all('/translate', (_req, res) => {
     res.status(405).json({ error: 'method_not_allowed' });
@@ -56,7 +63,37 @@ export function createApp(deps: TranslateDeps): Express {
     });
   });
 
+  app.use(createErrorHandler(config));
+
   return app;
+}
+
+/**
+ * Terminal error handler (review batch 1, finding 5). body-parser rejects
+ * (malformed JSON, body over the 16kb limit) and any handler rejection land
+ * here. Answers are JSON with the CORS headers the browser needs to read the
+ * status; the default Express handler sent text/html with a stack trace and
+ * no ACAO, so the client saw an opaque CORS failure. Never echoes err.message.
+ */
+export function createErrorHandler(config: Config) {
+  return (err: unknown, req: Request, res: Response, _next: NextFunction): void => {
+    const origin = req.headers.origin ?? '';
+    const allowOrigin = isOriginAllowed(origin, config.allowedOrigins) ? origin : config.allowedOrigins[0];
+    const type = typeof err === 'object' && err !== null ? (err as { type?: string }).type : undefined;
+    const status = type === 'entity.too.large' ? 413 : type === 'entity.parse.failed' ? 400 : 500;
+    const body =
+      status === 413 ? { error: 'input_too_long' } : status === 400 ? { error: 'bad_request' } : { error: 'internal' };
+    logEvent(status === 500 ? 'ERROR' : 'INFO', 'request_error', {
+      httpStatus: status,
+      errorName: err instanceof Error ? err.constructor.name : 'Unknown',
+    });
+    if (res.headersSent) {
+      // A stream was already open: close it; a status can no longer be sent.
+      res.end();
+      return;
+    }
+    res.status(status).set({ 'Access-Control-Allow-Origin': allowOrigin, Vary: 'Origin' }).json(body);
+  };
 }
 
 export function buildDepsFromEnv(env: NodeJS.ProcessEnv = process.env): TranslateDeps {
