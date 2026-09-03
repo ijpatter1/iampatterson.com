@@ -2,7 +2,7 @@
 
 One page that says what is served, what is being measured, and what is only a flag. Update it whenever any of these change; the session record and the loop reports hold the history, this holds the present.
 
-Last updated: 2026-09-02 (Decision #39).
+Last updated: 2026-09-03 (Decision #40).
 
 ## Definition
 
@@ -28,8 +28,8 @@ Claudish is the register, not the author (Ian, 2026-09-02, Decision #38). The re
 
 | flag / seam | where | status |
 |---|---|---|
-| `feedbackStyle: 'axis'` + axis gate | proxy loop, `LOOP_FEEDBACK=axis` in the lab | names which detector still convicts and the shapes per sentence; validation run pending (round 4) |
-| Minimal prompt v3 (2,114 chars, states the output language) | `~/.claudish-corpus/analysis/2026-09-01-model-compare/cl2en-system-minimal-v3.txt`, lab `CL2EN_SYSTEM_FILE` + `CL2EN_SYSTEM_FULL=1` | single-input transcripts only; validation run pending |
+| `feedbackStyle: 'axis'` + axis gate | proxy loop, `LOOP_FEEDBACK=axis` in the lab | names which detector still convicts and the shapes per sentence; validated in round 4 with prompt v3: not promoted (plainness cost); stays opt-in |
+| Minimal prompt v3 (2,114 chars, states the output language) | `~/.claudish-corpus/analysis/2026-09-01-model-compare/cl2en-system-minimal-v3.txt`, lab `CL2EN_SYSTEM_FILE` + `CL2EN_SYSTEM_FULL=1` | validated in round 4: judges prefer production (plainness); the merged variants tied once and did not replicate; not promoted |
 | `sentenceJudge`, `sentenceRetry`, `parallelRetries`, `paragraphParallel` | proxy loop options; lab `LOOP_SENTENCE_JUDGE`, `LOOP_SENTENCE_RETRY`, `LOOP_PARALLEL`, `LOOP_PARAGRAPHS` | measured once on 7 inputs: no config sentence-clean under r7d (it convicts plain sentences), sentence-only retries cut tokens 25%, paragraph parallelism keeps wall time flat at 3.5x tokens; splice defects known |
 | `setJudgeRule('max')` | proxy judge, lab `LOOP_JUDGE_RULE=max` | lab instrument only |
 | `setJudgeModels` | proxy judge, lab `LOOP_JUDGE_MODELS=tag,...` | swaps ensemble members from the registry |
@@ -44,4 +44,4 @@ Claudish is the register, not the author (Ian, 2026-09-02, Decision #38). The re
 
 1. Latch thresholds under rule F (the operating curve is in the loop-3 report).
 2. Whether the reply shape should count at sentence level, and with what instrument (r7d convicts plain sentences; r28 reads nothing at sentence level).
-3. Whether to promote prompt v3 + axis feedback: the round-4 validation run answers it.
+3. Prompt changes: round 4 found none that beat production on both judges twice; the next prompt experiment needs a larger judged sample than 30 to clear the noise band.
