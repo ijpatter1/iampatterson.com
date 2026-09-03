@@ -16,7 +16,7 @@ import {
 } from "../../../infrastructure/cloud-run/claudish-proxy/src/cl2en-loop";
 import { streamGemini } from "../../../infrastructure/cloud-run/claudish-proxy/src/gemini";
 import { buildSystem } from "../../../infrastructure/cloud-run/claudish-proxy/src/prompts";
-import { setJudgeModels, setJudgeRule } from "../../../infrastructure/cloud-run/claudish-proxy/src/judge";
+import { judgeAxes, setJudgeModels, setJudgeRule } from "../../../infrastructure/cloud-run/claudish-proxy/src/judge";
 
 // Loop-2 T arms: LOOP_JUDGE_MODELS=tag,tag,tag swaps the loop's judge
 // ensemble for registry candidates (~/.claudish-corpus/models/<tag>).
@@ -89,7 +89,7 @@ async function main() {
         },
       },
       { token: () => undefined, revise: () => undefined },
-      { ...loopBudgetFor(text.length), ...(process.env.LOOP_EPS ? { improvementEpsilon: Number(process.env.LOOP_EPS) } : {}), ...(process.env.LOOP_EXTRA ? { maxAttempts: loopBudgetFor(text.length).maxAttempts + Number(process.env.LOOP_EXTRA) } : {}), ...(process.env.LOOP_FACTS === '1' ? { factsRetry: true } : {}), ...(process.env.LOOP_RETRY_TEMP ? { retryTemperature: Number(process.env.LOOP_RETRY_TEMP) } : {}), ...(process.env.LOOP_FEEDBACK === 'symptoms' ? { feedbackStyle: 'symptoms' as const } : process.env.LOOP_FEEDBACK === 'axis' ? { feedbackStyle: 'axis' as const } : {}), ...(process.env.LOOP_SENTENCE_JUDGE ? { sentenceJudge: { threshold: Number(process.env.LOOP_SENTENCE_JUDGE.split(',')[0]), minChars: Number(process.env.LOOP_SENTENCE_JUDGE.split(',')[1] ?? 16) } } : {}), ...(process.env.LOOP_SENTENCE_RETRY === '1' ? { sentenceRetry: true } : {}), ...(process.env.LOOP_PARALLEL ? { parallelRetries: Number(process.env.LOOP_PARALLEL) } : {}), ...(process.env.LOOP_PARAGRAPHS === '1' ? { paragraphParallel: true } : {}), ...(process.env.LOOP_STRUCT ? { structuralGate: { retryAt: Number(process.env.LOOP_STRUCT.split(',')[0]), minSentences: Number(process.env.LOOP_STRUCT.split(',')[1]) } } : {}) },
+      { ...loopBudgetFor(text.length), ...(process.env.LOOP_EPS ? { improvementEpsilon: Number(process.env.LOOP_EPS) } : {}), ...(process.env.LOOP_EXTRA ? { maxAttempts: loopBudgetFor(text.length).maxAttempts + Number(process.env.LOOP_EXTRA) } : {}), ...(process.env.LOOP_FACTS === '1' ? { factsRetry: true } : {}), ...(process.env.LOOP_RETRY_TEMP ? { retryTemperature: Number(process.env.LOOP_RETRY_TEMP) } : {}), ...(process.env.LOOP_FEEDBACK === 'symptoms' ? { feedbackStyle: 'symptoms' as const } : process.env.LOOP_FEEDBACK === 'axis' ? { feedbackStyle: 'axis' as const } : process.env.LOOP_FEEDBACK === 'contract' ? { feedbackStyle: 'contract' as const } : {}), ...(process.env.CL2EN_USER_TURN ? { userTurnPrefix: process.env.CL2EN_USER_TURN } : {}), ...(process.env.LOOP_SENTENCE_JUDGE ? { sentenceJudge: { threshold: Number(process.env.LOOP_SENTENCE_JUDGE.split(',')[0]), minChars: Number(process.env.LOOP_SENTENCE_JUDGE.split(',')[1] ?? 16) } } : {}), ...(process.env.LOOP_SENTENCE_RETRY === '1' ? { sentenceRetry: true } : {}), ...(process.env.LOOP_PARALLEL ? { parallelRetries: Number(process.env.LOOP_PARALLEL) } : {}), ...(process.env.LOOP_PARAGRAPHS === '1' ? { paragraphParallel: true } : {}), ...(process.env.LOOP_STRUCT ? { structuralGate: { retryAt: Number(process.env.LOOP_STRUCT.split(',')[0]), minSentences: Number(process.env.LOOP_STRUCT.split(',')[1]) } } : {}) },
     );
     const ms = Date.now() - t0;
     if (process.env.CL2EN_TRANSCRIPT) {
@@ -99,7 +99,7 @@ async function main() {
         lines.push(`## Attempt ${t.attempt} (temperature ${t.temperature})`, ``);
         for (const turn of t.turns) lines.push(`### ${turn.role} turn (${turn.text.length} chars)`, ``, "```", turn.text, "```", ``);
         lines.push(`### model output (${t.output.length} chars)`, ``, "```", t.output, "```", ``);
-        if (a) lines.push(`### verdict: judge p ${a.p.toFixed(3)} | passed ${a.p < 0.5} | mechanical evidence actionable ${String(a.actionable)}${t.attempt === result.servedAttempt ? " | SERVED" : ""}`, ``);
+        if (a) { const ax = judgeAxes(t.output); lines.push(`### verdict: judge p ${a.p.toFixed(3)} (register ${ax.register.toFixed(2)}, shape ${ax.shape.toFixed(2)}, heuristic ${ax.heuristic.score.toFixed(2)}) | passed ${a.p < 0.5} | retry gate open ${String(a.actionable)}${t.attempt === result.servedAttempt ? " | SERVED" : ""}`, ``); }
       }
       writeFileSync(process.env.CL2EN_TRANSCRIPT.replace(/\.md$/, "") + `-${id.replace(/[^a-z0-9]+/gi, "_")}.md`, lines.join("\n"));
     }

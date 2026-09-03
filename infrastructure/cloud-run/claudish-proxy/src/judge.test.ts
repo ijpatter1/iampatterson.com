@@ -283,3 +283,25 @@ describe('axis feedback (Ian, 2026-09-02): the retry turn names which detector s
     expect(max).toBeCloseTo(Math.max(a.shape, a.register, a.heuristic.score), 9);
   });
 });
+
+describe("contract feedback (proposed chain, 2026-09-03): the retry turn quotes the shared contract", () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const J = require('./judge') as typeof import('./judge');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { CL2EN_CONTRACT } = require('./prompts/cl2en.contract') as typeof import('./prompts/cl2en.contract');
+  it('names the axis, quotes the contract verbatim, and carries no persona or deletion licence', () => {
+    const structural =
+      "Two caveats I'll carry rather than bury. Consent mode makes the id unstable before a visitor accepts, so the join failing is weak evidence on its own; the absent capture is the strong part.";
+    const fb = J.buildContractFeedback(structural, J.judgeAxes(structural));
+    expect(fb).toMatch(/^Not done yet\. Vocabulary detector \d\.\d\d, shape detector \d\.\d\d\./);
+    expect(fb).toContain(CL2EN_CONTRACT);
+    expect(fb).not.toMatch(/telling another|colleague|delete it/i);
+    expect(fb).toMatch(/Output only the translation\.$/);
+  });
+  it('vocabulary-led drafts get the words and constructions named', () => {
+    const loud = "This isn't just a fix — it's a robust, comprehensive testament to design.";
+    const fb = J.buildContractFeedback(loud, J.judgeAxes(loud));
+    expect(fb).toContain('robust');
+    expect(fb).toMatch(/words and constructions/i);
+  });
+});

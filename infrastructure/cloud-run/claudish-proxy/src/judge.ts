@@ -20,6 +20,7 @@ import { killListHits } from './assertions';
 import { loadJudgeModel } from './judge-loader';
 import type { JudgeModel } from './judge-loader';
 import { extractRegisterFeatures } from './vendor/ccld-featurizer';
+import { CL2EN_CONTRACT } from './prompts/cl2en.contract';
 import { scoreClaudish } from './vendor/heuristic';
 import { JUDGE_WEIGHTS, REFERENCE_WEIGHTS } from './vendor/judge-weights';
 
@@ -161,7 +162,7 @@ export function convictingSentences(text: string, limit: number): string[] {
  * anything but the model's OWN previous output — no visitor text beyond
  * what the model already produced from it.
  */
-export type FeedbackStyle = 'principle' | 'symptoms' | 'axis';
+export type FeedbackStyle = 'principle' | 'symptoms' | 'axis' | 'contract';
 
 /**
  * Axis readings (2026-09-02): the members read different things. By
@@ -269,6 +270,31 @@ export function buildSentenceRetryFeedback(
   parts.push(
     'Re-say each failing sentence in the source\'s own register so it no longer carries those shapes or that vocabulary, keeping every fact, number, identifier and quoted string exactly and keeping the speaker. It must still read naturally in its place between the sentences around it.',
     `Return only the rewritten sentences, in the same order, one per line, ${convicted.length} line(s), nothing else.`,
+  );
+  return parts.join('\n');
+}
+
+/**
+ * Proposed chain (2026-09-03): the retry turn names the axis the detectors flag, the sentences or
+ * the words, then quotes the shared contract verbatim. No persona, no deletion licence.
+ */
+export function buildContractFeedback(output: string, axes: JudgeAxes): string {
+  const vocab = Math.max(axes.register, axes.heuristic.score);
+  const shapeLeads = axes.shape >= 0.5 && axes.shape >= vocab;
+  const parts = [`Not done yet. Vocabulary detector ${vocab.toFixed(2)}, shape detector ${axes.shape.toFixed(2)}.`];
+  if (shapeLeads) {
+    parts.push('The words are fine; these sentences still read as assistant shapes:');
+    for (const s of shapeSentences(output, 3)) parts.push(`- "${s.sentence}"${s.tags.length ? ` (${s.tags.join('; ')})` : ''}`);
+  } else {
+    const kills = killListHits(output);
+    const items = [...kills, ...axes.heuristic.signals].filter((x, i, a) => a.indexOf(x) === i);
+    parts.push(`The words and constructions are the problem: ${items.length ? items.join(', ') : 'assistant vocabulary and rhetoric'}.`);
+    for (const sentence of convictingSentences(output, 2)) parts.push(`- "${sentence}"`);
+  }
+  parts.push(
+    "Re-say those parts in the plain English a busy person would write, at the source's own precision. Change the words and the sentence shapes freely; vary sentence length as ordinary writing does.",
+    CL2EN_CONTRACT,
+    'Output only the translation.',
   );
   return parts.join('\n');
 }
