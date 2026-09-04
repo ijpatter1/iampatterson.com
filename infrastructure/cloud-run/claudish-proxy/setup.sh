@@ -25,7 +25,7 @@ ANTHROPIC_FEDERATION_RULE_ID="${ANTHROPIC_FEDERATION_RULE_ID:-fdrl_01RYv2ptEbtu7
 ANTHROPIC_ORGANIZATION_ID="${ANTHROPIC_ORGANIZATION_ID:-ff69f7b8-02fa-4bbb-b4a9-d0047c05299c}"
 ANTHROPIC_SERVICE_ACCOUNT_ID="${ANTHROPIC_SERVICE_ACCOUNT_ID:-svac_014RW8M13t3K3QXY6pL7mrLo}"
 ANTHROPIC_WORKSPACE_ID="${ANTHROPIC_WORKSPACE_ID:-wrkspc_01K3PnFVDjmiNyuH6DQUJwKo}"
-ALLOWED_ORIGINS="${ALLOWED_ORIGINS:-https://iampatterson.com,https://iampatterson-com.vercel.app,https://iampatterson-com-*.vercel.app,http://localhost:3000}"
+ALLOWED_ORIGINS="${ALLOWED_ORIGINS:-https://iampatterson.com,https://www.iampatterson.com,https://iampatterson-com.vercel.app,https://iampatterson-com-*.vercel.app,http://localhost:3000}"
 LANES="${LANES:-vertex-global,vertex-regional,anthropic-api,cache-only}"
 # cl2en engine: the judge-driven Gemini refinement loop (Ian 2026-09-01).
 # en2cl always rides the Claude ladder.

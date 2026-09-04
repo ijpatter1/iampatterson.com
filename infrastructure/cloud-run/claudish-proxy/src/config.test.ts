@@ -1,7 +1,7 @@
 /**
  * claudish-proxy — config tests (feat/claudish, proxy T2).
  */
-import { loadConfig, LANE_NAMES } from './config';
+import { isOriginAllowed, loadConfig, LANE_NAMES } from './config';
 
 describe('loadConfig', () => {
   it('provides safe defaults', () => {
@@ -68,5 +68,14 @@ describe('TRUSTED_PROXY_HOPS (review batch 1, 2026-09-03)', () => {
     expect(() => loadConfig({ TRUSTED_PROXY_HOPS: 'abc' })).toThrow(/TRUSTED_PROXY_HOPS/);
     expect(() => loadConfig({ TRUSTED_PROXY_HOPS: '0' })).toThrow(/TRUSTED_PROXY_HOPS/);
     expect(() => loadConfig({ TRUSTED_PROXY_HOPS: '1.5' })).toThrow(/TRUSTED_PROXY_HOPS/);
+  });
+});
+
+describe('allowed origins default (2026-09-04)', () => {
+  it('includes the www host production redirects to, and the apex', () => {
+    const c = loadConfig({});
+    expect(c.allowedOrigins).toContain('https://www.iampatterson.com');
+    expect(c.allowedOrigins).toContain('https://iampatterson.com');
+    expect(isOriginAllowed('https://www.iampatterson.com', c.allowedOrigins)).toBe(true);
   });
 });
