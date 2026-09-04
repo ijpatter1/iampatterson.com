@@ -44,7 +44,8 @@ for s in event-stream data-generator claudish-proxy; do
   R=$(cd "infrastructure/cloud-run/$s" && npm test 2>&1 | grep -E "^Tests:" | tail -1 | tr -s ' '); printf '%s' "$R" | grep -qE "failed"; [ $? -ne 0 ] && printf '%s' "$R" | grep -q "passed"; check "$s suite green under $NV" $? "${R:-no summary line}"
 done
 GOLD=$(bash scripts/run-claudish-golden.sh 2>&1); GSUM=$(printf '%s' "$GOLD" | grep -E "^Tests:" | tail -1 | tr -s ' '); GFT=$(printf '%s' "$GOLD" | grep -c "loop fell through pre-token")
-printf '%s' "$GSUM" | grep -qE "failed"; [ $? -ne 0 ] && [ -n "$GSUM" ]; check "proxy golden gate green under $NV (served loop; fall-throughs counted)" $? "${GSUM:-no summary line}; $GFT case(s) fell through to the Claude lane"
+GFAIL=$(printf '%s' "$GOLD" | grep -E "^ +(cl2en|en2cl)-[0-9]+-[a-z0-9-]+ violated:" | sed -E 's/^ *//; s/ violated: / — /' | tr '\n' ';' | sed 's/;$//')
+printf '%s' "$GSUM" | grep -qE "failed"; [ $? -ne 0 ] && [ -n "$GSUM" ]; check "proxy golden gate green under $NV (served loop; fall-throughs counted)" $? "${GSUM:-no summary line}; $GFT case(s) fell through to the Claude lane${GFAIL:+; failed: $GFAIL}"
 
 # 3. Newest Vercel build log
 VERCEL_ENV="${VERCEL_ENV:-preview}"
