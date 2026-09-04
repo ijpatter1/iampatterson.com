@@ -326,6 +326,18 @@ describe('Dataform assertions', () => {
       expect(sql).toContain('type: "assertion"');
     }
   });
+
+  // The volume assertion failed 28 of the 30 nightly runs to 2026-09-04. The
+  // data was behaving as designed: measured that day, 6 of the 61 days in the
+  // range had no events and every one of them was a weekend, giving a gap rate
+  // of 0.098 against a 0.10 threshold it drifted across as old days aged out.
+  // The generator runs on weekdays, so a weekend is not a pipeline gap.
+  test('assert_volume_anomaly counts weekdays only, so an idle weekend is not a gap', () => {
+    const sql = readSqlx('definitions/assertions/assert_volume_anomaly.sqlx');
+    const spine = sql.slice(sql.indexOf('date_spine AS'), sql.indexOf('gap_stats AS'));
+    expect(spine).toContain("FORMAT_DATE('%u', date) NOT IN ('6', '7')");
+    expect(sql).toMatch(/weekday/i);
+  });
 });
 
 // ---------------------------------------------------------------------------

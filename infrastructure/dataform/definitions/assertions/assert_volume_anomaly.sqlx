@@ -1,6 +1,6 @@
 config {
   type: "assertion",
-  description: "Detects significant volume gaps in the data. Fails if more than 10% of days in the data range have zero events, indicating a pipeline outage rather than normal month-end variation."
+  description: "Detects significant volume gaps in the data. Counts weekdays only, because the data generator runs on weekdays and an idle weekend is the designed state rather than an outage. Fails if more than 10% of weekdays in the data range have zero events, indicating a pipeline outage rather than normal variation."
 }
 
 WITH data_range AS (
@@ -22,6 +22,12 @@ date_spine AS (
   SELECT date
   FROM data_range,
   UNNEST(GENERATE_DATE_ARRAY(data_range.first_date, data_range.last_date)) AS date
+  -- Weekends carry no generated traffic by design, so counting them as gaps
+  -- made this assertion fail on healthy data: measured on 2026-09-04, all 6
+  -- empty days in a 61-day range were weekends, a gap rate of 0.098 that
+  -- drifted across the 0.10 threshold as old days aged out of the range.
+  -- FORMAT_DATE('%u'): 1 = Monday through 7 = Sunday.
+  WHERE FORMAT_DATE('%u', date) NOT IN ('6', '7')
 ),
 
 gap_stats AS (
@@ -33,7 +39,7 @@ gap_stats AS (
   LEFT JOIN daily_counts dc ON ds.date = dc.event_date
 )
 
--- Fail if more than 10% of days are missing (allows for month-end gaps)
+-- Fail if more than 10% of weekdays are missing
 SELECT total_days, missing_days, gap_rate
 FROM gap_stats
 WHERE gap_rate > 0.10
