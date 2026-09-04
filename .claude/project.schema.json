@@ -1,0 +1,268 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tunameltsmyheart.com/claude-code/project.schema.json",
+  "title": "Claude Code project manifest",
+  "description": "Single source of truth for stack, commands, repo topology, and ceremony. Every hardcoded command, path, and toggle in the template routes through this file so there is nothing to drift. Detection (the resolver) bootstraps these values; the human-confirmed manifest is authoritative thereafter.",
+  "type": "object",
+  "required": [
+    "name",
+    "language",
+    "roots",
+    "commands",
+    "scaffoldCheck",
+    "ceremony"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Path or URL to this schema, for editor validation."
+    },
+    "name": {
+      "type": "string",
+      "description": "Project name. Used for image/container naming and human-facing labels.",
+      "minLength": 1
+    },
+    "language": {
+      "type": "string",
+      "description": "Primary language. Drives the sandbox base image and the per-language firewall registry set. 'shell' is for bash/jq/git projects with no language runtime: it maps to the plain Debian-slim base image and adds no language-specific registry to the firewall (only the always-on Anthropic + GitHub core).",
+      "enum": [
+        "node",
+        "python",
+        "rust",
+        "go",
+        "ruby",
+        "jvm",
+        "dotnet",
+        "elixir",
+        "shell"
+      ]
+    },
+    "packageManager": {
+      "type": ["string", "null"],
+      "description": "Package manager for the chosen language (e.g. npm, pnpm, yarn, uv, poetry, pip, cargo, go, bundler, maven, gradle, dotnet, mix). Null when not applicable."
+    },
+    "roots": {
+      "type": "object",
+      "description": "Repo topology, relative to cwd (the control plane). Single-repo sets control to '.' and code to '.', which makes every root-aware operation a no-op and serves both topologies with one code path. roots.code is EITHER a string (single-repo shorthand — the string is the one code repo, the primary) OR a named map of code repos with codePrimary naming the default ([11.2] — the breaking contract change behind the multi-repo topology). Every root-aware reader resolves a named repo through .claude/roots.sh (default = the primary), so no call site assumes a single code root.",
+      "required": ["control", "code"],
+      "additionalProperties": false,
+      "properties": {
+        "control": {
+          "type": "string",
+          "description": "Control-plane root (where Claude Code launches). Docs and session artifacts live under ${control}/docs. '.' in single-repo (the current scaffold default); the control-plane directory in a split.",
+          "minLength": 1
+        },
+        "code": {
+          "description": "Code repo(s) root, relative to cwd. A STRING is the single-repo shorthand: that string is the one code repo (the primary), code writes target ${code}/…, code-repo git runs as `git -C ${code}`, '.' in single-repo. A named MAP { name: { path, commands? } } expresses N code repos under one control plane; codePrimary names the default for unqualified operations and a named repo may override the top-level commands. The string and the map-of-one are the same degenerate case — the resolver (.claude/roots.sh) collapses them so single-repo stays a no-op.",
+          "oneOf": [
+            {
+              "type": "string",
+              "description": "Single-repo shorthand: the string is the primary code repo. '.' in single-repo; a relative path to the sibling product repo in a one-code-repo split.",
+              "minLength": 1
+            },
+            {
+              "type": "object",
+              "description": "Named map of code repos: name → { path, commands? }. Requires roots.codePrimary to name one of these keys.",
+              "minProperties": 1,
+              "additionalProperties": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["path"],
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "description": "Code repo root for this named repo, relative to cwd.",
+                    "minLength": 1
+                  },
+                  "commands": {
+                    "type": "object",
+                    "description": "Per-repo command overrides. Any field absent here falls back to the top-level commands (the primary's defaults), so single-repo manifests are byte-identical. Same null-means-skip semantics as the top-level commands. Forward-declared as part of the [11.2] named-map contract: the consumer — guv-cmd.sh's per-repo selector (cmd <name> [<repo>]) — lands in [11.3], so this field validates but has no reader until then.",
+                    "additionalProperties": false,
+                    "properties": {
+                      "test":    { "type": ["string", "null"] },
+                      "build":   { "type": ["string", "null"] },
+                      "lint":    { "type": ["string", "null"] },
+                      "format":  { "type": ["string", "null"] },
+                      "dev":     { "type": ["string", "null"] },
+                      "install": { "type": ["string", "null"] }
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "codePrimary": {
+          "type": "string",
+          "description": "Names the default code repo for unqualified root-aware operations. REQUIRED iff roots.code is a named map (it must be a key of that map); FORBIDDEN when roots.code is a string (the string IS the primary). Enforced by the if/then/else below.",
+          "minLength": 1
+        }
+      },
+      "allOf": [
+        {
+          "comment": "codePrimary is required exactly when roots.code is a named map.",
+          "if": { "properties": { "code": { "type": "object" } }, "required": ["code"] },
+          "then": { "required": ["codePrimary"] },
+          "else": { "not": { "required": ["codePrimary"] } }
+        }
+      ]
+    },
+    "commands": {
+      "type": "object",
+      "description": "Project commands. Any value may be null, meaning 'this project has no such step.' Consumers MUST skip cleanly on null — never error, never substitute a default. All commands run with cwd = the control plane (the dir holding .claude/), NOT roots.code. In a split project (roots.code != '.') a command that calls code-repo-relative paths must cd into or resolve roots.code itself — it is not invoked from there (UAT-F1: a hand-written 'bash ../code/run_tests.sh' fails to import the package because cwd is the plane). guv's own run-core-tests.sh reads roots.code and invokes each suite by its roots.code-prefixed path; a hand-written commands.test must likewise resolve roots.code rather than assume cwd.",
+      "additionalProperties": false,
+      "properties": {
+        "test": {
+          "type": ["string", "null"],
+          "description": "Run the full test suite."
+        },
+        "build": {
+          "type": ["string", "null"],
+          "description": "Build/compile. Null for projects with no build step (e.g. interpreted languages)."
+        },
+        "lint": {
+          "type": ["string", "null"],
+          "description": "Lint the codebase."
+        },
+        "format": {
+          "type": ["string", "null"],
+          "description": "Format a single file in place; the file path is appended as the final argument by the auto-format hook. Null disables auto-formatting."
+        },
+        "dev": {
+          "type": ["string", "null"],
+          "description": "Start the dev server. Run on the host, not in the sandbox."
+        },
+        "install": {
+          "type": ["string", "null"],
+          "description": "Install/sync dependencies (e.g. 'npm install', 'uv sync', 'bundle install', 'dotnet restore'). This is the declared remediation when readyCheck fails: a command runs this rather than guessing the install step from the package manager. Null when no install step applies (e.g. languages whose build/test fetch deps on demand)."
+        }
+      }
+    },
+    "scaffoldCheck": {
+      "type": "string",
+      "description": "Shell test for 'does a project EXIST here' — point it at the project manifest, not a tool binary (e.g. 'test -f package.json', 'test -f pyproject.toml', 'test -f Cargo.toml'). When it fails, the project is NOT_SCAFFOLDED and command steps that depend on a project are skipped. Do NOT overload this with 'are the tools installed' — that is readyCheck's job."
+    },
+    "readyCheck": {
+      "type": ["string", "null"],
+      "description": "Optional shell test for 'are the tools INSTALLED / runnable' — distinct from scaffoldCheck's 'does a project exist'. Use it when the test/build/lint/format tools live in a project-local environment that a fresh clone hasn't populated yet (e.g. 'test -d node_modules', 'test -x .venv/bin/ruff'). The state where scaffoldCheck passes but readyCheck fails is NOT_INSTALLED — commands run commands.install (the declared remediation) rather than running tools into failure. Null/absent means 'no separate readiness step' (tools are assumed on PATH once scaffolded)."
+    },
+    "formatExtensions": {
+      "type": "array",
+      "description": "File extensions (without leading dot) the format command should handle. The auto-format hook only runs commands.format on files whose extension is in this list.",
+      "items": { "type": "string" }
+    },
+    "guards": {
+      "type": "array",
+      "description": "Opt-in stack-specific danger blocks layered on top of the always-on universal bash-guard set. A project lists only what applies.",
+      "items": {
+        "type": "string",
+        "enum": [
+          "gcp",
+          "npm-publish",
+          "cargo-publish",
+          "pypi-publish",
+          "gem-publish"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "ceremony": {
+      "type": "string",
+      "description": "How much project-shape machinery the commands invoke. 'phased' = full greenfield with phase docs; 'onboard' = existing repo, conventions inferred not scaffolded, no phase structure; 'task' = scoped change, no phase docs; 'spike' = free-form/exploratory work, light structure (goal, timebox, findings drain), no phase DAG.",
+      "enum": ["phased", "onboard", "task", "spike"]
+    },
+    "views": {
+      "type": "object",
+      "description": "Declared render surfaces — derived artifacts committed to this repo (the rendered status view first). DESCRIPTIVE ONLY: no execution path reads this entry — render tooling (the manual chain everywhere; a regeneration hook where maintainer setup installs one) writes the conventional target regardless. Declaring it makes the committed surface explicit manifest rather than implicit convention. Publishing the artifact (and when a Pages site is public — it usually is) is a hosting decision documented where control-plane topology is taught, not here.",
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "type": "string",
+          "description": "Path of the rendered status view (render-status.sh output), committed as a derived artifact — rebuilt, never line-merged, never a source."
+        }
+      }
+    },
+    "occupancy": {
+      "type": "object",
+      "description": "The context-occupancy quality setpoint, in tokens. The occupancy meter that once enforced it (a Stop hook writing a handoff at the threshold, [9.2]) retired at [32.4] — native compaction carries the session across the wall ([32.2]). The one remaining reader is compaction-setpoint.sh, which takes it as the quality setpoint its compaction-window recommendation is derived from.",
+      "additionalProperties": false,
+      "properties": {
+        "threshold": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Context-occupancy token count. Read by compaction-setpoint.sh as the quality setpoint for its window recommendation; no hook enforces it since [32.4]."
+        }
+      }
+    },
+    "contextManagement": {
+      "type": "object",
+      "description": "Context-wall posture ([16.2]; S1 finding docs/spikes/16-1-context-wall-mode.md). Carries the operator's MODE CHOICE for how guv handles the context wall. The block's PRESENCE is the scaffold-provenance signal: a fresh scaffold always writes it (an interactive scaffold forces a real mode; a headless scaffold writes 'unset' and surfaces a loud marker), so an ABSENT block means a project that predates the feature — grandfathered with a one-time, non-blocking migration nudge, never a silent default (format-survival invariant). The occupancy meter that once enforced the hard-stop arm retired at [32.4]; the auto-compaction window (CLAUDE_CODE_AUTO_COMPACT_WINDOW) is operator-authored in the settings env block — guv never places or strips it ([32.2]). Person-adjustable; the manifest's commit history is the provenance.",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["hard-stop", "continue", "unset"],
+          "description": "The chosen context-wall posture. 'hard-stop' (guardrail): guv arms no auto-compaction window, and a lingering operator-authored one is surfaced as a conflict warning every session ([32.2] — clearing it is the operator's) — for the interactive operator who wants full control; the occupancy meter that once enforced a threshold handoff on this arm retired at [32.4], so the wall itself is the platform's. 'continue' (autopilot): auto-compaction owns the wall — the platform compacts and carries the session across on its native summary — for the autonomous/long-haul run where unattended continuation is the point. 'unset': scaffolded without a choice (the headless path) — a loud 'context-wall mode UNSET' marker surfaced until a mode is chosen. There is NO behavioral default mode: an interactive scaffold forces hard-stop|continue, a headless one writes unset (loud, not a silent fallback), and an absent block (a pre-feature project) keeps today's behavior. The compaction window is operator-authored ([32.2])."
+        }
+      }
+    },
+    "review": {
+      "type": "object",
+      "description": "The review gate's two settings ([25.9]). ABSENT MEANS THE SHIPPED DEFAULTS — level 'high', reviewer = whatever the install names it — never 'no gate'. The gate READS these rather than carrying a level in prose: with no explicit level the platform code-review skill reuses whatever was typed last, which is how a routine gate inherits an audit-sized fleet. Standing consent for the gate's two invocations is deliberately NOT here — it lives in .claude/rules/guv-workflows.md (Rule 14), because a rules file is re-sent in the system prompt every turn while a manifest is read on demand, and the failure this answers was a durable prohibition outliving a conversational grant — a gate skipped on eleven commits because static prompt text was read as a standing refusal and never tested against the reviewer that had run three times that same day.",
+      "additionalProperties": false,
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "xhigh", "max"],
+          "description": "Effort level for the platform code-review invocation at the routine gate. Shipped default: high. That default is an operator ruling on descriptive evidence, not a spike result — the review-level spike's pre-registered readout separated no level from any other (high vs medium p=0.375, adjudicated NOT-TESTED); what the record supports is that the floor and the spread improve monotonically (worst run 4 -> 6 -> 7 of the reachable 8; spread 2.00x -> 1.33x -> 1.14x) at 1.12x medium's burn, while xhigh costs 1.41x with no separable detection gain. The audit posture is NOT a higher rung on this scale — the record above prices the next rung up without a matching detection gain. It is an operator-typed pass that widens the read: a broader target, a second independent look at work already gated, or a security-review/simplify pass the routine gate does not run."
+        },
+        "reviewer": {
+          "type": "string",
+          "description": "Name of the alignment-review subagent the gate spawns. ABSENT MEANS THE INSTALLED NAME — 'reviewer' in a copied/split plane, 'guv:reviewer' under a plugin install. No scaffold writes a value, and that is deliberate: the script that knows the install mode (scaffold-shell.sh) is not the one that writes the manifest, so a written name would be wrong half the time. Set it only when this plane's reviewer is named something else — a vendored copy, or a rename. The name is a slug, optionally one namespace segment: that is what gate-log.sh admits as an instrument name, and a name outside it makes every gate append refuse, so this pattern surfaces the mistake at the manifest instead of leaving a plane that can never record a gate.",
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9-]*(:[a-z][a-z0-9-]*)?$"
+        }
+      }
+    },
+    "budgets": {
+      "type": "object",
+      "description": "Cost-and-performance budget setpoints ([9.3], cut to the one comparison at [32.4]). OPTIONAL at two granularities — initiative (burn attributable to the LIVE initiative: the metering log windowed to the [13.4] lineage boundary) and session (burn of the current session). ABSENT MEANS UNLIMITED, never 'off': an absent budgets block gates nothing anywhere, silently. With a ceiling set, budget-gate.sh prints one burn-vs-ceiling comparison per granularity at session entry and exit — burn visible at boundaries — and stops loud (exit 3) on breach with work preserved; extend/harvest/kill is the person's decision, and the machinery never raises a setpoint. What the burn figure means — unit, coverage, epoch — is the metering record's epoch declaration (.claude/metering-log.md § Epoch); burn counts only post-epoch entries. Budget edits are commits, so this block's git history IS the provenance — no approval flow, no side channel, no storage outside this manifest.",
+      "additionalProperties": false,
+      "properties": {
+        "initiative": {
+          "type": "object",
+          "description": "The initiative budget: burn attributable to the LIVE initiative. The gate windows the metering log to the [13.4] lineage boundary — the latest lifecycle entry in calibration.ndjson: the initiative's opening plan-boundary bank, or between initiatives the grade that closed the last one (so a still-set setpoint gates burn-since-close, not a closed initiative's history); phase-boundary banks never move it — and degrades to the whole-log cumulative read only when no lineage boundary exists. Absent means unlimited for the initiative axis.",
+          "additionalProperties": false,
+          "properties": {
+            "tokens": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Token ceiling for the initiative, in the epoch's unit (per_response harvest, raw four-class count — declared in .claude/metering-log.md § Epoch). The gate breaches when post-epoch burn attributable to the live initiative — the [9.1] metering log windowed to the [13.4] lineage boundary — reaches this. Size it against the initiative's opening forecast, not all-time historical burn. Tokens (not dollars): [9.1]'s Spike C keeps dollars null (no guessed price table)."
+            },
+            "harvest_basis": {
+              "type": "string",
+              "description": "HISTORICAL ([32.4]) — the gate no longer reads this. It once declared which harvest unit the ceiling was chosen in, buying a hazard banner when burn and ceiling disagreed. The epoch declaration (.claude/metering-log.md § Epoch) now fixes one unit for burn and ceiling alike. Tolerated so pre-[32.4] manifests still validate; if your ceiling was sized in a pre-epoch unit (this field said so), re-derive it in the epoch's unit — the gate will not warn you."
+            },
+            "denomination": {
+              "type": "string",
+              "description": "HISTORICAL ([32.4]) — the gate no longer reads this. It once declared a cost-weighted ceiling (cache_read ×0.1, cache_creation ×2, output ×5 — 3.9–6.8x smaller than the raw count on guv's own record). The epoch pins raw four-class tokens for burn and ceiling alike. Tolerated so pre-[32.4] manifests still validate; a ceiling sized cost-weighted must be re-derived raw — the gate will not warn you."
+            }
+          }
+        },
+        "session": {
+          "type": "object",
+          "description": "The session budget: burn of the current session (entries tagged with the newest docs/sessions/session-*.md). Absent means unlimited for the session axis.",
+          "additionalProperties": false,
+          "properties": {
+            "tokens": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Per-session token ceiling. The gate breaches when the current session's summed burn in the [9.1] metering log reaches this. Tokens are the denomination (dollars stay null on the current rung)."
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "$schema": "./project.schema.json",
+  "name": "iampatterson.com",
+  "language": "node",
+  "packageManager": "npm",
+  "roots": {
+    "control": ".",
+    "code": "."
+  },
+  "commands": {
+    "test": "npm test",
+    "build": "npm run build",
+    "lint": "npm run lint",
+    "format": "npx prettier --write",
+    "dev": "npm run dev",
+    "install": "npm install"
+  },
+  "scaffoldCheck": "test -f package.json",
+  "readyCheck": "test -d node_modules",
+  "formatExtensions": [
+    "js",
+    "jsx",
+    "ts",
+    "tsx",
+    "json",
+    "css",
+    "scss",
+    "md",
+    "html",
+    "yml",
+    "yaml"
+  ],
+  "guards": [],
+  "ceremony": "onboard",
+  "review": {
+    "level": "high"
+  },
+  "contextManagement": {
+    "mode": "continue"
+  }
+}

@@ -117,3 +117,55 @@ docs/perf/mobile-matrix-screenshots/**/*.png
 .claude/agent-memory/
 .claude/settings.local.json
 scripts/claudish/denylist.txt
+
+# guv-gitignore — appended by /guv:scaffold
+# guv-core-start
+# Environment & secrets
+.env
+.env.*
+!.env.example
+secrets/
+*.pem
+*.key
+*-service-account.json
+*-credentials.json
+# Claude Code: personal overrides, not committed
+.claude/settings.local.json
+# Auto-generated agent memory — the reviewer writes this
+# on the first /eval or /handoff (/guv:-namespaced under the plugin).
+# Ignored by default so it doesn't sit untracked in every consumer project.
+# A team that wants shared agent memory can force-add it
+# (git add -f .claude/agent-memory/) and remove this line.
+.claude/agent-memory/
+# OS files
+.DS_Store
+Thumbs.db
+# Docker sandbox (opt-in tier)
+sandbox/*.log
+sandbox/tmp/
+# guv context-wall migration-nudge marker ([16.2]; context-management.sh surface —
+# a machine-local did-fire flag so the one-time grandfather nudge fires once, not
+# every session; runtime artifact, not tracked)
+.claude/.context-wall-migration-nudged
+# guv context-wall continue-guidance marker ([16.4]; context-management.sh surface —
+# a machine-local did-fire flag so the one-shot continue-mode "author a window if you
+# want an explicit compaction point" guidance fires once, not every session; runtime
+# artifact, not tracked)
+.claude/.context-wall-continue-guided
+# guv metering runtime artifact (handoff Step 3 writes the measured suite
+# runtime here; meter.sh reads it — transient, rewritten each session, not
+# tracked). The committed append-only metering logs (metering.ndjson /
+# calibration.ndjson) are deliberately NOT ignored — they are shared evidence.
+.claude/metering/.last-suite-runtime
+# guv recorded battery verdict (battery-result.sh — run-core-tests.sh records its
+# verdict here so the QA stages downstream read it instead of each paying for its
+# own battery run). Machine-local and tree-specific: it carries a fingerprint of
+# the exact working tree it ran against, so a committed copy would be stale for
+# everyone who pulled it.
+.claude/metering/.last-battery-result
+# guv gate log ([25.10] — gate-log.sh appends one line per review-gate invocation;
+# the handoff audits this session's commits against it). Deliberately NOT ignored,
+# for the same reason as the metering logs: it is shared evidence, and a coverage
+# record only one machine can see attests nothing to anyone else. Named here so its
+# absence from the ignore set reads as a decision rather than an oversight.
+# guv-core-end
