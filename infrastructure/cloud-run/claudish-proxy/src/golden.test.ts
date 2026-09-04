@@ -114,6 +114,26 @@ async function translateCl2EnServed(
   return { output, stopReason: result.refused ? 'refusal' : 'end_turn' };
 }
 
+/**
+ * Production's composition, including the fall-through: when the loop fails
+ * before any token (a stalled or refused upstream, the 3 s first-token
+ * deadline), translate.ts hands the request to the Claude ladder. The gate
+ * mirrors that so a slow Gemini start reads as production would serve it,
+ * not as a harness error (Phase 12, 2026-09-04).
+ */
+async function translateCl2EnAsServed(
+  config: ReturnType<typeof loadConfig>,
+  lane: LaneClient,
+  text: string
+): Promise<{ output: string; stopReason: string | null }> {
+  try {
+    return await translateCl2EnServed(config, text);
+  } catch (err) {
+    console.log(`[golden] loop fell through pre-token (${err instanceof Error ? err.name : 'Unknown'}); Claude ladder served`);
+    return translateVia(lane, 'cl2en', text);
+  }
+}
+
 describeIfGolden('golden set (live API)', () => {
   jest.setTimeout(60000);
   const config = loadConfig(process.env);
@@ -132,7 +152,7 @@ describeIfGolden('golden set (live API)', () => {
     for (const testCase of loadCases('cl2en.json')) {
       it(testCase.id, async () => {
         const { output, stopReason } = served
-          ? await translateCl2EnServed(config, testCase.input)
+          ? await translateCl2EnAsServed(config, lane, testCase.input)
           : await translateVia(lane, 'cl2en', testCase.input);
         if (testCase.long && stopReason !== 'end_turn') {
           throw new Error(`${testCase.id} truncated: stop_reason=${stopReason}`);
