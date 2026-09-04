@@ -1,0 +1,47 @@
+[
+  {
+    "displayName": "sgtm-healthy",
+    "host": "io.iampatterson.com",
+    "path": "/healthy",
+    "acceptedStatusClasses": ["STATUS_CLASS_2XX"],
+    "periodSeconds": 300,
+    "timeoutSeconds": 10,
+    "alert": true
+  },
+  {
+    "displayName": "event-stream-health",
+    "host": "event-stream-eb4xrwmo3q-uc.a.run.app",
+    "path": "/health",
+    "acceptedStatusClasses": ["STATUS_CLASS_2XX"],
+    "periodSeconds": 300,
+    "timeoutSeconds": 10,
+    "alert": true
+  },
+  {
+    "displayName": "claudish-proxy-health",
+    "host": "claudish-proxy-eb4xrwmo3q-uc.a.run.app",
+    "path": "/health",
+    "acceptedStatusClasses": ["STATUS_CLASS_2XX"],
+    "periodSeconds": 300,
+    "timeoutSeconds": 10,
+    "alert": true
+  },
+  {
+    "displayName": "site-www",
+    "host": "www.iampatterson.com",
+    "path": "/",
+    "acceptedStatusClasses": ["STATUS_CLASS_2XX"],
+    "periodSeconds": 300,
+    "timeoutSeconds": 10,
+    "alert": true
+  },
+  {
+    "displayName": "metabase-lb",
+    "host": "bi.iampatterson.com",
+    "path": "/",
+    "acceptedStatusClasses": ["STATUS_CLASS_2XX", "STATUS_CLASS_3XX"],
+    "periodSeconds": 300,
+    "timeoutSeconds": 10,
+    "alert": true
+  }
+]

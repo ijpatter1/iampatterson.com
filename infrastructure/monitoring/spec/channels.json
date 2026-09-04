@@ -1,0 +1,12 @@
+[
+  {
+    "displayName": "ops-email",
+    "type": "email",
+    "labels": { "email_address": "ian@tunameltsmyheart.com" }
+  },
+  {
+    "displayName": "ops-pubsub",
+    "type": "pubsub",
+    "labels": { "topic": "projects/iampatterson/topics/monitoring-alerts" }
+  }
+]
