@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Dev only: Next 16 blocks cross-origin requests to /_next/* from any host but localhost, so a phone
+  // on the LAN got the page HTML and a 403 for every chunk. Ignored by production builds.
+  allowedDevOrigins: ['192.168.86.*'],
   async redirects() {
     // Phase 9E deliverable 7: subscription + leadgen demos removed from the
     // site pending rebuild to the native-reveal pattern language (Phase 9F

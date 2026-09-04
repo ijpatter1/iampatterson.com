@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "noEmit": true,
+    "types": [
+      "node"
+    ],
+    "target": "ES2022",
+    "lib": [
+      "ES2022"
+    ]
+  },
+  "include": [
+    "scripts/claudish/**/*.ts",
+    "src/lib/claudish/text-stats.ts",
+    "src/lib/claudish/heuristic.ts",
+    "src/lib/claudish/ccld-featurizer.ts"
+  ]
+}

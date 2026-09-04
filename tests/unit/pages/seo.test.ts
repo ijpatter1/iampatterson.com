@@ -104,6 +104,7 @@ describe('Phase 10d D4 — SEO', () => {
         'https://iampatterson.com/contact',
         'https://iampatterson.com/demo',
         'https://iampatterson.com/demo/ecommerce',
+        'https://iampatterson.com/claudish',
       ];
       const staticUrls = urls.filter((u) => !/\/demo\/ecommerce\/[a-z0-9-]+$/.test(u));
       expect(staticUrls.length).toBe(expectedStatic.length);

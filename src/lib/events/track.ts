@@ -7,6 +7,10 @@ import type {
   PageEngagementEvent,
   PortalClickEvent,
   WebVitalEvent,
+  ClaudishTranslateEvent,
+  ClaudishDetectedEvent,
+  ClaudishShareEvent,
+  ClaudishRateEvent,
 } from './schema';
 import { getSessionId } from './session';
 
@@ -306,4 +310,48 @@ export function trackPageEngagement(params: {
   max_scroll_pct: number;
 }): void {
   pushEvent({ ...baseFields(), event: 'page_engagement', ...params });
+}
+
+// --- Claudish translator (feat/claudish) ---
+
+export function trackClaudishTranslate(params: {
+  direction: ClaudishTranslateEvent['direction'];
+  source_mode: ClaudishTranslateEvent['source_mode'];
+  detected_language: ClaudishTranslateEvent['detected_language'];
+  detector_source: ClaudishTranslateEvent['detector_source'];
+  outcome: ClaudishTranslateEvent['outcome'];
+  input_chars: number;
+  input_em_dashes: number;
+  output_chars: number;
+  ttft_ms: number;
+  duration_ms: number;
+  cache: ClaudishTranslateEvent['cache'];
+}): void {
+  pushEvent({ ...baseFields(), event: 'claudish_translate', ...params });
+}
+
+export function trackClaudishDetected(params: {
+  detected_language: ClaudishDetectedEvent['detected_language'];
+  detector_source: ClaudishDetectedEvent['detector_source'];
+  input_chars: number;
+}): void {
+  pushEvent({ ...baseFields(), event: 'claudish_detected', ...params });
+}
+
+export function trackClaudishShare(params: {
+  share_action: ClaudishShareEvent['share_action'];
+  direction: ClaudishShareEvent['direction'];
+  output_chars: number;
+  share_truncated: boolean;
+  share_url_chars: number;
+}): void {
+  pushEvent({ ...baseFields(), event: 'claudish_share', ...params });
+}
+
+export function trackClaudishRate(params: {
+  rating: ClaudishRateEvent['rating'];
+  direction: ClaudishRateEvent['direction'];
+  output_chars: number;
+}): void {
+  pushEvent({ ...baseFields(), event: 'claudish_rate', ...params });
 }

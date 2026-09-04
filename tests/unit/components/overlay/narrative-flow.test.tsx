@@ -93,6 +93,68 @@ describe('NarrativeFlow', () => {
     expect(screen.getByText(/scrolled 87%/i)).toBeInTheDocument();
   });
 
+  it('describes claudish_translate with direction + size (feat/claudish)', () => {
+    render(
+      <NarrativeFlow
+        event={makeEvent({
+          event_name: 'claudish_translate',
+          page_path: '/claudish',
+          parameters: {
+            direction: 'en_to_claudish',
+            outcome: 'complete',
+            input_chars: 412,
+            output_chars: 640,
+          },
+        })}
+      />,
+    );
+    expect(
+      screen.getByText(/translated 412 characters into Claudish/i),
+    ).toBeInTheDocument();
+  });
+
+  it('describes a refused claudish_translate honestly', () => {
+    render(
+      <NarrativeFlow
+        event={makeEvent({
+          event_name: 'claudish_translate',
+          parameters: { direction: 'claudish_to_en', outcome: 'refused', input_chars: 88 },
+        })}
+      />,
+    );
+    expect(screen.getByText(/refused/i)).toBeInTheDocument();
+  });
+
+  it('describes claudish_detected, claudish_share, and claudish_rate as sentences', () => {
+    const { rerender } = render(
+      <NarrativeFlow
+        event={makeEvent({
+          event_name: 'claudish_detected',
+          parameters: { detected_language: 'en-x-claudish', detector_source: 'heuristic' },
+        })}
+      />,
+    );
+    expect(screen.getByText(/typed Claudish/i)).toBeInTheDocument();
+    rerender(
+      <NarrativeFlow
+        event={makeEvent({
+          event_name: 'claudish_share',
+          parameters: { share_action: 'copy_link', direction: 'en_to_claudish' },
+        })}
+      />,
+    );
+    expect(screen.getByText(/shared a translation/i)).toBeInTheDocument();
+    rerender(
+      <NarrativeFlow
+        event={makeEvent({
+          event_name: 'claudish_rate',
+          parameters: { rating: 'holds_up', direction: 'en_to_claudish' },
+        })}
+      />,
+    );
+    expect(screen.getByText(/rated a translation/i)).toBeInTheDocument();
+  });
+
   it('shows destination names from routing', () => {
     render(
       <NarrativeFlow

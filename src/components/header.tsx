@@ -10,6 +10,7 @@ import { useOverlay } from '@/components/overlay/overlay-context';
 import { trackClickCta } from '@/lib/events/track';
 
 import { LiveStrip } from '@/components/chrome/live-strip';
+import { showHomeBar, showLiveStrip } from '@/lib/chrome/suppression';
 
 export function Header() {
   const [scrolled, setScrolled] = useState(false);
@@ -59,22 +60,10 @@ export function Header() {
           </span>
         </div>
       </header>
-      <LiveStrip />
+      {showLiveStrip(pathname) && <LiveStrip />}
       {showHomeBar(pathname) && <HomeBar />}
     </div>
   );
-}
-
-/**
- * Routes where HomeBar is suppressed because the page shell already
- * provides a back-nav affordance. Demo routes use `DemoFooterNav`
- * (back-to-/) + inline "Back to The Tuna Shop" links; stacking HomeBar
- * on top would triple-up the chrome. F8 eval Minor #10.
- */
-function showHomeBar(pathname: string): boolean {
-  if (pathname === '/') return false;
-  if (pathname.startsWith('/demo/')) return false;
-  return true;
 }
 
 /**

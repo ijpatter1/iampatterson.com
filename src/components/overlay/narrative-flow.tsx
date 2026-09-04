@@ -32,6 +32,31 @@ function describeAction(event: PipelineEvent): string {
       const scroll = params.max_scroll_pct ?? 0;
       return `You spent ${seconds}s engaged on ${event.page_path} (scrolled ${scroll}%)`;
     }
+    case 'claudish_translate': {
+      // feat/claudish: sizes + direction only — the text itself never
+      // reaches the data layer, so the narrative can't (and shouldn't) quote it.
+      const into =
+        params.direction === 'claudish_to_en' ? 'into English' : 'into Claudish';
+      if (params.outcome === 'refused') {
+        return `Your translation was refused (${params.input_chars ?? '?'} characters)`;
+      }
+      return `You translated ${params.input_chars ?? '?'} characters ${into}`;
+    }
+    case 'claudish_detected':
+      return params.detected_language === 'en-x-claudish'
+        ? 'You typed Claudish and the detector noticed'
+        : 'You typed plain English';
+    case 'claudish_share': {
+      const how =
+        params.share_action === 'opened_shared_link'
+          ? 'You opened a shared translation'
+          : 'You shared a translation';
+      return how;
+    }
+    case 'claudish_rate':
+      return params.rating === 'absolutely_right'
+        ? 'You rated a translation "You\u2019re absolutely right."'
+        : 'You rated a translation "Holds up."';
     default:
       return `Event: ${event.event_name}`;
   }

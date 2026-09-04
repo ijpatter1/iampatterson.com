@@ -53,6 +53,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'monthly',
       priority: 0.7,
     },
+    {
+      // Claudish translator — a shareable launch surface; canonical is the
+      // bare route (share ?t= variants all point their canonical here).
+      url: `${SITE_URL}/claudish`,
+      lastModified,
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    },
   ];
 
   const productEntries: MetadataRoute.Sitemap = products.map((p) => ({

@@ -1,0 +1,585 @@
+/**
+ * claudish-proxy — the translate orchestrator.
+ *
+ * Two-channel contract: before any upstream stream opens, failures are
+ * HTTP status codes; after the SSE stream opens, everything is a frame
+ * and the response is always 200. The commit barrier: once the first
+ * token frame is written, the ladder never advances (re-running a lane
+ * would duplicate text) — a post-commit 429 becomes `capacity`,
+ * anything else `error`. Refusals are terminal by design: retrying a
+ * refusal on another lane is a policy decision this toy does not make.
+ *
+ * Cancellation: req 'close' aborts the upstream call (an abandoned
+ * stream is pure token burn), abandons the SSE writer, and reconciles
+ * the budget reservation with a chars/4 estimate of partial usage.
+ */
+import { randomUUID } from 'node:crypto';
+
+import { cacheKey, cacheableTranslation, normalizeInput } from './cache';
+import { loopBudgetFor, runCl2enLoop } from './cl2en-loop';
+import { streamGemini } from './gemini';
+import { nextWithDeadline, StallDeadline } from './deadline';
+import { EmDashSmoother, MarkerStripper } from './smooth';
+import { FIRST_TOKEN_DEADLINE_MS, INPUT_CAP, GEMINI_PRICES } from './config';
+import { isOriginAllowed } from './config';
+import { hashIp, logEvent, redactError } from './log';
+import { clientIp } from './ratelimit';
+import { SseStream } from './sse';
+import { PROMPT_VERSION, buildSystem } from './prompts';
+
+import type { Request, Response } from 'express';
+import type { BudgetTracker, Reservation, Usage } from './budget';
+import type { Config, Direction, PriceTable } from './config';
+import type { CircuitBreaker, LaneClient, UpstreamEvent } from './lanes';
+import type { RateLimiter } from './ratelimit';
+import type { TranslationCache } from './cache';
+
+export interface TranslateDeps {
+  config: Config;
+  lanes: LaneClient[];
+  cache: TranslationCache;
+  budget: BudgetTracker;
+  limiter: RateLimiter;
+  breaker: CircuitBreaker;
+  /** Injectable for tests; defaults to the real Gemini client. */
+  geminiStream?: typeof streamGemini;
+}
+
+
+/** Rough token estimate for abort-path reconciliation (chars/4). */
+function estimateUsage(inputChars: number, outputChars: number): Usage {
+  return {
+    inputTokens: Math.ceil(inputChars / 4),
+    outputTokens: Math.ceil(outputChars / 4),
+    cacheReadTokens: 0,
+    cacheWriteTokens: 0,
+  };
+}
+
+function isDirection(value: unknown): value is Direction {
+  return value === 'en2cl' || value === 'cl2en';
+}
+
+export function createTranslateHandler(deps: TranslateDeps) {
+  const { config, cache, budget, limiter, breaker } = deps;
+
+  return async function handleTranslate(req: Request, res: Response): Promise<void> {
+    const requestId = randomUUID().slice(0, 8);
+
+    // Origin gate: CORS protects browsers, not curl. 403 unless the
+    // Origin header is allowlisted (REQUIRE_ORIGIN=false is the harness
+    // escape hatch). ACAO is set BEFORE any early return: without it the
+    // browser cannot read pre-stream statuses (429/503 would surface as
+    // opaque network errors and the client's capacity branch would be
+    // unreachable in production). SseStream.open re-sends the same value
+    // via writeHead — Node merges identical headers, no duplication.
+    const origin = req.headers.origin ?? '';
+    const originAllowed = isOriginAllowed(origin, config.allowedOrigins);
+    const allowOrigin = originAllowed ? origin : config.allowedOrigins[0];
+    res.set('Access-Control-Allow-Origin', allowOrigin);
+    res.set('Vary', 'Origin');
+    if (config.requireOrigin && !originAllowed) {
+      res.status(403).json({ error: 'forbidden_origin' });
+      return;
+    }
+
+    // Validation.
+    const body: unknown = req.body;
+    const text =
+      typeof body === 'object' && body !== null
+        ? (body as { text?: unknown }).text
+        : undefined;
+    const direction =
+      typeof body === 'object' && body !== null
+        ? (body as { direction?: unknown }).direction
+        : undefined;
+    if (typeof text !== 'string' || text.length === 0 || !isDirection(direction)) {
+      res.status(400).json({ error: 'bad_request' });
+      return;
+    }
+    if (text.length > INPUT_CAP) {
+      res.status(413).json({ error: 'input_too_long', max: INPUT_CAP });
+      return;
+    }
+
+    // Per-IP rate limit. The hop count is TRUSTED_PROXY_HOPS (default 1:
+    // direct run.app, where Google's front end appends the client IP as
+    // the last X-Forwarded-For entry). Set 2 only behind an external LB.
+    const ip = clientIp(
+      req.headers['x-forwarded-for'] as string | undefined,
+      req.socket?.remoteAddress ?? undefined,
+      config.trustedProxyHops
+    );
+    const decision = limiter.check(ip);
+    if (!decision.allowed) {
+      logEvent('INFO', 'rate_limited', { requestId, ipHash: hashIp(ip), rateLimited: true });
+      res
+        .status(429)
+        .set('Retry-After', String(Math.ceil((decision.retryAfterMs ?? 60000) / 1000)))
+        .json({ error: 'rate_limited', retryAfterMs: decision.retryAfterMs });
+      return;
+    }
+
+    const normalized = normalizeInput(text);
+    if (normalized.length === 0) {
+      res.status(400).json({ error: 'bad_request' });
+      return;
+    }
+
+    // Test-only refusal injection (config.forceRefusalToken; unset in
+    // production): exercises the deployed refusal path — headers, framing,
+    // client discard — without depending on Anthropic's classifier.
+    if (config.forceRefusalToken && normalized === config.forceRefusalToken) {
+      const sseForced = new SseStream(res);
+      sseForced.open(allowOrigin);
+      sseForced.frame({
+        type: 'meta',
+        lane: 'cache-only',
+        cached: false,
+        direction,
+        promptVersion: PROMPT_VERSION,
+      });
+      sseForced.frame({ type: 'refusal' });
+      sseForced.end();
+      logEvent('INFO', 'translate_refused', { requestId, direction, stopReason: 'forced' });
+      return;
+    }
+    const key = cacheKey(direction, PROMPT_VERSION, config.vertexModelId, normalized);
+    const sse = new SseStream(res);
+    const t0 = Date.now();
+
+    // Server-cache hit: an instant burst, no budget, no lanes.
+    const cached = cache.get(key);
+    if (cached !== undefined) {
+      sse.open(allowOrigin);
+      sse.frame({
+        type: 'meta',
+        lane: 'cache-only',
+        cached: true,
+        direction,
+        promptVersion: PROMPT_VERSION,
+      });
+      sse.frame({ type: 'token', t: cached });
+      sse.frame({
+        type: 'done',
+        chars: cached.length,
+        ttftMs: 0,
+        totalMs: Date.now() - t0,
+        cached: true,
+      });
+      sse.end();
+      logEvent('INFO', 'translate_done', {
+        requestId,
+        direction,
+        lane: 'cache-only',
+        cached: true,
+        inputChars: text.length,
+        outputChars: cached.length,
+        promptVersion: PROMPT_VERSION,
+      });
+      return;
+    }
+
+    // Spend gates: kill switch / tripped budget / no reservation room.
+    const reservation: Reservation | null = budget.isCapped() ? null : budget.reserve();
+    if (reservation === null) {
+      logEvent('WARNING', 'capacity_no_budget', {
+        requestId,
+        budgetUsedPct: budget.usedPct(),
+      });
+      res.status(503).json({ error: 'capacity' });
+      return;
+    }
+
+    const controller = new AbortController();
+    let streamedChars = 0;
+    let accumulated = '';
+    // cl2en's no-em-dash contract enforced mechanically (see smooth.ts).
+    const smoother = direction === 'cl2en' ? new EmDashSmoother() : null;
+    let settled = false;
+    // Loop retries each hold a reservation of their own (review batch 2,
+    // finding 6); they are released here, the real usage settles on the
+    // first reservation.
+    const extraReservations: Reservation[] = [];
+    // The abort-path estimate is priced at the lane that was running: the
+    // Gemini loop at Gemini rates, not the Haiku default (review batch 3).
+    let activePrices: PriceTable | undefined;
+    const settle = (usage?: Usage, prices?: PriceTable) => {
+      if (settled) return;
+      settled = true;
+      if (usage) reservation.reconcile(usage, prices);
+      else reservation.release(estimateUsage(text.length, streamedChars), activePrices);
+      for (const extra of extraReservations) extra.release();
+      extraReservations.length = 0;
+    };
+
+    // Client-disconnect detection: req 'close' fires when the request
+    // BODY completes on Node 20+, which is immediately — useless here.
+    // res 'close' fires when the response finishes OR the connection
+    // drops; writableEnded/terminated distinguishes the two.
+    res.on('close', () => {
+      if (sse.terminated || res.writableEnded) return;
+      controller.abort();
+      sse.abandon();
+      settle();
+      logEvent('INFO', 'client_closed', { requestId, outputChars: streamedChars });
+    });
+
+    // The Claudish→English refinement loop (designed with Ian
+    // 2026-09-01): Gemini attempt 1 streams live; judge-driven retries
+    // buffer server-side as a cached-prefix conversation; a revise
+    // frame replaces the visible text only on meaningful improvement.
+    // On a pre-first-token failure the request FALLS THROUGH to the
+    // Claude ladder below — Gemini outage never blanks the panel.
+    if (direction === 'cl2en' && config.cl2enEngine === 'gemini-loop') {
+      const system = buildSystem('cl2en');
+      activePrices = GEMINI_PRICES;
+      sse.open(allowOrigin);
+      sse.frame({
+        type: 'meta',
+        lane: 'gemini-loop',
+        cached: false,
+        direction,
+        promptVersion: PROMPT_VERSION,
+      });
+      let loopTtftMs = 0;
+      try {
+        const result = await runCl2enLoop(
+          normalized,
+          system,
+          {
+            nowMs: () => Date.now(),
+            stream: (turns, _attempt, temperature, signal) =>
+              (deps.geminiStream ?? streamGemini)(
+                {
+                  projectId: config.projectId,
+                  location: config.geminiLocation,
+                  modelId: config.geminiModelId,
+                  maxOutputTokens: 2048,
+                  thinkingBudget: 0,
+                  temperature,
+                },
+                system,
+                turns,
+                // Client close aborts every attempt; a stall aborts this one.
+                signal ? AbortSignal.any([controller.signal, signal]) : controller.signal
+              ),
+            beforeRetry: () => {
+              if (budget.isCapped()) return false;
+              const extra = budget.reserve();
+              if (extra === null) {
+                logEvent('INFO', 'loop_retry_no_budget', { requestId, budgetUsedPct: budget.usedPct() });
+                return false;
+              }
+              extraReservations.push(extra);
+              return true;
+            },
+          },
+          {
+            token: (t) => {
+              if (loopTtftMs === 0) loopTtftMs = Date.now() - t0;
+              streamedChars += t.length;
+              accumulated += t;
+              sse.frame({ type: 'token', t });
+            },
+            revise: () => {
+              streamedChars = 0;
+              accumulated = '';
+              sse.frame({ type: 'revise' });
+            },
+          },
+          // Longer text earns a longer refinement window (Ian's theory,
+          // validated: attempt 3 carries the big win on long inputs and
+          // the 9s deadline was starving it; plateau still bounds cost).
+          loopBudgetFor(normalized.length)
+        );
+        // Gemini usage priced at Gemini rates (Stage 1 bundle): the
+        // earlier Haiku-rate overestimate cost ~1.5x real capacity inside
+        // the same daily cap.
+        const loopUsage: Usage = {
+          inputTokens: Math.max(0, result.usage.inputTokens - result.usage.cachedTokens),
+          outputTokens: result.usage.outputTokens,
+          cacheReadTokens: result.usage.cachedTokens,
+          cacheWriteTokens: 0,
+        };
+        if (result.retryFailed) {
+          // A retry failed upstream after attempt 1 streamed; the visitor
+          // keeps attempt 1 (or the best earlier retry). Counted, not fatal.
+          logEvent('WARNING', 'loop_retry_failed', { requestId, direction, lane: 'gemini-loop' });
+        }
+        if (result.refused) {
+          sse.frame({ type: 'refusal' });
+          sse.end();
+          settle(loopUsage, GEMINI_PRICES);
+          logEvent('INFO', 'translate_refused', {
+            requestId,
+            direction,
+            lane: 'gemini-loop',
+            inputChars: text.length,
+            stopReason: 'refusal',
+          });
+          return;
+        }
+        if (result.servedText.length === 0) {
+          // Nothing to show is not a success: a candidate-less stop used to
+          // be served as `done` with zero chars (review batch 2, finding 7).
+          sse.frame({ type: 'error', code: 'upstream_error' });
+          sse.end();
+          settle(loopUsage, GEMINI_PRICES);
+          logEvent('ERROR', 'loop_empty_result', { requestId, direction, lane: 'gemini-loop' });
+          return;
+        }
+        sse.frame({
+          type: 'done',
+          chars: result.servedText.length,
+          ttftMs: loopTtftMs,
+          totalMs: Date.now() - t0,
+          cached: false,
+        });
+        sse.end();
+        settle(loopUsage, GEMINI_PRICES);
+        // Quality-gated caching, extended (Ian's LinkedIn case): never
+        // pin a serving that is convicted AND still carries actionable
+        // evidence — a fresh attempt could do better, and the cache
+        // would freeze the worse version for its whole TTL.
+        const finalActionable =
+          result.attempts.length > 0 && result.attempts[result.attempts.length - 1].actionable;
+        if (
+          result.servedText.length > 0 &&
+          (result.passed || !finalActionable) &&
+          cacheableTranslation(direction, normalized, result.servedText)
+        ) {
+          cache.set(key, result.servedText);
+        }
+        logEvent('INFO', 'translate_done', {
+          requestId,
+          direction,
+          lane: 'gemini-loop',
+          cached: false,
+          inputChars: text.length,
+          outputChars: result.servedText.length,
+          inputTokens: result.usage.inputTokens,
+          outputTokens: result.usage.outputTokens,
+          cacheReadTokens: result.usage.cachedTokens,
+          ttftMs: loopTtftMs,
+          totalMs: Date.now() - t0,
+          promptVersion: PROMPT_VERSION,
+          budgetUsedPct: budget.usedPct(),
+          loopAttempts: result.attempts.length,
+          revised: result.revised,
+          judgeP: result.attempts.length > 0 ? result.attempts[result.attempts.length - 1].p : undefined,
+          judgeActionable:
+            result.attempts.length > 0
+              ? result.attempts[result.attempts.length - 1].actionable
+              : undefined,
+        });
+        return;
+      } catch (err) {
+        if (controller.signal.aborted) return; // client left
+        // Commit sentinel is streamed chars, not the TTFT stamp: a stream
+        // whose first token lands at t0 has loopTtftMs === 0 and used to
+        // read as pre-token, appending a second translation (batch 1).
+        if (streamedChars > 0) {
+          // Mid-stream failure: terminal error, no silent lane swap.
+          sse.frame({ type: 'error', code: 'upstream_error' });
+          sse.end();
+          settle();
+          logEvent('ERROR', 'loop_failed_midstream', {
+            requestId,
+            direction,
+            lane: 'gemini-loop',
+            errorName: err instanceof Error ? err.constructor.name : 'Unknown',
+          });
+          return;
+        }
+        // Pre-token failure: fall through to the Claude ladder (the
+        // client tolerates a second meta frame — last one wins).
+        activePrices = undefined;
+        logEvent('WARNING', 'loop_fell_through', {
+          requestId,
+          direction,
+          lane: 'gemini-loop',
+          errorName: err instanceof Error ? err.constructor.name : 'Unknown',
+        });
+      }
+    }
+
+    // The capacity ladder.
+    let committed = false;
+    let opened = false;
+    let ttftMs = 0;
+    let laneAttempts = 0;
+
+    for (const lane of deps.lanes) {
+      if (controller.signal.aborted) return;
+      if (lane.name === 'cache-only') break; // already missed above
+      if (breaker.isOpen(lane.name)) continue;
+      laneAttempts++;
+
+      // Per-attempt controller (CR3): a lane abandoned at the first-token
+      // deadline would otherwise keep generating to completion — billed
+      // upstream, invisible to the budget, connection held. The master
+      // (client-close) controller chains INTO the attempt; client-close
+      // discrimination stays on the master signal everywhere.
+      const attempt = new AbortController();
+      // Wrapper-tag strip on the ladder too: the Claude user turn carries
+      // <text> markers and an echo streamed through verbatim and into the
+      // cache (review batch 2, finding 10). Per lane attempt, like the
+      // smoother's state.
+      const stripper = new MarkerStripper();
+      const onMasterAbort = () => attempt.abort();
+      if (controller.signal.aborted) attempt.abort();
+      else controller.signal.addEventListener('abort', onMasterAbort);
+      const iterator = lane
+        .stream({ text: normalized, direction }, attempt.signal)
+        [Symbol.asyncIterator]();
+      try {
+        for (;;) {
+          const { value, done } = await nextWithDeadline(
+            iterator,
+            committed ? null : FIRST_TOKEN_DEADLINE_MS
+          );
+          if (done) {
+            // Stream ended without a stop event: treat as lane failure
+            // pre-commit, error post-commit.
+            throw new Error('upstream ended without stop');
+          }
+          const event = value;
+          if (event.kind === 'start') {
+            if (!opened) {
+              opened = true;
+              sse.open(allowOrigin);
+              sse.frame({
+                type: 'meta',
+                lane: lane.name,
+                cached: false,
+                direction,
+                promptVersion: PROMPT_VERSION,
+              });
+            }
+          } else if (event.kind === 'text') {
+            if (!committed) {
+              committed = true;
+              ttftMs = Date.now() - t0;
+            }
+            const stripped = stripper.feed(event.text);
+            const emit = smoother ? smoother.feed(stripped) : stripped;
+            if (emit.length > 0) {
+              streamedChars += emit.length;
+              accumulated += emit;
+              sse.frame({ type: 'token', t: emit });
+            }
+          } else {
+            // stop
+            const tail = stripper.flush();
+            const rest = smoother ? smoother.feed(tail) + smoother.flush() : tail;
+            if (rest.length > 0) {
+              streamedChars += rest.length;
+              accumulated += rest;
+              sse.frame({ type: 'token', t: rest });
+            }
+            breaker.recordSuccess(lane.name);
+            settle(event.usage);
+            if (event.stopReason === 'refusal') {
+              sse.frame({ type: 'refusal' });
+              sse.end();
+              logEvent('INFO', 'translate_refused', {
+                requestId,
+                direction,
+                lane: lane.name,
+                inputChars: text.length,
+                refusalCategory: event.refusalCategory ?? undefined,
+                stopReason: 'refusal',
+                laneAttempts,
+              });
+              return;
+            }
+            sse.frame({
+              type: 'done',
+              chars: streamedChars,
+              ttftMs,
+              totalMs: Date.now() - t0,
+              cached: false,
+            });
+            sse.end();
+            // Cache only clean, complete successes (never max_tokens
+            // truncations, never echoes or contract-violating outputs —
+            // a bad translation served once is a bug; cached, it's
+            // permanent for that input).
+            if (
+              event.stopReason === 'end_turn' &&
+              accumulated.length > 0 &&
+              cacheableTranslation(direction, normalized, accumulated)
+            ) {
+              cache.set(key, accumulated);
+            }
+            logEvent('INFO', 'translate_done', {
+              requestId,
+              direction,
+              lane: lane.name,
+              cached: false,
+              inputChars: text.length,
+              outputChars: streamedChars,
+              inputTokens: event.usage.inputTokens,
+              outputTokens: event.usage.outputTokens,
+              cacheReadTokens: event.usage.cacheReadTokens,
+              ttftMs,
+              totalMs: Date.now() - t0,
+              stopReason: event.stopReason ?? undefined,
+              promptVersion: PROMPT_VERSION,
+              budgetUsedPct: budget.usedPct(),
+              laneAttempts,
+            });
+            return;
+          }
+        }
+      } catch (err) {
+        if (controller.signal.aborted) {
+          settle();
+          return;
+        }
+        breaker.recordFailure(lane.name);
+        const red = redactError(err);
+        logEvent('WARNING', 'lane_failed', {
+          requestId,
+          lane: lane.name,
+          errorName: err instanceof StallDeadline ? 'FirstTokenDeadline' : red.errorName,
+          httpStatus: red.httpStatus,
+          laneAttempts,
+        });
+        if (committed) {
+          // Post-commit: never re-run a lane. 429/529 reads as capacity.
+          const capacityLike = red.httpStatus === 429 || red.httpStatus === 529;
+          sse.frame(capacityLike ? { type: 'capacity' } : { type: 'error', code: 'upstream_error' });
+          sse.end();
+          settle();
+          return;
+        }
+        continue; // silent pre-commit failover
+      } finally {
+        // Abort FIRST, then return(): return() queues behind a pending
+        // next() and would hang forever on the exact stalled-upstream
+        // case the deadline exists for; the abort unblocks it. Both are
+        // no-ops on cleanly completed streams. The promise is voided —
+        // a cleanup rejection must never become an unhandledRejection.
+        controller.signal.removeEventListener('abort', onMasterAbort);
+        attempt.abort();
+        void iterator.return?.()?.catch?.(() => undefined);
+      }
+    }
+
+    // Ladder exhausted without a token. The stream may already be open
+    // from the gemini-loop path (fall-through pre-token), so ask the
+    // stream, not the ladder's local flag: a JSON 503 on flushed headers
+    // threw ERR_HTTP_HEADERS_SENT and took the process down (review
+    // batch 1, finding 1).
+    settle();
+    if (opened || sse.isOpen) {
+      sse.frame({ type: 'capacity' });
+      sse.end();
+    } else {
+      res.status(503).json({ error: 'capacity' });
+    }
+    logEvent('WARNING', 'capacity_ladder_exhausted', { requestId, laneAttempts });
+  };
+}

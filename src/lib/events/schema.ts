@@ -68,6 +68,67 @@ export interface PageEngagementEvent extends BaseEvent {
   max_scroll_pct: number;
 }
 
+
+// --- Claudish translator (feat/claudish) ---
+
+/**
+ * Fired once per terminal translation outcome on /claudish (aborted
+ * requests never fire — an abort is a keystroke). Params are counts,
+ * durations, and closed enums only: the input and output text never
+ * enter the data layer ("no input bodies logged" extends to analytics).
+ */
+export interface ClaudishTranslateEvent extends BaseEvent {
+  event: 'claudish_translate';
+  direction: 'en_to_claudish' | 'claudish_to_en';
+  /** auto = debounced translate-as-you-type; manual = swap/share-driven. */
+  source_mode: 'auto' | 'manual';
+  detected_language: 'en' | 'en-x-claudish' | 'none';
+  detector_source: 'ccld' | 'heuristic';
+  outcome: 'complete' | 'refused' | 'capacity' | 'error';
+  input_chars: number;
+  input_em_dashes: number;
+  /** 0 on refusal (partials are discarded, never counted). */
+  output_chars: number;
+  /** Time to first streamed token; 0 on cache hits and non-complete outcomes. */
+  ttft_ms: number;
+  duration_ms: number;
+  cache: 'miss' | 'client' | 'server';
+}
+
+/**
+ * Fired at most once per session per detected language (sessionStorage
+ * gate in the caller): captures visitors who typed Claudish but never
+ * paused long enough to translate.
+ */
+export interface ClaudishDetectedEvent extends BaseEvent {
+  event: 'claudish_detected';
+  detected_language: 'en' | 'en-x-claudish';
+  detector_source: 'ccld' | 'heuristic';
+  input_chars: number;
+}
+
+/**
+ * One distribution event for both ends of the share loop. Copy folds in
+ * as copy_output (same intent: take this elsewhere). share_url_chars is a
+ * LENGTH — the URL itself is the input text and must never be logged.
+ */
+export interface ClaudishShareEvent extends BaseEvent {
+  event: 'claudish_share';
+  share_action: 'copy_output' | 'copy_link' | 'web_share' | 'opened_shared_link';
+  direction: 'en_to_claudish' | 'claudish_to_en';
+  output_chars: number;
+  share_truncated: boolean;
+  share_url_chars: number;
+}
+
+/** The rate-modal thumbs: "Holds up." / "You're absolutely right." */
+export interface ClaudishRateEvent extends BaseEvent {
+  event: 'claudish_rate';
+  rating: 'holds_up' | 'absolutely_right';
+  direction: 'en_to_claudish' | 'claudish_to_en';
+  output_chars: number;
+}
+
 /** Fired when a navigation link is clicked. */
 export interface ClickNavEvent extends BaseEvent {
   event: 'click_nav';
@@ -391,7 +452,11 @@ export type DataLayerEvent =
   | PortalClickEvent
   | CoverageMilestoneEvent
   | WebVitalEvent
-  | PageEngagementEvent;
+  | PageEngagementEvent
+  | ClaudishTranslateEvent
+  | ClaudishDetectedEvent
+  | ClaudishShareEvent
+  | ClaudishRateEvent;
 
 /**
  * Runtime array of every distinct `event` string literal in the `DataLayerEvent`
@@ -432,6 +497,10 @@ export const DATA_LAYER_EVENT_NAMES = [
   'coverage_milestone',
   'web_vital',
   'page_engagement',
+  'claudish_translate',
+  'claudish_detected',
+  'claudish_share',
+  'claudish_rate',
 ] as const;
 
 /**
