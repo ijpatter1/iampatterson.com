@@ -1,13 +1,16 @@
 config {
   type: "assertion",
-  description: "Detects significant volume gaps in the data. Fails if more than 10% of days in the data range have zero events, indicating a pipeline outage rather than normal month-end variation."
+  description: "Detects volume gaps over the last 30 days, counting weekdays only because the data generator runs on weekdays and an idle weekend is the designed state. Fails if more than 10% of those weekdays have zero events. The window ends yesterday and is anchored to CURRENT_DATE rather than to the newest row, so a pipeline that stops and stays stopped is detected."
 }
 
-WITH data_range AS (
+WITH bounds AS (
+  -- Anchored to the calendar, not to MAX(event_timestamp). A spine that ends at
+  -- the newest row can never contain a missing day, so a pipeline that stops
+  -- dead produces zero gaps forever. Ending yesterday keeps the partial current
+  -- day out of the count.
   SELECT
-    DATE(MIN(event_timestamp)) AS first_date,
-    DATE(MAX(event_timestamp)) AS last_date
-  FROM ${ref("stg_events")}
+    DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY) AS first_date,
+    DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY) AS last_date
 ),
 
 daily_counts AS (
@@ -15,13 +18,21 @@ daily_counts AS (
     DATE(event_timestamp) AS event_date,
     COUNT(*) AS event_count
   FROM ${ref("stg_events")}
+  -- Prunes partitions; the table is partitioned on event_timestamp.
+  WHERE event_timestamp >= TIMESTAMP(DATE_SUB(CURRENT_DATE(), INTERVAL 31 DAY))
   GROUP BY 1
 ),
 
 date_spine AS (
   SELECT date
-  FROM data_range,
-  UNNEST(GENERATE_DATE_ARRAY(data_range.first_date, data_range.last_date)) AS date
+  FROM bounds,
+  UNNEST(GENERATE_DATE_ARRAY(bounds.first_date, bounds.last_date)) AS date
+  -- Weekends carry no generated traffic by design, so counting them as gaps
+  -- made this assertion fail on healthy data: measured on 2026-09-04, all 6
+  -- empty days in the range were weekends, a gap rate of 0.098 that drifted
+  -- across the 0.10 threshold as old days aged out.
+  -- FORMAT_DATE('%u'): 1 = Monday through 7 = Sunday.
+  WHERE FORMAT_DATE('%u', date) NOT IN ('6', '7')
 ),
 
 gap_stats AS (
@@ -33,7 +44,9 @@ gap_stats AS (
   LEFT JOIN daily_counts dc ON ds.date = dc.event_date
 )
 
--- Fail if more than 10% of days are missing (allows for month-end gaps)
+-- Fail if more than 10% of the last 30 days' weekdays are missing. Over a
+-- 30-day window that is three weekdays, so a stopped pipeline trips it inside
+-- a working week.
 SELECT total_days, missing_days, gap_rate
 FROM gap_stats
 WHERE gap_rate > 0.10
