@@ -1,0 +1,72 @@
+{
+  "12.1": {
+    "sessions": 1,
+    "fraction": 0.5,
+    "size": "medium"
+  },
+  "12.2": {
+    "sessions": 1,
+    "fraction": 0.5,
+    "size": "medium"
+  },
+  "12.3": {
+    "sessions": 1,
+    "fraction": 0.5,
+    "size": "medium"
+  },
+  "12.4": {
+    "sessions": 1,
+    "fraction": 0.9,
+    "size": "heavy"
+  },
+  "12.5": {
+    "sessions": 1,
+    "fraction": 0.5,
+    "size": "medium"
+  },
+  "13.1": {
+    "sessions": 1,
+    "fraction": 0.9,
+    "size": "heavy"
+  },
+  "13.2": {
+    "sessions": 1,
+    "fraction": 0.5,
+    "size": "medium"
+  },
+  "13.3": {
+    "sessions": 1,
+    "fraction": 0.5,
+    "size": "medium"
+  },
+  "13.4": {
+    "sessions": 1,
+    "fraction": 0.9,
+    "size": "heavy"
+  },
+  "13.5": {
+    "sessions": 1,
+    "fraction": 0.9,
+    "size": "heavy"
+  },
+  "14.1": {
+    "sessions": 1,
+    "fraction": 0.9,
+    "size": "heavy"
+  },
+  "14.2": {
+    "sessions": 1,
+    "fraction": 0.9,
+    "size": "heavy"
+  },
+  "14.3": {
+    "sessions": 1,
+    "fraction": 0.9,
+    "size": "heavy"
+  },
+  "14.4": {
+    "sessions": 1,
+    "fraction": 0.5,
+    "size": "medium"
+  }
+}
