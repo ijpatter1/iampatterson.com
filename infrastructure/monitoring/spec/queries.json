@@ -1,0 +1,22 @@
+[
+  {
+    "service": "sgtm",
+    "question": "What failed in the last 24 hours on server-side GTM?",
+    "filter": "resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"sgtm\" AND (severity>=ERROR OR httpRequest.status>=500)"
+  },
+  {
+    "service": "event-stream",
+    "question": "What failed in the last 24 hours on the event stream (errors, 5xx, or rejected pushes)?",
+    "filter": "resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"event-stream\" AND (severity>=ERROR OR httpRequest.status>=400)"
+  },
+  {
+    "service": "data-generator",
+    "question": "What failed in the last 24 hours in the data generator (errors, 5xx, or ad-insert failures)?",
+    "filter": "resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"data-generator\" AND (severity>=ERROR OR httpRequest.status>=500 OR textPayload:\"[ad-insert]\")"
+  },
+  {
+    "service": "claudish-proxy",
+    "question": "What failed in the last 24 hours in the Claudish proxy (error events, capacity, rate limits, 4xx/5xx)?",
+    "filter": "resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"claudish-proxy\" AND (severity>=ERROR OR httpRequest.status>=400 OR jsonPayload.event=~\"^(request_error|loop_fell_through|loop_retry_failed|loop_empty_result|loop_failed_midstream|lane_failed|capacity_ladder_exhausted|budget_threshold|capacity_no_budget|rate_limited)$\")"
+  }
+]

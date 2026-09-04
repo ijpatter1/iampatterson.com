@@ -2,7 +2,7 @@
 
 <!-- STATUS:START -->
 
-_Developed with guv. Current initiative: operational readiness (Phases 12–14); see docs/PHASE_STATUS.md._
+**Phase 13** · 5/14 deliverables · 9 todo
 
 <!-- STATUS:END -->
 
