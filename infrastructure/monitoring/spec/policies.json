@@ -88,7 +88,7 @@
     "kind": "log",
     "logFilter": "resource.type=\"cloud_scheduler_job\" AND severity>=ERROR",
     "threshold": "any error-severity Cloud Scheduler execution log — a failed attempt on one of the three data-generator jobs; one notification per 30 minutes",
-    "firing": "cannot be fired safely without breaking a data-generator run, and it cannot be built on the metric the plan assumed: `cloudscheduler.googleapis.com/job/attempt_count` returns 404 NOT_FOUND in this project (queried 2026-09-04), so the condition reads the execution log instead. The resource type and severity were read from live entries — 200 in the week to 2026-09-04, all INFO, evenly split AttemptStarted/AttemptFinished, with no failure to match",
+    "firing": "fired for real, unrehearsed, on 2026-09-04 at 20:40 UTC — hours after it was created. Cloud Run aborted the `data-gen-leadgen` request for want of an instance and returned 500; the scheduler logged AttemptFinished with status INTERNAL (`URL_UNREACHABLE-UNREACHABLE_5xx`), the policy matched, and the notification arrived at ops-email. This is the first conditionMatchedLog policy in the project to notify, so the log-match kind is proven end to end, delivery included. Record: docs/verification/2026-09-04-first-real-alert.md",
     "runbook": "13.5: 'data generator stuck or failing'"
   },
   {
@@ -96,7 +96,7 @@
     "kind": "log",
     "logFilter": "resource.type=\"dataform.googleapis.com/Repository\" AND severity>=ERROR",
     "threshold": "any error-severity log from a Dataform repository — a workflow invocation that completed FAILED; one notification per 30 minutes",
-    "firing": "cannot be fired safely, and the window in which it could be has closed: the filter was validated against 28 real FAILED completions in the 30 days to 2026-09-04 (`iampatterson_assertions.assert_volume_anomaly`, 'expected zero rows'), but Phase 12 corrects that assertion, and producing a Dataform error on demand otherwise means breaking a scheduled transform. `apply.sh rehearse-dataform` refuses before spending a production workflow run and records the refusal. The condition and filter are proven against real entries; what is unproven in this project is the notification path for the conditionMatchedLog kind, which no policy here can exercise on demand",
+    "firing": "cannot be fired safely, and the window in which it could be has closed: the filter was validated against 28 real FAILED completions in the 30 days to 2026-09-04 (`iampatterson_assertions.assert_volume_anomaly`, 'expected zero rows'), but Phase 12 corrects that assertion, and producing a Dataform error on demand otherwise means breaking a scheduled transform. `apply.sh rehearse-dataform` refuses before spending a production workflow run and records the refusal. The condition and filter are proven against the 28 real entries, and the conditionMatchedLog notification path is proven by the Cloud Scheduler policy's unrehearsed firing on 2026-09-04; what this policy lacks is a firing of its own, which nothing in the project can now produce on demand",
     "runbook": "13.5: 'Dataform assertion failures'"
   },
   {

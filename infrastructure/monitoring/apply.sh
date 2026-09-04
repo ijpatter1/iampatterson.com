@@ -193,7 +193,7 @@ def verify_policies():
         good = cur is not None and cur.get("enabled", True) and matches and routed == want_chans; ok = ok and good
         if p["kind"] == "log":
             n, more = log_matches(p["logFilter"])
-            measured = f"; the filter selects {n}{'+' if more and n else ''} entries in the last 30 days"
+            measured = f"; the filter selects {n}{'+' if more and n else ''} {'entry' if n == 1 and not more else 'entries'} in the last 30 days"
         else:
             measured = ""
         state = ("absent" if cur is None else "disabled" if not cur.get("enabled", True)
@@ -506,7 +506,7 @@ def rehearse():
             inc = data.get("incident", {})
             if inc.get("incident_id") == opened[1] and inc.get("state") == "closed": closed = at; break
         lines.append(f"- CLOSED notification received at {closed}" if closed else f"- CLOSED notification not seen within {wait//60} min of restoring the path (the policy auto-closes after 30 min; the email channel carries the same notification)")
-        lines.append(f"- `ops-email` is on the same policy, so the same notification was addressed to the inbox. That the mail arrived is not observed here — only the Pub/Sub receipt above is; confirming delivery is the one part of this rehearsal a machine cannot do.")
+        lines.append(f"- `ops-email` is on the same policy, so the same notification was addressed to the inbox. This script observes only the Pub/Sub receipt; delivery to the inbox was confirmed by hand on 2026-09-04 (see docs/verification/2026-09-04-first-real-alert.md) and is not re-observed on each run.")
     else:
         lines.append(f"- No OPEN notification arrived within {wait//60} min; the check was restored. Investigate the policy and the Pub/Sub publisher binding before relying on this alert.")
     os.makedirs(OUT, exist_ok=True); path = f"{OUT}/{stamp.strftime('%Y-%m-%d')}-uptime-rehearsal.md"
