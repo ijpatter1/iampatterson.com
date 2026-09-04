@@ -37,7 +37,7 @@ describe('infrastructure/monitoring/spec/policies.json', () => {
       'failed to start',
       'oldest_unacked_message_age',
       'num_undelivered_messages',
-      'cloudscheduler.googleapis.com/job/attempt_count',
+      'cloud_scheduler_job',
       'dataform.googleapis.com',
       'scanned_bytes_billed',
       'metric.labels.event="budget_threshold"',
