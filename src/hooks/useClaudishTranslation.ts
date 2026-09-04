@@ -21,7 +21,7 @@
  */
 import { useCallback, useEffect, useReducer, useRef } from 'react';
 
-import { streamTranslation } from '@/lib/claudish/client';
+import { streamTranslation, translateEndpoint } from '@/lib/claudish/client';
 import { detectClaudish } from '@/lib/claudish/detect';
 import { CLIENT_CACHE_MAX_ENTRIES, DEBOUNCE_MS } from '@/lib/claudish/limits';
 import { normalizeTranslationInput } from '@/lib/claudish/normalize';
@@ -169,6 +169,8 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
     proxyUrl = process.env.NEXT_PUBLIC_CLAUDISH_PROXY_URL,
     debounceMs = DEBOUNCE_MS,
   } = options;
+  // Bare service URL or full endpoint, both reach /translate.
+  const endpoint = proxyUrl ? translateEndpoint(proxyUrl) : undefined;
 
   const [state, dispatch] = useReducer(
     reducer,
@@ -267,7 +269,7 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
         return;
       }
 
-      if (!proxyUrl) {
+      if (!endpoint) {
         // No proxy configured (preview deploys, local dev without env):
         // the page never shows a broken state — capacity mode.
         dispatch({ type: 'stream-start', key: runKey });
@@ -357,7 +359,7 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
       };
 
       void streamTranslation(
-        proxyUrl,
+        endpoint,
         { text: runText, direction: runDirection },
         controller.signal,
         onFrame
@@ -377,7 +379,7 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
         finish('error');
       });
     },
-    [proxyUrl]
+    [endpoint]
   );
 
   // Debounce + abort-on-edit. The skip decisions run BEFORE any abort or

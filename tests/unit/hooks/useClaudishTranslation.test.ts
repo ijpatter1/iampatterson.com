@@ -13,6 +13,7 @@
 import { act, renderHook } from '@testing-library/react';
 
 jest.mock('@/lib/claudish/client', () => ({
+  translateEndpoint: (jest.requireActual('@/lib/claudish/client') as { translateEndpoint: (u: string) => string }).translateEndpoint,
   streamTranslation: jest.fn(),
 }));
 jest.mock('@/lib/events/track', () => ({
@@ -438,5 +439,14 @@ describe('revise frame (cl2en loop, 2026-09-01)', () => {
     await endStream({ kind: 'ended' });
     expect(result.current.text).toBe('You shipped the fix.');
     expect(result.current.status).toBe('done');
+  });
+});
+
+describe('proxy URL shapes (2026-09-03)', () => {
+  it('a bare service URL is completed to the /translate endpoint before the request', async () => {
+    renderHook(() => useClaudishTranslation({ input: 'hello there world', direction: 'en2cl', proxyUrl: 'https://proxy.example' }));
+    await advance(700);
+    expect(streams.length).toBe(1);
+    expect(streams[0].url).toBe('https://proxy.example/translate');
   });
 });

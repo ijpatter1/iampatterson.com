@@ -13,7 +13,7 @@ import { TextDecoder as NodeTextDecoder, TextEncoder as NodeTextEncoder } from '
 (globalThis as Record<string, unknown>).TextDecoder ??= NodeTextDecoder;
 (globalThis as Record<string, unknown>).TextEncoder ??= NodeTextEncoder;
 
-import { streamTranslation } from '@/lib/claudish/client';
+import { streamTranslation, translateEndpoint } from '@/lib/claudish/client';
 import type { ClaudishFrame } from '@/lib/claudish/sse';
 
 const encoder = new NodeTextEncoder();
@@ -170,5 +170,21 @@ describe('streamTranslation', () => {
       await streamTranslation('u', { text: 'x', direction: 'en2cl' }, new AbortController().signal, onFrame2, failing)
     ).toEqual({ kind: 'network' });
     expect(frames).toEqual([{ type: 'token', t: 'a' }]); // frames before the drop still delivered
+  });
+});
+
+describe('translateEndpoint (2026-09-03: the env var may be the service URL or the endpoint)', () => {
+  // The Vercel variable was set to the bare service URL; the page POSTed to
+  // the root, got a 404, and showed the boundary line. Either shape works now.
+  it('appends /translate to a bare service URL', () => {
+    expect(translateEndpoint('https://proxy.example')).toBe('https://proxy.example/translate');
+    expect(translateEndpoint('https://proxy.example/')).toBe('https://proxy.example/translate');
+  });
+  it('leaves a full endpoint alone', () => {
+    expect(translateEndpoint('https://proxy.example/translate')).toBe('https://proxy.example/translate');
+    expect(translateEndpoint('https://proxy.example/translate/')).toBe('https://proxy.example/translate');
+  });
+  it('trims stray whitespace', () => {
+    expect(translateEndpoint(' https://proxy.example \n')).toBe('https://proxy.example/translate');
   });
 });

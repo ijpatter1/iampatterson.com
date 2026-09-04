@@ -14,7 +14,8 @@ import { render } from '@testing-library/react';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 
-jest.mock('@/lib/claudish/client', () => ({ streamTranslation: jest.fn() }));
+jest.mock('@/lib/claudish/client', () => ({
+  translateEndpoint: (jest.requireActual('@/lib/claudish/client') as { translateEndpoint: (u: string) => string }).translateEndpoint, streamTranslation: jest.fn() }));
 jest.mock('@/lib/events/track', () => ({
   trackClaudishTranslate: jest.fn(),
   trackClaudishDetected: jest.fn(),

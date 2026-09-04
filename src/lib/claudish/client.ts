@@ -41,6 +41,18 @@ function isAbortError(err: unknown): boolean {
   );
 }
 
+/**
+ * The proxy endpoint from whatever shape the environment provides. The
+ * contract is the full endpoint (`https://host/translate`), but the bare
+ * service URL is what a deploy script prints and what got pasted into
+ * Vercel on 2026-09-03: the page POSTed to the service root, took a 404,
+ * and showed the boundary line. Either shape resolves to the endpoint.
+ */
+export function translateEndpoint(url: string): string {
+  const base = url.trim().replace(/\/+$/, '');
+  return base.endsWith('/translate') ? base : `${base}/translate`;
+}
+
 export async function streamTranslation(
   url: string,
   request: TranslateRequest,

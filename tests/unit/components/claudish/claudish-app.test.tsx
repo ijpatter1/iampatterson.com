@@ -13,7 +13,8 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-jest.mock('@/lib/claudish/client', () => ({ streamTranslation: jest.fn() }));
+jest.mock('@/lib/claudish/client', () => ({
+  translateEndpoint: (jest.requireActual('@/lib/claudish/client') as { translateEndpoint: (u: string) => string }).translateEndpoint, streamTranslation: jest.fn() }));
 jest.mock('@/lib/events/track', () => ({
   trackClaudishTranslate: jest.fn(),
   trackClaudishDetected: jest.fn(),
