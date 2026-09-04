@@ -139,7 +139,11 @@ case "$CMD" in
     AFTER=$(gcloud run services describe "$SERVICE" --project="$PROJECT" --region="$REGION" --format='value(status.latestCreatedRevisionName)')
     echo "new revision (no traffic): $AFTER"
     mkdir -p "$DIFF_DIR"
-    write_diff "$SERVICE" "$BEFORE" "$AFTER" "$DIFF_DIR/$AFTER.diff"; DIFF_RC=$?
+    # Errexit is on, so write_diff has to run in a context that tolerates a
+    # nonzero return; `write_diff …; DIFF_RC=$?` aborts the script before the
+    # gates below and was itself a review finding (2026-09-04). Seed DIFF_RC
+    # first: set -u makes an unset variable fatal on the clean path.
+    DIFF_RC=0; write_diff "$SERVICE" "$BEFORE" "$AFTER" "$DIFF_DIR/$AFTER.diff" || DIFF_RC=$?
     echo "diff written: $DIFF_DIR/$AFTER.diff"
     if [ "$PROMOTE" != "1" ]; then
       echo ""; echo "Stopped before traffic. Promote this exact revision with:"; echo "  scripts/deploy-cloud-run.sh promote $SERVICE $AFTER"; exit 0

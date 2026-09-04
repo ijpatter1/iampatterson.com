@@ -96,7 +96,7 @@
     "kind": "log",
     "logFilter": "resource.type=\"dataform.googleapis.com/Repository\" AND severity>=ERROR",
     "threshold": "any error-severity log from a Dataform repository — a workflow invocation that completed FAILED; one notification per 30 minutes",
-    "firing": "will be fired by a real, current failure rather than a rehearsal: the nightly `production` workflow has completed FAILED 28 times in the 30 days to 2026-09-04, at 04:00 UTC, on a single action — `iampatterson_assertions.assert_volume_anomaly`, 'Assertion failed, expected zero rows' (19 of 20 actions succeed). The filter was validated against those 28 entries; the condition matches new entries only, so the firing record is appended at the next nightly run",
+    "firing": "cannot be fired safely, and the window in which it could be has closed: the filter was validated against 28 real FAILED completions in the 30 days to 2026-09-04 (`iampatterson_assertions.assert_volume_anomaly`, 'expected zero rows'), but Phase 12 corrects that assertion, and producing a Dataform error on demand otherwise means breaking a scheduled transform. `apply.sh rehearse-dataform` refuses before spending a production workflow run and records the refusal. The condition and filter are proven against real entries; what is unproven in this project is the notification path for the conditionMatchedLog kind, which no policy here can exercise on demand",
     "runbook": "13.5: 'Dataform assertion failures'"
   },
   {

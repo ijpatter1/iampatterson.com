@@ -9,6 +9,7 @@
 > - 2026-09-04 — deps-amend [12.3] (session-2026-09-04-001) — metrics scoped to the events the services actually emit, event-stream silence recorded, log retention provisional until 13.1 (alignment findings 2 and 3)
 > - 2026-09-04 — deps-amend [12.4] (session-2026-09-04-001) — exact proxy event names, the push subscription, crash loops, and who creates the metrics (alignment finding 8)
 > - 2026-09-04 — deps-amend [12.5] (session-2026-09-04-001) — the proxy panel shows budget threshold crossings, the only budget signal the proxy logs (alignment finding 4)
+> - 2026-09-04 — errata [12.2, 12.3] (session-2026-09-04-001) — two acceptance clauses were not met as written and the phase is sealed; recorded in the Phase 13 notes of `docs/REQUIREMENTS.md`, not corrected in place (hand-added: the engine refuses a completed phase)
 > - 2026-09-04 — deps-amend [13.4] (session-2026-09-04-001) — deps: none → 12.3; sGTM scaling measured and corrected before the services are adopted, so the declared configuration is not the one that aborts requests; deps gain 12.3 for the metric that measures it
 
 ---

@@ -338,6 +338,27 @@ describe('Dataform assertions', () => {
     expect(spine).toContain("FORMAT_DATE('%u', date) NOT IN ('6', '7')");
     expect(sql).toMatch(/weekday/i);
   });
+
+  // A spine generated between MIN and MAX(event_timestamp) can never contain a
+  // missing day, so a pipeline that stops and stays stopped scores a gap rate
+  // of zero forever — the one failure this assertion exists to catch. The
+  // window is anchored to the calendar instead.
+  test('assert_volume_anomaly anchors its window to CURRENT_DATE, so a dead pipeline is detectable', () => {
+    const sql = readSqlx('definitions/assertions/assert_volume_anomaly.sqlx');
+    const bounds = sql.slice(sql.indexOf('WITH bounds AS'), sql.indexOf('daily_counts AS'));
+    // Strip comments: the prose explains what the SQL deliberately does not do,
+    // so asserting over the raw text would read the explanation as the code.
+    const code = bounds
+      .split('\n')
+      .filter((l) => !l.trim().startsWith('--'))
+      .join('\n');
+    expect(code).toContain('CURRENT_DATE()');
+    expect(code).not.toContain('MAX(event_timestamp)');
+    // The current day is partial until the generator runs, so it is excluded.
+    expect(bounds).toContain("DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY) AS last_date");
+    // The scan is pruned to the window rather than reading the whole table.
+    expect(sql).toContain('WHERE event_timestamp >= TIMESTAMP(DATE_SUB(CURRENT_DATE()');
+  });
 });
 
 // ---------------------------------------------------------------------------

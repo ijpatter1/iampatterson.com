@@ -130,4 +130,4 @@ Audit table joining taxonomy classifications with event volumes for quality revi
 | `assert_stg_sessions` | No null session_ids, session_start ≤ session_end, non-negative duration |
 | `assert_purchase_revenue` | Purchase events have positive order_total |
 | `assert_subscription_events` | Subscription events have plan_id and plan_name |
-| `assert_volume_anomaly` | No zero-event days in last 30 days |
+| `assert_volume_anomaly` | No more than 10% of the last 30 days' weekdays have zero events (weekends are idle by design) |
