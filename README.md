@@ -1,5 +1,11 @@
 # iampatterson.com
 
+<!-- STATUS:START -->
+
+_Developed with guv. Current initiative: operational readiness (Phases 12–14); see docs/PHASE_STATUS.md._
+
+<!-- STATUS:END -->
+
 Consulting website for Patterson Consulting. Also a working demo of the measurement infrastructure stack described on the site: consent management, server-side GTM, BigQuery event sink, Dataform transformations, and a real-time event pipeline.
 
 Visitors browse a normal consulting site. At any point they can open the "Under the Hood" overlay to see the instrumentation running on their own session: events firing, consent state being enforced, data flowing through the pipeline.
