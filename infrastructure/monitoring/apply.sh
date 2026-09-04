@@ -36,6 +36,9 @@ ensure_pubsub() {
   sub="${topic}-verify"
   if [ "$DRY" = "1" ]; then echo "[dry-run] would ensure topic $topic, publisher binding for the monitoring agent, subscription $sub"; return; fi
   gcloud pubsub topics describe "$topic" --project="$PROJECT" >/dev/null 2>&1 || gcloud pubsub topics create "$topic" --project="$PROJECT" --quiet
+  # The Monitoring notification service agent only exists once provisioned; the
+  # binding below fails with INVALID_ARGUMENT until it does (seen 2026-09-04).
+  gcloud beta services identity create --service=monitoring.googleapis.com --project="$PROJECT" --quiet >/dev/null 2>&1 || true
   gcloud pubsub topics add-iam-policy-binding "$topic" --project="$PROJECT" \
     --member="serviceAccount:service-${PROJECT_NUMBER}@gcp-sa-monitoring-notification.iam.gserviceaccount.com" --role=roles/pubsub.publisher --quiet >/dev/null
   gcloud pubsub subscriptions describe "$sub" --project="$PROJECT" >/dev/null 2>&1 || gcloud pubsub subscriptions create "$sub" --topic="$topic" --project="$PROJECT" --ack-deadline=60 --message-retention-duration=7d --quiet
