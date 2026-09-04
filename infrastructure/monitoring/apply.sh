@@ -14,6 +14,8 @@
 #                                   setting and the four 24-hour queries, written to docs/verification/
 #   apply.sh rehearse [check]       point one check at a missing path, wait for the alert to arrive
 #                                   on the Pub/Sub channel, restore, record (default: claudish-proxy-health)
+#   apply.sh rehearse-policy        fire the capacity policy on purpose: kill switch on, one translation,
+#                                   wait for the alert on the Pub/Sub channel, kill switch off, record
 #
 # Env: PROJECT (iampatterson), SPEC_DIR, OUT_DIR (docs/verification), REHEARSE_WAIT_MIN (25)
 # Needs: gcloud (an access token; no alpha/beta component), python3, curl.
@@ -49,8 +51,8 @@ ensure_pubsub() {
 
 case "$CMD" in
   apply) ensure_pubsub ;;
-  verify|rehearse) ;;
-  *) echo "usage: apply.sh [--dry-run] apply | verify | rehearse [check]" >&2; exit 1 ;;
+  verify|rehearse|rehearse-policy) ;;
+  *) echo "usage: apply.sh [--dry-run] apply | verify | rehearse [check] | rehearse-policy" >&2; exit 1 ;;
 esac
 
 PROJECT="$PROJECT" TOKEN="$TOKEN" SPEC_DIR="$SPEC_DIR" OUT_DIR="$OUT_DIR" DRY="$DRY" CMD="$CMD" ARG="${1:-}" REHEARSE_WAIT_MIN="${REHEARSE_WAIT_MIN:-25}" python3 - <<'PYEOF'
@@ -88,6 +90,92 @@ def act(kind, verb, name, detail=""):
 
 channels_spec = json.load(open(f"{SPEC}/channels.json")); checks_spec = json.load(open(f"{SPEC}/uptime.json"))
 metrics_spec = json.load(open(f"{SPEC}/log-metrics.json")); retention_spec = json.load(open(f"{SPEC}/retention.json")); queries_spec = json.load(open(f"{SPEC}/queries.json"))
+policies_spec = json.load(open(f"{SPEC}/policies.json"))
+
+def desired_spec_policy(p, channel_names):
+    doc = f"{p['threshold']}\n\nFiring: {p['firing']}\n\nRunbook: {p['runbook']}. Spec: infrastructure/monitoring/spec/policies.json."
+    base = {"displayName": p["displayName"], "combiner": "OR", "notificationChannels": sorted(channel_names), "enabled": True,
+            "documentation": {"content": doc, "mimeType": "text/markdown"}}
+    if p["kind"] == "log":
+        base["conditions"] = [{"displayName": p["displayName"], "conditionMatchedLog": {"filter": p["logFilter"]}}]
+        base["alertStrategy"] = {"notificationRateLimit": {"period": "1800s"}, "autoClose": "1800s"}
+    else:
+        base["conditions"] = [{"displayName": p["displayName"], "conditionThreshold": {"filter": p["filter"], "aggregations": p["aggregations"], "comparison": p["comparison"],
+                               "thresholdValue": p["thresholdValue"], "duration": p["duration"], "trigger": {"count": 1}}}]
+        base["alertStrategy"] = {"autoClose": "1800s"}
+    return base
+
+def spec_policy_differs(cur, want):
+    cc = cur.get("conditions", [{}])[0]; wc = want["conditions"][0]
+    if "conditionMatchedLog" in wc:
+        return cc.get("conditionMatchedLog", {}).get("filter") != wc["conditionMatchedLog"]["filter"] or sorted(cur.get("notificationChannels", [])) != want["notificationChannels"] or cur.get("enabled") is False
+    a, b = cc.get("conditionThreshold", {}), wc["conditionThreshold"]
+    return (a.get("filter") != b["filter"] or a.get("comparison") != b["comparison"] or a.get("thresholdValue") != b["thresholdValue"] or a.get("duration") != b["duration"]
+            or sorted(cur.get("notificationChannels", [])) != want["notificationChannels"] or cur.get("enabled") is False or cur.get("documentation", {}).get("content") != want["documentation"]["content"])
+
+def reconcile_spec_policies(channel_names):
+    live = by_name(paged(f"{API}/alertPolicies", "alertPolicies"))
+    for p in policies_spec:
+        want = desired_spec_policy(p, list(channel_names.values())); cur = live.get(p["displayName"])
+        if cur is None:
+            act("policy", "create", p["displayName"])
+            if not DRY: call("POST", f"{API}/alertPolicies", want)
+        elif spec_policy_differs(cur, want):
+            act("policy", "update", p["displayName"])
+            if not DRY: call("PATCH", f"https://monitoring.googleapis.com/v3/{cur['name']}", {**want, "name": cur["name"]}, {"updateMask": "conditions,notificationChannels,alertStrategy,documentation,enabled"})
+        else:
+            act("policy", "unchanged", p["displayName"])
+
+def cert_days():
+    end = datetime.now(timezone.utc); start = end - timedelta(minutes=40)
+    d = call("GET", f"{API}/timeSeries", params={"filter": 'metric.type="monitoring.googleapis.com/uptime_check/time_until_ssl_cert_expires"', "interval.startTime": start.isoformat(), "interval.endTime": end.isoformat(), "view": "FULL"})
+    out = {}
+    for ts in d.get("timeSeries", []):
+        host = ts["resource"]["labels"].get("host", "?"); pts = ts.get("points", [])
+        if pts: out[host] = min(out.get(host, 1e9), float(pts[0]["value"].get("doubleValue", pts[0]["value"].get("int64Value", 0))))
+    return out
+
+def verify_policies():
+    live = by_name(paged(f"{API}/alertPolicies", "alertPolicies")); channels = by_name(paged(f"{API}/notificationChannels", "notificationChannels"))
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"); rows = []; ok = True
+    for p in policies_spec:
+        cur = live.get(p["displayName"]); good = cur is not None and cur.get("enabled", True) and len(cur.get("notificationChannels", [])) == len(channels_spec); ok = ok and good
+        rows.append(f"| {'✓' if good else '✗'} | {p['displayName']} | {p['threshold']} | {p['firing']} |")
+    days = cert_days()
+    for host, dd in sorted(days.items()): rows.append(f"| {'✓' if dd > 14 else '✗'} | certificate on {host} | {dd:.0f} days until expiry (alert below 14) | measured by the uptime checks |")
+    os.makedirs(OUT, exist_ok=True); path = f"{OUT}/{stamp[:10]}-alert-policies.md"
+    with open(path, "w") as f:
+        f.write(f"# Alerting policies\n\nDeliverable 12.4. Generated by `infrastructure/monitoring/apply.sh verify` at {stamp} from `infrastructure/monitoring/spec/policies.json`; rerun to refresh. Every policy routes to {', '.join(sorted(channels))}.\n\n| | Policy | Threshold | Firing record or safety reason |\n|---|---|---|---|\n" + "\n".join(rows) + f"\n\nResult: {'every policy present, enabled and routed' if ok else 'ATTENTION: see the ✗ rows'}.\n")
+    print("\n".join(rows)); print(f"record: {path}"); return ok
+
+def rehearse_policy():
+    import subprocess
+    topic = [ch for ch in channels_spec if ch["type"] == "pubsub"][0]["labels"]["topic"].split("/")[-1]; sub = f"{topic}-verify"
+    wait = int(os.environ["REHEARSE_WAIT_MIN"]) * 60; stamp = datetime.now(timezone.utc)
+    svc = ["gcloud", "run", "services", "update", "claudish-proxy", f"--project={P}", "--region=us-central1", "--quiet", "--update-env-vars"]
+    url = subprocess.run(["gcloud", "run", "services", "describe", "claudish-proxy", f"--project={P}", "--region=us-central1", "--format=value(status.url)"], capture_output=True, text=True).stdout.strip()
+    for _ in pull(sub, 1): pass
+    if DRY: print("[dry-run] would turn KILL_SWITCH on, request one translation, wait for the capacity alert, turn it off"); return
+    lines = [f"# Alert policy rehearsal: capacity_no_budget", "", f"Deliverable 12.4. Generated by `infrastructure/monitoring/apply.sh rehearse-policy` starting {stamp.strftime('%Y-%m-%dT%H:%M:%SZ')}. The proxy's kill switch was turned on, one translation was requested so the proxy logged `capacity_no_budget`, the policy's notification was read from the Pub/Sub channel, and the switch was turned off.", ""]
+    print("KILL_SWITCH=on"); subprocess.run(svc + ["KILL_SWITCH=on"], check=True, capture_output=True)
+    opened = None
+    try:
+        time.sleep(20)
+        req = urllib.request.Request(f"{url}/translate", data=json.dumps({"text": f"rehearsal {stamp.strftime('%H%M%S')} hello there", "direction": "en2cl"}).encode(), headers={"Origin": "https://www.iampatterson.com", "Content-Type": "application/json"}, method="POST")
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r: code = r.status
+        except urllib.error.HTTPError as e: code = e.code
+        lines.append(f"- translation request with the switch on answered HTTP {code} (503 capacity expected)")
+        t0 = time.time()
+        for at, data in pull(sub, wait):
+            inc = data.get("incident", {})
+            if "capacity_no_budget" in json.dumps(data) and inc.get("state") == "open":
+                opened = (at, inc.get("incident_id"), inc.get("policy_name")); break
+    finally:
+        subprocess.run(svc + ["KILL_SWITCH=off"], check=True, capture_output=True); print("KILL_SWITCH=off")
+    lines.append(f"- OPEN notification received at {opened[0]} after {int(time.time()-t0)//60} min: incident `{opened[1]}`, policy `{opened[2]}`" if opened else f"- no OPEN notification within {wait//60} min; the switch is off again; investigate the metric and the policy before relying on it")
+    os.makedirs(OUT, exist_ok=True); path = f"{OUT}/{stamp.strftime('%Y-%m-%d')}-policy-rehearsal.md"
+    open(path, "w").write("\n".join(lines) + "\n"); print("\n".join(lines[3:])); print(f"record: {path}"); sys.exit(0 if opened else 1)
 
 def desired_metric(m):
     d = {"name": m["name"], "description": m["description"], "filter": m["filter"], "metricDescriptor": {"metricKind": "DELTA", "valueType": "INT64", "unit": "1",
@@ -247,7 +335,7 @@ def series(check_id, minutes):
     d = call("GET", f"{API}/timeSeries", params={
         "filter": f'metric.type="monitoring.googleapis.com/uptime_check/check_passed" AND metric.label.check_id="{check_id}"',
         "interval.startTime": start.isoformat(), "interval.endTime": end.isoformat(), "view": "FULL"})
-    pts = [(pt["interval"]["endTime"], pt["value"].get("boolValue", False), ts["resource"]["labels"].get("checker_location", "?"))
+    pts = [(pt["interval"]["endTime"], pt["value"].get("boolValue", False), ts.get("metric", {}).get("labels", {}).get("checker_location", ts["resource"]["labels"].get("checker_location", "?")))
            for ts in d.get("timeSeries", []) for pt in ts.get("points", [])]
     return sorted(pts)
 
@@ -324,10 +412,14 @@ if CMD == "apply":
     print("═══ alert policies ═══"); reconcile_policies(ck, ch)
     print("═══ log-based metrics ═══"); reconcile_metrics()
     print("═══ log retention ═══"); reconcile_retention()
+    print("═══ alert policies (spec) ═══"); reconcile_spec_policies(ch)
     if DRY: print("dry run: nothing written")
 elif CMD == "verify":
     print("═══ log-based metrics, retention, queries ═══"); logs_ok = verify_metrics_and_logs()
-    print("═══ uptime checks ═══"); verify(); sys.exit(0 if logs_ok else 1)
+    print("═══ alert policies ═══"); pol_ok = verify_policies()
+    print("═══ uptime checks ═══"); verify(); sys.exit(0 if (logs_ok and pol_ok) else 1)
+elif CMD == "rehearse-policy":
+    rehearse_policy()
 elif CMD == "rehearse":
     rehearse()
 PYEOF

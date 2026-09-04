@@ -1,0 +1,172 @@
+[
+  {
+    "displayName": "Cloud Run 5xx: more than 10 in 5 minutes on any service",
+    "kind": "threshold",
+    "filter": "metric.type=\"run.googleapis.com/request_count\" AND resource.type=\"cloud_run_revision\" AND metric.labels.response_code_class=\"5xx\"",
+    "aggregations": [
+      {
+        "alignmentPeriod": "300s",
+        "perSeriesAligner": "ALIGN_DELTA",
+        "crossSeriesReducer": "REDUCE_SUM",
+        "groupByFields": ["resource.labels.service_name"]
+      }
+    ],
+    "comparison": "COMPARISON_GT",
+    "thresholdValue": 10,
+    "duration": "0s",
+    "threshold": "more than 10 responses with a 5xx status from one service inside a 5-minute window",
+    "firing": "sGTM's 'no available instance' aborts produced 16 5xx responses in the week to 2026-09-04, clustered at the 10:00 scheduler burst; the policy is expected to fire on the next burst above the threshold, and the record captures it when it does",
+    "runbook": "13.5: 'sGTM not responding' and 'event pipeline backlog'"
+  },
+  {
+    "displayName": "Cloud Run instance aborts: 'no available instance' on any service",
+    "kind": "threshold",
+    "filter": "metric.type=\"logging.googleapis.com/user/cloud_run_no_instance\" AND resource.type=\"cloud_run_revision\"",
+    "aggregations": [
+      {
+        "alignmentPeriod": "300s",
+        "perSeriesAligner": "ALIGN_DELTA",
+        "crossSeriesReducer": "REDUCE_SUM",
+        "groupByFields": ["metric.labels.service"]
+      }
+    ],
+    "comparison": "COMPARISON_GT",
+    "thresholdValue": 3,
+    "duration": "0s",
+    "threshold": "more than 3 aborted requests from one service inside 5 minutes (the log-based metric from 12.3)",
+    "firing": "expected to fire on the next sGTM burst above the threshold; sixteen such aborts were logged in the week to 2026-09-04",
+    "runbook": "13.5: 'sGTM not responding' (raise min instances or spread the scheduler)"
+  },
+  {
+    "displayName": "Cloud Run container failed to start or crash-looped",
+    "kind": "log",
+    "logFilter": "resource.type=\"cloud_run_revision\" AND severity>=ERROR AND (textPayload:\"failed to start\" OR textPayload:\"container exited\" OR textPayload:\"Container called exit\")",
+    "threshold": "any Cloud Run log line reporting a container that failed to start or exited (crash loops repeat this line); one notification per 30 minutes per policy",
+    "firing": "cannot be fired safely: producing it means shipping a revision that crashes; the log filter is validated against Cloud Run's documented startup-failure messages instead",
+    "runbook": "13.5: roll back to the previous revision (scripts/deploy-cloud-run.sh promote <revision>)"
+  },
+  {
+    "displayName": "Pub/Sub backlog on iampatterson-events-push: oldest unacked message older than 5 minutes",
+    "kind": "threshold",
+    "filter": "metric.type=\"pubsub.googleapis.com/subscription/oldest_unacked_message_age\" AND resource.type=\"pubsub_subscription\" AND resource.labels.subscription_id=\"iampatterson-events-push\"",
+    "aggregations": [{ "alignmentPeriod": "60s", "perSeriesAligner": "ALIGN_MAX" }],
+    "comparison": "COMPARISON_GT",
+    "thresholdValue": 300,
+    "duration": "300s",
+    "threshold": "the oldest unacknowledged message on the push subscription is older than 300 s for 5 minutes",
+    "firing": "cannot be fired safely without stopping event-stream, which would blank the live overlay for visitors; the metric and subscription id were verified live on 2026-09-04",
+    "runbook": "13.5: 'event pipeline backlog'"
+  },
+  {
+    "displayName": "Pub/Sub backlog on iampatterson-events-push: more than 100 undelivered messages",
+    "kind": "threshold",
+    "filter": "metric.type=\"pubsub.googleapis.com/subscription/num_undelivered_messages\" AND resource.type=\"pubsub_subscription\" AND resource.labels.subscription_id=\"iampatterson-events-push\"",
+    "aggregations": [{ "alignmentPeriod": "60s", "perSeriesAligner": "ALIGN_MAX" }],
+    "comparison": "COMPARISON_GT",
+    "thresholdValue": 100,
+    "duration": "300s",
+    "threshold": "more than 100 undelivered messages on the push subscription for 5 minutes",
+    "firing": "as above: not fired on purpose; the same runbook entry covers it",
+    "runbook": "13.5: 'event pipeline backlog'"
+  },
+  {
+    "displayName": "Cloud Scheduler job attempt failed",
+    "kind": "threshold",
+    "filter": "metric.type=\"cloudscheduler.googleapis.com/job/attempt_count\" AND resource.type=\"cloud_scheduler_job\" AND metric.labels.response_code!=\"OK\"",
+    "aggregations": [
+      {
+        "alignmentPeriod": "1200s",
+        "perSeriesAligner": "ALIGN_DELTA",
+        "crossSeriesReducer": "REDUCE_SUM",
+        "groupByFields": ["resource.labels.job_id"]
+      }
+    ],
+    "comparison": "COMPARISON_GT",
+    "thresholdValue": 0,
+    "duration": "0s",
+    "threshold": "any scheduler attempt with a non-OK response code inside 20 minutes, per job",
+    "firing": "cannot be fired safely without breaking a data-generator run; the three jobs' last attempts were OK on 2026-09-04",
+    "runbook": "13.5: 'data generator stuck or failing'"
+  },
+  {
+    "displayName": "Dataform workflow invocation failed",
+    "kind": "log",
+    "logFilter": "resource.type=\"dataform.googleapis.com/Repository\" AND severity>=ERROR",
+    "threshold": "any error-severity log from a Dataform repository (a failed workflow invocation or assertion); one notification per 30 minutes",
+    "firing": "cannot be fired safely without breaking a scheduled transform; the resource type is Dataform's documented log resource and the filter is recorded for the first real failure to confirm",
+    "runbook": "13.5: 'Dataform assertion failures'"
+  },
+  {
+    "displayName": "BigQuery billed scan above 1 TB in a day",
+    "kind": "threshold",
+    "filter": "metric.type=\"bigquery.googleapis.com/query/scanned_bytes_billed\" AND resource.type=\"global\"",
+    "aggregations": [
+      {
+        "alignmentPeriod": "86400s",
+        "perSeriesAligner": "ALIGN_DELTA",
+        "crossSeriesReducer": "REDUCE_SUM"
+      }
+    ],
+    "comparison": "COMPARISON_GT",
+    "thresholdValue": 1099511627776,
+    "duration": "0s",
+    "threshold": "more than 1 TB of billed scan in a day, about $6 at on-demand pricing and an order of magnitude above the demo's normal day",
+    "firing": "cannot be fired safely: producing it means spending the money it exists to catch; the metric name is Google's documented BigQuery metric",
+    "runbook": "13.5 and 13.1: retention and cost controls"
+  },
+  {
+    "displayName": "Claudish proxy budget threshold crossed (50/80/100 %)",
+    "kind": "threshold",
+    "filter": "metric.type=\"logging.googleapis.com/user/claudish_proxy_events\" AND resource.type=\"cloud_run_revision\" AND metric.labels.event=\"budget_threshold\"",
+    "aggregations": [
+      {
+        "alignmentPeriod": "300s",
+        "perSeriesAligner": "ALIGN_DELTA",
+        "crossSeriesReducer": "REDUCE_SUM"
+      }
+    ],
+    "comparison": "COMPARISON_GT",
+    "thresholdValue": 0,
+    "duration": "0s",
+    "threshold": "any budget_threshold event from the proxy (it logs one per instance at 50, 80 and 100 % of the daily cap)",
+    "firing": "cannot be fired safely without spending toward the cap; the event and its label are counted by the 12.3 metric",
+    "runbook": "13.5: 'Claudish proxy over budget' (kill switch, revert, golden gate)"
+  },
+  {
+    "displayName": "Claudish proxy refusing for capacity (capacity_no_budget)",
+    "kind": "threshold",
+    "filter": "metric.type=\"logging.googleapis.com/user/claudish_proxy_events\" AND resource.type=\"cloud_run_revision\" AND metric.labels.event=\"capacity_no_budget\"",
+    "aggregations": [
+      {
+        "alignmentPeriod": "300s",
+        "perSeriesAligner": "ALIGN_DELTA",
+        "crossSeriesReducer": "REDUCE_SUM"
+      }
+    ],
+    "comparison": "COMPARISON_GT",
+    "thresholdValue": 0,
+    "duration": "0s",
+    "threshold": "any capacity_no_budget event (the cap or the kill switch is refusing translations)",
+    "firing": "fired on purpose by rehearse-policy: the kill switch is turned on, one translation is requested, the event is counted, the switch is turned off; the record names the date",
+    "runbook": "13.5: 'Claudish proxy over budget'"
+  },
+  {
+    "displayName": "TLS certificate expiring within 14 days on a monitored surface",
+    "kind": "threshold",
+    "filter": "metric.type=\"monitoring.googleapis.com/uptime_check/time_until_ssl_cert_expires\" AND resource.type=\"uptime_url\"",
+    "aggregations": [
+      {
+        "alignmentPeriod": "1200s",
+        "perSeriesAligner": "ALIGN_NEXT_OLDER",
+        "crossSeriesReducer": "REDUCE_MEAN",
+        "groupByFields": ["resource.labels.host"]
+      }
+    ],
+    "comparison": "COMPARISON_LT",
+    "thresholdValue": 14,
+    "duration": "600s",
+    "threshold": "fewer than 14 days until the certificate expires on any of the five uptime-checked hosts",
+    "firing": "cannot be fired safely: the certificates are managed and renew on their own; the metric is populated by the 12.2 uptime checks and the record shows the current days-to-expiry per host",
+    "runbook": "13.5: 'certificate renewal failure'"
+  }
+]
