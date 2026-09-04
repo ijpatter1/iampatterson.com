@@ -86,6 +86,7 @@ async function translateCl2EnServed(
 ): Promise<{ output: string; stopReason: string | null }> {
   const system = buildSystem('cl2en');
   const controller = new AbortController();
+  let streamedChars = 0;
   const result = await runCl2enLoop(
     text,
     system,
@@ -106,13 +107,38 @@ async function translateCl2EnServed(
           controller.signal
         ),
     },
-    { token: () => undefined, revise: () => undefined },
+    {
+      token: (t) => {
+        streamedChars += t.length;
+      },
+      revise: () => undefined,
+    },
     loopBudgetFor(text.length)
-  );
+  ).catch((err: unknown) => {
+    // Production's rule (translate.ts): a failure before any token falls
+    // through to the Claude ladder; a failure after the first token is a
+    // terminal upstream_error. Mirror both so the gate never re-serves a
+    // mid-stream failure, an auth error or a config error as a pass.
+    if (streamedChars === 0) throw new PreTokenFailure(err);
+    throw err;
+  });
+  if (!result.refused && result.servedText.length === 0) {
+    throw new Error('loop served an empty result (production answers with an error frame)');
+  }
   const smoother = new EmDashSmoother();
   const output = smoother.feed(result.servedText) + smoother.flush();
   return { output, stopReason: result.refused ? 'refusal' : 'end_turn' };
 }
+
+class PreTokenFailure extends Error {
+  constructor(readonly cause: unknown) {
+    super(cause instanceof Error ? cause.message : String(cause));
+    this.name = 'PreTokenFailure';
+  }
+}
+
+/** Fall-throughs across the suite: a gate where every case fell through never exercised the served engine. */
+const fallThroughs: string[] = [];
 
 /**
  * Production's composition, including the fall-through: when the loop fails
@@ -129,7 +155,13 @@ async function translateCl2EnAsServed(
   try {
     return await translateCl2EnServed(config, text);
   } catch (err) {
-    console.log(`[golden] loop fell through pre-token (${err instanceof Error ? err.name : 'Unknown'}); Claude ladder served`);
+    if (!(err instanceof PreTokenFailure)) throw err;
+    const cause = err.cause instanceof Error ? err.cause.name : 'Unknown';
+    // Only upstream failures fall through in production (a stall, a 4xx/5xx
+    // from Vertex); a missing credential or a bad model id would too, so
+    // name the cause and count it: the suite fails if every case fell through.
+    fallThroughs.push(`${text.slice(0, 24)}… (${cause})`);
+    console.log(`[golden] loop fell through pre-token (${cause}); Claude ladder served`);
     return translateVia(lane, 'cl2en', text);
   }
 }
@@ -148,6 +180,15 @@ describeIfGolden('golden set (live API)', () => {
     const served = config.cl2enEngine === 'gemini-loop';
     it(`runs the ${served ? 'served gemini-loop' : 'Claude-lane'} engine`, () => {
       console.log(`[golden] cl2en engine: ${served ? 'gemini-loop (served path)' : 'lanes (Claude ladder)'}`);
+    });
+    afterAll(() => {
+      const total = loadCases('cl2en.json').length;
+      if (served && fallThroughs.length > 0) console.log(`[golden] ${fallThroughs.length}/${total} cl2en cases fell through: ${fallThroughs.join('; ')}`);
+      // More than half falling through means the served engine is not what
+      // the gate measured: fail, whatever the Claude lane produced.
+      if (served && fallThroughs.length * 2 > total) {
+        throw new Error(`${fallThroughs.length}/${total} cl2en cases fell through to the Claude ladder; the served engine was not exercised enough to pass (${fallThroughs[0]})`);
+      }
     });
     for (const testCase of loadCases('cl2en.json')) {
       it(testCase.id, async () => {

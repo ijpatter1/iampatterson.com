@@ -23,18 +23,31 @@ describe('scripts/deploy-cloud-run.sh', () => {
     expect(script).toMatch(/gcloud run deploy[^\n]*--no-traffic/);
   });
 
+  it('exposes deploy, diff and promote so the reviewed revision is the promoted one', () => {
+    for (const cmd of ['  deploy)', '  diff)', '  promote)']) expect(script).toContain(cmd);
+    expect(script).toContain('--allow-drift');
+    expect(script).toContain('not promoting');
+  });
+
+  it('writes every diff under docs/verification/deploys so the record can cite it', () => {
+    expect(script).toContain('docs/verification/deploys');
+  });
+
   it('diffs the new revision against the serving one before any traffic moves', () => {
-    const deployAt = script.indexOf('--no-traffic');
-    // The call sites, not the function definitions above them.
-    const diffAt = script.lastIndexOf('diff_revisions "');
-    const promoteAt = script.lastIndexOf('update-traffic');
+    // Inside the deploy case: build (no traffic), then the diff call, then promotion.
+    const deployCase = script.slice(script.indexOf('  deploy)'));
+    const deployAt = deployCase.indexOf('--no-traffic');
+    const diffAt = deployCase.indexOf('write_diff "$SERVICE"');
+    const promoteAt = deployCase.indexOf('update-traffic');
     expect(diffAt).toBeGreaterThan(deployAt);
     expect(promoteAt).toBeGreaterThan(diffAt);
   });
 
   it('moves traffic only behind the --promote flag, to the latest revision', () => {
     expect(script).toContain('--promote');
-    expect(script).toMatch(/update-traffic[^\n]*--to-latest/);
+    // Promotion names the exact revision that was diffed, never "latest".
+    expect(script).toMatch(/update-traffic[^\n]*--to-revisions="?\$(AFTER|REV)=100/);
+    expect(script).not.toContain('--to-latest');
   });
 
   it('never rewrites the service env (the live values are the contract)', () => {
@@ -46,5 +59,17 @@ describe('scripts/deploy-cloud-run.sh', () => {
     const calls = script.split('\n').filter((l) => /\bgcloud\s+run\b/.test(l) && !l.trim().startsWith('#'));
     expect(calls.length).toBeGreaterThan(0);
     for (const call of calls) expect(call).toContain('--project');
+  });
+
+  it('probes a private service with an identity token when the anonymous probe is refused', () => {
+    // data-generator only admits the scheduler account; an anonymous 403 must
+    // not read as a failed deploy (review finding, 2026-09-04).
+    expect(script).toContain('print-identity-token');
+    expect(script).toMatch(/403/);
+  });
+
+  it('counts the image digest as the expected change, not as drift', () => {
+    expect(script).toContain('imageDigest');
+    expect(script).toContain('besides the digest');
   });
 });

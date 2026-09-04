@@ -619,13 +619,13 @@ Performance, mobile testing, error handling, security review, SEO.
 
 ### Current state
 
-- **Runtimes.** `package.json` engines `20.x`; `event-stream`, `data-generator` and `claudish-proxy` build from `node:20-slim`; the Vercel project setting is already Node 24.x. Vercel refuses Node 20 builds from 2026-10-01.
+- **Runtimes (as of 2026-09-03, before 12.1).** `package.json` engines `20.x`; `event-stream`, `data-generator` and `claudish-proxy` built from `node:20-slim`; the Vercel project setting was already Node 24.x. Vercel refuses Node 20 builds from 2026-10-01. Superseded by 12.1 on 2026-09-04: see the target state.
 - **Monitoring.** No alert policies, notification channels, uptime checks, dashboards or log-based metrics exist in project `iampatterson`. Cloud Logging keeps `_Default` for 30 days and `_Required` for 400. The Claudish proxy emits structured JSON events (`translate_done`, `request_error`, `loop_fell_through`, `budget_threshold`, `capacity_no_budget`) with an allowlisted field set; event-stream emits no error logs today (its catch blocks are silent; errors surface only as HTTP 400s) and data-generator emits one plain-text `[ad-insert]` failure line.
 - **Health surfaces.** `/health` on the three Node services; `/healthy` on sGTM; the site at `https://www.iampatterson.com`; Metabase at `bi.iampatterson.com` behind IAP (an unauthenticated probe sees the IAP redirect).
 
 ### Target state
 
-- **Runtimes.** `engines.node` `24.x`; the three Dockerfiles on `node:24-slim`; the same pin recorded in the project rules. Local development uses the Homebrew arm64 Node.
+- **Runtimes (delivered by 12.1).** `engines.node` `24.x`; the three Dockerfiles on `node:24-slim`; the pin and the toolchain path recorded in the CLAUDE.md project facts and pinned by `tests/unit/infra/runtime-currency.test.ts`. Local development uses the keg-only Homebrew `node@24`.
 - **Monitoring as configuration.** `infrastructure/monitoring/` holds compact specs (JSON or YAML) for the notification channel, the uptime checks, the alert policies and the dashboard, plus `apply.sh`, an idempotent script that creates or updates each resource through `gcloud` or the Monitoring REST API and prints a diff first. The dashboard's panels are generated from the service list so the spec stays small.
 - **Log-based metrics.** One metric per structured error event, defined in the same spec set; the `_Default` bucket retention set provisionally in 12.3 and confirmed against the 13.1 data retention decision, both recorded here.
 - **Alert routing.** Every policy routes to the channel from 12.2; the runbook (13.5) links each alert to a procedure.
@@ -638,7 +638,7 @@ Performance, mobile testing, error handling, security review, SEO.
 
 ### Deployment
 
-`bash infrastructure/monitoring/apply.sh --dry-run` then `bash infrastructure/monitoring/apply.sh`, run by the operator with gcloud credentials for project `iampatterson`; the Node 24 rollout is the ordinary service deploy path for each service plus a Vercel build.
+`bash infrastructure/monitoring/apply.sh --dry-run` then `bash infrastructure/monitoring/apply.sh`, run by the operator with gcloud credentials for project `iampatterson`. Service redeploys go through `scripts/deploy-cloud-run.sh` (`deploy` builds a no-traffic revision and writes its diff under `docs/verification/deploys/`, `promote <revision>` routes traffic to that exact revision and checks health); the Claudish proxy's `setup.sh` remains the path for env and IAM changes. The Node 24 rollout used the script for all three services plus a Vercel build.
 
 ---
 

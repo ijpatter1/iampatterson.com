@@ -15,7 +15,7 @@ describe('scripts/verify-node24.sh', () => {
   });
 
   it('covers every surface the 12.1 acceptance names', () => {
-    for (const marker of ['engines', 'node:24-slim', 'node -v', 'vercel', 'Node.js version 20.x is deprecated', 'gcloud builds log', '/health', '/translate']) {
+    for (const marker of ['engines', 'node:24-slim', 'node -v', 'npm test', 'run-claudish-golden.sh', 'fell through', 'vercel', 'Node.js version 20.x is deprecated', 'gcloud builds log', '/health', '/translate', 'deploy-cloud-run.sh diff', 'sync-dataform']) {
       expect(script).toContain(marker);
     }
   });
@@ -23,5 +23,11 @@ describe('scripts/verify-node24.sh', () => {
   it('writes its record under docs/verification and fails on any failed check', () => {
     expect(script).toContain('docs/verification/');
     expect(script).toMatch(/\[ "\$FAIL" -eq 0 \]\s*$/);
+  });
+
+  it('resolves every service URL from gcloud and defines the serving revision as the one carrying traffic', () => {
+    expect(script).not.toContain('https://claudish-proxy-');
+    expect(script).not.toContain('status.traffic[0].revisionName');
+    expect(script).toContain('x.get("percent")');
   });
 });

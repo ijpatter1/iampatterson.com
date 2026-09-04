@@ -1,34 +1,38 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════════════
-# Deploy a Cloud Run service from source, no traffic first, diff, promote.
+# Deploy a Cloud Run service from source: no-traffic revision, diff, promote.
 #
 # event-stream and data-generator had no deploy path in the repo, and a
 # bare `gcloud run deploy --source` that dropped an env var or a scaling
 # annotation would take the live overlay down while /health still answered
-# 200. This script deploys the new revision with no traffic, prints a diff
-# of the new revision against the serving one (image, env, service account,
-# scaling, resources, concurrency, timeout), and moves traffic only behind
-# --promote. Env is never rewritten here: the live values are the contract.
+# 200. Three subcommands keep the reviewed revision and the promoted
+# revision the same one:
 #
-# Usage:
-#   scripts/deploy-cloud-run.sh <service> <source-dir>              # deploy no-traffic, diff, stop
-#   scripts/deploy-cloud-run.sh <service> <source-dir> --promote    # ...then route traffic and check health
-# Env: PROJECT (iampatterson), REGION (us-central1), HEALTH_PATH (/health)
+#   deploy  <service> <source-dir> [--promote] [--allow-drift]
+#           builds a no-traffic revision, writes its diff against the serving
+#           revision to docs/verification/deploys/<revision>.diff,
+#           and stops. With --promote it routes traffic to THAT revision only
+#           when nothing but the image digest differs (--allow-drift overrides).
+#   diff    <service> <revision-a> <revision-b>
+#           the same field diff for any two revisions (records after the fact).
+#   promote <service> <revision>
+#           routes all traffic to a revision already built, then checks health
+#           (identity token when the service is private).
+#
+# Env is never rewritten here: the live values are the contract.
+# Env: PROJECT (iampatterson), REGION (us-central1), HEALTH_PATH (/health), DIFF_DIR
 # ═══════════════════════════════════════════════════════════════════════
 set -euo pipefail
 
 PROJECT="${PROJECT:-iampatterson}"
 REGION="${REGION:-us-central1}"
 HEALTH_PATH="${HEALTH_PATH:-/health}"
+DIFF_DIR="${DIFF_DIR:-docs/verification/deploys}"
 
-SERVICE="${1:?service name}"
-SRC="${2:?source directory}"
-PROMOTE="${3:-}"
-[ -d "$SRC" ] || { echo "❌ source dir not found: $SRC" >&2; exit 1; }
-[ -z "$PROMOTE" ] || [ "$PROMOTE" = "--promote" ] || { echo "❌ third argument must be --promote or absent" >&2; exit 1; }
+CMD="${1:?deploy | diff | promote}"; shift
 
 serving_revision() {
-  gcloud run services describe "$SERVICE" --project="$PROJECT" --region="$REGION" --format=json \
+  gcloud run services describe "$1" --project="$PROJECT" --region="$REGION" --format=json \
     | python3 -c 'import json,sys; d=json.load(sys.stdin); t=[x for x in d["status"].get("traffic",[]) if x.get("percent")]; print(t[0]["revisionName"] if t else "")'
 }
 
@@ -39,9 +43,10 @@ snapshot_revision() {
 import json, sys
 d = json.load(sys.stdin); s = d["spec"]; c = s["containers"][0]; a = d["metadata"].get("annotations", {})
 env = {e["name"]: e.get("value", "<secret:" + e.get("valueFrom", {}).get("secretKeyRef", {}).get("name", "?") + ">") for e in c.get("env", [])}
+ref = c.get("image", "")
 out = {
-  "image": c.get("image", "").split("@")[0].split(":")[-1] if "@" in c.get("image", "") else c.get("image", ""),
-  "imageRef": c.get("image", ""),
+  "imagePath": ref.split("@")[0],
+  "imageDigest": ref.split("@")[1] if "@" in ref else "",
   "serviceAccount": s.get("serviceAccountName"),
   "minScale": a.get("autoscaling.knative.dev/minScale"),
   "maxScale": a.get("autoscaling.knative.dev/maxScale"),
@@ -59,50 +64,86 @@ diff_revisions() {
   python3 - "$1" "$2" <<'PYEOF'
 import json, sys
 a, b = (json.load(open(p)) for p in sys.argv[1:3])
+# A new digest is what a redeploy is for; everything else must match.
+print(f"  image digest: {a.get('imageDigest', '')[:19]}… -> {b.get('imageDigest', '')[:19]}…")
 changed = 0
-for k in sorted(set(a) | set(b)):
+for k in sorted((set(a) | set(b)) - {"imageDigest"}):
     if k == "env":
         for ek in sorted(set(a["env"]) | set(b["env"])):
             if a["env"].get(ek) != b["env"].get(ek):
                 changed += 1; print(f"  env.{ek}: {a['env'].get(ek)!r} -> {b['env'].get(ek)!r}")
     elif a.get(k) != b.get(k):
         changed += 1; print(f"  {k}: {a.get(k)!r} -> {b.get(k)!r}")
-print(f"  ({changed} field(s) differ; the image ref is expected to)")
-sys.exit(0)
+print(f"  {changed} field(s) differ besides the digest" + ("" if changed == 0 else " — review before promoting"))
 PYEOF
 }
 
-echo "═══ $SERVICE: deploy from $SRC (no traffic) ═══"
-BEFORE=$(serving_revision)
-[ -n "$BEFORE" ] || { echo "❌ no serving revision found for $SERVICE" >&2; exit 1; }
-echo "serving revision: $BEFORE"
+# Print the diff and return 0 when only the digest changed, 1 otherwise.
+write_diff() { # write_diff <service> <before> <after> <out-file>
+  local tmp; tmp=$(mktemp -d)
+  snapshot_revision "$2" > "$tmp/before.json"
+  snapshot_revision "$3" > "$tmp/after.json"
+  {
+    echo "# $1: $2 -> $3 ($(date -u +%Y-%m-%dT%H:%M:%SZ))"
+    diff_revisions "$tmp/before.json" "$tmp/after.json"
+  } | tee "$4"
+  rm -rf "$tmp"
+  ! grep -q "review before promoting" "$4"
+}
 
-gcloud run deploy "$SERVICE" --source "$SRC" --project="$PROJECT" --region="$REGION" --no-traffic --quiet
-AFTER=$(gcloud run services describe "$SERVICE" --project="$PROJECT" --region="$REGION" --format='value(status.latestCreatedRevisionName)')
-echo "new revision (no traffic): $AFTER"
+health_check() { # health_check <service> <revision-for-the-message> <before-revision>
+  local url code via
+  url=$(gcloud run services describe "$1" --project="$PROJECT" --region="$REGION" --format='value(status.url)')
+  # A private service (no allUsers invoker) answers 403 to an anonymous probe; retry with the caller's identity token.
+  code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "${url}${HEALTH_PATH}"); via="anonymous"
+  if [ "$code" = "403" ] || [ "$code" = "401" ]; then
+    code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 -H "Authorization: Bearer $(gcloud auth print-identity-token)" "${url}${HEALTH_PATH}"); via="identity token"
+  fi
+  if [ "$code" = "200" ]; then
+    echo "✓ ${url}${HEALTH_PATH} -> 200 on $2 ($via)"
+  else
+    echo "✗ ${url}${HEALTH_PATH} -> $code on $2; roll back with:" >&2
+    echo "  gcloud run services update-traffic $1 --project=$PROJECT --region=$REGION --to-revisions=$3=100" >&2
+    return 1
+  fi
+}
 
-TMP=$(mktemp -d)
-snapshot_revision "$BEFORE" > "$TMP/before.json"
-snapshot_revision "$AFTER" > "$TMP/after.json"
-echo "═══ diff $BEFORE -> $AFTER ═══"
-diff_revisions "$TMP/before.json" "$TMP/after.json"
-rm -rf "$TMP"
-
-if [ "$PROMOTE" != "--promote" ]; then
-  echo ""
-  echo "Stopped before traffic. Review the diff, then re-run with --promote (or route by hand):"
-  echo "  gcloud run services update-traffic $SERVICE --project=$PROJECT --region=$REGION --to-latest"
-  exit 0
-fi
-
-echo "═══ promote: all traffic to $AFTER ═══"
-gcloud run services update-traffic "$SERVICE" --project="$PROJECT" --region="$REGION" --to-latest --quiet
-URL=$(gcloud run services describe "$SERVICE" --project="$PROJECT" --region="$REGION" --format='value(status.url)')
-code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "${URL}${HEALTH_PATH}")
-if [ "$code" = "200" ]; then
-  echo "✓ ${URL}${HEALTH_PATH} -> 200 on $AFTER"
-else
-  echo "✗ ${URL}${HEALTH_PATH} -> $code on $AFTER; roll back with:" >&2
-  echo "  gcloud run services update-traffic $SERVICE --project=$PROJECT --region=$REGION --to-revisions=$BEFORE=100" >&2
-  exit 1
-fi
+case "$CMD" in
+  diff)
+    SERVICE="${1:?service}"; A="${2:?revision a}"; B="${3:?revision b}"
+    mkdir -p "$DIFF_DIR"; write_diff "$SERVICE" "$A" "$B" "$DIFF_DIR/$B.diff" || true
+    ;;
+  promote)
+    SERVICE="${1:?service}"; REV="${2:?revision}"
+    BEFORE=$(serving_revision "$SERVICE")
+    echo "═══ promote $SERVICE: all traffic to $REV (from $BEFORE) ═══"
+    gcloud run services update-traffic "$SERVICE" --project="$PROJECT" --region="$REGION" --to-revisions="$REV=100" --quiet
+    health_check "$SERVICE" "$REV" "$BEFORE"
+    ;;
+  deploy)
+    SERVICE="${1:?service}"; SRC="${2:?source directory}"; shift 2
+    PROMOTE=0; ALLOW_DRIFT=0
+    for flag in "$@"; do case "$flag" in --promote) PROMOTE=1;; --allow-drift) ALLOW_DRIFT=1;; *) echo "❌ unknown flag $flag" >&2; exit 1;; esac; done
+    [ -d "$SRC" ] || { echo "❌ source dir not found: $SRC" >&2; exit 1; }
+    BEFORE=$(serving_revision "$SERVICE")
+    [ -n "$BEFORE" ] || { echo "❌ no serving revision found for $SERVICE" >&2; exit 1; }
+    echo "═══ $SERVICE: deploy from $SRC (no traffic); serving revision $BEFORE ═══"
+    gcloud run deploy "$SERVICE" --source "$SRC" --project="$PROJECT" --region="$REGION" --no-traffic --quiet
+    AFTER=$(gcloud run services describe "$SERVICE" --project="$PROJECT" --region="$REGION" --format='value(status.latestCreatedRevisionName)')
+    echo "new revision (no traffic): $AFTER"
+    mkdir -p "$DIFF_DIR"
+    if write_diff "$SERVICE" "$BEFORE" "$AFTER" "$DIFF_DIR/$AFTER.diff"; then CLEAN=1; else CLEAN=0; fi
+    echo "diff written: $DIFF_DIR/$AFTER.diff"
+    if [ "$PROMOTE" != "1" ]; then
+      echo ""; echo "Stopped before traffic. Promote this exact revision with:"; echo "  scripts/deploy-cloud-run.sh promote $SERVICE $AFTER"; exit 0
+    fi
+    if [ "$CLEAN" != "1" ] && [ "$ALLOW_DRIFT" != "1" ]; then
+      echo "❌ fields other than the image digest differ; not promoting. Re-run with --allow-drift after reviewing, or promote by hand:" >&2
+      echo "  scripts/deploy-cloud-run.sh promote $SERVICE $AFTER" >&2; exit 2
+    fi
+    echo "═══ promote: all traffic to $AFTER ═══"
+    gcloud run services update-traffic "$SERVICE" --project="$PROJECT" --region="$REGION" --to-revisions="$AFTER=100" --quiet
+    health_check "$SERVICE" "$AFTER" "$BEFORE"
+    ;;
+  *) echo "usage: deploy-cloud-run.sh deploy <service> <src> [--promote] [--allow-drift] | diff <service> <a> <b> | promote <service> <revision>" >&2; exit 1;;
+esac
