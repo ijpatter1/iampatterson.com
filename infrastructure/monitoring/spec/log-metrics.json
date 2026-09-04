@@ -1,0 +1,34 @@
+[
+  {
+    "name": "claudish_proxy_events",
+    "description": "Structured events the claudish-proxy emits (jsonPayload.event), counted by event and severity. Errors and capacity signals: request_error, loop_fell_through, loop_retry_failed, loop_empty_result, loop_failed_midstream, lane_failed, capacity_ladder_exhausted, budget_threshold, capacity_no_budget, rate_limited.",
+    "filter": "resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"claudish-proxy\" AND jsonPayload.event=~\"^(request_error|loop_fell_through|loop_retry_failed|loop_empty_result|loop_failed_midstream|lane_failed|capacity_ladder_exhausted|budget_threshold|capacity_no_budget|rate_limited)$\"",
+    "labels": {
+      "event": { "extractor": "EXTRACT(jsonPayload.event)", "description": "the proxy event name" },
+      "severity": { "extractor": "EXTRACT(severity)", "description": "log severity" }
+    }
+  },
+  {
+    "name": "data_generator_ad_insert_failures",
+    "description": "data-generator's one failure pattern: the plain-text '[ad-insert] N/M rows failed' line.",
+    "filter": "resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"data-generator\" AND textPayload:\"[ad-insert]\"",
+    "labels": {}
+  },
+  {
+    "name": "cloud_run_no_instance",
+    "description": "Cloud Run aborted a request because no instance was available (sGTM logged sixteen in the week to 2026-09-04, clustered at the scheduler's 10:00 burst), counted per service.",
+    "filter": "resource.type=\"cloud_run_revision\" AND severity>=ERROR AND textPayload:\"no available instance\"",
+    "labels": {
+      "service": {
+        "extractor": "EXTRACT(resource.labels.service_name)",
+        "description": "the Cloud Run service"
+      }
+    }
+  },
+  {
+    "name": "event_stream_errors",
+    "description": "event-stream emits no error logs today (its catch blocks are silent and failures surface as HTTP 400s); the counter exists so an error, if one is ever logged, counts.",
+    "filter": "resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"event-stream\" AND severity>=ERROR",
+    "labels": {}
+  }
+]

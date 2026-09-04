@@ -3,13 +3,15 @@
 # Monitoring as committed configuration (Phase 12, deliverable 12.2).
 #
 # Reads the specs under infrastructure/monitoring/spec/ and reconciles the
-# notification channels, the uptime checks and one uptime alert policy per
-# check against project iampatterson through the Monitoring REST API,
+# notification channels, the uptime checks, one uptime alert policy per
+# check, the log-based metrics (12.3) and the _Default bucket retention
+# against project iampatterson through the Monitoring and Logging REST APIs,
 # idempotent by display name. Nothing here deletes: a check whose host
 # changed (an immutable field) is reported for a hand recreate.
 #
 #   apply.sh [--dry-run] apply     plan (create / update / unchanged), then apply unless --dry-run
-#   apply.sh verify                 latest uptime results per check, written to docs/verification/
+#   apply.sh verify                 latest uptime results per check, the log-based metrics, the retention
+#                                   setting and the four 24-hour queries, written to docs/verification/
 #   apply.sh rehearse [check]       point one check at a missing path, wait for the alert to arrive
 #                                   on the Pub/Sub channel, restore, record (default: claudish-proxy-health)
 #
@@ -59,6 +61,7 @@ P = os.environ["PROJECT"]; TOKEN = os.environ["TOKEN"]; SPEC = os.environ["SPEC_
 DRY = os.environ["DRY"] == "1"; CMD = os.environ["CMD"]; ARG = os.environ["ARG"]
 API = f"https://monitoring.googleapis.com/v3/projects/{P}"
 PUBSUB = f"https://pubsub.googleapis.com/v1/projects/{P}"
+LOGGING = f"https://logging.googleapis.com/v2/projects/{P}"
 
 def call(method, url, body=None, params=None):
     if params: url += ("&" if "?" in url else "?") + urllib.parse.urlencode(params, doseq=True)
@@ -84,6 +87,71 @@ def act(kind, verb, name, detail=""):
     print(f"  {'[dry-run] ' if DRY else ''}{verb:<9} {kind:<8} {name}{'  ' + detail if detail else ''}")
 
 channels_spec = json.load(open(f"{SPEC}/channels.json")); checks_spec = json.load(open(f"{SPEC}/uptime.json"))
+metrics_spec = json.load(open(f"{SPEC}/log-metrics.json")); retention_spec = json.load(open(f"{SPEC}/retention.json")); queries_spec = json.load(open(f"{SPEC}/queries.json"))
+
+def desired_metric(m):
+    d = {"name": m["name"], "description": m["description"], "filter": m["filter"], "metricDescriptor": {"metricKind": "DELTA", "valueType": "INT64", "unit": "1",
+         "labels": [{"key": k, "valueType": "STRING", "description": v["description"]} for k, v in sorted(m.get("labels", {}).items())]}}
+    if m.get("labels"): d["labelExtractors"] = {k: v["extractor"] for k, v in m["labels"].items()}
+    return d
+
+def metric_differs(cur, want):
+    return (cur.get("filter") != want["filter"] or cur.get("description") != want["description"]
+            or cur.get("labelExtractors", {}) != want.get("labelExtractors", {}))
+
+def reconcile_metrics():
+    live = {m["name"]: m for m in paged(f"{LOGGING}/metrics", "metrics")}
+    for m in metrics_spec:
+        want = desired_metric(m); cur = live.get(m["name"])
+        if cur is None:
+            act("metric", "create", m["name"])
+            if not DRY: call("POST", f"{LOGGING}/metrics", want)
+        elif metric_differs(cur, want):
+            act("metric", "update", m["name"])
+            if not DRY: call("PUT", f"{LOGGING}/metrics/{m['name']}", want)
+        else:
+            act("metric", "unchanged", m["name"])
+
+def reconcile_retention():
+    b = call("GET", f"{LOGGING}/locations/global/buckets/{retention_spec['bucket']}")
+    want = int(retention_spec["retentionDays"]); cur = int(b.get("retentionDays", 30))
+    if cur != want:
+        act("bucket", "update", retention_spec["bucket"], f"retention {cur}d -> {want}d ({retention_spec['status']})")
+        if not DRY: call("PATCH", f"{LOGGING}/locations/global/buckets/{retention_spec['bucket']}", {"retentionDays": want}, {"updateMask": "retentionDays"})
+    else:
+        act("bucket", "unchanged", retention_spec["bucket"], f"retention {cur}d ({retention_spec['status']})")
+    for s in retention_spec.get("sinks", []):
+        act("sink", "skip", s, "sinks are declared here but applied by hand; none declared today")
+
+def run_queries(hours=24):
+    end = datetime.now(timezone.utc); start = end - timedelta(hours=hours); rows = []
+    for q in queries_spec:
+        f = f'{q["filter"]} AND timestamp>="{start.isoformat()}" AND timestamp<="{end.isoformat()}"'
+        d = call("POST", "https://logging.googleapis.com/v2/entries:list", {"resourceNames": [f"projects/{P}"], "filter": f, "orderBy": "timestamp desc", "pageSize": 200})
+        entries = d.get("entries", []); count = len(entries) + (0 if not d.get("nextPageToken") else 200)
+        sample = ""
+        if entries:
+            e = entries[0]; sample = (e.get("jsonPayload", {}).get("event") or e.get("textPayload") or json.dumps(e.get("jsonPayload", {}))[:80] or str(e.get("httpRequest", {}).get("status", "")))
+            sample = f"latest {e.get('timestamp','')[:19]}: {str(sample)[:90]}"
+        rows.append((q["service"], count, d.get("nextPageToken") is not None, sample))
+    return rows
+
+def verify_metrics_and_logs():
+    live = {m["name"]: m for m in paged(f"{LOGGING}/metrics", "metrics")}
+    b = call("GET", f"{LOGGING}/locations/global/buckets/{retention_spec['bucket']}")
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"); rows = []; ok = True
+    for m in metrics_spec:
+        cur = live.get(m["name"]); good = cur is not None and cur.get("filter") == m["filter"]; ok = ok and good
+        rows.append(f"| {'✓' if good else '✗'} | metric `{m['name']}` | {'present, filter matches the spec' if good else ('absent' if cur is None else 'filter differs from the spec')} |")
+    ret_ok = int(b.get("retentionDays", 0)) == int(retention_spec["retentionDays"]); ok = ok and ret_ok
+    rows.append(f"| {'✓' if ret_ok else '✗'} | `_Default` retention | {b.get('retentionDays')} days live; spec {retention_spec['retentionDays']} days, {retention_spec['status']}; sinks: none |")
+    qrows = run_queries()
+    for service, count, more, sample in qrows:
+        rows.append(f"| ✓ | 24-hour query: {service} | {count}{'+' if more else ''} matching entries{'; ' + sample if sample else ''} |")
+    os.makedirs(OUT, exist_ok=True); path = f"{OUT}/{stamp[:10]}-log-metrics.md"
+    with open(path, "w") as f:
+        f.write(f"# Log-based metrics, retention and the 24-hour queries\n\nDeliverable 12.3. Generated by `infrastructure/monitoring/apply.sh verify` at {stamp} from the committed specs; rerun to refresh. A query row is a count of matching log entries in the last 24 hours (zero on a healthy day), with the latest entry as the sample.\n\n| | Check | Evidence |\n|---|---|---|\n" + "\n".join(rows) + f"\n\nResult: {'metrics and retention match the spec; queries ran' if ok else 'ATTENTION: see the ✗ rows'}.\n")
+    print("\n".join(rows)); print(f"record: {path}"); return ok
 
 def reconcile_channels():
     live = by_name(paged(f"{API}/notificationChannels", "notificationChannels"))
@@ -201,7 +269,8 @@ def verify():
     os.makedirs(OUT, exist_ok=True); path = f"{OUT}/{stamp[:10]}-uptime-checks.md"
     with open(path, "w") as f:
         f.write(f"# Uptime checks and their alerts\n\nDeliverable 12.2. Generated by `infrastructure/monitoring/apply.sh verify` at {stamp} from the committed specs; rerun to refresh.\n\n| | Check | Surface | Results | Latest | Alerting |\n|---|---|---|---|---|---|\n" + "\n".join(rows) + f"\n\nChannels: {', '.join(sorted(channels))}.\n\nResult: {'all checks passing and alerting' if ok else 'ATTENTION: see the ✗ rows'}.\n")
-    print("\n".join(rows)); print(f"record: {path}"); sys.exit(0 if ok else 1)
+    print("\n".join(rows)); print(f"record: {path}")
+    if not ok: sys.exit(1)
 
 def pull(sub, seconds):
     deadline = time.time() + seconds
@@ -253,9 +322,12 @@ if CMD == "apply":
     print("═══ channels ═══"); ch = reconcile_channels()
     print("═══ uptime checks ═══"); ck = reconcile_checks()
     print("═══ alert policies ═══"); reconcile_policies(ck, ch)
+    print("═══ log-based metrics ═══"); reconcile_metrics()
+    print("═══ log retention ═══"); reconcile_retention()
     if DRY: print("dry run: nothing written")
 elif CMD == "verify":
-    verify()
+    print("═══ log-based metrics, retention, queries ═══"); logs_ok = verify_metrics_and_logs()
+    print("═══ uptime checks ═══"); verify(); sys.exit(0 if logs_ok else 1)
 elif CMD == "rehearse":
     rehearse()
 PYEOF
