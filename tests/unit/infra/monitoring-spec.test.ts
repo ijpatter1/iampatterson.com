@@ -99,9 +99,19 @@ describe('infrastructure/monitoring/apply.sh', () => {
     expect(script).not.toMatch(/gcloud (alpha|beta) monitoring/);
   });
 
-  it('is idempotent by display name and never deletes', () => {
+  it('is idempotent by display name, and deletes only inside the dashboard rebuild', () => {
     expect(script).toContain('displayName');
-    expect(script).not.toMatch(/-X DELETE|method=DELETE|'DELETE'/);
+    // The old pattern missed call("DELETE", ...) because it only looked for
+    // single quotes, so the pin stayed green while the script deleted a live
+    // dashboard. Assert the real contract instead: every delete the script can
+    // issue lives in rehearse_dashboard, which recreates from the spec.
+    const deletes = [...script.matchAll(/^.*\bDELETE\b.*$/gm)].map((x) => x[0]);
+    expect(deletes.length).toBeGreaterThan(0);
+    const rebuild = script.slice(script.indexOf('def rehearse_dashboard'));
+    for (const line of deletes) {
+      const isComment = line.trim().startsWith('#');
+      expect(isComment || rebuild.includes(line)).toBe(true);
+    }
   });
 
   it('writes its verification and rehearsal records under docs/verification', () => {

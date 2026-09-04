@@ -1,7 +1,11 @@
 {
   "displayName": "iampatterson — operations",
   "columns": 12,
-  "defaults": { "period": "60s", "width": 6, "height": 4 },
+  "defaults": {
+    "period": "60s",
+    "width": 6,
+    "height": 4
+  },
   "tiles": [
     {
       "title": "Cloud Run request rate per service",
@@ -11,7 +15,9 @@
           "filter": "metric.type=\"run.googleapis.com/request_count\" AND resource.type=\"cloud_run_revision\"",
           "aligner": "ALIGN_RATE",
           "reducer": "REDUCE_SUM",
-          "groupBy": ["resource.labels.service_name"]
+          "groupBy": [
+            "resource.labels.service_name"
+          ]
         }
       ]
     },
@@ -23,7 +29,9 @@
           "filter": "metric.type=\"run.googleapis.com/request_latencies\" AND resource.type=\"cloud_run_revision\"",
           "aligner": "ALIGN_PERCENTILE_95",
           "reducer": "REDUCE_MEAN",
-          "groupBy": ["resource.labels.service_name"]
+          "groupBy": [
+            "resource.labels.service_name"
+          ]
         }
       ]
     },
@@ -35,7 +43,10 @@
           "filter": "metric.type=\"run.googleapis.com/request_count\" AND resource.type=\"cloud_run_revision\" AND metric.labels.response_code_class=monitoring.regex.full_match(\"[45]xx\")",
           "aligner": "ALIGN_RATE",
           "reducer": "REDUCE_SUM",
-          "groupBy": ["resource.labels.service_name", "metric.labels.response_code_class"]
+          "groupBy": [
+            "resource.labels.service_name",
+            "metric.labels.response_code_class"
+          ]
         }
       ]
     },
@@ -47,14 +58,19 @@
           "filter": "metric.type=\"pubsub.googleapis.com/topic/send_message_operation_count\" AND resource.type=\"pubsub_topic\"",
           "aligner": "ALIGN_RATE",
           "reducer": "REDUCE_SUM",
-          "groupBy": ["resource.labels.topic_id"]
+          "groupBy": [
+            "resource.labels.topic_id"
+          ]
         },
         {
           "legend": "pushed ${resource.labels.subscription_id} ${metric.labels.response_class}",
           "filter": "metric.type=\"pubsub.googleapis.com/subscription/push_request_count\" AND resource.type=\"pubsub_subscription\"",
           "aligner": "ALIGN_RATE",
           "reducer": "REDUCE_SUM",
-          "groupBy": ["resource.labels.subscription_id", "metric.labels.response_class"]
+          "groupBy": [
+            "resource.labels.subscription_id",
+            "metric.labels.response_class"
+          ]
         }
       ]
     },
@@ -66,7 +82,9 @@
           "filter": "metric.type=\"pubsub.googleapis.com/subscription/num_undelivered_messages\" AND resource.type=\"pubsub_subscription\"",
           "aligner": "ALIGN_MEAN",
           "reducer": "REDUCE_MAX",
-          "groupBy": ["resource.labels.subscription_id"]
+          "groupBy": [
+            "resource.labels.subscription_id"
+          ]
         }
       ]
     },
@@ -78,7 +96,9 @@
           "filter": "metric.type=\"pubsub.googleapis.com/subscription/oldest_unacked_message_age\" AND resource.type=\"pubsub_subscription\"",
           "aligner": "ALIGN_MAX",
           "reducer": "REDUCE_MAX",
-          "groupBy": ["resource.labels.subscription_id"]
+          "groupBy": [
+            "resource.labels.subscription_id"
+          ]
         }
       ]
     },
@@ -101,7 +121,9 @@
           "filter": "metric.type=\"bigquery.googleapis.com/query/scanned_bytes_billed\" AND resource.type=\"global\"",
           "aligner": "ALIGN_DELTA",
           "reducer": "REDUCE_SUM",
-          "groupBy": ["metric.labels.priority"],
+          "groupBy": [
+            "metric.labels.priority"
+          ],
           "period": "86400s"
         }
       ]
@@ -114,7 +136,9 @@
           "filter": "metric.type=\"monitoring.googleapis.com/uptime_check/time_until_ssl_cert_expires\" AND resource.type=\"uptime_url\"",
           "aligner": "ALIGN_MEAN",
           "reducer": "REDUCE_MEAN",
-          "groupBy": ["resource.labels.host"],
+          "groupBy": [
+            "resource.labels.host"
+          ],
           "period": "1200s"
         }
       ]
@@ -127,15 +151,17 @@
           "filter": "metric.type=\"logging.googleapis.com/user/claudish_proxy_events\" AND resource.type=\"cloud_run_revision\" AND metric.labels.event=\"budget_threshold\"",
           "aligner": "ALIGN_DELTA",
           "reducer": "REDUCE_SUM",
-          "groupBy": ["metric.labels.pct"],
+          "groupBy": [
+            "metric.labels.pct"
+          ],
           "period": "300s"
         }
       ]
     },
     {
-      "title": "Cloud Scheduler outcomes — the execution log for the three data-generator jobs",
+      "title": "Cloud Scheduler failures — the execution log for the three data-generator jobs (empty is the healthy state)",
       "width": 12,
-      "logs": "resource.type=\"cloud_scheduler_job\""
+      "logs": "resource.type=\"cloud_scheduler_job\" AND severity>=ERROR"
     }
   ]
 }

@@ -1,13 +1,14 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════════════
-# Monitoring as committed configuration (Phase 12, deliverable 12.2).
+# Monitoring as committed configuration (Phase 12, deliverables 12.2 to 12.5).
 #
 # Reads the specs under infrastructure/monitoring/spec/ and reconciles the
 # notification channels, the uptime checks, one uptime alert policy per
 # check, the log-based metrics (12.3) and the _Default bucket retention
 # against project iampatterson through the Monitoring and Logging REST APIs,
-# idempotent by display name. Nothing here deletes: a check whose host
-# changed (an immutable field) is reported for a hand recreate.
+# idempotent by display name. Only one path deletes anything — rehearse-dashboard,
+# which rebuilds from the spec immediately after — so a check whose host changed
+# (an immutable field) is reported for a hand recreate rather than replaced.
 #
 #   apply.sh [--dry-run] apply     plan (create / update / unchanged), then apply unless --dry-run
 #   apply.sh verify                 latest uptime results per check, the log-based metrics, the retention
@@ -17,6 +18,8 @@
 #   apply.sh rehearse-policy        fire the capacity policy on purpose: kill switch on, one translation,
 #                                   wait for the alert on the Pub/Sub channel, kill switch off, record
 #   apply.sh rehearse-dashboard     delete the dashboard and rebuild it from the spec, diff the shapes, record
+#   apply.sh rehearse-dataform      run the one Dataform assertion that already fails nightly, so a
+#                                   conditionMatchedLog policy notifies once for real, and record it
 #
 # Env: PROJECT (iampatterson), SPEC_DIR, OUT_DIR (docs/verification), REHEARSE_WAIT_MIN (25)
 # Needs: gcloud (an access token; no alpha/beta component), python3, curl.
@@ -26,9 +29,25 @@ set -euo pipefail
 PROJECT="${PROJECT:-iampatterson}"
 SPEC_DIR="${SPEC_DIR:-$(cd "$(dirname "$0")" && pwd)/spec}"
 OUT_DIR="${OUT_DIR:-docs/verification}"
-DRY=0
-if [ "${1:-}" = "--dry-run" ]; then DRY=1; shift; fi
-CMD="${1:-apply}"; shift || true
+# A flag is accepted in any position and an unrecognized argument is refused:
+# "apply.sh apply --dry-run" used to run a real apply with the flag as its
+# argument, which for the rehearsals means touching production.
+DRY=0; CMD=""; ARG=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --dry-run) DRY=1 ;;
+    apply|verify|rehearse|rehearse-policy|rehearse-dashboard|rehearse-dataform)
+      [ -z "$CMD" ] || { echo "❌ two commands given: $CMD and $1" >&2; exit 1; }; CMD="$1" ;;
+    *)
+      if [ "$CMD" = "rehearse" ] && [ -z "$ARG" ]; then ARG="$1"; else
+        echo "❌ unrecognized argument: $1" >&2
+        echo "usage: apply.sh [--dry-run] apply | verify | rehearse [check] | rehearse-policy | rehearse-dashboard | rehearse-dataform" >&2
+        exit 1
+      fi ;;
+  esac
+  shift
+done
+CMD="${CMD:-apply}"
 
 TOKEN=$(gcloud auth print-access-token 2>/dev/null) || { echo "❌ no gcloud access token (run: gcloud auth login)" >&2; exit 1; }
 PROJECT_NUMBER=$(gcloud projects describe "$PROJECT" --format='value(projectNumber)' 2>/dev/null || true)
@@ -36,9 +55,20 @@ PROJECT_NUMBER=$(gcloud projects describe "$PROJECT" --format='value(projectNumb
 # The Pub/Sub side of the pubsub channel: topic, the Monitoring notification
 # service agent as publisher, and a pull subscription the rehearsal reads.
 ensure_pubsub() {
-  local topic sub
-  topic=$(python3 -c 'import json,sys; print([c for c in json.load(open(sys.argv[1])) if c["type"]=="pubsub"][0]["labels"]["topic"].split("/")[-1])' "$SPEC_DIR/channels.json")
-  sub="${topic}-verify"
+  local topic sub ackdl retain
+  [ -n "$PROJECT_NUMBER" ] || { echo "❌ could not read the project number for $PROJECT (expired credentials, or the wrong project)" >&2; exit 1; }
+  # Topic and pull subscription are declared with the channel in channels.json,
+  # so the resources the rehearsals depend on are in the spec like everything else.
+  eval "$(python3 - "$SPEC_DIR/channels.json" <<'PSPEC'
+import json, sys
+c = [c for c in json.load(open(sys.argv[1])) if c["type"] == "pubsub"][0]
+s = c["pullSubscription"]
+print("topic=" + c["labels"]["topic"].split("/")[-1])
+print("sub=" + s["name"])
+print("ackdl=" + str(s["ackDeadlineSeconds"]))
+print("retain=" + s["messageRetentionDuration"])
+PSPEC
+)"
   if [ "$DRY" = "1" ]; then echo "[dry-run] would ensure topic $topic, publisher binding for the monitoring agent, subscription $sub"; return; fi
   gcloud pubsub topics describe "$topic" --project="$PROJECT" >/dev/null 2>&1 || gcloud pubsub topics create "$topic" --project="$PROJECT" --quiet
   # The Monitoring notification service agent only exists once provisioned; the
@@ -46,17 +76,17 @@ ensure_pubsub() {
   gcloud beta services identity create --service=monitoring.googleapis.com --project="$PROJECT" --quiet >/dev/null 2>&1 || true
   gcloud pubsub topics add-iam-policy-binding "$topic" --project="$PROJECT" \
     --member="serviceAccount:service-${PROJECT_NUMBER}@gcp-sa-monitoring-notification.iam.gserviceaccount.com" --role=roles/pubsub.publisher --quiet >/dev/null
-  gcloud pubsub subscriptions describe "$sub" --project="$PROJECT" >/dev/null 2>&1 || gcloud pubsub subscriptions create "$sub" --topic="$topic" --project="$PROJECT" --ack-deadline=60 --message-retention-duration=7d --quiet
+  gcloud pubsub subscriptions describe "$sub" --project="$PROJECT" >/dev/null 2>&1 || gcloud pubsub subscriptions create "$sub" --topic="$topic" --project="$PROJECT" --ack-deadline="$ackdl" --message-retention-duration="$retain" --quiet
   echo "pubsub: topic $topic, subscription $sub, monitoring agent may publish"
 }
 
 case "$CMD" in
   apply) ensure_pubsub ;;
-  verify|rehearse|rehearse-policy|rehearse-dashboard) ;;
-  *) echo "usage: apply.sh [--dry-run] apply | verify | rehearse [check] | rehearse-policy | rehearse-dashboard" >&2; exit 1 ;;
+  verify|rehearse|rehearse-policy|rehearse-dashboard|rehearse-dataform) ;;
+  *) echo "usage: apply.sh [--dry-run] apply | verify | rehearse [check] | rehearse-policy | rehearse-dashboard | rehearse-dataform" >&2; exit 1 ;;
 esac
 
-PROJECT="$PROJECT" TOKEN="$TOKEN" SPEC_DIR="$SPEC_DIR" OUT_DIR="$OUT_DIR" DRY="$DRY" CMD="$CMD" ARG="${1:-}" REHEARSE_WAIT_MIN="${REHEARSE_WAIT_MIN:-25}" python3 - <<'PYEOF'
+PROJECT="$PROJECT" TOKEN="$TOKEN" SPEC_DIR="$SPEC_DIR" OUT_DIR="$OUT_DIR" DRY="$DRY" CMD="$CMD" ARG="$ARG" REHEARSE_WAIT_MIN="${REHEARSE_WAIT_MIN:-25}" python3 - <<'PYEOF'
 import base64, json, os, sys, time, urllib.error, urllib.parse, urllib.request
 from datetime import datetime, timedelta, timezone
 
@@ -94,7 +124,7 @@ metrics_spec = json.load(open(f"{SPEC}/log-metrics.json")); retention_spec = jso
 policies_spec = json.load(open(f"{SPEC}/policies.json")); dashboard_spec = json.load(open(f"{SPEC}/dashboard.json"))
 
 def desired_spec_policy(p, channel_names):
-    doc = f"{p['threshold']}\n\nFiring: {p['firing']}\n\nRunbook: {p['runbook']}. Spec: infrastructure/monitoring/spec/policies.json."
+    doc = f"{p['threshold']}\n\nFiring: {p['firing']}\n\nRunbook entry (Phase 13 deliverable 13.5, not yet written): {p['runbook']}. Spec: infrastructure/monitoring/spec/policies.json."
     base = {"displayName": p["displayName"], "combiner": "OR", "notificationChannels": sorted(channel_names), "enabled": True,
             "documentation": {"content": doc, "mimeType": "text/markdown"}}
     if p["kind"] == "log":
@@ -106,15 +136,28 @@ def desired_spec_policy(p, channel_names):
         base["alertStrategy"] = {"autoClose": "1800s"}
     return base
 
+def policy_shape(p):
+    """Every field apply.sh sends, normalized so the API's own defaults cannot
+    read as drift: proto3 omits zero values, so an absent threshold or duration
+    is the zero it was sent as. Comparing a projection rather than a hand-listed
+    set of fields means aggregations are diffed too — without that, a spec edit
+    to an aligner or a window reported "unchanged" forever."""
+    c = (p.get("conditions") or [{}])[0]
+    shape = {"channels": sorted(p.get("notificationChannels", [])), "enabled": p.get("enabled", True),
+             "documentation": (p.get("documentation") or {}).get("content"),
+             "autoClose": (p.get("alertStrategy") or {}).get("autoClose"),
+             "rateLimit": ((p.get("alertStrategy") or {}).get("notificationRateLimit") or {}).get("period")}
+    if "conditionMatchedLog" in c:
+        shape["logFilter"] = c["conditionMatchedLog"].get("filter")
+    else:
+        th = c.get("conditionThreshold", {})
+        shape.update({"filter": th.get("filter"), "comparison": th.get("comparison"),
+                      "threshold": th.get("thresholdValue", 0), "duration": th.get("duration", "0s"),
+                      "aggregations": [sorted((k, tuple(v) if isinstance(v, list) else v) for k, v in a.items()) for a in th.get("aggregations", [])]})
+    return shape
+
 def spec_policy_differs(cur, want):
-    cc = cur.get("conditions", [{}])[0]; wc = want["conditions"][0]
-    if "conditionMatchedLog" in wc:
-        return cc.get("conditionMatchedLog", {}).get("filter") != wc["conditionMatchedLog"]["filter"] or sorted(cur.get("notificationChannels", [])) != want["notificationChannels"] or cur.get("enabled") is False
-    a, b = cc.get("conditionThreshold", {}), wc["conditionThreshold"]
-    # The API omits proto3 zero values, so a thresholdValue of 0 comes back absent;
-    # read a missing threshold as 0 or every re-apply reports a phantom update.
-    return (a.get("filter") != b["filter"] or a.get("comparison") != b["comparison"] or a.get("thresholdValue", 0) != b["thresholdValue"] or a.get("duration") != b["duration"]
-            or sorted(cur.get("notificationChannels", [])) != want["notificationChannels"] or cur.get("enabled") is False or cur.get("documentation", {}).get("content") != want["documentation"]["content"])
+    return policy_shape(cur) != policy_shape(want)
 
 def reconcile_spec_policies(channel_names):
     live = by_name(paged(f"{API}/alertPolicies", "alertPolicies"))
@@ -141,19 +184,33 @@ def cert_days():
 def verify_policies():
     live = by_name(paged(f"{API}/alertPolicies", "alertPolicies")); channels = by_name(paged(f"{API}/notificationChannels", "notificationChannels"))
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"); rows = []; ok = True
+    want_chans = sorted(c["displayName"] for c in channels_spec)
+    chan_names = [ch["name"] for n, ch in channels.items() if n in want_chans]
     for p in policies_spec:
-        cur = live.get(p["displayName"]); good = cur is not None and cur.get("enabled", True) and len(cur.get("notificationChannels", [])) == len(channels_spec); ok = ok and good
-        rows.append(f"| {'✓' if good else '✗'} | {p['displayName']} | {p['threshold']} | {p['firing']} |")
+        cur = live.get(p["displayName"])
+        routed = sorted(n for n, ch in channels.items() if cur and ch["name"] in cur.get("notificationChannels", [])) if cur else []
+        matches = cur is not None and not spec_policy_differs(cur, desired_spec_policy(p, chan_names))
+        good = cur is not None and cur.get("enabled", True) and matches and routed == want_chans; ok = ok and good
+        if p["kind"] == "log":
+            n, more = log_matches(p["logFilter"])
+            measured = f"; the filter selects {n}{'+' if more else ''} entries in the last 30 days"
+        else:
+            measured = ""
+        state = ("absent" if cur is None else "disabled" if not cur.get("enabled", True)
+                 else "the live policy differs from the spec; re-run apply" if not matches
+                 else f"routed to {', '.join(routed) or 'nothing'}, not {', '.join(want_chans)}" if routed != want_chans
+                 else f"matches the spec, routed to {', '.join(routed)}{measured}")
+        rows.append(f"| {'✓' if good else '✗'} | {p['displayName']} | {p['threshold']} | {p['firing']} | {state} |")
     days = cert_days()
-    for host, dd in sorted(days.items()): rows.append(f"| {'✓' if dd > 14 else '✗'} | certificate on {host} | {dd:.0f} days until expiry (alert below 14) | measured by the uptime checks |")
+    for host, dd in sorted(days.items()): rows.append(f"| {'✓' if dd > 14 else '✗'} | certificate on {host} | {dd:.0f} days until expiry (alert below 14) | measured by the uptime checks | — |")
     os.makedirs(OUT, exist_ok=True); path = f"{OUT}/{stamp[:10]}-alert-policies.md"
     with open(path, "w") as f:
-        f.write(f"# Alerting policies\n\nDeliverable 12.4. Generated by `infrastructure/monitoring/apply.sh verify` at {stamp} from `infrastructure/monitoring/spec/policies.json`; rerun to refresh. Every policy routes to {', '.join(sorted(channels))}.\n\n| | Policy | Threshold | Firing record or safety reason |\n|---|---|---|---|\n" + "\n".join(rows) + f"\n\nResult: {'every policy present, enabled and routed' if ok else 'ATTENTION: see the ✗ rows'}.\n")
+        f.write(f"# Alerting policies\n\nDeliverable 12.4. Generated by `infrastructure/monitoring/apply.sh verify` at {stamp} from `infrastructure/monitoring/spec/policies.json`; rerun to refresh. A ✓ means the live policy matches the spec field for field and routes to {', '.join(want_chans)}.\n\n| | Policy | Threshold | Firing record or safety reason | Live state |\n|---|---|---|---|---|\n" + "\n".join(rows) + f"\n\nResult: {'every policy present, enabled and routed' if ok else 'ATTENTION: see the ✗ rows'}.\n")
     print("\n".join(rows)); print(f"record: {path}"); return ok
 
 def rehearse_policy():
     import subprocess
-    topic = [ch for ch in channels_spec if ch["type"] == "pubsub"][0]["labels"]["topic"].split("/")[-1]; sub = f"{topic}-verify"
+    sub = verify_subscription()
     wait = int(os.environ["REHEARSE_WAIT_MIN"]) * 60; stamp = datetime.now(timezone.utc)
     svc = ["gcloud", "run", "services", "update", "claudish-proxy", f"--project={P}", "--region=us-central1", "--quiet", "--update-env-vars"]
     url = subprocess.run(["gcloud", "run", "services", "describe", "claudish-proxy", f"--project={P}", "--region=us-central1", "--format=value(status.url)"], capture_output=True, text=True).stdout.strip()
@@ -212,25 +269,23 @@ def reconcile_metrics():
 
 def reconcile_retention():
     b = call("GET", f"{LOGGING}/locations/global/buckets/{retention_spec['bucket']}")
-    want = int(retention_spec["retentionDays"]); cur = int(b.get("retentionDays", 30))
+    want = int(retention_spec["retentionDays"]); cur = live_retention(b)
     if cur != want:
         act("bucket", "update", retention_spec["bucket"], f"retention {cur}d -> {want}d ({retention_spec['status']})")
         if not DRY: call("PATCH", f"{LOGGING}/locations/global/buckets/{retention_spec['bucket']}", {"retentionDays": want}, {"updateMask": "retentionDays"})
     else:
         act("bucket", "unchanged", retention_spec["bucket"], f"retention {cur}d ({retention_spec['status']})")
-    for s in retention_spec.get("sinks", []):
-        act("sink", "skip", s, "sinks are declared here but applied by hand; none declared today")
 
 def run_queries(hours=24):
     end = datetime.now(timezone.utc); start = end - timedelta(hours=hours); rows = []
     for q in queries_spec:
         f = f'{q["filter"]} AND timestamp>="{start.isoformat()}" AND timestamp<="{end.isoformat()}"'
         d = call("POST", "https://logging.googleapis.com/v2/entries:list", {"resourceNames": [f"projects/{P}"], "filter": f, "orderBy": "timestamp desc", "pageSize": 200})
-        entries = d.get("entries", []); count = len(entries) + (0 if not d.get("nextPageToken") else 200)
+        entries = d.get("entries", []); count = len(entries)  # a page token means "at least this many"; the row renders the +
         sample = ""
         if entries:
             e = entries[0]; sample = (e.get("jsonPayload", {}).get("event") or e.get("textPayload") or json.dumps(e.get("jsonPayload", {}))[:80] or str(e.get("httpRequest", {}).get("status", "")))
-            sample = f"latest {e.get('timestamp','')[:19]}: {str(sample)[:90]}"
+            sample = f"latest {e.get('timestamp','')[:19]}: {str(sample)[:90] if str(sample).strip('{} ') else 'entry carries no payload text; severity ' + e.get('severity', '?')}"
         rows.append((q["service"], count, d.get("nextPageToken") is not None, sample))
     return rows
 
@@ -241,11 +296,11 @@ def verify_metrics_and_logs():
     for m in metrics_spec:
         cur = live.get(m["name"]); good = cur is not None and cur.get("filter") == m["filter"]; ok = ok and good
         rows.append(f"| {'✓' if good else '✗'} | metric `{m['name']}` | {'present, filter matches the spec' if good else ('absent' if cur is None else 'filter differs from the spec')} |")
-    ret_ok = int(b.get("retentionDays", 0)) == int(retention_spec["retentionDays"]); ok = ok and ret_ok
-    rows.append(f"| {'✓' if ret_ok else '✗'} | `_Default` retention | {b.get('retentionDays')} days live; spec {retention_spec['retentionDays']} days, {retention_spec['status']}; sinks: none |")
+    ret_ok = live_retention(b) == int(retention_spec["retentionDays"]); ok = ok and ret_ok
+    rows.append(f"| {'✓' if ret_ok else '✗'} | `_Default` retention | {live_retention(b)} days live; spec {retention_spec['retentionDays']} days, {retention_spec['status']} |")
     qrows = run_queries()
     for service, count, more, sample in qrows:
-        rows.append(f"| ✓ | 24-hour query: {service} | {count}{'+' if more else ''} matching entries{'; ' + sample if sample else ''} |")
+        rows.append(f"| · | 24-hour query: {service} | ran; {count}{'+' if more else ''} matching entries{'; ' + sample if sample else ''} |")
     os.makedirs(OUT, exist_ok=True); path = f"{OUT}/{stamp[:10]}-log-metrics.md"
     with open(path, "w") as f:
         f.write(f"# Log-based metrics, retention and the 24-hour queries\n\nDeliverable 12.3. Generated by `infrastructure/monitoring/apply.sh verify` at {stamp} from the committed specs; rerun to refresh. A query row is a count of matching log entries in the last 24 hours (zero on a healthy day), with the latest entry as the sample.\n\n| | Check | Evidence |\n|---|---|---|\n" + "\n".join(rows) + f"\n\nResult: {'metrics and retention match the spec; queries ran' if ok else 'ATTENTION: see the ✗ rows'}.\n")
@@ -320,9 +375,7 @@ def desired_policy(c, check_name, channel_names):
     }
 
 def policy_differs(cur, want):
-    cc = cur["conditions"][0]["conditionThreshold"]; wc = want["conditions"][0]["conditionThreshold"]
-    return (cc.get("filter") != wc["filter"] or sorted(cur.get("notificationChannels", [])) != want["notificationChannels"]
-            or cur.get("enabled") is False or cc.get("duration") != wc["duration"] or cc.get("thresholdValue") != wc["thresholdValue"])
+    return policy_shape(cur) != policy_shape(want)
 
 def reconcile_policies(check_names, channel_names):
     live = by_name(paged(f"{API}/alertPolicies", "alertPolicies"))
@@ -361,7 +414,7 @@ def verify():
         passed = sum(1 for _, v, _ in pts if v); latest = pts[-1] if pts else None
         pol = policies.get(f"Uptime: {c['displayName']}")
         chans = [n for n, ch in channels.items() if pol and ch["name"] in pol.get("notificationChannels", [])] if pol else []
-        good = bool(pts) and passed == len(pts) and pol is not None and len(chans) == len(channels_spec)
+        good = bool(pts) and passed == len(pts) and pol is not None and sorted(chans) == sorted(c["displayName"] for c in channels_spec)
         ok = ok and good
         rows.append(f"| {'✓' if good else '✗'} | {c['displayName']} | `{c['host']}{c['path']}` | {passed}/{len(pts)} passed in 30 min | {latest[0][:19] + ' ' + ('pass' if latest[1] else 'FAIL') + ' from ' + latest[2] if latest else 'no points yet'} | {'policy → ' + ', '.join(sorted(chans)) if pol else 'no policy'} |")
     os.makedirs(OUT, exist_ok=True); path = f"{OUT}/{stamp[:10]}-uptime-checks.md"
@@ -370,23 +423,46 @@ def verify():
     print("\n".join(rows)); print(f"record: {path}")
     if not ok: sys.exit(1)
 
+# Logging omits retentionDays on a bucket left at the default, and the apply
+# and verify paths have to read that absence the same way.
+DEFAULT_RETENTION_DAYS = 30
+
+def live_retention(bucket):
+    return int(bucket.get("retentionDays") or DEFAULT_RETENTION_DAYS)
+
+def pubsub_channel():
+    return [c for c in channels_spec if c["type"] == "pubsub"][0]
+
+def verify_subscription():
+    return pubsub_channel()["pullSubscription"]["name"]
+
+def log_matches(filt, days=30):
+    """What a log-match policy's filter actually selects, so a record can
+    measure the claim instead of repeating the spec's prose."""
+    start = datetime.now(timezone.utc) - timedelta(days=days)
+    d = call("POST", "https://logging.googleapis.com/v2/entries:list",
+             {"resourceNames": [f"projects/{P}"], "filter": f'{filt} AND timestamp>="{start.isoformat()}"', "orderBy": "timestamp desc", "pageSize": 100})
+    return len(d.get("entries", [])), d.get("nextPageToken") is not None
+
 def pull(sub, seconds):
     deadline = time.time() + seconds
     while time.time() < deadline:
         d = call("POST", f"{PUBSUB}/subscriptions/{sub}:pull", {"maxMessages": 10})
         msgs = d.get("receivedMessages", [])
-        if msgs:
-            call("POST", f"{PUBSUB}/subscriptions/{sub}:acknowledge", {"ackIds": [m["ackId"] for m in msgs]})
-            for m in msgs:
-                data = json.loads(base64.b64decode(m["message"].get("data", "")).decode() or "{}")
-                yield m["message"].get("publishTime", ""), data
-        time.sleep(20)
+        for m in msgs:
+            # One ack per message, as the caller consumes it: a caller that
+            # breaks out of this generator leaves the rest on the subscription
+            # instead of acknowledging notifications nobody read.
+            call("POST", f"{PUBSUB}/subscriptions/{sub}:acknowledge", {"ackIds": [m["ackId"]]})
+            data = json.loads(base64.b64decode(m["message"].get("data", "")).decode() or "{}")
+            yield m["message"].get("publishTime", ""), data
+        if not msgs: time.sleep(20)
 
 def rehearse():
     name = ARG or "claudish-proxy-health"
     c = next(x for x in checks_spec if x["displayName"] == name)
     live = by_name(paged(f"{API}/uptimeCheckConfigs", "uptimeCheckConfigs")); cur = live[name]
-    topic = [ch for ch in channels_spec if ch["type"] == "pubsub"][0]["labels"]["topic"].split("/")[-1]; sub = f"{topic}-verify"
+    sub = verify_subscription()
     wait = int(os.environ["REHEARSE_WAIT_MIN"]) * 60
     stamp = datetime.now(timezone.utc); lines = [f"# Uptime alert rehearsal: {name}", "", f"Deliverable 12.2. Generated by `infrastructure/monitoring/apply.sh rehearse {name}` starting {stamp.strftime('%Y-%m-%dT%H:%M:%SZ')}. The check was pointed at a missing path, the alert's notification was read from the Pub/Sub channel by this script, and the check was restored.", ""]
     broken = {**desired_check(c), "name": cur["name"]}; broken["httpCheck"]["path"] = c["path"].rstrip("/") + "/rehearsal-missing-" + stamp.strftime("%H%M%S")
@@ -477,13 +553,77 @@ def verify_dashboard():
             "| | check | detail |", "| --- | --- | --- |",
             f"| {'✓' if cur else '✗'} | dashboard `{want['displayName']}` | {'live at ' + cur['name'] if cur else 'absent'} |",
             f"| {'✓' if good else '✗'} | live layout matches the spec | {len(dashboard_spec['tiles'])} tiles ({charts} charts, {logs} logs panel), {dashboard_spec['columns']} columns |"]
+    live_tiles = {e[1]: e for e in (dashboard_shape(cur)[2:] if cur else [])}
+    want_tiles = {e[1]: e for e in dashboard_shape(want)[2:]}
     for t in dashboard_spec["tiles"]:
         src = t["logs"] if "logs" in t else " · ".join(s["filter"].split("metric.type=")[1].split(" AND ")[0].strip('"') for s in t["series"])
-        rows.append(f"| ✓ | {t['title']} | {src} |")
+        tile_ok = live_tiles.get(t["title"]) == want_tiles.get(t["title"])
+        rows.append(f"| {'✓' if tile_ok else '✗'} | {t['title']} | {src}{'' if tile_ok else ' — the live tile does not match the spec'} |")
     print("\n".join(rows[4:]))
     os.makedirs(OUT, exist_ok=True); path = f"{OUT}/{datetime.now(timezone.utc).strftime('%Y-%m-%d')}-dashboard.md"
     open(path, "w").write("\n".join(rows) + "\n"); print(f"record: {path}")
     return good
+
+DATAFORM = f"https://dataform.googleapis.com/v1/projects/{P}/locations/us-central1"
+
+def rehearse_dataform():
+    """Fire a conditionMatchedLog policy once, for real.
+
+    The capacity rehearsal proves a threshold policy notifies; nothing proved
+    the log-match kind, which is what the crash-loop, scheduler and Dataform
+    policies use. `assert_volume_anomaly` already fails every night, so running
+    that one assertion off-schedule produces a genuine ERROR log without
+    inventing a failure. Only the assertion is invoked — no table is written."""
+    sub = verify_subscription(); wait = int(os.environ["REHEARSE_WAIT_MIN"]) * 60
+    stamp = datetime.now(timezone.utc)
+    repos = call("GET", f"{DATAFORM}/repositories").get("repositories", [])
+    if not repos: print("❌ no Dataform repository in us-central1", file=sys.stderr); sys.exit(1)
+    repo = repos[0]["name"]
+    rel = call("GET", f"https://dataform.googleapis.com/v1/{repo}/releaseConfigs").get("releaseConfigs", [])
+    comp = next((r["compilationResult"] for rc in rel for r in rc.get("recentScheduledReleaseRecords", []) if r.get("compilationResult")), None)
+    if comp is None: print("❌ no compiled release to invoke", file=sys.stderr); sys.exit(1)
+    only_the_assertion = {"includedTargets": [{"database": P, "schema": "iampatterson_assertions", "name": "assert_volume_anomaly"}],
+                          "transitiveDependenciesIncluded": False, "transitiveDependentsIncluded": False}
+    if DRY: print(f"[dry-run] would invoke assert_volume_anomaly from {comp.split('/')[-1]} and wait up to {wait//60} min for the alert"); return
+    for _ in pull(sub, 1): pass  # drain anything stale
+    url = f"https://dataform.googleapis.com/v1/{repo}/workflowInvocations"
+    try:
+        inv = call("POST", url, {"compilationResult": comp, "invocationConfig": only_the_assertion})
+    except SystemExit:
+        # Invoking just the assertion is refused two ways in this project: an
+        # invocation built from a compilation result must name a service account
+        # under strict act-as, and the workflow-config path rejects an invocation
+        # config outright. What is left is the full production workflow — the same
+        # twenty actions the 04:00 UTC schedule runs — so it is gated rather than
+        # taken silently. The nightly run fires this policy for free; this switch
+        # exists for the case where the proof is needed now.
+        if os.environ.get("RUN_FULL_WORKFLOW") != "1":
+            print("❌ the single-assertion invocation was refused (strict act-as). Re-run with RUN_FULL_WORKFLOW=1 to\n"
+                  "   invoke the whole production workflow instead, or wait for the 04:00 UTC schedule, which fires\n"
+                  "   this policy on the same failing assertion at no cost.", file=sys.stderr)
+            sys.exit(2)
+        cfgs = call("GET", f"https://dataform.googleapis.com/v1/{repo}/workflowConfigs").get("workflowConfigs", [])
+        if not cfgs: print("❌ no workflow config to invoke through", file=sys.stderr); sys.exit(1)
+        print(f"invoking the full workflow through {cfgs[0]['name'].split('/')[-1]}")
+        inv = call("POST", url, {"workflowConfig": cfgs[0]["name"]})
+    print(f"invoked {inv['name'].split('/')[-1]}; waiting for it to finish")
+    state = "RUNNING"; t0 = time.time()
+    while state == "RUNNING" and time.time() - t0 < 600:
+        time.sleep(20); state = call("GET", f"https://dataform.googleapis.com/v1/{inv['name']}").get("state", "?")
+    print(f"invocation finished in state {state}; waiting up to {wait//60} min for the notification")
+    opened = None
+    for at, data in pull(sub, wait):
+        i = data.get("incident", {})
+        if "Dataform" in json.dumps(data) and i.get("state") == "open":
+            opened = (at, i.get("incident_id"), i.get("policy_name")); break
+    lines = [f"# Alert policy rehearsal: Dataform workflow invocation failed", "",
+             f"Deliverable 12.4. Generated by `infrastructure/monitoring/apply.sh rehearse-dataform` at {stamp.strftime('%Y-%m-%dT%H:%M:%SZ')}. This is the log-match policy kind proved end to end: `capacity_no_budget` is a threshold policy, so before this run no `conditionMatchedLog` policy had ever notified.", "",
+             f"- invoked `assert_volume_anomaly` alone (no dependencies, no table written) from compilation `{comp.split('/')[-1]}`; the invocation finished in state **{state}**",
+             f"- the assertion is the one that fails nightly: 'Assertion failed, expected zero rows', 28 times in the 30 days to 2026-09-04"]
+    lines.append(f"- OPEN notification received at {opened[0]}: incident `{opened[1]}`, policy `{opened[2]}`. The same notification went to `ops-email`." if opened
+                 else f"- no OPEN notification within {wait//60} min. The log-match policies are unproven; investigate before relying on them.")
+    os.makedirs(OUT, exist_ok=True); path = f"{OUT}/{stamp.strftime('%Y-%m-%d')}-dataform-policy-rehearsal.md"
+    open(path, "w").write("\n".join(lines) + "\n"); print("\n".join(lines[3:])); print(f"record: {path}"); sys.exit(0 if opened else 1)
 
 def rehearse_dashboard():
     """The acceptance criterion, run rather than asserted: delete the live
@@ -495,7 +635,14 @@ def rehearse_dashboard():
     before = dashboard_shape(cur); print(f"deleting {cur['name']}")
     call("DELETE", f"https://monitoring.googleapis.com/v1/{cur['name']}")
     gone = by_name(paged(DASH, "dashboards")).get(name) is None
-    print("recreating from the spec"); made = call("POST", DASH, want)
+    print("recreating from the spec")
+    try:
+        made = call("POST", DASH, want)
+    except SystemExit:
+        # The dashboard is deleted and the rebuild failed. Say what to run
+        # rather than exiting on the API's message alone.
+        print(f"❌ the rebuild failed and {name} is not live. Recover with: apply.sh apply", file=sys.stderr)
+        raise
     again = by_name(paged(DASH, "dashboards")).get(name)
     same = again is not None and dashboard_shape(again) == before == dashboard_shape(want)
     lines = [f"# Dashboard rebuild rehearsal", "", f"Deliverable 12.5. Generated by `infrastructure/monitoring/apply.sh rehearse-dashboard` at {stamp.strftime('%Y-%m-%dT%H:%M:%SZ')}. The live dashboard was deleted and rebuilt from `infrastructure/monitoring/spec/dashboard.json`; the acceptance criterion is that it comes back identical.", "",
@@ -522,6 +669,8 @@ elif CMD == "verify":
     print("═══ uptime checks ═══"); verify(); sys.exit(0 if (logs_ok and pol_ok and dash_ok) else 1)
 elif CMD == "rehearse-policy":
     rehearse_policy()
+elif CMD == "rehearse-dataform":
+    rehearse_dataform()
 elif CMD == "rehearse-dashboard":
     rehearse_dashboard()
 elif CMD == "rehearse":

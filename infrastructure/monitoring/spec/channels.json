@@ -2,11 +2,21 @@
   {
     "displayName": "ops-email",
     "type": "email",
-    "labels": { "email_address": "ian@tunameltsmyheart.com" }
+    "labels": {
+      "email_address": "ian@tunameltsmyheart.com"
+    }
   },
   {
     "displayName": "ops-pubsub",
     "type": "pubsub",
-    "labels": { "topic": "projects/iampatterson/topics/monitoring-alerts" }
+    "labels": {
+      "topic": "projects/iampatterson/topics/monitoring-alerts"
+    },
+    "purpose": "Machine-readable delivery of the same notifications the email channel carries, so a rehearsal can read its own alert back and record it.",
+    "pullSubscription": {
+      "name": "monitoring-alerts-verify",
+      "ackDeadlineSeconds": 60,
+      "messageRetentionDuration": "7d"
+    }
   }
 ]

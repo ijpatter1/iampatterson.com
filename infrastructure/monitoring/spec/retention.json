@@ -2,6 +2,5 @@
   "bucket": "_Default",
   "retentionDays": 30,
   "status": "provisional, decided in 12.3 on 2026-09-04 and to be confirmed against the 13.1 data retention decision",
-  "rationale": "Thirty days covers an incident investigation window and is the free tier for the _Default bucket; the counts that matter beyond it live in the log-based metrics, which Cloud Monitoring keeps as time series. Nothing needs to outlive the bucket today, so there is no sink.",
-  "sinks": []
+  "rationale": "Thirty days covers an incident investigation window and is the free tier for the _Default bucket; the counts that matter beyond it live in the log-based metrics, which Cloud Monitoring keeps as time series. Nothing needs to outlive the bucket today, so there is no sink; a sink would be declared here and applied when one is needed."
 }

@@ -17,7 +17,7 @@
     "thresholdValue": 10,
     "duration": "0s",
     "threshold": "more than 10 responses with a 5xx status from one service inside a 5-minute window",
-    "firing": "sGTM's 'no available instance' aborts produced 16 5xx responses in the week to 2026-09-04, clustered at the 10:00 scheduler burst; the policy is expected to fire on the next burst above the threshold, and the record captures it when it does",
+    "firing": "sGTM's 'no available instance' aborts produced 16 5xx responses in the week to 2026-09-04, spread across six hours on four days rather than clustered at one burst; the policy is expected to fire on the next hour that crosses the threshold, and the record captures it when it does",
     "runbook": "13.5: 'sGTM not responding' and 'event pipeline backlog'"
   },
   {

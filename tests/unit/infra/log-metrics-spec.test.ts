@@ -24,7 +24,6 @@ interface Retention {
   bucket: string;
   retentionDays: number;
   status: string;
-  sinks: string[];
 }
 interface Query {
   service: string;
@@ -87,7 +86,10 @@ describe('infrastructure/monitoring/spec/retention.json', () => {
     expect(r.bucket).toBe('_Default');
     expect(r.retentionDays).toBeGreaterThanOrEqual(30);
     expect(r.status).toMatch(/provisional.*13\.1/i);
-    expect(r.sinks).toEqual([]);
+    // No sink is declared, and the script has no sink path to leave half-built:
+    // the day one is needed, both the field and its apply step arrive together.
+    expect(r).not.toHaveProperty('sinks');
+    expect(read('infrastructure/monitoring/apply.sh')).not.toContain('sinks');
   });
 });
 
