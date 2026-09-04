@@ -139,12 +139,19 @@ case "$CMD" in
     AFTER=$(gcloud run services describe "$SERVICE" --project="$PROJECT" --region="$REGION" --format='value(status.latestCreatedRevisionName)')
     echo "new revision (no traffic): $AFTER"
     mkdir -p "$DIFF_DIR"
-    if write_diff "$SERVICE" "$BEFORE" "$AFTER" "$DIFF_DIR/$AFTER.diff"; then CLEAN=1; else CLEAN=0; fi
+    write_diff "$SERVICE" "$BEFORE" "$AFTER" "$DIFF_DIR/$AFTER.diff"; DIFF_RC=$?
     echo "diff written: $DIFF_DIR/$AFTER.diff"
     if [ "$PROMOTE" != "1" ]; then
       echo ""; echo "Stopped before traffic. Promote this exact revision with:"; echo "  scripts/deploy-cloud-run.sh promote $SERVICE $AFTER"; exit 0
     fi
-    if [ "$CLEAN" != "1" ] && [ "$ALLOW_DRIFT" != "1" ]; then
+    # write_diff returns 2 when a snapshot failed, which is not the same thing
+    # as drift: there is no diff to review, so --allow-drift has nothing to
+    # override and must not carry the promotion (review finding, 2026-09-04).
+    if [ "$DIFF_RC" = "2" ]; then
+      echo "❌ the drift snapshot failed, so no diff was recorded and --allow-drift does not apply; not promoting. Investigate, then promote by hand:" >&2
+      echo "  scripts/deploy-cloud-run.sh promote $SERVICE $AFTER" >&2; exit 2
+    fi
+    if [ "$DIFF_RC" != "0" ] && [ "$ALLOW_DRIFT" != "1" ]; then
       echo "❌ fields other than the image digest differ; not promoting. Re-run with --allow-drift after reviewing, or promote by hand:" >&2
       echo "  scripts/deploy-cloud-run.sh promote $SERVICE $AFTER" >&2; exit 2
     fi

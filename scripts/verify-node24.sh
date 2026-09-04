@@ -39,7 +39,11 @@ NV=$(node -v 2>/dev/null); [[ "$NV" == v24.* ]]; check "local node on the test P
 WF=.github/workflows/sync-dataform.yml
 [ -f "$WF" ] && ! grep -qE "setup-node|node-version" "$WF"; check "sync-dataform workflow pins no Node" $? "$( [ -f "$WF" ] && echo "no setup-node / node-version in the workflow" || echo "workflow file missing")"
 for s in event-stream data-generator claudish-proxy; do
-  TN=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("devDependencies",{}).get("@types/node",""))' "infrastructure/cloud-run/$s/package.json"); [[ "$TN" == ^24.* ]] || [[ "$TN" == 24.* ]]; check "$s @types/node on major 24" $? "\`${TN:-absent}\`"
+  TN=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("devDependencies",{}).get("@types/node",""))' "infrastructure/cloud-run/$s/package.json")
+  # Compare the major number, not a glob. A [[ ]] equality test against a
+  # caret-prefixed pattern is a literal-prefix match, not a regex, so it passed
+  # "^24.13.3" and rejected "~24.13.3" or ">=24.0.0" (review finding).
+  TMAJ=$(printf '%s' "$TN" | sed -E 's/^[^0-9]*//' | cut -d. -f1); [ "$TMAJ" = "24" ]; check "$s @types/node on major 24" $? "\`${TN:-absent}\`"
 done
 
 # 2b. Suites under this Node (the acceptance's first clause; slow, but the record must carry it)

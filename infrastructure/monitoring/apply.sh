@@ -250,9 +250,18 @@ def desired_metric(m):
     if m.get("labels"): d["labelExtractors"] = {k: v["extractor"] for k, v in m["labels"].items()}
     return d
 
+def metric_shape(m):
+    """Every field desired_metric sends, the metric descriptor included: a label
+    description edit used to report "unchanged" and never reach the API."""
+    d = m.get("metricDescriptor", {}) or {}
+    return {"filter": m.get("filter"), "description": m.get("description"), "extractors": m.get("labelExtractors", {}),
+            "metricKind": d.get("metricKind"), "valueType": d.get("valueType"), "unit": d.get("unit"),
+            # STRING is the zero value of the label's valueType enum, so the API
+            # omits it on the way back; read the absence as the STRING we sent.
+            "labels": sorted((l.get("key"), l.get("valueType", "STRING"), l.get("description")) for l in d.get("labels", []))}
+
 def metric_differs(cur, want):
-    return (cur.get("filter") != want["filter"] or cur.get("description") != want["description"]
-            or cur.get("labelExtractors", {}) != want.get("labelExtractors", {}))
+    return metric_shape(cur) != metric_shape(want)
 
 def reconcile_metrics():
     live = {m["name"]: m for m in paged(f"{LOGGING}/metrics", "metrics")}
@@ -284,8 +293,11 @@ def run_queries(hours=24):
         entries = d.get("entries", []); count = len(entries)  # a page token means "at least this many"; the row renders the +
         sample = ""
         if entries:
-            e = entries[0]; sample = (e.get("jsonPayload", {}).get("event") or e.get("textPayload") or json.dumps(e.get("jsonPayload", {}))[:80] or str(e.get("httpRequest", {}).get("status", "")))
-            sample = f"latest {e.get('timestamp','')[:19]}: {str(sample)[:90] if str(sample).strip('{} ') else 'entry carries no payload text; severity ' + e.get('severity', '?')}"
+            e = entries[0]; jp = e.get("jsonPayload") or {}
+            status = e.get("httpRequest", {}).get("status")
+            sample = (jp.get("event") or e.get("textPayload") or (json.dumps(jp)[:80] if jp else "")
+                      or (f"HTTP {status}" if status else "") or f"severity {e.get('severity', '?')}, no payload text")
+            sample = f"latest {e.get('timestamp','')[:19]}: {str(sample)[:90]}"
         rows.append((q["service"], count, d.get("nextPageToken") is not None, sample))
     return rows
 
@@ -294,7 +306,7 @@ def verify_metrics_and_logs():
     b = call("GET", f"{LOGGING}/locations/global/buckets/{retention_spec['bucket']}")
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"); rows = []; ok = True
     for m in metrics_spec:
-        cur = live.get(m["name"]); good = cur is not None and cur.get("filter") == m["filter"]; ok = ok and good
+        cur = live.get(m["name"]); good = cur is not None and not metric_differs(cur, desired_metric(m)); ok = ok and good
         rows.append(f"| {'✓' if good else '✗'} | metric `{m['name']}` | {'present, filter matches the spec' if good else ('absent' if cur is None else 'filter differs from the spec')} |")
     ret_ok = live_retention(b) == int(retention_spec["retentionDays"]); ok = ok and ret_ok
     rows.append(f"| {'✓' if ret_ok else '✗'} | `_Default` retention | {live_retention(b)} days live; spec {retention_spec['retentionDays']} days, {retention_spec['status']} |")
@@ -332,10 +344,18 @@ def desired_check(c):
         "period": f"{c['periodSeconds']}s", "timeout": f"{c['timeoutSeconds']}s", "checkerType": "STATIC_IP_CHECKERS",
     }
 
+def check_shape(c):
+    """Every field desired_check sends. Projecting both sides through one
+    function is what keeps a spec edit from reporting "unchanged" — the same
+    defect policy_shape fixes, which lived here too."""
+    h = c.get("httpCheck", {}) or {}
+    return {"path": h.get("path"), "port": h.get("port"), "useSsl": h.get("useSsl", False), "validateSsl": h.get("validateSsl", False),
+            "requestMethod": h.get("requestMethod"), "period": c.get("period"), "timeout": c.get("timeout"),
+            "checkerType": c.get("checkerType"),
+            "statusClasses": sorted(s.get("statusClass") for s in h.get("acceptedResponseStatusCodes", []))}
+
 def check_differs(cur, want):
-    h = cur.get("httpCheck", {})
-    return (h.get("path") != want["httpCheck"]["path"] or cur.get("period") != want["period"] or cur.get("timeout") != want["timeout"]
-            or sorted(s["statusClass"] for s in h.get("acceptedResponseStatusCodes", [])) != sorted(s["statusClass"] for s in want["httpCheck"]["acceptedResponseStatusCodes"]))
+    return check_shape(cur) != check_shape(want)
 
 def reconcile_checks():
     live = by_name(paged(f"{API}/uptimeCheckConfigs", "uptimeCheckConfigs"))
@@ -573,7 +593,12 @@ def rehearse_dataform():
     the log-match kind, which is what the crash-loop, scheduler and Dataform
     policies use. `assert_volume_anomaly` already fails every night, so running
     that one assertion off-schedule produces a genuine ERROR log without
-    inventing a failure. Only the assertion is invoked — no table is written."""
+    inventing a failure. Only the assertion is invoked — no table is written.
+
+    This works only while some Dataform action is failing. Phase 12 corrects
+    that assertion, so once the fix reaches the dataform branch the subcommand
+    stops early rather than waiting out its deadline on a signal that can no
+    longer appear."""
     sub = verify_subscription(); wait = int(os.environ["REHEARSE_WAIT_MIN"]) * 60
     stamp = datetime.now(timezone.utc)
     repos = call("GET", f"{DATAFORM}/repositories").get("repositories", [])
@@ -589,7 +614,9 @@ def rehearse_dataform():
     url = f"https://dataform.googleapis.com/v1/{repo}/workflowInvocations"
     try:
         inv = call("POST", url, {"compilationResult": comp, "invocationConfig": only_the_assertion})
-    except SystemExit:
+    except SystemExit as refusal:
+        if "act as" not in str(refusal) and "INVALID_ARGUMENT" not in str(refusal):
+            raise  # 401, 403, 5xx: report the real cause, not a re-run instruction that fails the same way
         # Invoking just the assertion is refused two ways in this project: an
         # invocation built from a compilation result must name a service account
         # under strict act-as, and the workflow-config path rejects an invocation
@@ -610,6 +637,12 @@ def rehearse_dataform():
     state = "RUNNING"; t0 = time.time()
     while state == "RUNNING" and time.time() - t0 < 600:
         time.sleep(20); state = call("GET", f"https://dataform.googleapis.com/v1/{inv['name']}").get("state", "?")
+    if state == "SUCCEEDED":
+        print("❌ the invocation succeeded, so it wrote no ERROR log and this policy cannot be rehearsed this way.\n"
+              "   The rehearsal only produces a signal while a Dataform action is failing, and the assertion it was\n"
+              "   built around is corrected in Phase 12 — once that reaches the dataform branch there is no\n"
+              "   on-demand way to fire a log-match policy in this project.", file=sys.stderr)
+        sys.exit(2)
     print(f"invocation finished in state {state}; waiting up to {wait//60} min for the notification")
     opened = None
     for at, data in pull(sub, wait):

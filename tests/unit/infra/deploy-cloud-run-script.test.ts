@@ -29,6 +29,18 @@ describe('scripts/deploy-cloud-run.sh', () => {
     expect(script).toContain('not promoting');
   });
 
+  it('refuses to promote when the drift snapshot itself failed, whatever --allow-drift says', () => {
+    // write_diff returns 2 when a snapshot could not be taken and 1 on real
+    // drift. The caller collapsed both into one flag, so --allow-drift — the
+    // documented deploy path — promoted a revision whose diff had never been
+    // computed, which is the one thing the gate exists to prevent.
+    expect(script).toContain('DIFF_RC=$?');
+    const gate = script.slice(script.indexOf('DIFF_RC=$?'), script.indexOf('promote: all traffic'));
+    expect(gate).toContain('[ "$DIFF_RC" = "2" ]');
+    expect(gate).toContain('--allow-drift does not apply');
+    expect(gate.indexOf('"$DIFF_RC" = "2"')).toBeLessThan(gate.indexOf('ALLOW_DRIFT'));
+  });
+
   it('writes every diff under docs/verification/deploys so the record can cite it', () => {
     expect(script).toContain('docs/verification/deploys');
   });

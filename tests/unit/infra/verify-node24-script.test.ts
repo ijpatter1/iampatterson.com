@@ -39,4 +39,12 @@ describe('scripts/verify-node24.sh', () => {
     expect(script).toContain('[ -f "$WF" ]');
     expect(script).toContain('@types/node');
   });
+
+  it('compares the @types/node major number rather than glob-matching a caret prefix', () => {
+    // [[ "$TN" == ^24.* ]] is a literal-prefix glob, not a regex: it passes
+    // "^24.13.3" but reports "~24.13.3" or ">=24.0.0" as off major 24.
+    expect(script).not.toMatch(/==\s*\^24\./);
+    expect(script).toContain("cut -d. -f1");
+    expect(script).toContain('[ "$TMAJ" = "24" ]');
+  });
 });
