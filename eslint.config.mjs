@@ -11,6 +11,8 @@ const config = [
     ignores: [
       'docs/input_artifacts/**',
       'infrastructure/**',
+      // Local `vercel build` output; gitignored, never source.
+      '.vercel/**',
       'coverage/**',
       // eslint-config-next/typescript already ignores .next/, out/, build/,
       // node_modules/ (the last two by ESLint default).

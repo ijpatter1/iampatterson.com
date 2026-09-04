@@ -46,7 +46,7 @@ A missing project-shape artifact is a _mode signal_, not an error: no phase docs
 
 ## Project facts Claude can't infer
 
-- **Two Nodes on this Mac.** An x64 Node breaks the project; prepend `/opt/homebrew/bin` to `PATH` in every shell command so the arm64 Node runs.
+- **Node on this Mac.** The project runs on Node 24 (`engines.node` 24.x). Prepend `/opt/homebrew/opt/node@24/bin:/opt/homebrew/bin` to `PATH` in every shell command: the keg-only arm64 Node 24 first, then the arm64 Homebrew tools; an x64 Node or the arm64 Node 20 elsewhere on the machine breaks the project.
 - **gcloud defaults to the wrong project.** The CLI's default project is `holdout-500412`; every GCP command passes `--project=iampatterson --region=us-central1`. Credentials expire roughly hourly and overnight; Ian re-authenticates with `! gcloud auth login`.
 - **Deployed topology.** Vercel hosts the Next.js site (production redirects the apex to `https://www.iampatterson.com`, so `www` is the browser origin). Cloud Run in `iampatterson` runs `sgtm` (custom domain `io.iampatterson.com`), `sgtm-preview`, `event-stream`, `data-generator`, `metabase` (behind an IAP load balancer at `bi.iampatterson.com`) and `claudish-proxy`. Three Cloud Scheduler jobs drive the data generator on weekdays.
 - **Claudish proxy contract.** `NEXT_PUBLIC_CLAUDISH_PROXY_URL` is the full endpoint (`https://…run.app/translate`); the client also completes a bare service URL. Deploy with `MODEL_ID_CONFIRMED=1 bash setup.sh` from the service directory; the kill switch is `--update-env-vars KILL_SWITCH=on` and survives deploys. The golden suite (`scripts/run-claudish-golden.sh`) is the operator gate before and after a deploy.
@@ -56,7 +56,7 @@ A missing project-shape artifact is a _mode signal_, not an error: no phase docs
 - **Dataform branch is generated.** `dataform` mirrors `infrastructure/dataform/` and is synced from `main` by a GitHub Action; edit models under `infrastructure/dataform/` only.
 - **Event schema changes follow the checklist** in `.claude/rules/project-coding-standards.md` (schema pin, narrative-flow cases, BigQuery `schema.json` columns, GTM container wiring).
 - **Review gate is `/guv:eval`**, not the legacy `@evaluator` pair. Ultrareview (`/code-review ultra`) has three free runs per account, one-time; keep PRs under 8,000 changed lines to qualify.
-- **Runtime deadline.** Vercel fails Node 20 builds from 2026-10-01 unless `package.json` pins `engines.node` to `24.x`; the three Cloud Run images are `node:20-slim` today.
+- **Runtime currency.** Vercel fails Node 20 builds from 2026-10-01; the project moved to Node 24 on every surface (engines pin, `node:24-slim` images, Vercel project setting) in Phase 12, deliverable 12.1. `tests/unit/infra/runtime-currency.test.ts` pins it.
 
 ## What is intentionally NOT in this file
 
