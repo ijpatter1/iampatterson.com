@@ -43,7 +43,7 @@
 **Framework:** Next.js 16+ with App Router (upgraded from Next.js 14 in Phase 10a)
 **Language:** TypeScript (strict mode: `"strict": true` in tsconfig.json)
 **Styling:** Tailwind CSS with a custom design system
-**Runtime:** Node.js ≥20.9.0 (Next 16 floor; enforced via `engines.node` in `package.json`)
+**Runtime:** Node.js 24.x (`engines.node` in `package.json`; Vercel and the three Cloud Run images build on the same major since Phase 12, deliverable 12.1; Next 16's own floor is 20.9)
 **Linting:** ESLint 9 flat config (`eslint.config.mjs`), run via `eslint .`; `next lint` was removed in Next 16
 
 **App Router Structure:**
@@ -620,14 +620,14 @@ Performance, mobile testing, error handling, security review, SEO.
 ### Current state
 
 - **Runtimes.** `package.json` engines `20.x`; `event-stream`, `data-generator` and `claudish-proxy` build from `node:20-slim`; the Vercel project setting is already Node 24.x. Vercel refuses Node 20 builds from 2026-10-01.
-- **Monitoring.** No alert policies, notification channels, uptime checks, dashboards or log-based metrics exist in project `iampatterson`. Cloud Logging keeps `_Default` for 30 days and `_Required` for 400. The Claudish proxy emits structured JSON events (`translate_done`, `request_error`, `loop_fell_through`, `budget_threshold`, `capacity_no_budget`) with an allowlisted field set; event-stream and data-generator log structured errors.
+- **Monitoring.** No alert policies, notification channels, uptime checks, dashboards or log-based metrics exist in project `iampatterson`. Cloud Logging keeps `_Default` for 30 days and `_Required` for 400. The Claudish proxy emits structured JSON events (`translate_done`, `request_error`, `loop_fell_through`, `budget_threshold`, `capacity_no_budget`) with an allowlisted field set; event-stream emits no error logs today (its catch blocks are silent; errors surface only as HTTP 400s) and data-generator emits one plain-text `[ad-insert]` failure line.
 - **Health surfaces.** `/health` on the three Node services; `/healthy` on sGTM; the site at `https://www.iampatterson.com`; Metabase at `bi.iampatterson.com` behind IAP (an unauthenticated probe sees the IAP redirect).
 
 ### Target state
 
 - **Runtimes.** `engines.node` `24.x`; the three Dockerfiles on `node:24-slim`; the same pin recorded in the project rules. Local development uses the Homebrew arm64 Node.
 - **Monitoring as configuration.** `infrastructure/monitoring/` holds compact specs (JSON or YAML) for the notification channel, the uptime checks, the alert policies and the dashboard, plus `apply.sh`, an idempotent script that creates or updates each resource through `gcloud` or the Monitoring REST API and prints a diff first. The dashboard's panels are generated from the service list so the spec stays small.
-- **Log-based metrics.** One metric per structured error event, defined in the same spec set; the `_Default` bucket retention set to the value decided in 12.3 and recorded here.
+- **Log-based metrics.** One metric per structured error event, defined in the same spec set; the `_Default` bucket retention set provisionally in 12.3 and confirmed against the 13.1 data retention decision, both recorded here.
 - **Alert routing.** Every policy routes to the channel from 12.2; the runbook (13.5) links each alert to a procedure.
 
 ### Key Architectural Decisions
