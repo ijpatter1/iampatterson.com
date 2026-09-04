@@ -381,6 +381,8 @@
 
 ## Phase 11, Operational Readiness & Maintenance Infrastructure
 
+> Carried forward, not abandoned: on 2026-09-04 this phase was re-planned as the next initiative under guv (`docs/spec/operational-readiness.md`), with the Node.js 24 runtime upgrade added as its first deliverable. The ABANDONED stamp below is the archive script's marker for open lines at freeze time.
+
 *Goal: Build the monitoring, alerting, and operational tooling needed to keep the full stack healthy in production.*
 
 - ⬜ Cloud Monitoring dashboard: single pane for Cloud Run services, Pub/Sub throughput, BigQuery costs, SSL status
@@ -411,3 +413,5 @@ Carry-forward items from earlier phases that need a Phase 11 capability to unblo
 - ~~Re-run 18mo ad_platform_raw backfill~~ — partial: 26-day IAM-outage gap filled via `./backfill.sh --months 1` per model on 2026-04-24 (ecommerce 13:22-13:29 UTC, subscription 13:45-13:48, leadgen 13:48-13:51). Final shape after Pass-1 dedup (`a10759b`, applied 2026-04-24 ~14:30 UTC): **uniform 15 rows/day × 3 models from 2026-03-01 → 2026-04-24** (the 6-day overlap on 2026-03-24 → 2026-03-29 was originally 30 rows/day from the old + new backfill colliding; deduped via 3-step ROW_NUMBER stage + DELETE + INSERT). Full 18mo extension is portfolio-density nice-to-have; hourly schedule keeps it fresh going forward.
 
 **Hourly schedule + idempotent ad-platform inserts (commits `9d93915`–`9911f58`, applied 2026-04-24):** Three Cloud Scheduler jobs staggered as ecommerce `:00`, subscription `:20`, leadgen `:40` on `0/20/40 9-17 * * 1-5 America/New_York` (was: same `:00` minute, only 1 of 3 jobs winning the `state.isRunning` race per hour). `insertAdPlatformRecords` refactored from streaming `table.insert()` to parameterized `MERGE` on (date, platform, business_model, campaign_name) so re-emitting "today's" rows every hourly tick is idempotent (UPSERT — UPDATE metrics + campaign_name_raw on match, INSERT otherwise). Cloud Run revision `data-generator-00007-b7h` (Pass-1 fix-pack added ad-insert error logging + COMPANY_NAMES rotation + JSDoc; superseded `00006-zhl` which had the MERGE but lacked Pass-1 fixes). End-to-end smoke validated: 1st `/generate date:2026-04-25` → 7 rows; 2nd same call → still 7 rows (UPDATE branch holds). One-time edge: today's pre-deploy rows are in the BQ streaming buffer (~30-90 min flush); MERGE rejects them temporarily with `"would affect rows in the streaming buffer"`. No data loss; tomorrow onwards is fully clean.
+
+> **ABANDONED 2026-09-04** — archived with incomplete deliverables (see unchecked items above).
