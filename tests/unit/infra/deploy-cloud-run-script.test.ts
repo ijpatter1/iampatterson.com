@@ -72,4 +72,19 @@ describe('scripts/deploy-cloud-run.sh', () => {
     expect(script).toContain('imageDigest');
     expect(script).toContain('besides the digest');
   });
+
+  it('treats a failed snapshot as a failure, never as no drift, and asserts the positive verdict', () => {
+    expect(script).toContain('could not snapshot');
+    expect(script).toMatch(/grep -qE "\^ \*0 field/);
+  });
+
+  it('renders secret env by name, key and version so a repointed secret shows as drift', () => {
+    expect(script).toContain('<secret:%s/%s@%s>');
+  });
+
+  it('keeps set -e from killing the health probe before the roll-back line prints', () => {
+    const probes = script.split('\n').filter((l) => l.includes("-w '%{http_code}'"));
+    expect(probes.length).toBeGreaterThan(0);
+    for (const probe of probes) expect(probe).toContain('|| true');
+  });
 });

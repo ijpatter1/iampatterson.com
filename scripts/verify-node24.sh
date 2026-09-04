@@ -36,16 +36,25 @@ done
 
 # 2. Local toolchain
 NV=$(node -v 2>/dev/null); [[ "$NV" == v24.* ]]; check "local node on the test PATH" $? "$NV"
-grep -qE "setup-node|node-version" .github/workflows/sync-dataform.yml; [ $? -ne 0 ]; check "sync-dataform workflow pins no Node" $? "no setup-node / node-version in the workflow"
+WF=.github/workflows/sync-dataform.yml
+[ -f "$WF" ] && ! grep -qE "setup-node|node-version" "$WF"; check "sync-dataform workflow pins no Node" $? "$( [ -f "$WF" ] && echo "no setup-node / node-version in the workflow" || echo "workflow file missing")"
+for s in event-stream data-generator claudish-proxy; do
+  TN=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("devDependencies",{}).get("@types/node",""))' "infrastructure/cloud-run/$s/package.json"); [[ "$TN" == ^24.* ]] || [[ "$TN" == 24.* ]]; check "$s @types/node on major 24" $? "\`${TN:-absent}\`"
+done
 
 # 2b. Suites under this Node (the acceptance's first clause; slow, but the record must carry it)
-ROOT=$(npm test 2>&1 | grep -E "^Tests:" | tail -1 | tr -s ' '); printf '%s' "$ROOT" | grep -qE "^Tests: +[0-9]+ passed, [0-9]+ total$"; check "root suite green under $NV" $? "${ROOT:-no summary line}"
+# Exit codes decide; the summary lines are evidence. Jest reports a suite that fails to
+# compile, or a throwing afterAll (the golden fall-through gate), as a failed SUITE with a
+# clean Tests: line, so the grep alone would record a false green (review finding).
+LOG=$(mktemp); npm test > "$LOG" 2>&1; RC=$?; ROOT=$(grep -E "^Tests:" "$LOG" | tail -1 | tr -s ' '); SUITES=$(grep -E "^Test Suites:" "$LOG" | tail -1 | tr -s ' '); rm -f "$LOG"
+[ "$RC" -eq 0 ]; check "root suite green under $NV" $? "exit $RC; ${ROOT:-no summary line}; ${SUITES:-}"
 for s in event-stream data-generator claudish-proxy; do
-  R=$(cd "infrastructure/cloud-run/$s" && npm test 2>&1 | grep -E "^Tests:" | tail -1 | tr -s ' '); printf '%s' "$R" | grep -qE "failed"; [ $? -ne 0 ] && printf '%s' "$R" | grep -q "passed"; check "$s suite green under $NV" $? "${R:-no summary line}"
+  LOG=$(mktemp); (cd "infrastructure/cloud-run/$s" && npm test > "$LOG" 2>&1); RC=$?; R=$(grep -E "^Tests:" "$LOG" | tail -1 | tr -s ' '); rm -f "$LOG"
+  [ "$RC" -eq 0 ]; check "$s suite green under $NV" $? "exit $RC; ${R:-no summary line}"
 done
-GOLD=$(bash scripts/run-claudish-golden.sh 2>&1); GSUM=$(printf '%s' "$GOLD" | grep -E "^Tests:" | tail -1 | tr -s ' '); GFT=$(printf '%s' "$GOLD" | grep -c "loop fell through pre-token")
+LOG=$(mktemp); bash scripts/run-claudish-golden.sh > "$LOG" 2>&1; GRC=$?; GOLD=$(cat "$LOG"); rm -f "$LOG"; GSUM=$(printf '%s' "$GOLD" | grep -E "^Tests:" | tail -1 | tr -s ' '); GFT=$(printf '%s' "$GOLD" | grep -c "loop fell through pre-token")
 GFAIL=$(printf '%s' "$GOLD" | grep -E "^ +(cl2en|en2cl)-[0-9]+-[a-z0-9-]+ violated:" | sed -E 's/^ *//; s/ violated: / — /' | tr '\n' ';' | sed 's/;$//')
-printf '%s' "$GSUM" | grep -qE "failed"; [ $? -ne 0 ] && [ -n "$GSUM" ]; check "proxy golden gate green under $NV (served loop; fall-throughs counted)" $? "${GSUM:-no summary line}; $GFT case(s) fell through to the Claude lane${GFAIL:+; failed: $GFAIL}"
+[ "$GRC" -eq 0 ]; check "proxy golden gate green under $NV (served loop; fall-throughs counted)" $? "exit $GRC; ${GSUM:-no summary line}; $GFT case(s) fell through to the Claude lane${GFAIL:+; failed: $GFAIL}"
 
 # 3. Newest Vercel build log
 VERCEL_ENV="${VERCEL_ENV:-preview}"
@@ -65,11 +74,15 @@ for s in event-stream data-generator claudish-proxy; do
   REV=$(gcloud run services describe "$s" --project="$PROJECT" --region="$REGION" --format=json 2>/dev/null | python3 -c 'import json,sys; d=json.load(sys.stdin); t=[x for x in d["status"].get("traffic",[]) if x.get("percent")]; print(t[0]["revisionName"] if t else "")')
   IMG=$(gcloud run revisions describe "$REV" --project="$PROJECT" --region="$REGION" --format='value(spec.containers[0].image)' 2>/dev/null)
   DIGEST="${IMG##*@}"
-  BID=$(gcloud builds list --project="$PROJECT" --region="$REGION" --limit=30 --format='value(id,results.images[].digest)' 2>/dev/null | grep -F "$DIGEST" | head -1 | awk '{print $1}')
+  BID=""
+  # An empty digest would match every build (grep -F ""), so it is a failure, not a lookup.
+  if [ -n "$REV" ] && [ -n "$IMG" ] && [ "$DIGEST" != "$IMG" ]; then
+    BID=$(gcloud builds list --project="$PROJECT" --region="$REGION" --limit=30 --format='value(id,results.images[].digest)' 2>/dev/null | grep -F "$DIGEST" | head -1 | awk '{print $1}')
+  fi
   if [ -n "$BID" ]; then
     n=$(gcloud builds log "$BID" --project="$PROJECT" --region="$REGION" 2>/dev/null | grep -c 'node:24-slim'); [ "$n" -ge 1 ]; check "$s serving revision built from node:24-slim" $? "$REV, build $BID (matched by image digest), $n log line(s)"
   else
-    check "$s serving revision built from node:24-slim" 1 "$REV: no Cloud Build found for its image"
+    check "$s serving revision built from node:24-slim" 1 "${REV:-<no serving revision resolved>}: no Cloud Build matched the image digest"
   fi
 done
 
@@ -110,7 +123,7 @@ printf '%s' "$SMOKE" | grep -q "FAIL"; [ $? -ne 0 ]; check "claudish-proxy smoke
 for spec in ${DEPLOY_DIFFS:-}; do
   IFS=: read -r s a b <<< "$spec"
   out=$(DIFF_DIR=docs/verification/deploys bash scripts/deploy-cloud-run.sh diff "$s" "$a" "$b" 2>&1 | grep -E "differ|digest" | tr '\n' ' ')
-  printf '%s' "$out" | grep -q "0 field(s) differ"; check "$s redeploy $a -> $b changed only the image digest" $? "$out (docs/verification/deploys/$b.diff)"
+  printf '%s' "$out" | grep -qE "(^| )0 field\(s\) differ besides the digest"; check "$s redeploy $a -> $b changed only the image digest" $? "$out (docs/verification/deploys/$b.diff)"
 done
 
 # 7. Record

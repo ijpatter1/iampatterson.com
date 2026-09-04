@@ -42,7 +42,7 @@ snapshot_revision() {
     | python3 -c '
 import json, sys
 d = json.load(sys.stdin); s = d["spec"]; c = s["containers"][0]; a = d["metadata"].get("annotations", {})
-env = {e["name"]: e.get("value", "<secret:" + e.get("valueFrom", {}).get("secretKeyRef", {}).get("name", "?") + ">") for e in c.get("env", [])}
+env = {e["name"]: e.get("value", "<secret:%s/%s@%s>" % (e.get("valueFrom", {}).get("secretKeyRef", {}).get("name", "?"), e.get("valueFrom", {}).get("secretKeyRef", {}).get("key", "?"), e.get("valueFrom", {}).get("secretKeyRef", {}).get("version", "?"))) for e in c.get("env", [])}
 ref = c.get("image", "")
 out = {
   "imagePath": ref.split("@")[0],
@@ -79,25 +79,31 @@ PYEOF
 }
 
 # Print the diff and return 0 when only the digest changed, 1 otherwise.
+# Returns 0 only when both snapshots succeeded, the diff ran, and nothing but
+# the digest differs. A failed snapshot (expired credential, missing revision)
+# is a failure, never "no drift" (review finding, 2026-09-04).
 write_diff() { # write_diff <service> <before> <after> <out-file>
   local tmp; tmp=$(mktemp -d)
-  snapshot_revision "$2" > "$tmp/before.json"
-  snapshot_revision "$3" > "$tmp/after.json"
+  if ! snapshot_revision "$2" > "$tmp/before.json" || ! snapshot_revision "$3" > "$tmp/after.json"; then
+    echo "❌ could not snapshot $2 or $3 (credential expired? revision gone?)" | tee "$4" >&2; rm -rf "$tmp"; return 2
+  fi
   {
     echo "# $1: $2 -> $3 ($(date -u +%Y-%m-%dT%H:%M:%SZ))"
-    diff_revisions "$tmp/before.json" "$tmp/after.json"
+    diff_revisions "$tmp/before.json" "$tmp/after.json" || echo "  diff failed"
   } | tee "$4"
   rm -rf "$tmp"
-  ! grep -q "review before promoting" "$4"
+  grep -qE "^ *0 field\(s\) differ besides the digest$" "$4"
 }
 
 health_check() { # health_check <service> <revision-for-the-message> <before-revision>
   local url code via
   url=$(gcloud run services describe "$1" --project="$PROJECT" --region="$REGION" --format='value(status.url)')
   # A private service (no allUsers invoker) answers 403 to an anonymous probe; retry with the caller's identity token.
-  code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "${url}${HEALTH_PATH}"); via="anonymous"
+  # `|| true`: a hung container trips curl's --max-time (exit 28) and set -e must not kill
+  # the script before the roll-back line prints.
+  code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "${url}${HEALTH_PATH}" || true); via="anonymous"
   if [ "$code" = "403" ] || [ "$code" = "401" ]; then
-    code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 -H "Authorization: Bearer $(gcloud auth print-identity-token)" "${url}${HEALTH_PATH}"); via="identity token"
+    code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 -H "Authorization: Bearer $(gcloud auth print-identity-token 2>/dev/null || true)" "${url}${HEALTH_PATH}" || true); via="identity token"
   fi
   if [ "$code" = "200" ]; then
     echo "✓ ${url}${HEALTH_PATH} -> 200 on $2 ($via)"
@@ -115,7 +121,8 @@ case "$CMD" in
     ;;
   promote)
     SERVICE="${1:?service}"; REV="${2:?revision}"
-    BEFORE=$(serving_revision "$SERVICE")
+    BEFORE=$(serving_revision "$SERVICE" 2>/dev/null || true)
+    [ -n "$BEFORE" ] || { echo "❌ no serving revision found for $SERVICE" >&2; exit 1; }
     echo "═══ promote $SERVICE: all traffic to $REV (from $BEFORE) ═══"
     gcloud run services update-traffic "$SERVICE" --project="$PROJECT" --region="$REGION" --to-revisions="$REV=100" --quiet
     health_check "$SERVICE" "$REV" "$BEFORE"
@@ -125,8 +132,8 @@ case "$CMD" in
     PROMOTE=0; ALLOW_DRIFT=0
     for flag in "$@"; do case "$flag" in --promote) PROMOTE=1;; --allow-drift) ALLOW_DRIFT=1;; *) echo "❌ unknown flag $flag" >&2; exit 1;; esac; done
     [ -d "$SRC" ] || { echo "❌ source dir not found: $SRC" >&2; exit 1; }
-    BEFORE=$(serving_revision "$SERVICE")
-    [ -n "$BEFORE" ] || { echo "❌ no serving revision found for $SERVICE" >&2; exit 1; }
+    BEFORE=$(serving_revision "$SERVICE" 2>/dev/null || true)
+    [ -n "$BEFORE" ] || { echo "❌ no serving revision found for $SERVICE (does the service exist? are the gcloud credentials valid?)" >&2; exit 1; }
     echo "═══ $SERVICE: deploy from $SRC (no traffic); serving revision $BEFORE ═══"
     gcloud run deploy "$SERVICE" --source "$SRC" --project="$PROJECT" --region="$REGION" --no-traffic --quiet
     AFTER=$(gcloud run services describe "$SERVICE" --project="$PROJECT" --region="$REGION" --format='value(status.latestCreatedRevisionName)')

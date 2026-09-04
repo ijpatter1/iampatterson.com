@@ -30,4 +30,13 @@ describe('scripts/verify-node24.sh', () => {
     expect(script).not.toContain('status.traffic[0].revisionName');
     expect(script).toContain('x.get("percent")');
   });
+
+  it('lets exit codes decide the suite rows, guards the digest lookup and anchors the drift grep', () => {
+    expect(script).toContain('RC=$?');
+    expect(script).toContain('[ "$GRC" -eq 0 ]');
+    expect(script).toContain('[ -n "$REV" ] && [ -n "$IMG" ]');
+    expect(script).toContain('0 field\\(s\\) differ besides the digest');
+    expect(script).toContain('[ -f "$WF" ]');
+    expect(script).toContain('@types/node');
+  });
 });
