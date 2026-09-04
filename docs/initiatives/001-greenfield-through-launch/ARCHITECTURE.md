@@ -1,7 +1,5 @@
 # iampatterson.com, Technical Architecture
 
-> **Current state (2026-09-04).** Everything below the overview describes the system as built by initiative 001 (Phases 1–11, archived at `docs/initiatives/001-greenfield-through-launch/`). Since it was written, sGTM moved from Stape to a self-hosted container on Cloud Run (`io.iampatterson.com`), Metabase is self-hosted behind an IAP load balancer, and the Claudish translator (`/claudish`, `infrastructure/cloud-run/claudish-proxy`) was added; see `docs/claudish/claudish-current-state.md` for that surface. The Phase 12–14 sections at the end document current and target state for the operational-readiness initiative.
-
 ## System Overview
 
 ```
@@ -612,44 +610,3 @@ Shapley value MTA in Dataform. Comparison views against last-click and platform-
 
 ### Phase 9, Polish
 Performance, mobile testing, error handling, security review, SEO.
-
----
-
-## Phase 12 — Runtime currency and observability Architecture
-
-### Current state
-
-- **Runtimes.** `package.json` engines `20.x`; `event-stream`, `data-generator` and `claudish-proxy` build from `node:20-slim`; the Vercel project setting is already Node 24.x. Vercel refuses Node 20 builds from 2026-10-01.
-- **Monitoring.** No alert policies, notification channels, uptime checks, dashboards or log-based metrics exist in project `iampatterson`. Cloud Logging keeps `_Default` for 30 days and `_Required` for 400. The Claudish proxy emits structured JSON events (`translate_done`, `request_error`, `loop_fell_through`, `budget_threshold`, `capacity_no_budget`) with an allowlisted field set; event-stream and data-generator log structured errors.
-- **Health surfaces.** `/health` on the three Node services; `/healthy` on sGTM; the site at `https://www.iampatterson.com`; Metabase at `bi.iampatterson.com` behind IAP (an unauthenticated probe sees the IAP redirect).
-
-### Target state
-
-- **Runtimes.** `engines.node` `24.x`; the three Dockerfiles on `node:24-slim`; the same pin recorded in the project rules. Local development uses the Homebrew arm64 Node.
-- **Monitoring as configuration.** `infrastructure/monitoring/` holds compact specs (JSON or YAML) for the notification channel, the uptime checks, the alert policies and the dashboard, plus `apply.sh`, an idempotent script that creates or updates each resource through `gcloud` or the Monitoring REST API and prints a diff first. The dashboard's panels are generated from the service list so the spec stays small.
-- **Log-based metrics.** One metric per structured error event, defined in the same spec set; the `_Default` bucket retention set to the value decided in 12.3 and recorded here.
-- **Alert routing.** Every policy routes to the channel from 12.2; the runbook (13.5) links each alert to a procedure.
-
-### Key Architectural Decisions
-
-- Monitoring resources are declared in committed specs and applied by script rather than hand-built in the console, so they can be recreated and reviewed in a pull request. Terraform is not introduced for them yet; the reconciler pattern arrives in Phase 14 and can absorb them later.
-- The dashboard is generated, not authored: a committed 1,500-line dashboard JSON would eat the pull-request budget and drift.
-- Uptime checks probe the public surfaces a visitor uses, not internal endpoints, so a green check means the site works from outside.
-
-### Deployment
-
-`bash infrastructure/monitoring/apply.sh --dry-run` then `bash infrastructure/monitoring/apply.sh`, run by the operator with gcloud credentials for project `iampatterson`; the Node 24 rollout is the ordinary service deploy path for each service plus a Vercel build.
-
----
-
-## Phases 13–14 — Architecture Stubs
-
-*Expanded when each phase begins. See `docs/REQUIREMENTS.md` for deliverable-level detail.*
-
-### Phase 13 — Cost, lifecycle and the runbook
-
-BigQuery partition expiration and GCS lifecycle rules recorded as settings; budget channels; a pinned or floating `gtm-cloud-image` decision with an update script; the Claudish proxy and the other Cloud Run services under declared identity (dedicated runtime service accounts) and, for the proxy, the Terraform import from `IMPORT_PLAN.md`; the runbook under `docs/runbook/`.
-
-### Phase 14 — Declarative infrastructure
-
-`infrastructure/gtm/reconcile.js` and `infrastructure/metabase/reconcile.sh` driven by committed specs, a GitHub Actions workflow with a dry-run diff on pull requests and a manually approved live apply through Workload Identity Federation, and the `web_vital` and `page_engagement` wiring applied through the GTM reconciler.

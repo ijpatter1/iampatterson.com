@@ -1,6 +1,27 @@
-# iampatterson.com
+<!--
+═══════════════════════════════════════════════════════════════════════════
+  TEMPLATE — not a live file. Named `CLAUDE.template.md`, NOT `CLAUDE.md`,
+  so Claude Code does not auto-load it. That is deliberate: the agent working
+  on this template repo should be governed by the migration plan, not by
+  consumer-project instructions.
 
-> The consulting website for Patterson Consulting, built as a live demonstration of a full measurement stack (Cookiebot → GTM → self-hosted sGTM → GA4 and BigQuery, with a real-time overlay over the visitor's own session), plus the Claudish translator at `/claudish`. The site is the portfolio.
+  This becomes a real project's CLAUDE.md only when a generator renders it:
+    /init          — greenfield; keeps the Bootstrapping section
+    /onboard       — existing repo; omits the Bootstrapping section
+
+  RENDER STEP (for the generator):
+    1. Fill the placeholders: project identity (top), "Project facts Claude
+       can't infer", and — for /init only — "Bootstrapping".
+    2. Leave the manifest pointers as-is (behavioral rules load natively
+       from .claude/rules/ — no import line needed).
+    3. Write the result to ${roots.control}/CLAUDE.md (cwd auto-loads it).
+    4. Strip this comment block — it has no meaning in a live CLAUDE.md.
+═══════════════════════════════════════════════════════════════════════════
+-->
+
+# [PROJECT NAME]
+
+> [One sentence: what this is, who it's for, what makes it distinctive.]
 
 This file is deliberately short. It holds only what Claude **can't infer from the
 code or the manifest**. Everything else is imported or referenced below — if a
@@ -46,17 +67,14 @@ A missing project-shape artifact is a _mode signal_, not an error: no phase docs
 
 ## Project facts Claude can't infer
 
-- **Two Nodes on this Mac.** An x64 Node breaks the project; prepend `/opt/homebrew/bin` to `PATH` in every shell command so the arm64 Node runs.
-- **gcloud defaults to the wrong project.** The CLI's default project is `holdout-500412`; every GCP command passes `--project=iampatterson --region=us-central1`. Credentials expire roughly hourly and overnight; Ian re-authenticates with `! gcloud auth login`.
-- **Deployed topology.** Vercel hosts the Next.js site (production redirects the apex to `https://www.iampatterson.com`, so `www` is the browser origin). Cloud Run in `iampatterson` runs `sgtm` (custom domain `io.iampatterson.com`), `sgtm-preview`, `event-stream`, `data-generator`, `metabase` (behind an IAP load balancer at `bi.iampatterson.com`) and `claudish-proxy`. Three Cloud Scheduler jobs drive the data generator on weekdays.
-- **Claudish proxy contract.** `NEXT_PUBLIC_CLAUDISH_PROXY_URL` is the full endpoint (`https://…run.app/translate`); the client also completes a bare service URL. Deploy with `MODEL_ID_CONFIRMED=1 bash setup.sh` from the service directory; the kill switch is `--update-env-vars KILL_SWITCH=on` and survives deploys. The golden suite (`scripts/run-claudish-golden.sh`) is the operator gate before and after a deploy.
-- **Never in the repo.** Transcript corpus and model registry live in `~/.claudish-corpus/`; secrets come from Secret Manager or env only; `.env*` files are not read by Claude; no input or output text in logs or analytics events.
-- **Pushes and merges are Ian's.** The `bash-guard` hook blocks pushes and destructive gcloud commands regardless of chat permission. With explicit permission in chat, a push can go through the GitHub Git Data API (used once, 2026-09-04).
-- **Model choices are Ian's.** Propose candidates with live pricing and verified IDs, then wait.
-- **Dataform branch is generated.** `dataform` mirrors `infrastructure/dataform/` and is synced from `main` by a GitHub Action; edit models under `infrastructure/dataform/` only.
-- **Event schema changes follow the checklist** in `.claude/rules/project-coding-standards.md` (schema pin, narrative-flow cases, BigQuery `schema.json` columns, GTM container wiring).
-- **Review gate is `/guv:eval`**, not the legacy `@evaluator` pair. Ultrareview (`/code-review ultra`) has three free runs per account, one-time; keep PRs under 8,000 changed lines to qualify.
-- **Runtime deadline.** Vercel fails Node 20 builds from 2026-10-01 unless `package.json` pins `engines.node` to `24.x`; the three Cloud Run images are `node:20-slim` today.
+[This is the heart of the file — the only content that truly belongs here. Fill in
+the non-obvious, can't-read-from-code facts and delete the prompts. Keep each line
+to the pruning test: *would removing it cause a mistake?* If not, cut it.]
+
+- **Stack quirks / required env vars:** [e.g. "DATABASE_URL must be set or the test runner silently uses prod"]
+- **Non-obvious behaviors / gotchas:** [e.g. "the auth middleware short-circuits in dev mode; tests must set NODE_ENV=test"]
+- **Architectural decisions specific to this project:** [e.g. "events are append-only — never mutate, emit a correction"]
+- **Repository etiquette beyond the defaults:** [branch naming, PR conventions, anything non-standard]
 
 ## What is intentionally NOT in this file
 
@@ -65,3 +83,7 @@ So future edits don't drift it back toward bloat:
 - **Commands** → `.claude/project.json`. Never restated here.
 - **Behavior, TDD discipline, commit conventions, "write clean code"** → `.claude/rules/`. Standard conventions Claude already knows are omitted entirely.
 - **Directory-by-directory tours, API docs, tutorials** → the code is the source; link to real docs if needed.
+
+## Bootstrapping (first session, `phased` greenfield only)
+
+If `scaffoldCheck` from the manifest fails, the project isn't scaffolded yet — that's expected on the first session, and scaffolding is the first deliverable. Configure the test runner, linter, and formatter (the auto-format hook needs a formatter present), wire the `commands` in the manifest, and land at least one passing test to set the baseline. Remove this section once the project is scaffolded.
