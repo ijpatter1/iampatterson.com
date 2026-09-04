@@ -75,8 +75,10 @@ export const FIRST_TOKEN_DEADLINE_MS = 3000;
  * of this project starts with iampatterson-com-), and local dev. Added
  * 2026-09-02 when the exact-match list sent localhost and previews to 403.
  */
+// www is the host production redirects to (2026-09-04: the launch page showed the
+// boundary line because only the apex was allowed).
 export const DEFAULT_ALLOWED_ORIGINS =
-  'https://iampatterson.com,https://iampatterson-com.vercel.app,https://iampatterson-com-*.vercel.app,http://localhost:3000';
+  'https://iampatterson.com,https://www.iampatterson.com,https://iampatterson-com.vercel.app,https://iampatterson-com-*.vercel.app,http://localhost:3000';
 
 /** Exact match, or a single `*` in the entry's host matched as prefix + suffix (scheme and port literal). */
 export function isOriginAllowed(origin: string, allowed: readonly string[]): boolean {
