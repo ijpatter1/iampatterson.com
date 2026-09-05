@@ -68,5 +68,15 @@
     "sessions": 1,
     "fraction": 0.5,
     "size": "medium"
+  },
+  "13.6": {
+    "sessions": 1,
+    "fraction": 0.5,
+    "size": "medium"
+  },
+  "13.7": {
+    "sessions": 1,
+    "fraction": 0.9,
+    "size": "heavy"
   }
 }
