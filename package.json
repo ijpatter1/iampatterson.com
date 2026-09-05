@@ -27,6 +27,7 @@
     "web-vitals": "^5.2.0"
   },
   "devDependencies": {
+    "@cdktf/hcl2json": "^0.21.0",
     "@playwright/test": "^1.58.2",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
