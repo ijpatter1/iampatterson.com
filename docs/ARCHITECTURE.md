@@ -653,6 +653,41 @@ Performance, mobile testing, error handling, security review, SEO.
 - **State (reconciled by 13.7 on 2026-09-05).** `gs://iampatterson-tfstate/terraform/state` tracks 46 resources and the configuration now declares all 46, so `terraform plan` reports no changes. It did not before: six resources — the four BigQuery datasets and the Pub/Sub topic and push subscription — sat in state with no configuration from 2026-06-08 onward, so the plan proposed to destroy the warehouse and the event pipeline, and only an unset CI variable kept that from being reachable. 13.7 recovered them as configuration rather than dropping them from state, and put `traffic` in `ignore_changes` on all five Cloud Run services so `deploy-cloud-run.sh promote` and Terraform stop contesting which revision serves. No apply was needed: the reconciliation was written, not executed.
 - **Provisioning today.** The footprint is still created and changed by the imperative scripts under `infrastructure/` and by `scripts/deploy-cloud-run.sh`. Terraform describes it; it does not yet own it.
 
+### Cloud Run identity and scaling (13.4, measured 2026-09-05; not yet applied)
+
+**Current state.** `sgtm`, `sgtm-preview`, `event-stream` and `data-generator` all
+run as the default compute service account, which holds **`roles/editor`** on the
+project. `claudish-proxy` and `metabase` already have dedicated accounts, so the
+target pattern exists here rather than being invented.
+
+**Target state**, derived from what each service's code actually calls:
+
+| Service | Runtime account | Roles |
+| --- | --- | --- |
+| `event-stream` | `event-stream-runtime` | **none.** It carries no `@google-cloud/*` dependency and constructs no client: it receives Pub/Sub push over HTTP and serves SSE. It needs an identity, not permissions. |
+| `data-generator` | `data-gen-runtime` | `bigquery.jobUser` on the project, `bigquery.dataEditor` on `iampatterson_raw`. |
+| `sgtm` | `sgtm-runtime` | `bigquery.dataEditor` on `iampatterson_raw`, `pubsub.publisher` on the events topic — the two destinations `server-container.json` configures. |
+| `sgtm-preview` | `sgtm-preview-runtime` | as `sgtm`. |
+
+**Scaling.** `sgtm` moves from `maxScale=3` to `10`; the ceiling is binding, at 96
+`no available instance` aborts in the 30 days to 2026-09-05, and each abort is a
+visitor's events dropped silently. `data-generator` is deliberately unchanged at
+one abort in 30 days — minimum instances would buy an always-on instance to
+prevent one dropped synthetic event a month.
+
+**A measurement trap worth remembering.** The 12.3 `cloud_run_no_instance`
+log-based metric cannot answer "how often did this happen before I started
+watching". Log-based metrics are not retroactive; they count only entries written
+after the metric exists. Queried over seven days it reports one abort and reads
+like an all-clear. The logs, retained 30 days, are the source for any question
+about the past.
+
+**Not applied.** These are production mutations whose failure is silent, and the
+session that measured them ran unattended. `docs/verification/2026-09-05-cloud-run-adoption-measured.md`
+carries the commands in order and the check that actually proves an identity
+change worked, which is rows continuing to land in `iampatterson_raw` rather than
+a health endpoint returning 200.
+
 ### sGTM container lifecycle: pin the digest (13.2, decided 2026-09-05)
 
 **The decision is to pin the digest and update deliberately**, replacing the
