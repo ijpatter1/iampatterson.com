@@ -8,6 +8,14 @@
 # source-deploy (build_config is regenerated each deploy); metabase + sgtm +
 # sgtm-preview run published images (sgtm tracks gtm-cloud-image:stable, Google's
 # recommended auto-updating tag — not :latest).
+#
+# `traffic` is ignored on every service for the same reason, added by 13.7 on
+# 2026-09-05. `scripts/deploy-cloud-run.sh promote` exists to route traffic to
+# one exact revision after its field diff is reviewed, so live traffic is pinned
+# to a revision while this configuration asks for LATEST. Left unignored, the two
+# fight: a plan reports drift after every promote, and an apply would silently
+# undo the operator's deliberate choice of which revision serves. Traffic routing
+# belongs to the deploy scripts; Terraform owns the service shell.
 
 resource "google_cloud_run_v2_service" "event_stream" {
   lifecycle {
@@ -16,6 +24,7 @@ resource "google_cloud_run_v2_service" "event_stream" {
       client_version,
       build_config,
       template[0].containers[0].image,
+      traffic,
     ]
   }
 
@@ -112,6 +121,7 @@ resource "google_cloud_run_v2_service" "sgtm_preview" {
       client,
       client_version,
       template[0].containers[0].image,
+      traffic,
     ]
   }
 
@@ -206,6 +216,7 @@ resource "google_cloud_run_v2_service" "sgtm" {
       client,
       client_version,
       template[0].containers[0].image,
+      traffic,
     ]
   }
 
@@ -301,6 +312,7 @@ resource "google_cloud_run_v2_service" "data_generator" {
       client_version,
       build_config,
       template[0].containers[0].image,
+      traffic,
     ]
   }
 
@@ -393,6 +405,7 @@ resource "google_cloud_run_v2_service" "metabase" {
       client,
       client_version,
       template[0].containers[0].image,
+      traffic,
     ]
   }
 

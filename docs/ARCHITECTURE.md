@@ -650,7 +650,7 @@ Performance, mobile testing, error handling, security review, SEO.
 ### Current state
 
 - **Declarative layer.** Recovered onto the phase branch by 13.6 from `phase/11-operational-readiness` (PR #56, opened 2026-06-04, never merged). `infrastructure/terraform/` holds thirteen `.tf` files: a GCS-backed remote state, the project-services and service-account foundation, the five Cloud Run services, the Metabase load-balancer and IAP topology, and the Cloud SQL instance behind Metabase. Four suites under `tests/unit/infrastructure/` parse the HCL with `@cdktf/hcl2json` and assert its shape.
-- **State.** `gs://iampatterson-tfstate/terraform/state` tracks 46 resources; the configuration declares 40, so `terraform plan` on 2026-09-05 reads `0 to add, 1 to change, 6 to destroy`. The six are the four BigQuery datasets and the Pub/Sub topic and push subscription, imported on 2026-06-08 by a session that never committed their configuration. 13.7 closes this. Until it does, **the layer is read-only and `terraform apply` must not be run**: the plan's destroy set contains the live event pipeline.
+- **State (reconciled by 13.7 on 2026-09-05).** `gs://iampatterson-tfstate/terraform/state` tracks 46 resources and the configuration now declares all 46, so `terraform plan` reports no changes. It did not before: six resources — the four BigQuery datasets and the Pub/Sub topic and push subscription — sat in state with no configuration from 2026-06-08 onward, so the plan proposed to destroy the warehouse and the event pipeline, and only an unset CI variable kept that from being reachable. 13.7 recovered them as configuration rather than dropping them from state, and put `traffic` in `ignore_changes` on all five Cloud Run services so `deploy-cloud-run.sh promote` and Terraform stop contesting which revision serves. No apply was needed: the reconciliation was written, not executed.
 - **Provisioning today.** The footprint is still created and changed by the imperative scripts under `infrastructure/` and by `scripts/deploy-cloud-run.sh`. Terraform describes it; it does not yet own it.
 
 ### The provider boundary
@@ -662,6 +662,16 @@ Recovered from the Phase 11 work, and still correct. The tool follows the resour
 - **Vercel → its own pipeline.** Out of scope for the GCP layer, by the cross-provider intent recorded in the Deployment section.
 - **Dataform model SQL → git.** Mirrored to the `dataform` branch by a GitHub Action. Terraform may own the release and workflow-config resources; the `.sqlx` definitions stay in the repository.
 - **Monitoring (Phase 12) → committed specs and `apply.sh`.** Not in Terraform, and nothing depends on that yet; it can be absorbed into either the Terraform layer or the Phase 14 reconcilers when one of them is the obvious home.
+
+### Recorded gaps in the transport
+
+The push subscription `iampatterson-events-push` has **no dead-letter topic**,
+and `pubsub.tf` pins that absence rather than hiding it. The consequence is
+operational, not theoretical: a message event-stream cannot process has no
+recovery path beyond draining the backlog or waiting out the seven-day
+retention. Adding a dead-letter topic is a design decision with its own cost, so
+it is recorded here and explained in 13.5's "event pipeline backlog" entry
+rather than fixed in passing.
 
 ### Brownfield contract
 
