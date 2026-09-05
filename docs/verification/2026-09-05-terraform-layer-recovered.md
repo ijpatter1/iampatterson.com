@@ -18,7 +18,13 @@ names `service-accounts.tf`, `project-services.tf` and `cloud-run.tf`. All three
 are real. None of them were on `main`.
 
 Merged here as a merge commit rather than a cherry-pick or a squash, so the
-eleven original commits keep their provenance. The branch's edits to
+eleven original commits keep their provenance in the local history. On the remote
+the branch is linear: the hook blocks direct pushes from the CLI, so commits go up
+through the Git Data API, and that replay writes one single-parent commit per
+local first-parent commit — the merge arrives flattened. The eleven commits stay
+reachable on `origin/phase/11-operational-readiness`, which is where their
+provenance actually lives. Nothing is lost, but the remote graph shows no merge
+and this record should not imply that it does. The branch's edits to
 `REQUIREMENTS.md`, `PHASE_STATUS.md` and `ARCHITECTURE.md` were the only
 conflicts and were resolved to this branch's side: they describe a tracker
 structure that was archived on 2026-09-04.
