@@ -6,8 +6,13 @@
 # while the app deploy pipeline (gcloud / source builds) owns the rolling image,
 # build source, and client annotations. data-generator + event-stream are
 # source-deploy (build_config is regenerated each deploy); metabase + sgtm +
-# sgtm-preview run published images (sgtm tracks gtm-cloud-image:stable, Google's
-# recommended auto-updating tag — not :latest).
+# sgtm-preview run published images. The spec said sgtm 'tracks
+# gtm-cloud-image:stable, Google's recommended auto-updating tag'; 13.2 measured
+# that on 2026-09-05 and it is not true in the way it reads. Cloud Run resolves a
+# tag to a digest at revision-creation time, so both services had been serving the
+# 2026-04-03 digest for five months while :stable moved on without them. The image
+# is in ignore_changes either way; updates go through
+# infrastructure/sgtm/update-image.sh, which pins the digest deliberately.
 #
 # `traffic` is ignored on every service for the same reason, added by 13.7 on
 # 2026-09-05. `scripts/deploy-cloud-run.sh promote` exists to route traffic to

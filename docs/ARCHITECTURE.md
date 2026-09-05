@@ -653,6 +653,34 @@ Performance, mobile testing, error handling, security review, SEO.
 - **State (reconciled by 13.7 on 2026-09-05).** `gs://iampatterson-tfstate/terraform/state` tracks 46 resources and the configuration now declares all 46, so `terraform plan` reports no changes. It did not before: six resources — the four BigQuery datasets and the Pub/Sub topic and push subscription — sat in state with no configuration from 2026-06-08 onward, so the plan proposed to destroy the warehouse and the event pipeline, and only an unset CI variable kept that from being reachable. 13.7 recovered them as configuration rather than dropping them from state, and put `traffic` in `ignore_changes` on all five Cloud Run services so `deploy-cloud-run.sh promote` and Terraform stop contesting which revision serves. No apply was needed: the reconciliation was written, not executed.
 - **Provisioning today.** The footprint is still created and changed by the imperative scripts under `infrastructure/` and by `scripts/deploy-cloud-run.sh`. Terraform describes it; it does not yet own it.
 
+### sGTM container lifecycle: pin the digest (13.2, decided 2026-09-05)
+
+**The decision is to pin the digest and update deliberately**, replacing the
+floating `:stable` tag in the declared configuration.
+
+The decision was not a preference. `gcr.io/cloud-tagging-10302018/gtm-cloud-image:stable`
+reads as an auto-updating tag, and Cloud Run resolves a tag to a digest when it
+creates a revision, so the revision holds that digest for its whole life. A
+service whose spec says `:stable` runs whatever `:stable` meant on its last
+deploy. Measured: `sgtm` and `sgtm-preview` were both deployed on 2026-04-03 and
+were still serving `sha256:0f47d392…` on 2026-09-05, while `:stable` had moved to
+`sha256:688d35c6…`. Five months of updates had silently not arrived.
+
+The floating tag therefore delivered neither of the two things it appeared to
+offer: not currency, because the runtime never moved, and not legibility, because
+nothing in the configuration said which image was running. Pinning gives up an
+auto-update that was never happening and buys a configuration that can be read.
+
+`infrastructure/sgtm/update-image.sh` is the operator path: `status` compares each
+service's live revision digest against what `:stable` resolves to today, and
+`update <service>` deploys the new digest with a health check either side and
+prints the rollback command on failure. Preview always goes first; its health is
+the evidence for production. The procedure is written up at
+`docs/runbook/sgtm-image-update.md`.
+
+Terraform keeps the image in `ignore_changes` for both services, so this script
+and the declarative layer do not contest ownership of the field.
+
 ### Retention and cost (13.1, measured and applied 2026-09-05)
 
 The numbers, so a future reader does not have to re-measure to know what was
