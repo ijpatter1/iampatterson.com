@@ -121,38 +121,51 @@ Six of six Cloud Run services now run on dedicated accounts. **Zero remain on th
 default compute account.** Terraform's `cloud-run.tf` was updated to match, and
 `terraform plan` returned to `No changes` afterwards.
 
-## What is still outstanding
+## The import, applied
 
-**The `claudish-proxy` import is staged but not applied.** `service-accounts.tf`
-now declares `claudish_proxy` and the four new runtime accounts, and
-`project-services.tf` declares `aiplatform.googleapis.com` — the spec-delta
-`IMPORT_PLAN.md` predicted. The plan reads:
+Run on 2026-09-05 after credentials were restored:
 
 ```
-Plan: 6 to import, 0 to add, 0 to change, 0 to destroy.
+Apply complete! Resources: 6 imported, 0 added, 0 changed, 0 destroyed.
 ```
 
-Pure import: no resource is created, changed or destroyed. Persisting it needs one
-`terraform apply`, which the environment's guard refused, as it refused
-`terraform plan -out`. **So 13.7's "No changes" is intentionally suspended**: the
-plan is import-only and harmless, but it is no longer clean, and one apply closes
-it.
+`claudish_proxy` and the four new runtime accounts are now declared in
+`service-accounts.tf` and tracked in state, and `aiplatform.googleapis.com` is in
+the curated services list — the spec-delta `IMPORT_PLAN.md` predicted, live-enabled
+since the BigQuery Vertex connection and absent from the declared set.
 
-Not attempted at all: the Secret Manager and IAM-member halves of `IMPORT_PLAN.md`,
-which target modules 8 and 9 that do not exist in this Terraform root. The plan
-itself notes the secret is unused break-glass holding no version, to be imported
-for completeness or deleted deliberately — either way a decision, not a mechanical
-step.
+State holds **52 resources**, up from 46, and `terraform plan` reports **`No
+changes`**. 13.7's clean plan is restored, and this deliverable's "a plan run
+shows no drift after import" is met against a real import rather than an
+assertion.
 
-**Deliberately not done: removing `roles/editor` from the default compute account.**
-Nothing in Cloud Run needs it now, but Cloud Build and other project machinery may,
-and revoking a project-wide role at night with nobody watching is the kind of
-change whose blast radius is discovered afterwards. It is the natural next
-hardening step and it belongs to a person.
+## The abort count, after
 
-**The after-count for aborts is not yet meaningful.** Zero in the hour following
-the change, which at that hour proves very little. The comparison worth making is
-another 30-day window against the 96 recorded above.
+| Window | sgtm | data-generator |
+| --- | --- | --- |
+| 30 days to 2026-09-05, before the change | 96 | 1 |
+| 7 days to 2026-09-05, before | 13 | 1 |
+| 12 hours after `maxScale` 3 → 10 | **0** | **0** |
+
+Directionally right and not yet conclusive. Twelve hours is a short window and a
+quiet one; the comparison worth making is another 30-day count against the 96.
+That is a check for a later session, not a result this deliverable can claim.
+
+## What remains outstanding
+
+**The Secret Manager and IAM-member halves of `IMPORT_PLAN.md`** are not done.
+They target modules 8 and 9, which do not exist in this Terraform root. The plan
+itself notes the secret is unused break-glass holding no version and mounted by
+nothing, to be imported for completeness or deleted deliberately — either way a
+decision rather than a mechanical step, and neither is required by 13.4's
+acceptance.
+
+**`roles/editor` is still on the default compute service account.** No Cloud Run
+service uses that identity any more, so the exposure this deliverable set out to
+close is closed. Revoking the role itself is a separate change: Cloud Build and
+other project machinery may still rely on it, and a project-wide role is not
+something to remove without checking what breaks. It is the natural next
+hardening step.
 
 ## Original reasoning, retained
 

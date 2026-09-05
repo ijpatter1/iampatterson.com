@@ -653,7 +653,7 @@ Performance, mobile testing, error handling, security review, SEO.
 - **State (reconciled by 13.7 on 2026-09-05).** `gs://iampatterson-tfstate/terraform/state` tracks 46 resources and the configuration now declares all 46, so `terraform plan` reports no changes. It did not before: six resources — the four BigQuery datasets and the Pub/Sub topic and push subscription — sat in state with no configuration from 2026-06-08 onward, so the plan proposed to destroy the warehouse and the event pipeline, and only an unset CI variable kept that from being reachable. 13.7 recovered them as configuration rather than dropping them from state, and put `traffic` in `ignore_changes` on all five Cloud Run services so `deploy-cloud-run.sh promote` and Terraform stop contesting which revision serves. No apply was needed: the reconciliation was written, not executed.
 - **Provisioning today.** The footprint is still created and changed by the imperative scripts under `infrastructure/` and by `scripts/deploy-cloud-run.sh`. Terraform describes it; it does not yet own it.
 
-### Cloud Run identity and scaling (13.4, applied 2026-09-05)
+### Cloud Run identity and scaling (13.4, applied and imported 2026-09-05)
 
 **Before.** `sgtm`, `sgtm-preview`, `event-stream` and `data-generator` all ran as
 the default compute service account, which holds **`roles/editor`** on the project.
@@ -702,12 +702,15 @@ not it can still write. Events were sent through the pipeline after each change 
 the rows counted: `data-generator` under its new identity produced exactly +712 rows
 in `events_raw`, and `sgtm` under its new identity exactly +117 more.
 
-**Outstanding.** The `claudish-proxy` import is staged in configuration but not
-applied; the plan reads `6 to import, 0 to add, 0 to change, 0 to destroy` and needs
-one `terraform apply`, so the clean plan 13.7 established is intentionally suspended
-until then. `roles/editor` is deliberately still on the default compute account:
-nothing in Cloud Run needs it now, but Cloud Build and other project machinery may,
-and revoking a project-wide role is its own change with its own blast radius.
+**Imported.** The `claudish-proxy` adoption applied cleanly: `6 imported, 0 added,
+0 changed, 0 destroyed`. State holds 52 resources and `terraform plan` reports no
+changes, so the layer now describes the identities it governs.
+
+**Still open.** `roles/editor` remains on the default compute account. No Cloud Run
+service uses that identity any more, so the exposure is closed; revoking the role
+itself is a separate change, because Cloud Build and other project machinery may
+still rely on it. The Secret Manager and IAM-member halves of `IMPORT_PLAN.md` target
+modules that do not exist in this root and are a decision rather than a step.
 
 ### sGTM container lifecycle: pin the digest (13.2, decided 2026-09-05)
 
@@ -736,6 +739,40 @@ the evidence for production. The procedure is written up at
 
 Terraform keeps the image in `ignore_changes` for both services, so this script
 and the declarative layer do not contest ownership of the field.
+
+### The operational runbook (13.5, written 2026-09-05)
+
+`docs/runbook/` holds one entry per failure mode, indexed by the alert that leads
+to it. Sixteen alerts — the eleven policies in
+`infrastructure/monitoring/spec/policies.json` plus one per uptime check — each
+resolve to an entry, and `tests/unit/infra/runbook.test.ts` fails if any alert
+points at nothing or any entry becomes unreachable from the index.
+
+Three structural decisions worth recording, because each was a choice:
+
+**Every entry ends with "how you know it worked."** The commonest defect in a
+runbook is that it tells you what to type and not how to tell whether it helped.
+This project has a specific reason to insist: sGTM answers HTTP 200 whether or
+not it can still write to BigQuery, so a health check is not a verification. The
+entries that matter verify by counting rows.
+
+**A rehearsal or a written reason, never silence.** Borrowed from 12.4's wording,
+which 13.5's original text had lost. Nine entries carry dated rehearsals; three
+carry reasons that name what staging the failure would actually cost — scanning a
+terabyte of BigQuery, failing a certificate renewal on demand, or manufacturing a
+Dataform failure by breaking the nightly warehouse build. A test asserts that
+each entry has one or the other.
+
+**The gaps are entries, not omissions.** The push subscription has no dead-letter
+topic, so a message `event-stream` cannot process has no recovery path beyond
+draining or the seven-day retention. That is written into the backlog entry as a
+limitation of the procedure rather than left for a reader to discover
+mid-incident, and `pubsub.tf` pins the absence so it cannot drift away quietly.
+
+The two maintenance pages that 13.2 and 13.3 drafted — the sGTM image update and
+the dependency cadence — are indexed alongside the failure modes but are
+scheduled work rather than incident procedures, and the tests scope the
+incident-shaped assertions away from them.
 
 ### Retention and cost (13.1, measured and applied 2026-09-05)
 
