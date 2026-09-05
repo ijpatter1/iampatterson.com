@@ -628,7 +628,7 @@ Performance, mobile testing, error handling, security review, SEO.
 - **Runtimes (delivered by 12.1).** `engines.node` `24.x`; the three Dockerfiles on `node:24-slim`; the pin and the toolchain path recorded in the CLAUDE.md project facts and pinned by `tests/unit/infra/runtime-currency.test.ts`. Local development uses the keg-only Homebrew `node@24`.
 - **Monitoring as configuration.** `infrastructure/monitoring/` holds compact specs (JSON or YAML) for the notification channel, the uptime checks, the alert policies and the dashboard, plus `apply.sh`, an idempotent script that creates or updates each resource through `gcloud` or the Monitoring REST API and prints a diff first. The dashboard's panels are generated from the service list so the spec stays small.
 - **Log-based metrics (delivered by 12.3).** Four metrics in `infrastructure/monitoring/spec/log-metrics.json`: `claudish_proxy_events` (labelled by event, severity and the budget percentage the proxy logs), `data_generator_ad_insert_failures`, `cloud_run_no_instance` and `event_stream_errors`.
-- **Log retention (set provisionally by 12.3, pending 13.1).** The `_Default` bucket stays at **30 days**, which is the free tier and covers an incident investigation window; the counts that need to outlive it are kept as Cloud Monitoring time series by the log-based metrics above, so no sink is declared. 13.1 confirms or changes this value as part of the retention and cost decision, and this line is where the confirmed value is recorded.
+- **Log retention (confirmed by 13.1 on 2026-09-05).** The `_Default` bucket stays at **30 days**, the value 12.3 set provisionally. It is the free tier, it covers an incident investigation window, and the counts that need to outlive it are kept as Cloud Monitoring time series by the log-based metrics above, so no sink is declared. 13.1 confirmed rather than changed it, and `infrastructure/monitoring/spec/retention.json` no longer carries a provisional marker.
 - **Alert routing (delivered by 12.4).** Eleven policies, each routed to both channels from 12.2: `ops-email` for a person and `ops-pubsub` so a script can read the same notification back. Alert bodies name their future runbook entry and say that 13.5 is not yet written.
 
 ### Key Architectural Decisions
@@ -652,6 +652,27 @@ Performance, mobile testing, error handling, security review, SEO.
 - **Declarative layer.** Recovered onto the phase branch by 13.6 from `phase/11-operational-readiness` (PR #56, opened 2026-06-04, never merged). `infrastructure/terraform/` holds thirteen `.tf` files: a GCS-backed remote state, the project-services and service-account foundation, the five Cloud Run services, the Metabase load-balancer and IAP topology, and the Cloud SQL instance behind Metabase. Four suites under `tests/unit/infrastructure/` parse the HCL with `@cdktf/hcl2json` and assert its shape.
 - **State (reconciled by 13.7 on 2026-09-05).** `gs://iampatterson-tfstate/terraform/state` tracks 46 resources and the configuration now declares all 46, so `terraform plan` reports no changes. It did not before: six resources — the four BigQuery datasets and the Pub/Sub topic and push subscription — sat in state with no configuration from 2026-06-08 onward, so the plan proposed to destroy the warehouse and the event pipeline, and only an unset CI variable kept that from being reachable. 13.7 recovered them as configuration rather than dropping them from state, and put `traffic` in `ignore_changes` on all five Cloud Run services so `deploy-cloud-run.sh promote` and Terraform stop contesting which revision serves. No apply was needed: the reconciliation was written, not executed.
 - **Provisioning today.** The footprint is still created and changed by the imperative scripts under `infrastructure/` and by `scripts/deploy-cloud-run.sh`. Terraform describes it; it does not yet own it.
+
+### Retention and cost (13.1, measured and applied 2026-09-05)
+
+The numbers, so a future reader does not have to re-measure to know what was
+decided and why.
+
+| Surface | Value | Why |
+| --- | --- | --- |
+| `iampatterson_raw` partitions | 60 days | Confirmed, not changed. Measured pruning correctly: `events_raw` and `stg_events` both spanned exactly 2026-07-07 to 2026-09-04. |
+| `iampatterson_staging` / `_marts` / `_assertions` | no expiration | Deliberate. They are rebuilt from raw by Dataform, so trimming raw trims them; a second expiry would be a duplicate control that could disagree with the first. |
+| BigQuery storage, all four datasets | 745 MiB | Against a 10 GiB free tier, so retention here is hygiene and honesty about how far the demo's history reaches, not savings. |
+| `run-sources-…` and `iampatterson_cloudbuild` | delete after 90 days | Build artifacts, written once and never read again after the build that consumed them. They had no lifecycle rule and grew without bound. |
+| `iampatterson-tfstate` | no rule, versioning on | Deliberate. Its object versions are the only record that the 2026-06-08 import session happened; that history is worth more than the kilobytes. |
+| `_Default` log bucket | 30 days | See above. |
+| `metabase-project-budget` | $200/month, notifies `ops-email` | Had no channel at all, so it was a number that could be crossed in silence. Email only: budgets reject a pubsub-type monitoring channel, and the separate `pubsubTopic` path would put budget-shaped messages on the topic the monitoring rehearsals pull from. |
+| Vertex spend budget for Claudish | not created | The proxy's in-app cap reserves and reconciles token spend per request and trips itself to cache-only, which acts; a budget only notifies, hours late. Project-level spend is now visible through the budget above. |
+
+The AI export bucket the deliverable names, `gs://iampatterson-ai-exports`, does
+not exist. It is declared by `infrastructure/bigquery/ai_access_layer/setup.sh`,
+which was written and never run. Recorded rather than created: a bucket nothing
+writes to is not infrastructure.
 
 ### The provider boundary
 

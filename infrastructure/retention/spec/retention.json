@@ -1,0 +1,79 @@
+{
+  "_comment": "Retention and cost decisions as committed configuration (13.1). apply.sh measures what is live, reconciles it against this file, and writes the record. Every entry carries the reason it holds the value it does, because the reason is the part a future reader cannot re-derive from the number.",
+
+  "bigquery": {
+    "_note": "Measured 2026-09-05: 745 MiB across all four datasets, against a 10 GiB free tier. Storage is not a cost problem at this scale, so these values are hygiene and honesty about how long the demo's history reaches, not savings.",
+    "datasets": [
+      {
+        "dataset": "iampatterson_raw",
+        "partitionExpirationDays": 60,
+        "appliesTo": ["events_raw", "ad_platform_raw"],
+        "rationale": "Sixty days is long enough for the marts to rebuild any window a visitor can see and for an incident investigation to reach back past a weekend, and short enough that the raw stream never becomes the largest thing in the project. Confirmed rather than changed: it was already live, and measurement shows it is doing its job — on 2026-09-05 both events_raw and stg_events spanned exactly 2026-07-07 to 2026-09-04."
+      },
+      {
+        "dataset": "iampatterson_staging",
+        "partitionExpirationDays": null,
+        "rationale": "Deliberately none. Staging is derived from raw by Dataform and carries no history raw does not, so trimming raw trims staging on the next rebuild. Measured: stg_events spans the same 59 days as events_raw. A second expiry here would be a duplicate control that could silently disagree with the first."
+      },
+      {
+        "dataset": "iampatterson_marts",
+        "partitionExpirationDays": null,
+        "rationale": "Deliberately none, same reason, plus the marts are aggregates: the largest is 178 MiB and most are under 5 MiB. Their size is bounded by the raw window upstream."
+      },
+      {
+        "dataset": "iampatterson_assertions",
+        "partitionExpirationDays": null,
+        "rationale": "Six tables, all zero bytes. Assertion results are written empty when they pass; there is nothing to expire."
+      }
+    ]
+  },
+
+  "gcs": {
+    "buckets": [
+      {
+        "name": "run-sources-iampatterson-us-central1",
+        "ageDays": 90,
+        "action": "Delete",
+        "rationale": "Source archives uploaded by `gcloud run deploy --source`. One per deploy, never read again after the build that consumed them. Ninety days outlives any rollback window a person would use."
+      },
+      {
+        "name": "iampatterson_cloudbuild",
+        "ageDays": 90,
+        "action": "Delete",
+        "rationale": "Cloud Build's staging bucket, same shape and the same reasoning."
+      },
+      {
+        "name": "iampatterson-tfstate",
+        "ageDays": null,
+        "action": null,
+        "rationale": "Deliberately no rule. This bucket holds the Terraform state whose reconciliation is 13.7, and its object versions are the only record that the 2026-06-08 import session happened at all. A lifecycle rule here would trade an unmeasured amount of forensic history for a few kilobytes."
+      }
+    ],
+    "_absent": {
+      "name": "gs://iampatterson-ai-exports",
+      "declaredBy": "infrastructure/bigquery/ai_access_layer/setup.sh",
+      "finding": "Not provisioned. The project has three buckets and this is not among them, so the deliverable's 'lifecycle rules on the AI export bucket' has no target. The access layer's setup script was written and never run. Recorded rather than created: a bucket nobody has asked for and nothing writes to is not infrastructure, and creating one to satisfy a checklist would be worse than saying so."
+    }
+  },
+
+  "logging": {
+    "bucket": "_Default",
+    "retentionDays": 30,
+    "confirms": "12.3",
+    "rationale": "Confirmed at the value 12.3 set provisionally. Thirty days is the free tier and covers an incident investigation window; the counts that matter beyond it live as Cloud Monitoring time series through the 12.3 log-based metrics, so nothing needs to outlive the bucket and no sink is declared. This is the confirmation 12.3 deferred to 13.1, and `infrastructure/monitoring/spec/retention.json` no longer carries a provisional marker."
+  },
+
+  "budgets": [
+    {
+      "displayName": "metabase-project-budget",
+      "amountUsd": 200,
+      "channels": ["ops-email"],
+      "rationale": "The budget existed since before Phase 12 with no notification channels at all, which made it a number in a console that could be crossed in silence. It now notifies ops-email. Email only, deliberately: Cloud Billing budgets accept monitoring channels of the notifying types (email, SMS, Slack, PagerDuty, webhook) and reject a pubsub-type channel with INVALID_ARGUMENT, measured on 2026-09-05. Budgets reach Pub/Sub through notificationsRule.pubsubTopic instead, and that path is deliberately not taken: budget messages carry a different schema from alert notifications, and the only Pub/Sub topic here is the one monitoring/apply.sh rehearsals pull from with a parser that expects alert JSON, so budget traffic would be consumed and acked by a reader that cannot understand it."
+    }
+  ],
+
+  "vertexBudget": {
+    "create": false,
+    "rationale": "The deliverable asks for a Vertex spend budget for the Claudish proxy 'if the in-app cap is not enough on its own'. It is enough, and a budget would be weaker: the proxy reserves and reconciles token spend per request against DAILY_BUDGET_USD and trips itself to cache-only when it crosses, which is a control that acts, while a GCP budget only notifies and does so hours late. The project budget above now carries channels, so Vertex spend is visible in the one place that aggregates it. docs/manual/task-2026-08-31-002.md is superseded by this decision."
+  }
+}
