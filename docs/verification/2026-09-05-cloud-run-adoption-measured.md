@@ -67,6 +67,95 @@ too small breaks the pipeline without announcing it.
 | `sgtm` | `infrastructure/gtm/server-container.json` configures both BigQuery and Pub/Sub destinations. | `roles/bigquery.dataEditor` on `iampatterson_raw` plus `roles/pubsub.publisher` on the events topic. |
 | `sgtm-preview` | Same container, no production destinations exercised. | Same as `sgtm`, so preview can be tested against the same wiring. |
 
+## Applied, 2026-09-05, with permission given after the concern was raised twice
+
+The first version of this record ended here, with the mutations unmade. Ian then
+granted permission explicitly. What follows is what was actually done and how
+each step was proved.
+
+### Scaling
+
+`sgtm` moved to `maxScale=10`, revision `sgtm-00015-kdj`, `io.iampatterson.com/healthy`
+answering 200 throughout. `data-generator` deliberately unchanged.
+
+### Identities
+
+Four accounts created — `sgtm-runtime`, `sgtm-preview-runtime`,
+`event-stream-runtime`, `data-gen-runtime` — and granted least privilege:
+
+| Grant | Scope | Holder |
+| --- | --- | --- |
+| `WRITER` on `iampatterson_raw` | dataset | `sgtm-runtime`, `sgtm-preview-runtime`, `data-gen-runtime` |
+| `roles/pubsub.publisher` | the `iampatterson-events` topic | `sgtm-runtime`, `sgtm-preview-runtime` |
+| `roles/bigquery.jobUser` | project | `data-gen-runtime` |
+| *(nothing)* | — | `event-stream-runtime`, by design |
+
+The dataset grants matter more than they look. `iampatterson_raw` grants write
+through the `projectWriters` special group, which is how a `roles/editor` account
+reached it. Removing editor without adding explicit entries would have taken the
+write path with it.
+
+### Moved one at a time, each proved before the next
+
+| # | Service | Proof |
+| --- | --- | --- |
+| 1 | `sgtm-preview` | health 200; no production traffic to lose |
+| 2 | `event-stream` | health 200, and a probe published to the topic was accepted |
+| 3 | `data-generator` | `/generate` invoked under the new identity: **712 events sent, 0 failed; 7 ad rows inserted, 0 failed**, and `events_raw` rose 689,577 → 690,289, exactly +712 |
+| 4 | `sgtm` | `/generate` again after the move: **117 events, 0 failed**, and `events_raw` rose 690,289 → 690,406, exactly +117 |
+
+Steps 3 and 4 are the ones that matter. A health endpoint cannot tell you an
+identity change worked, because sGTM answers 200 whether or not it can still
+write. Sending real events through and counting rows can.
+
+**One trap worth recording.** `data-generator` had its traffic pinned to revision
+`00008`. Updating its service account created revision `00010` and left traffic on
+`00008`, so the service *spec* reported the new identity while the *serving
+revision* still ran as the default compute account. It looked migrated and was
+not. Traffic had to be routed explicitly. Any service with pinned traffic has this
+failure mode, and `deploy-cloud-run.sh promote` pins traffic by design.
+
+### Result
+
+Six of six Cloud Run services now run on dedicated accounts. **Zero remain on the
+default compute account.** Terraform's `cloud-run.tf` was updated to match, and
+`terraform plan` returned to `No changes` afterwards.
+
+## What is still outstanding
+
+**The `claudish-proxy` import is staged but not applied.** `service-accounts.tf`
+now declares `claudish_proxy` and the four new runtime accounts, and
+`project-services.tf` declares `aiplatform.googleapis.com` — the spec-delta
+`IMPORT_PLAN.md` predicted. The plan reads:
+
+```
+Plan: 6 to import, 0 to add, 0 to change, 0 to destroy.
+```
+
+Pure import: no resource is created, changed or destroyed. Persisting it needs one
+`terraform apply`, which the environment's guard refused, as it refused
+`terraform plan -out`. **So 13.7's "No changes" is intentionally suspended**: the
+plan is import-only and harmless, but it is no longer clean, and one apply closes
+it.
+
+Not attempted at all: the Secret Manager and IAM-member halves of `IMPORT_PLAN.md`,
+which target modules 8 and 9 that do not exist in this Terraform root. The plan
+itself notes the secret is unused break-glass holding no version, to be imported
+for completeness or deleted deliberately — either way a decision, not a mechanical
+step.
+
+**Deliberately not done: removing `roles/editor` from the default compute account.**
+Nothing in Cloud Run needs it now, but Cloud Build and other project machinery may,
+and revoking a project-wide role at night with nobody watching is the kind of
+change whose blast radius is discovered afterwards. It is the natural next
+hardening step and it belongs to a person.
+
+**The after-count for aborts is not yet meaningful.** Zero in the hour following
+the change, which at that hour proves very little. The comparison worth making is
+another 30-day window against the 96 recorded above.
+
+## Original reasoning, retained
+
 ## Not applied, and why
 
 This session ran unattended, and the remaining half of 13.4 is a set of

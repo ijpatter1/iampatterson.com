@@ -65,12 +65,23 @@ describe('Phase 11 D9 — Terraform foundation', () => {
       resource = json.resource.google_service_account.managed[0];
     });
 
-    it('declares exactly the five user-created service accounts', () => {
+    it('declares exactly the user-created service accounts, and no more', () => {
+      // Five when this was written in June 2026. 13.4 added five: claudish_proxy,
+      // which predated the phase and was never declared, and the four *-runtime
+      // accounts that moved sgtm, sgtm-preview, event-stream and data-generator
+      // off the default compute account. The list stays exact rather than
+      // becoming a subset check — an account appearing here that nobody declared
+      // deliberately is exactly what this assertion is for.
       expect(Object.keys(serviceAccounts).sort()).toEqual([
         'claude_code_sandbox',
+        'claudish_proxy',
+        'data_gen_runtime',
         'data_gen_scheduler',
+        'event_stream_runtime',
         'metabase_bigquery',
         'metabase_runtime',
+        'sgtm_preview_runtime',
+        'sgtm_runtime',
         'stape_sgtm',
       ]);
     });
@@ -81,6 +92,11 @@ describe('Phase 11 D9 — Terraform foundation', () => {
       ['data_gen_scheduler', 'data-gen-scheduler'],
       ['stape_sgtm', 'stape-sgtm'],
       ['claude_code_sandbox', 'claude-code-sandbox'],
+      ['claudish_proxy', 'claudish-proxy'],
+      ['sgtm_runtime', 'sgtm-runtime'],
+      ['sgtm_preview_runtime', 'sgtm-preview-runtime'],
+      ['event_stream_runtime', 'event-stream-runtime'],
+      ['data_gen_runtime', 'data-gen-runtime'],
     ])('maps %s to the live account_id %s', (key, accountId) => {
       expect(serviceAccounts[key].account_id).toBe(accountId);
     });

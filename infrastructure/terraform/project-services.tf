@@ -21,6 +21,7 @@ locals {
     "serviceusage.googleapis.com",
     "cloudresourcemanager.googleapis.com",
     "servicenetworking.googleapis.com",
+    "aiplatform.googleapis.com",
   ]
 }
 

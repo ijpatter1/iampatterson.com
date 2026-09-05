@@ -69,7 +69,7 @@ resource "google_cloud_run_v2_service" "event_stream" {
     labels                           = {}
     max_instance_request_concurrency = 80
     revision                         = null
-    service_account                  = "262727068689-compute@developer.gserviceaccount.com"
+    service_account                  = "event-stream-runtime@iampatterson.iam.gserviceaccount.com"
     session_affinity                 = true
     timeout                          = "3600s"
     containers {
@@ -156,7 +156,7 @@ resource "google_cloud_run_v2_service" "sgtm_preview" {
     labels                           = {}
     max_instance_request_concurrency = 80
     revision                         = null
-    service_account                  = "262727068689-compute@developer.gserviceaccount.com"
+    service_account                  = "sgtm-preview-runtime@iampatterson.iam.gserviceaccount.com"
     session_affinity                 = false
     timeout                          = "300s"
     containers {
@@ -251,7 +251,7 @@ resource "google_cloud_run_v2_service" "sgtm" {
     labels                           = {}
     max_instance_request_concurrency = 80
     revision                         = null
-    service_account                  = "262727068689-compute@developer.gserviceaccount.com"
+    service_account                  = "sgtm-runtime@iampatterson.iam.gserviceaccount.com"
     session_affinity                 = false
     timeout                          = "300s"
     containers {
@@ -297,7 +297,7 @@ resource "google_cloud_run_v2_service" "sgtm" {
       }
     }
     scaling {
-      max_instance_count = 3
+      max_instance_count = 10
       min_instance_count = 1
     }
   }
@@ -357,7 +357,7 @@ resource "google_cloud_run_v2_service" "data_generator" {
     labels                           = {}
     max_instance_request_concurrency = 80
     revision                         = null
-    service_account                  = "262727068689-compute@developer.gserviceaccount.com"
+    service_account                  = "data-gen-runtime@iampatterson.iam.gserviceaccount.com"
     session_affinity                 = false
     timeout                          = "3600s"
     containers {

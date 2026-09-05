@@ -653,14 +653,16 @@ Performance, mobile testing, error handling, security review, SEO.
 - **State (reconciled by 13.7 on 2026-09-05).** `gs://iampatterson-tfstate/terraform/state` tracks 46 resources and the configuration now declares all 46, so `terraform plan` reports no changes. It did not before: six resources — the four BigQuery datasets and the Pub/Sub topic and push subscription — sat in state with no configuration from 2026-06-08 onward, so the plan proposed to destroy the warehouse and the event pipeline, and only an unset CI variable kept that from being reachable. 13.7 recovered them as configuration rather than dropping them from state, and put `traffic` in `ignore_changes` on all five Cloud Run services so `deploy-cloud-run.sh promote` and Terraform stop contesting which revision serves. No apply was needed: the reconciliation was written, not executed.
 - **Provisioning today.** The footprint is still created and changed by the imperative scripts under `infrastructure/` and by `scripts/deploy-cloud-run.sh`. Terraform describes it; it does not yet own it.
 
-### Cloud Run identity and scaling (13.4, measured 2026-09-05; not yet applied)
+### Cloud Run identity and scaling (13.4, applied 2026-09-05)
 
-**Current state.** `sgtm`, `sgtm-preview`, `event-stream` and `data-generator` all
-run as the default compute service account, which holds **`roles/editor`** on the
-project. `claudish-proxy` and `metabase` already have dedicated accounts, so the
-target pattern exists here rather than being invented.
+**Before.** `sgtm`, `sgtm-preview`, `event-stream` and `data-generator` all ran as
+the default compute service account, which holds **`roles/editor`** on the project.
+`claudish-proxy` and `metabase` already had dedicated accounts, so the target
+pattern existed here rather than being invented.
 
-**Target state**, derived from what each service's code actually calls:
+**Now**, derived from what each service's code actually calls, and applied and
+verified on 2026-09-05. Six of six Cloud Run services run on dedicated accounts;
+none remain on default compute:
 
 | Service | Runtime account | Roles |
 | --- | --- | --- |
@@ -669,11 +671,24 @@ target pattern exists here rather than being invented.
 | `sgtm` | `sgtm-runtime` | `bigquery.dataEditor` on `iampatterson_raw`, `pubsub.publisher` on the events topic — the two destinations `server-container.json` configures. |
 | `sgtm-preview` | `sgtm-preview-runtime` | as `sgtm`. |
 
-**Scaling.** `sgtm` moves from `maxScale=3` to `10`; the ceiling is binding, at 96
-`no available instance` aborts in the 30 days to 2026-09-05, and each abort is a
-visitor's events dropped silently. `data-generator` is deliberately unchanged at
-one abort in 30 days — minimum instances would buy an always-on instance to
-prevent one dropped synthetic event a month.
+**Scaling.** `sgtm` moved from `maxScale=3` to `10` (revision `sgtm-00015-kdj`); the
+ceiling was binding, at 96 `no available instance` aborts in the 30 days to
+2026-09-05, and each abort is a visitor's events dropped silently.
+`data-generator` is deliberately unchanged at one abort in 30 days — minimum
+instances would buy an always-on instance to prevent one dropped synthetic event
+a month.
+
+**The dataset grant that is easy to miss.** `iampatterson_raw` grants write through
+the `projectWriters` special group, which is how a `roles/editor` account reached
+it. Moving a service off editor without adding an explicit dataset entry would
+take its write path with it, silently. The three writing accounts hold explicit
+`WRITER` entries.
+
+**A pinned-traffic trap.** Updating `data-generator`'s service account created a new
+revision but left traffic on the old one, so the service spec reported the new
+identity while the serving revision still ran as default compute. It looked
+migrated and was not. Any service whose traffic is pinned to a revision has this
+failure mode, and `deploy-cloud-run.sh promote` pins traffic by design.
 
 **A measurement trap worth remembering.** The 12.3 `cloud_run_no_instance`
 log-based metric cannot answer "how often did this happen before I started
@@ -682,11 +697,17 @@ after the metric exists. Queried over seven days it reports one abort and reads
 like an all-clear. The logs, retained 30 days, are the source for any question
 about the past.
 
-**Not applied.** These are production mutations whose failure is silent, and the
-session that measured them ran unattended. `docs/verification/2026-09-05-cloud-run-adoption-measured.md`
-carries the commands in order and the check that actually proves an identity
-change worked, which is rows continuing to land in `iampatterson_raw` rather than
-a health endpoint returning 200.
+**How each move was proved.** Not by a health endpoint — sGTM answers 200 whether or
+not it can still write. Events were sent through the pipeline after each change and
+the rows counted: `data-generator` under its new identity produced exactly +712 rows
+in `events_raw`, and `sgtm` under its new identity exactly +117 more.
+
+**Outstanding.** The `claudish-proxy` import is staged in configuration but not
+applied; the plan reads `6 to import, 0 to add, 0 to change, 0 to destroy` and needs
+one `terraform apply`, so the clean plan 13.7 established is intentionally suspended
+until then. `roles/editor` is deliberately still on the default compute account:
+nothing in Cloud Run needs it now, but Cloud Build and other project machinery may,
+and revoking a project-wide role is its own change with its own blast radius.
 
 ### sGTM container lifecycle: pin the digest (13.2, decided 2026-09-05)
 

@@ -84,6 +84,20 @@ has no recovery path beyond draining the backlog or waiting for it to age out.
 Similarly, `iampatterson_raw` carries a 60-day table and partition expiry. This
 deliverable records it; 13.1 decides whether 60 days is the right answer.
 
+## Superseded in one respect by 13.4
+
+The "No changes" plan above was true when this record was written and is
+intentionally no longer true. 13.4 staged the `claudish-proxy` adoption into
+`service-accounts.tf` and `project-services.tf`, so the plan now reads
+`6 to import, 0 to add, 0 to change, 0 to destroy`.
+
+That is import-only: no resource is created, changed or destroyed, and the
+destroy set this record exists to have emptied is still empty. One
+`terraform apply` returns the plan to clean. The distinction worth keeping is
+between a plan that proposes to *destroy* production, which is what 13.7 fixed,
+and a plan that proposes to *adopt* resources into state, which is what 13.4
+staged.
+
 ## The standing hazard is closed
 
 `terraform apply` against this configuration is now a no-op rather than a
