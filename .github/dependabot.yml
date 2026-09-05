@@ -1,0 +1,113 @@
+# Dependency updates (Phase 13, 13.3).
+#
+# The cadence, the reviewer and the reasoning are in
+# docs/runbook/dependency-cadence.md. This file is only the machinery.
+#
+# Monthly rather than weekly, and grouped rather than one pull request per
+# package. This is a solo project: a dependency bot that opens fifteen pull
+# requests a week does not get a careful review, it gets a bulk merge, which is
+# worse than no bot. Security advisories are exempt from the cadence — GitHub
+# raises those as security updates regardless of the schedule below, and they are
+# meant to interrupt.
+#
+# `open-pull-requests-limit` is deliberately low for the same reason.
+
+version: 2
+updates:
+  # ── npm: the site, then every service that ships its own package.json ──
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+      day: monday
+    open-pull-requests-limit: 3
+    groups:
+      # Next and React move together; splitting them produces pull requests that
+      # cannot pass CI on their own.
+      next-react:
+        patterns: ['next', 'react', 'react-dom', '@types/react', '@types/react-dom', 'eslint-config-next']
+      dev-tooling:
+        dependency-type: development
+        patterns: ['*']
+    labels: ['dependencies']
+
+  - package-ecosystem: npm
+    directory: /infrastructure/cloud-run/claudish-proxy
+    schedule:
+      interval: monthly
+      day: monday
+    open-pull-requests-limit: 2
+    groups:
+      all:
+        patterns: ['*']
+    labels: ['dependencies', 'claudish-proxy']
+
+  - package-ecosystem: npm
+    directory: /infrastructure/cloud-run/event-stream
+    schedule:
+      interval: monthly
+      day: monday
+    open-pull-requests-limit: 2
+    groups:
+      all:
+        patterns: ['*']
+    labels: ['dependencies', 'event-stream']
+
+  - package-ecosystem: npm
+    directory: /infrastructure/cloud-run/data-generator
+    schedule:
+      interval: monthly
+      day: monday
+    open-pull-requests-limit: 2
+    groups:
+      all:
+        patterns: ['*']
+    labels: ['dependencies', 'data-generator']
+
+  # The deliverable names "the root and the three services". This is a fourth
+  # package.json that ships nothing but would still rot unwatched, so it is here.
+  - package-ecosystem: npm
+    directory: /infrastructure/dataform
+    schedule:
+      interval: monthly
+      day: monday
+    open-pull-requests-limit: 2
+    groups:
+      all:
+        patterns: ['*']
+    labels: ['dependencies', 'dataform']
+
+  # ── docker: the base images the three services build from ──
+  # This is the surface that produced the Node 20 deadline. A base image bump is
+  # a runtime change, so these are separate pull requests, never grouped.
+  - package-ecosystem: docker
+    directory: /infrastructure/cloud-run/claudish-proxy
+    schedule:
+      interval: monthly
+      day: monday
+    labels: ['dependencies', 'runtime']
+
+  - package-ecosystem: docker
+    directory: /infrastructure/cloud-run/event-stream
+    schedule:
+      interval: monthly
+      day: monday
+    labels: ['dependencies', 'runtime']
+
+  - package-ecosystem: docker
+    directory: /infrastructure/cloud-run/data-generator
+    schedule:
+      interval: monthly
+      day: monday
+    labels: ['dependencies', 'runtime']
+
+  # ── github-actions: the two workflows ──
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+      day: monday
+    groups:
+      actions:
+        patterns: ['*']
+    labels: ['dependencies', 'ci']
