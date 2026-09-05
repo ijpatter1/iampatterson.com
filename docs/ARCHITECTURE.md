@@ -633,7 +633,7 @@ Performance, mobile testing, error handling, security review, SEO.
 
 ### Key Architectural Decisions
 
-- Monitoring resources are declared in committed specs and applied by script rather than hand-built in the console, so they can be recreated and reviewed in a pull request. Terraform is not introduced for them yet; the reconciler pattern arrives in Phase 14 and can absorb them later.
+- Monitoring resources are declared in committed specs and applied by script rather than hand-built in the console, so they can be recreated and reviewed in a pull request. They are not in Terraform: the declarative layer 13.6 recovered covers the GCP resources that predate this initiative, and the monitoring specs can be absorbed into it or into the Phase 14 reconcilers later, whichever becomes the obvious home.
 - The dashboard is generated, not authored: a committed 1,500-line dashboard JSON would eat the pull-request budget and drift.
 - Uptime checks probe the public surfaces a visitor uses, not internal endpoints, so a green check means the site works from outside.
 - **Two signals the plan assumed turned out not to exist in this project, found by querying before applying (2026-09-04).** `cloudscheduler.googleapis.com/job/attempt_count` returns 404 NOT_FOUND here, so the scheduler policy and the dashboard's scheduler panel read the execution log (`resource.type="cloud_scheduler_job"`) instead of a metric. And Google's managed certificates publish no expiry metric, so certificate expiry is measured by `monitoring.googleapis.com/uptime_check/time_until_ssl_cert_expires` from the 12.2 checks, which means a host only has certificate monitoring if it also has an uptime check.
@@ -645,14 +645,33 @@ Performance, mobile testing, error handling, security review, SEO.
 
 ---
 
-## Phases 13–14 — Architecture Stubs
+## Phase 13 — Cost, lifecycle and the runbook Architecture
 
-*Expanded when each phase begins. See `docs/REQUIREMENTS.md` for deliverable-level detail.*
+### Current state
 
-### Phase 13 — Cost, lifecycle and the runbook
+- **Declarative layer.** Recovered onto the phase branch by 13.6 from `phase/11-operational-readiness` (PR #56, opened 2026-06-04, never merged). `infrastructure/terraform/` holds thirteen `.tf` files: a GCS-backed remote state, the project-services and service-account foundation, the five Cloud Run services, the Metabase load-balancer and IAP topology, and the Cloud SQL instance behind Metabase. Four suites under `tests/unit/infrastructure/` parse the HCL with `@cdktf/hcl2json` and assert its shape.
+- **State.** `gs://iampatterson-tfstate/terraform/state` tracks 46 resources; the configuration declares 40, so `terraform plan` on 2026-09-05 reads `0 to add, 1 to change, 6 to destroy`. The six are the four BigQuery datasets and the Pub/Sub topic and push subscription, imported on 2026-06-08 by a session that never committed their configuration. 13.7 closes this. Until it does, **the layer is read-only and `terraform apply` must not be run**: the plan's destroy set contains the live event pipeline.
+- **Provisioning today.** The footprint is still created and changed by the imperative scripts under `infrastructure/` and by `scripts/deploy-cloud-run.sh`. Terraform describes it; it does not yet own it.
 
-BigQuery partition expiration and GCS lifecycle rules recorded as settings; budget channels; a pinned or floating `gtm-cloud-image` decision with an update script; the Claudish proxy and the other Cloud Run services under declared identity (dedicated runtime service accounts) and, for the proxy, the Terraform import from `IMPORT_PLAN.md`; the runbook under `docs/runbook/`.
+### The provider boundary
+
+Recovered from the Phase 11 work, and still correct. The tool follows the resource:
+
+- **GCP backend → Terraform.** Cloud Run, Pub/Sub, BigQuery, Cloud SQL, the Metabase load-balancer topology, Cloud Scheduler, GCS buckets, Secret Manager secret shells (values never in state), service accounts and IAM bindings.
+- **GTM and sGTM container configuration → reconciler, not Terraform.** Google publishes no Terraform provider for container entities, so `infrastructure/gtm/` stays spec-and-reconciler driven (Phase 14). The split is exact: the Cloud Run service that *runs* sGTM belongs to Terraform; the container configuration it serves belongs to the reconciler.
+- **Vercel → its own pipeline.** Out of scope for the GCP layer, by the cross-provider intent recorded in the Deployment section.
+- **Dataform model SQL → git.** Mirrored to the `dataform` branch by a GitHub Action. Terraform may own the release and workflow-config resources; the `.sqlx` definitions stay in the repository.
+- **Monitoring (Phase 12) → committed specs and `apply.sh`.** Not in Terraform, and nothing depends on that yet; it can be absorbed into either the Terraform layer or the Phase 14 reconcilers when one of them is the obvious home.
+
+### Brownfield contract
+
+Every in-scope resource already serves production, so the first pass on any of them is an import that converges state onto live until `plan` is a no-op — never a destroy-and-recreate. A destructive plan against the load balancer, IAP, the managed certificate or Cloud SQL is a release blocker, not an acceptable convergence step.
+
+### CI
+
+`.github/workflows/infra-terraform.yml` runs `terraform fmt` and `terraform validate` on pull requests touching `infrastructure/terraform/**`, with no credentials. Its `plan` and `apply` jobs are gated on `vars.GCP_WIF_PROVIDER != ''`, which is unset, so neither runs today; 14.3 sets that variable and lights them up. Apply sits behind an `infra-production` environment with manual approval.
 
 ### Phase 14 — Declarative infrastructure
+
 
 `infrastructure/gtm/reconcile.js` and `infrastructure/metabase/reconcile.sh` driven by committed specs, a GitHub Actions workflow with a dry-run diff on pull requests and a manually approved live apply through Workload Identity Federation, and the `web_vital` and `page_engagement` wiring applied through the GTM reconciler.
