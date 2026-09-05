@@ -628,12 +628,12 @@ Performance, mobile testing, error handling, security review, SEO.
 - **Runtimes (delivered by 12.1).** `engines.node` `24.x`; the three Dockerfiles on `node:24-slim`; the pin and the toolchain path recorded in the CLAUDE.md project facts and pinned by `tests/unit/infra/runtime-currency.test.ts`. Local development uses the keg-only Homebrew `node@24`.
 - **Monitoring as configuration.** `infrastructure/monitoring/` holds compact specs (JSON or YAML) for the notification channel, the uptime checks, the alert policies and the dashboard, plus `apply.sh`, an idempotent script that creates or updates each resource through `gcloud` or the Monitoring REST API and prints a diff first. The dashboard's panels are generated from the service list so the spec stays small.
 - **Log-based metrics (delivered by 12.3).** Four metrics in `infrastructure/monitoring/spec/log-metrics.json`: `claudish_proxy_events` (labelled by event, severity and the budget percentage the proxy logs), `data_generator_ad_insert_failures`, `cloud_run_no_instance` and `event_stream_errors`.
-- **Log retention (set provisionally by 12.3, pending 13.1).** The `_Default` bucket stays at **30 days**, which is the free tier and covers an incident investigation window; the counts that need to outlive it are kept as Cloud Monitoring time series by the log-based metrics above, so no sink is declared. 13.1 confirms or changes this value as part of the retention and cost decision, and this line is where the confirmed value is recorded.
+- **Log retention (confirmed by 13.1 on 2026-09-05).** The `_Default` bucket stays at **30 days**, the value 12.3 set provisionally. It is the free tier, it covers an incident investigation window, and the counts that need to outlive it are kept as Cloud Monitoring time series by the log-based metrics above, so no sink is declared. 13.1 confirmed rather than changed it, and `infrastructure/monitoring/spec/retention.json` no longer carries a provisional marker.
 - **Alert routing (delivered by 12.4).** Eleven policies, each routed to both channels from 12.2: `ops-email` for a person and `ops-pubsub` so a script can read the same notification back. Alert bodies name their future runbook entry and say that 13.5 is not yet written.
 
 ### Key Architectural Decisions
 
-- Monitoring resources are declared in committed specs and applied by script rather than hand-built in the console, so they can be recreated and reviewed in a pull request. Terraform is not introduced for them yet; the reconciler pattern arrives in Phase 14 and can absorb them later.
+- Monitoring resources are declared in committed specs and applied by script rather than hand-built in the console, so they can be recreated and reviewed in a pull request. They are not in Terraform: the declarative layer 13.6 recovered covers the GCP resources that predate this initiative, and the monitoring specs can be absorbed into it or into the Phase 14 reconcilers later, whichever becomes the obvious home.
 - The dashboard is generated, not authored: a committed 1,500-line dashboard JSON would eat the pull-request budget and drift.
 - Uptime checks probe the public surfaces a visitor uses, not internal endpoints, so a green check means the site works from outside.
 - **Two signals the plan assumed turned out not to exist in this project, found by querying before applying (2026-09-04).** `cloudscheduler.googleapis.com/job/attempt_count` returns 404 NOT_FOUND here, so the scheduler policy and the dashboard's scheduler panel read the execution log (`resource.type="cloud_scheduler_job"`) instead of a metric. And Google's managed certificates publish no expiry metric, so certificate expiry is measured by `monitoring.googleapis.com/uptime_check/time_until_ssl_cert_expires` from the 12.2 checks, which means a host only has certificate monitoring if it also has an uptime check.
@@ -645,14 +645,185 @@ Performance, mobile testing, error handling, security review, SEO.
 
 ---
 
-## Phases 13–14 — Architecture Stubs
+## Phase 13 — Cost, lifecycle and the runbook Architecture
 
-*Expanded when each phase begins. See `docs/REQUIREMENTS.md` for deliverable-level detail.*
+### Current state
 
-### Phase 13 — Cost, lifecycle and the runbook
+- **Declarative layer.** Recovered onto the phase branch by 13.6 from `phase/11-operational-readiness` (PR #56, opened 2026-06-04, never merged). `infrastructure/terraform/` holds thirteen `.tf` files: a GCS-backed remote state, the project-services and service-account foundation, the five Cloud Run services, the Metabase load-balancer and IAP topology, and the Cloud SQL instance behind Metabase. Four suites under `tests/unit/infrastructure/` parse the HCL with `@cdktf/hcl2json` and assert its shape.
+- **State (reconciled by 13.7 on 2026-09-05).** `gs://iampatterson-tfstate/terraform/state` tracks 46 resources and the configuration now declares all 46, so `terraform plan` reports no changes. It did not before: six resources — the four BigQuery datasets and the Pub/Sub topic and push subscription — sat in state with no configuration from 2026-06-08 onward, so the plan proposed to destroy the warehouse and the event pipeline, and only an unset CI variable kept that from being reachable. 13.7 recovered them as configuration rather than dropping them from state, and put `traffic` in `ignore_changes` on all five Cloud Run services so `deploy-cloud-run.sh promote` and Terraform stop contesting which revision serves. No apply was needed: the reconciliation was written, not executed.
+- **Provisioning today.** The footprint is still created and changed by the imperative scripts under `infrastructure/` and by `scripts/deploy-cloud-run.sh`. Terraform describes it; it does not yet own it.
 
-BigQuery partition expiration and GCS lifecycle rules recorded as settings; budget channels; a pinned or floating `gtm-cloud-image` decision with an update script; the Claudish proxy and the other Cloud Run services under declared identity (dedicated runtime service accounts) and, for the proxy, the Terraform import from `IMPORT_PLAN.md`; the runbook under `docs/runbook/`.
+### Cloud Run identity and scaling (13.4, applied and imported 2026-09-05)
+
+**Before.** `sgtm`, `sgtm-preview`, `event-stream` and `data-generator` all ran as
+the default compute service account, which holds **`roles/editor`** on the project.
+`claudish-proxy` and `metabase` already had dedicated accounts, so the target
+pattern existed here rather than being invented.
+
+**Now**, derived from what each service's code actually calls, and applied and
+verified on 2026-09-05. Six of six Cloud Run services run on dedicated accounts;
+none remain on default compute:
+
+| Service | Runtime account | Roles |
+| --- | --- | --- |
+| `event-stream` | `event-stream-runtime` | **none.** It carries no `@google-cloud/*` dependency and constructs no client: it receives Pub/Sub push over HTTP and serves SSE. It needs an identity, not permissions. |
+| `data-generator` | `data-gen-runtime` | `bigquery.jobUser` on the project, `bigquery.dataEditor` on `iampatterson_raw`. |
+| `sgtm` | `sgtm-runtime` | `bigquery.dataEditor` on `iampatterson_raw`, `pubsub.publisher` on the events topic — the two destinations `server-container.json` configures. |
+| `sgtm-preview` | `sgtm-preview-runtime` | as `sgtm`. |
+
+**Scaling.** `sgtm` moved from `maxScale=3` to `10` (revision `sgtm-00015-kdj`); the
+ceiling was binding, at 96 `no available instance` aborts in the 30 days to
+2026-09-05, and each abort is a visitor's events dropped silently.
+`data-generator` is deliberately unchanged at one abort in 30 days — minimum
+instances would buy an always-on instance to prevent one dropped synthetic event
+a month.
+
+**The dataset grant that is easy to miss.** `iampatterson_raw` grants write through
+the `projectWriters` special group, which is how a `roles/editor` account reached
+it. Moving a service off editor without adding an explicit dataset entry would
+take its write path with it, silently. The three writing accounts hold explicit
+`WRITER` entries.
+
+**A pinned-traffic trap.** Updating `data-generator`'s service account created a new
+revision but left traffic on the old one, so the service spec reported the new
+identity while the serving revision still ran as default compute. It looked
+migrated and was not. Any service whose traffic is pinned to a revision has this
+failure mode, and `deploy-cloud-run.sh promote` pins traffic by design.
+
+**A measurement trap worth remembering.** The 12.3 `cloud_run_no_instance`
+log-based metric cannot answer "how often did this happen before I started
+watching". Log-based metrics are not retroactive; they count only entries written
+after the metric exists. Queried over seven days it reports one abort and reads
+like an all-clear. The logs, retained 30 days, are the source for any question
+about the past.
+
+**How each move was proved.** Not by a health endpoint — sGTM answers 200 whether or
+not it can still write. Events were sent through the pipeline after each change and
+the rows counted: `data-generator` under its new identity produced exactly +712 rows
+in `events_raw`, and `sgtm` under its new identity exactly +117 more.
+
+**Imported.** The `claudish-proxy` adoption applied cleanly: `6 imported, 0 added,
+0 changed, 0 destroyed`. State holds 52 resources and `terraform plan` reports no
+changes, so the layer now describes the identities it governs.
+
+**Still open.** `roles/editor` remains on the default compute account. No Cloud Run
+service uses that identity any more, so the exposure is closed; revoking the role
+itself is a separate change, because Cloud Build and other project machinery may
+still rely on it. The Secret Manager and IAM-member halves of `IMPORT_PLAN.md` target
+modules that do not exist in this root and are a decision rather than a step.
+
+### sGTM container lifecycle: pin the digest (13.2, decided 2026-09-05)
+
+**The decision is to pin the digest and update deliberately**, replacing the
+floating `:stable` tag in the declared configuration.
+
+The decision was not a preference. `gcr.io/cloud-tagging-10302018/gtm-cloud-image:stable`
+reads as an auto-updating tag, and Cloud Run resolves a tag to a digest when it
+creates a revision, so the revision holds that digest for its whole life. A
+service whose spec says `:stable` runs whatever `:stable` meant on its last
+deploy. Measured: `sgtm` and `sgtm-preview` were both deployed on 2026-04-03 and
+were still serving `sha256:0f47d392…` on 2026-09-05, while `:stable` had moved to
+`sha256:688d35c6…`. Five months of updates had silently not arrived.
+
+The floating tag therefore delivered neither of the two things it appeared to
+offer: not currency, because the runtime never moved, and not legibility, because
+nothing in the configuration said which image was running. Pinning gives up an
+auto-update that was never happening and buys a configuration that can be read.
+
+`infrastructure/sgtm/update-image.sh` is the operator path: `status` compares each
+service's live revision digest against what `:stable` resolves to today, and
+`update <service>` deploys the new digest with a health check either side and
+prints the rollback command on failure. Preview always goes first; its health is
+the evidence for production. The procedure is written up at
+`docs/runbook/sgtm-image-update.md`.
+
+Terraform keeps the image in `ignore_changes` for both services, so this script
+and the declarative layer do not contest ownership of the field.
+
+### The operational runbook (13.5, written 2026-09-05)
+
+`docs/runbook/` holds one entry per failure mode, indexed by the alert that leads
+to it. Sixteen alerts — the eleven policies in
+`infrastructure/monitoring/spec/policies.json` plus one per uptime check — each
+resolve to an entry, and `tests/unit/infra/runbook.test.ts` fails if any alert
+points at nothing or any entry becomes unreachable from the index.
+
+Three structural decisions worth recording, because each was a choice:
+
+**Every entry ends with "how you know it worked."** The commonest defect in a
+runbook is that it tells you what to type and not how to tell whether it helped.
+This project has a specific reason to insist: sGTM answers HTTP 200 whether or
+not it can still write to BigQuery, so a health check is not a verification. The
+entries that matter verify by counting rows.
+
+**A rehearsal or a written reason, never silence.** Borrowed from 12.4's wording,
+which 13.5's original text had lost. Nine entries carry dated rehearsals; three
+carry reasons that name what staging the failure would actually cost — scanning a
+terabyte of BigQuery, failing a certificate renewal on demand, or manufacturing a
+Dataform failure by breaking the nightly warehouse build. A test asserts that
+each entry has one or the other.
+
+**The gaps are entries, not omissions.** The push subscription has no dead-letter
+topic, so a message `event-stream` cannot process has no recovery path beyond
+draining or the seven-day retention. That is written into the backlog entry as a
+limitation of the procedure rather than left for a reader to discover
+mid-incident, and `pubsub.tf` pins the absence so it cannot drift away quietly.
+
+The two maintenance pages that 13.2 and 13.3 drafted — the sGTM image update and
+the dependency cadence — are indexed alongside the failure modes but are
+scheduled work rather than incident procedures, and the tests scope the
+incident-shaped assertions away from them.
+
+### Retention and cost (13.1, measured and applied 2026-09-05)
+
+The numbers, so a future reader does not have to re-measure to know what was
+decided and why.
+
+| Surface | Value | Why |
+| --- | --- | --- |
+| `iampatterson_raw` partitions | 60 days | Confirmed, not changed. Measured pruning correctly: `events_raw` and `stg_events` both spanned exactly 2026-07-07 to 2026-09-04. |
+| `iampatterson_staging` / `_marts` / `_assertions` | no expiration | Deliberate. They are rebuilt from raw by Dataform, so trimming raw trims them; a second expiry would be a duplicate control that could disagree with the first. |
+| BigQuery storage, all four datasets | 745 MiB | Against a 10 GiB free tier, so retention here is hygiene and honesty about how far the demo's history reaches, not savings. |
+| `run-sources-…` and `iampatterson_cloudbuild` | delete after 90 days | Build artifacts, written once and never read again after the build that consumed them. They had no lifecycle rule and grew without bound. |
+| `iampatterson-tfstate` | no rule, versioning on | Deliberate. Its object versions are the only record that the 2026-06-08 import session happened; that history is worth more than the kilobytes. |
+| `_Default` log bucket | 30 days | See above. |
+| `metabase-project-budget` | $200/month, notifies `ops-email` | Had no channel at all, so it was a number that could be crossed in silence. Email only: budgets reject a pubsub-type monitoring channel, and the separate `pubsubTopic` path would put budget-shaped messages on the topic the monitoring rehearsals pull from. |
+| Vertex spend budget for Claudish | not created | The proxy's in-app cap reserves and reconciles token spend per request and trips itself to cache-only, which acts; a budget only notifies, hours late. Project-level spend is now visible through the budget above. |
+
+The AI export bucket the deliverable names, `gs://iampatterson-ai-exports`, does
+not exist. It is declared by `infrastructure/bigquery/ai_access_layer/setup.sh`,
+which was written and never run. Recorded rather than created: a bucket nothing
+writes to is not infrastructure.
+
+### The provider boundary
+
+Recovered from the Phase 11 work, and still correct. The tool follows the resource:
+
+- **GCP backend → Terraform.** Cloud Run, Pub/Sub, BigQuery, Cloud SQL, the Metabase load-balancer topology, Cloud Scheduler, GCS buckets, Secret Manager secret shells (values never in state), service accounts and IAM bindings.
+- **GTM and sGTM container configuration → reconciler, not Terraform.** Google publishes no Terraform provider for container entities, so `infrastructure/gtm/` stays spec-and-reconciler driven (Phase 14). The split is exact: the Cloud Run service that *runs* sGTM belongs to Terraform; the container configuration it serves belongs to the reconciler.
+- **Vercel → its own pipeline.** Out of scope for the GCP layer, by the cross-provider intent recorded in the Deployment section.
+- **Dataform model SQL → git.** Mirrored to the `dataform` branch by a GitHub Action. Terraform may own the release and workflow-config resources; the `.sqlx` definitions stay in the repository.
+- **Monitoring (Phase 12) → committed specs and `apply.sh`.** Not in Terraform, and nothing depends on that yet; it can be absorbed into either the Terraform layer or the Phase 14 reconcilers when one of them is the obvious home.
+
+### Recorded gaps in the transport
+
+The push subscription `iampatterson-events-push` has **no dead-letter topic**,
+and `pubsub.tf` pins that absence rather than hiding it. The consequence is
+operational, not theoretical: a message event-stream cannot process has no
+recovery path beyond draining the backlog or waiting out the seven-day
+retention. Adding a dead-letter topic is a design decision with its own cost, so
+it is recorded here and explained in 13.5's "event pipeline backlog" entry
+rather than fixed in passing.
+
+### Brownfield contract
+
+Every in-scope resource already serves production, so the first pass on any of them is an import that converges state onto live until `plan` is a no-op — never a destroy-and-recreate. A destructive plan against the load balancer, IAP, the managed certificate or Cloud SQL is a release blocker, not an acceptable convergence step.
+
+### CI
+
+`.github/workflows/infra-terraform.yml` runs `terraform fmt` and `terraform validate` on pull requests touching `infrastructure/terraform/**`, with no credentials. Its `plan` and `apply` jobs are gated on `vars.GCP_WIF_PROVIDER != ''`, which is unset, so neither runs today; 14.3 sets that variable and lights them up. Apply sits behind an `infra-production` environment with manual approval.
 
 ### Phase 14 — Declarative infrastructure
+
 
 `infrastructure/gtm/reconcile.js` and `infrastructure/metabase/reconcile.sh` driven by committed specs, a GitHub Actions workflow with a dry-run diff on pull requests and a manually approved live apply through Workload Identity Federation, and the `web_vital` and `page_engagement` wiring applied through the GTM reconciler.
