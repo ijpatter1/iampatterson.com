@@ -79,7 +79,10 @@ describe('Phase 11 D9 — Cloud Run services', () => {
   });
 
   describe('hygiene', () => {
-    it('pins no :latest container image (sgtm rides :stable by design)', () => {
+    // sgtm and sgtm-preview pin a digest as of 13.2; :latest stays forbidden for
+    // every service. The old parenthetical here said sgtm rides :stable, which
+    // this same change reversed.
+    it('pins no :latest container image', () => {
       for (const name of SERVICES) {
         const image = svc[name][0].template[0].containers[0].image as string;
         expect(image).not.toMatch(/:latest$/);

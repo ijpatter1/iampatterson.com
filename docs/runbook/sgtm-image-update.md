@@ -67,7 +67,7 @@ gcloud run deploy sgtm --project=iampatterson --region=us-central1 \
 
 Rolling back is a normal deploy of a known-good digest, not a special operation.
 Cloud Run keeps the old revision, so the previous digest is always recoverable
-from `gcloud run revisions list --service=sgtm`.
+from `gcloud run revisions list --service=sgtm --project=iampatterson --region=us-central1`.
 
 ## How you know it worked
 
@@ -83,7 +83,7 @@ This page originally closed by saying production `sgtm` was still on the
 longer true, and *how* it stopped being true is the most useful thing on this
 page.
 
-Production was upgraded **by accident**. A `gcloud run services update` that
+Production was upgraded **by accident**. A any `gcloud run services update` (whatever its flags) that
 changed `--max-instances` created revision `sgtm-00015-kdj`, and because the
 service spec held the *tag* `:stable` rather than a digest, the new revision
 re-resolved that tag to whatever it pointed at that day. Five months of container

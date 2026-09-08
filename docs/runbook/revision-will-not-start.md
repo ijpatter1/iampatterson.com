@@ -115,6 +115,6 @@ Rolling back was an ordinary deploy of the previous digest, producing revision
 restored: under ten minutes, four of which were the startup probe's own timeout.
 
 One detail worth carrying: the failed revision is still there and still
-describable. `gcloud run revisions describe sgtm-preview-00004-kxh` returns its
+describable. `gcloud run revisions describe sgtm-preview-00004-kxh --project=iampatterson --region=us-central1` returns its
 condition and its logs after the rollback, which is what makes the "then find out
 why" section above possible rather than aspirational.

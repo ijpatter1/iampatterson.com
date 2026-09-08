@@ -24,12 +24,15 @@ subscription itself:
 
 ```bash
 TOK=$(gcloud auth print-access-token)
+# BSD and GNU date take different flags, and this project runs on both — macOS
+# workstation, Linux Docker sandbox. Try BSD first, fall back to GNU.
+SINCE=$(date -u -v-30M +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d '30 minutes ago' +%Y-%m-%dT%H:%M:%SZ)
 for M in oldest_unacked_message_age num_undelivered_messages; do
   echo "== $M =="
   curl -s -G -H "Authorization: Bearer $TOK" \
     "https://monitoring.googleapis.com/v3/projects/iampatterson/timeSeries" \
     --data-urlencode "filter=metric.type=\"pubsub.googleapis.com/subscription/$M\" AND resource.labels.subscription_id=\"iampatterson-events-push\"" \
-    --data-urlencode "interval.startTime=$(date -u -v-30M +%Y-%m-%dT%H:%M:%SZ)" \
+    --data-urlencode "interval.startTime=$SINCE" \
     --data-urlencode "interval.endTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   | python3 -c "
 import json,sys

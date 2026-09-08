@@ -53,7 +53,7 @@ gcloud auth application-default set-quota-project iampatterson
 ```
 
 Skip this and you get confusing failures that look like missing permissions but
-are not. A real example: `gcloud billing budgets list` failed with a message
+are not. A real example: `gcloud billing budgets list --billing-project=iampatterson` failed with a message
 naming a permission on the billing account, when the actual cause was that the
 Billing Budgets API was not enabled on the *quota* project. The fix was
 `--billing-project=iampatterson`, not a grant.

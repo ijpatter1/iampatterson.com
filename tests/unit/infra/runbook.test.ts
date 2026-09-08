@@ -157,6 +157,38 @@ describe('13.5 — every entry is usable by someone who has never seen the stack
     expect(body).not.toContain('REHEARSAL_PLACEHOLDER');
   });
 
+  it.each(allEntries)('%s passes the project flag on INLINE gcloud commands too', (_f, body) => {
+    // The fenced-block check below missed these: a reader copies an inline
+    // `gcloud …` out of prose just as readily, and the CLI default on this
+    // machine is a different project, so it either fails confusingly or acts on
+    // the wrong one. Found by review 2026-09-08 — the lint had a shape-shaped
+    // hole rather than a coverage gap.
+    // Markdown wraps inline code across lines, so collapse whitespace first —
+    // otherwise a wrapped command reads as containing a newline and no pattern
+    // matches it.
+    const inline = [...body.matchAll(/`(gcloud [^`]*)`/g)].map((m) =>
+      m[1].replace(/\s+/g, ' ').trim(),
+    );
+    for (const cmd of inline) {
+      if (!/^gcloud (run|logging|pubsub|compute|scheduler|iam|billing|services) /.test(cmd)) continue;
+      // Prose that names a command shape rather than inviting a copy is exempt,
+      // and reads as "any gcloud run services update".
+      if (/^gcloud \w+ \w+ \w+$/.test(cmd.trim())) continue;
+      expect(cmd).toMatch(/--(project|billing-project)=iampatterson/);
+    }
+  });
+
+  it.each(allEntries)('%s uses date flags that work on Linux as well as macOS', (_f, body) => {
+    // BSD `date -v` does not exist in GNU coreutils, and this project ships a
+    // Linux Docker sandbox. A bare -v breaks the diagnostic it belongs to.
+    const bsdOnly = [...body.matchAll(/date -[uU]? *-v[-+]\d+[A-Za-z]/g)];
+    for (const m of bsdOnly) {
+      const around = body.slice(Math.max(0, m.index! - 20), m.index! + 220);
+      // Acceptable only with a GNU fallback on the same command.
+      expect(around).toContain("date -u -d '");
+    }
+  });
+
   it.each(allEntries)('%s passes the project flag on gcloud commands', (_f, body) => {
     // The CLI default on this machine is a different project, so a command that
     // omits the flag either fails confusingly or operates on the wrong project.
