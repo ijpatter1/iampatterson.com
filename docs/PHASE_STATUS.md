@@ -19,6 +19,7 @@
 > - 2026-09-05 — deps-amend [13.3] (session-2026-09-04-002) — deps: 12.1 → 12.1, 13.2; names the cadence doc path, keeps the spec's Metabase v0.59.6 baseline and its Dependabot-or-equivalent latitude, and covers the gtm-cloud-image cadence 13.2 decides
 > - 2026-09-05 — deps-amend [13.4] (session-2026-09-04-002) — the scaling clause and its acceptance cover data-generator alongside sGTM, matching the Evidence paragraph that already assigns both here; the two disagreeing abort counts are named and re-measured rather than reconciled on paper
 > - 2026-09-05 — deps-amend [13.5] (session-2026-09-04-002) — adds the four failure modes Phase 12 alerts point at with no entry (revision rollback, site and Metabase outage, BigQuery spend), restores the spec's kill-switch/revert/golden-gate parenthetical, names docs/runbook/, and carries 12.4's rehearsal hatch
+> - 2026-09-08 — errata [13.3, 13.4] (session-2026-09-04-002) — two acceptance clauses were not met as written; `/guv:replan` refused both because the phase is sealed, so they are recorded in the Phase 14 notes of `docs/REQUIREMENTS.md` (hand-added: the engine refuses a completed phase)
 
 ---
 
