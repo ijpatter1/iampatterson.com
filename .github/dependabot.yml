@@ -11,6 +11,11 @@
 # meant to interrupt.
 #
 # `open-pull-requests-limit` is deliberately low for the same reason.
+#
+# No `day:` key: it applies only to weekly intervals. A monthly schedule runs on
+# the first of the month, and carrying a `day: monday` that Dependabot ignores
+# made the config look like it implemented a cadence the docs described and it
+# did not.
 
 version: 2
 updates:
@@ -19,7 +24,6 @@ updates:
     directory: /
     schedule:
       interval: monthly
-      day: monday
     open-pull-requests-limit: 3
     groups:
       # Next and React move together; splitting them produces pull requests that
@@ -35,7 +39,6 @@ updates:
     directory: /infrastructure/cloud-run/claudish-proxy
     schedule:
       interval: monthly
-      day: monday
     open-pull-requests-limit: 2
     groups:
       all:
@@ -46,7 +49,6 @@ updates:
     directory: /infrastructure/cloud-run/event-stream
     schedule:
       interval: monthly
-      day: monday
     open-pull-requests-limit: 2
     groups:
       all:
@@ -57,7 +59,6 @@ updates:
     directory: /infrastructure/cloud-run/data-generator
     schedule:
       interval: monthly
-      day: monday
     open-pull-requests-limit: 2
     groups:
       all:
@@ -70,7 +71,6 @@ updates:
     directory: /infrastructure/dataform
     schedule:
       interval: monthly
-      day: monday
     open-pull-requests-limit: 2
     groups:
       all:
@@ -84,21 +84,18 @@ updates:
     directory: /infrastructure/cloud-run/claudish-proxy
     schedule:
       interval: monthly
-      day: monday
     labels: ['dependencies', 'runtime']
 
   - package-ecosystem: docker
     directory: /infrastructure/cloud-run/event-stream
     schedule:
       interval: monthly
-      day: monday
     labels: ['dependencies', 'runtime']
 
   - package-ecosystem: docker
     directory: /infrastructure/cloud-run/data-generator
     schedule:
       interval: monthly
-      day: monday
     labels: ['dependencies', 'runtime']
 
   # ── github-actions: the two workflows ──
@@ -106,7 +103,6 @@ updates:
     directory: /
     schedule:
       interval: monthly
-      day: monday
     groups:
       actions:
         patterns: ['*']

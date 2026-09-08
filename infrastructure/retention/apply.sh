@@ -148,28 +148,53 @@ channel_id() {
 }
 
 apply_gcs() {
-  local changed=0
+  local rc=0
   while IFS=$'\t' read -r bucket age action; do
     [ -n "$bucket" ] || continue
-    local live
-    live="$(gcloud storage buckets describe "gs://$bucket" --project="$PROJECT" --format=json 2>/dev/null \
-            | py "
+    # Read once. An empty body means the bucket could not be read — expired
+    # credentials, a deleted bucket, a missing permission — which is NOT the same
+    # as a bucket with no rules. Treating the two alike would report fabricated
+    # drift on a dry run and overwrite a lifecycle configuration that was never
+    # actually inspected.
+    local body
+    body="$(gcloud storage buckets describe "gs://$bucket" --project="$PROJECT" --format=json 2>/dev/null || true)"
+    if [ -z "$body" ]; then
+      echo "  ❌ UNREADABLE gs://$bucket — not changing a bucket whose current state could not be read" >&2
+      rc=1
+      continue
+    fi
+    # Compare the rule itself, not how many there are. A bucket carrying
+    # `Delete after 3650d` where the spec says 90 has exactly one rule, and a
+    # count-only check calls that ok forever.
+    local state
+    state="$(printf '%s' "$body" | py "
 import json,sys
 d=json.loads(sys.stdin.read() or '{}')
 rs=((d.get('lifecycle_config') or d.get('lifecycle') or {}).get('rule')) or []
-print(len(rs))
+want_a, want_age = '$action', $age
+for r in rs:
+    a=(r.get('action') or {}).get('type')
+    g=(r.get('condition') or {}).get('age')
+    if a==want_a and g==want_age:
+        print('match'); break
+else:
+    print('drift:%d' % len(rs))
 ")"
-    if [ "$live" = "0" ]; then
-      echo "  CHANGE  gs://$bucket → $action after ${age}d"
-      changed=$((changed+1))
-      if [ "$DRY" = "0" ]; then
-        local tmp; tmp="$(mktemp)"
-        printf '{"rule":[{"action":{"type":"%s"},"condition":{"age":%s}}]}\n' "$action" "$age" > "$tmp"
-        gcloud storage buckets update "gs://$bucket" --project="$PROJECT" --lifecycle-file="$tmp" >/dev/null
-        rm -f "$tmp"
-      fi
+    if [ "$state" = "match" ]; then
+      echo "  ok      gs://$bucket carries $action after ${age}d"
+      continue
+    fi
+    local existing="${state#drift:}"
+    if [ "$existing" = "0" ]; then
+      echo "  CHANGE  gs://$bucket → $action after ${age}d (no rule today)"
     else
-      echo "  ok      gs://$bucket already has $live lifecycle rule(s)"
+      echo "  CHANGE  gs://$bucket → $action after ${age}d ($existing existing rule(s) disagree with the spec)"
+    fi
+    if [ "$DRY" = "0" ]; then
+      local tmp; tmp="$(mktemp)"
+      printf '{"rule":[{"action":{"type":"%s"},"condition":{"age":%s}}]}\n' "$action" "$age" > "$tmp"
+      gcloud storage buckets update "gs://$bucket" --project="$PROJECT" --lifecycle-file="$tmp" >/dev/null
+      rm -f "$tmp"
     fi
   done < <(py "
 import json
@@ -178,16 +203,28 @@ for b in s['gcs']['buckets']:
     if b.get('ageDays') and b.get('action'):
         print('%s\t%s\t%s' % (b['name'], b['ageDays'], b['action']))
 ")
-  return $changed
+  return $rc
 }
 
 apply_budget_channels() {
-  local name amount want have
+  local name want have
   name="$(py "import json;print(json.load(open('$SPEC'))['budgets'][0]['displayName'])")"
   want="$(py "import json;print(' '.join(json.load(open('$SPEC'))['budgets'][0]['channels']))")"
-  local ids=""
-  for c in $want; do ids="$ids,$(channel_id "$c")"; done
-  ids="${ids#,}"
+  # Resolve every channel BEFORE sending anything. channel_id returns empty when
+  # the display name matches nothing, and appending that blindly produced either
+  # an empty list — which CLEARS the budget's channels, silently un-fixing the
+  # thing this deliverable exists to fix, while printing that it succeeded — or a
+  # malformed ",id" when only some resolved.
+  local ids="" c cid
+  for c in $want; do
+    cid="$(channel_id "$c")"
+    if [ -z "$cid" ]; then
+      echo "  ❌ notification channel '$c' not found in project $PROJECT; refusing to update the budget" >&2
+      echo "     (sending an empty channel list would clear the budget's notifications)" >&2
+      return 1
+    fi
+    ids="${ids:+$ids,}$cid"
+  done
   local budget_id
   budget_id="$(gcloud billing budgets list --billing-account="$BILLING_ACCOUNT" --billing-project="$PROJECT" --format=json 2>/dev/null \
     | py "
@@ -196,21 +233,33 @@ for b in json.load(sys.stdin):
     if b.get('displayName')=='$name': print(b['name'].split('/')[-1]); break
 ")"
   [ -n "$budget_id" ] || { echo "  ⚠️  budget '$name' not found; skipping"; return 0; }
+  # Compare which channels, not how many. A budget wired to a stale or wrong
+  # channel has a nonzero count and would otherwise pass clean forever.
   have="$(gcloud billing budgets describe "$budget_id" --billing-account="$BILLING_ACCOUNT" --billing-project="$PROJECT" --format=json 2>/dev/null \
     | py "
 import json,sys
-d=json.load(sys.stdin)
-print(len((d.get('notificationsRule') or {}).get('monitoringNotificationChannels') or []))
+try: d=json.load(sys.stdin)
+except Exception: print('UNREADABLE'); raise SystemExit
+print(','.join(sorted((d.get('notificationsRule') or {}).get('monitoringNotificationChannels') or [])) or 'NONE')
 ")"
-  if [ "$have" = "0" ]; then
-    echo "  CHANGE  budget '$name' → $want"
-    if [ "$DRY" = "0" ]; then
-      gcloud billing budgets update "$budget_id" --billing-account="$BILLING_ACCOUNT" --billing-project="$PROJECT" \
-        --notifications-rule-monitoring-notification-channels="$ids" >/dev/null
-    fi
+  if [ "$have" = "UNREADABLE" ] || [ -z "$have" ]; then
+    echo "  ❌ could not read budget '$name'; not changing it" >&2
     return 1
   fi
-  echo "  ok      budget '$name' already notifies $have channel(s)"
+  local want_sorted; want_sorted="$(printf '%s' "$ids" | tr ',' '\n' | sort | paste -sd, -)"
+  if [ "$have" = "$want_sorted" ]; then
+    echo "  ok      budget '$name' notifies exactly $want"
+    return 0
+  fi
+  if [ "$have" = "NONE" ]; then
+    echo "  CHANGE  budget '$name' → $want (no channels today)"
+  else
+    echo "  CHANGE  budget '$name' → $want (currently notifies different channels)"
+  fi
+  if [ "$DRY" = "0" ]; then
+    gcloud billing budgets update "$budget_id" --billing-account="$BILLING_ACCOUNT" --billing-project="$PROJECT" \
+      --notifications-rule-monitoring-notification-channels="$ids" >/dev/null
+  fi
   return 0
 }
 
@@ -240,9 +289,20 @@ for d in s['bigquery']['datasets']:
     ;;
   verify)
     OUT="$ROOT/docs/verification/$(date -u +%Y-%m-%d)-retention-measured.md"
-    { echo "# Retention and cost controls, measured"; echo
-      echo "Generated by \`infrastructure/retention/apply.sh verify\` on $(date -u +%Y-%m-%dT%H:%M:%SZ)."; echo
-      echo '```'; print_measurement; echo '```'; } > "$OUT"
-    echo "written: $OUT"
+    # Build in a temp file and move only on success. Under `set -e` a failed bq
+    # or gcloud call inside print_measurement aborts mid-table with the
+    # redirection already open, leaving a half-written record that reads as a
+    # complete measurement — the worst possible artifact from a verification step.
+    TMP="$(mktemp)"
+    if { echo "# Retention and cost controls, measured"; echo
+         echo "Generated by \`infrastructure/retention/apply.sh verify\` on $(date -u +%Y-%m-%dT%H:%M:%SZ)."; echo
+         echo '```'; print_measurement; echo '```'; } > "$TMP"; then
+      mv "$TMP" "$OUT"
+      echo "written: $OUT"
+    else
+      rm -f "$TMP"
+      echo "❌ measurement failed; no record written (the previous one is untouched)" >&2
+      exit 1
+    fi
     ;;
 esac

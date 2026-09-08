@@ -74,16 +74,26 @@ jobs:
         continue-on-error: true
       - name: Post plan to PR
         uses: actions/github-script@v7
+        # Plan output and outcome reach the script through env, never through
+        # ${{ }} interpolation into the source. A pull request controls the .tf
+        # files, therefore controls the plan text, therefore controlled the
+        # JavaScript this step used to compile — an expression-injection sink
+        # holding a pull-requests:write token. A backtick or ${ in plan output
+        # was also enough to break the step outright and silently drop the
+        # comment.
+        env:
+          PLAN_STDOUT: ${{ steps.plan.outputs.stdout }}
+          PLAN_OUTCOME: ${{ steps.plan.outcome }}
         with:
           script: |
             const body = [
               '#### terraform plan — `' + process.env.TF_WORKING_DIR + '`',
-              'Outcome: `' + '${{ steps.plan.outcome }}' + '`',
+              'Outcome: `' + process.env.PLAN_OUTCOME + '`',
               '',
               '<details><summary>Plan output</summary>',
               '',
               '```',
-              `${{ steps.plan.outputs.stdout }}`.slice(0, 60000),
+              (process.env.PLAN_STDOUT || '').slice(0, 60000),
               '```',
               '',
               '</details>',

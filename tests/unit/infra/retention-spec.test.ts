@@ -99,6 +99,44 @@ describe('the _Default log retention has one writer and one value', () => {
   });
 });
 
+describe('apply.sh cannot silently undo what it was built to fix', () => {
+  it('resolves every notification channel before sending any of them', () => {
+    // A channel that resolves to empty used to be appended blindly, producing
+    // `--notifications-rule-monitoring-notification-channels=` — which CLEARS
+    // the budget's notifications, re-silencing the budget this deliverable
+    // exists to un-silence, while printing that it succeeded.
+    expect(script).toMatch(/refusing to update the budget/);
+    expect(script).toContain('would clear the budget');
+  });
+
+  it('compares which channels are attached, not how many', () => {
+    // A budget wired to a stale channel has a nonzero count and would pass
+    // clean forever under a count check.
+    expect(script).toContain('notifies exactly');
+    expect(script).not.toMatch(/already notifies \$have channel/);
+  });
+
+  it('compares lifecycle rules by content, not by count', () => {
+    // A bucket carrying `Delete after 3650d` where the spec says 90 has exactly
+    // one rule; counting rules calls that correct.
+    expect(script).toContain('disagree with the spec');
+  });
+
+  it('distinguishes an unreadable bucket from a bucket with no rules', () => {
+    // Empty output from a failed describe is not "no lifecycle rules". Treating
+    // them alike overwrites a configuration that was never actually read.
+    expect(script).toContain('UNREADABLE');
+    expect(script).toMatch(/whose current state could not be read/);
+  });
+
+  it('writes its verification record atomically', () => {
+    // Under `set -e` a failed measurement aborts mid-table with the redirection
+    // open, leaving a truncated file that reads as a complete record.
+    expect(script).toMatch(/mv "\$TMP" "\$OUT"/);
+    expect(script).toMatch(/no record written/);
+  });
+});
+
 describe('infrastructure/retention/apply.sh', () => {
   it('honours --dry-run in any position, not only as the first token', () => {
     // Phase 12 shipped a script where the flag was positional, so

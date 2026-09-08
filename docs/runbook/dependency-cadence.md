@@ -10,8 +10,11 @@ below is monthly and grouped rather than weekly and granular: a bot that opens
 fifteen pull requests a week gets bulk-merged, and a bulk-merged dependency
 update is worse than no bot at all.
 
-**Schedule:** the first Monday of each month, Dependabot opens the grouped pull
-requests below. Security advisories ignore that schedule by design — GitHub
+**Schedule:** the **first of each month**, Dependabot opens the grouped pull
+requests below. (Not "the first Monday" — `schedule.day` only applies to weekly
+intervals, so a monthly schedule runs on the first day of the month whatever
+day that is. The config carried a `day:` key that did nothing, and this line
+described a cadence the machinery never implemented.) Security advisories ignore that schedule by design — GitHub
 raises those as security updates whenever they land, and they are meant to
 interrupt.
 
@@ -69,9 +72,11 @@ against.
     reachable in production.
   - `postcss` — XSS via an unescaped `</style>` in the CSS stringifier,
     `<=8.5.22`. Build-time, so category 2.
-- The remaining twelve are transitive and mostly arrive through Lighthouse and
-  Puppeteer (`@puppeteer/browsers`, `extract-zip`, `basic-ftp`, `ip-address`),
-  which are dev-only.
+- The remaining **twelve of the fourteen high-severity** advisories are
+  transitive, arriving mostly through Lighthouse and Puppeteer
+  (`@puppeteer/browsers`, `extract-zip`, `basic-ftp`, `ip-address`), which are
+  dev-only. The eighteen moderate and low advisories are not itemised here;
+  they are worked on the monthly pass.
 
 **The first scheduled action for this cadence is the `next` advisory.** It was
 found while writing this page and deliberately not fixed here: a framework bump

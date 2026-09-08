@@ -81,7 +81,15 @@ describe('.github/dependabot.yml', () => {
 describe('docs/runbook/dependency-cadence.md', () => {
   it('names the reviewer and the schedule, which is the acceptance clause', () => {
     expect(cadence).toMatch(/\*\*Reviewer:\*\* Ian Patterson/);
-    expect(cadence).toMatch(/first Monday of each month/);
+    // "First Monday" was wrong and this assertion certified it: `schedule.day`
+    // applies only to weekly intervals, so a monthly schedule runs on the first
+    // of the month. The doc and the config now agree with the machinery.
+    expect(cadence).toMatch(/\*\*first of each month\*\*/);
+    expect(cadence).not.toMatch(/the first Monday of each month, Dependabot opens/);
+  });
+
+  it('carries no `day:` key, which Dependabot ignores on a monthly interval', () => {
+    expect(config).not.toMatch(/^\s*day:/m);
   });
 
   it('carries a row for every surface the deliverable names', () => {
