@@ -1,7 +1,7 @@
 # Phase Status Tracker
 
-> **Current Phase: 13 — Cost, lifecycle and the runbook (complete); next: 14 — Declarative infrastructure**
-> Last updated: 2026-09-08, session-2026-09-04-002 (Phase 13 complete; review-gate fixes applied)
+> **Current Phase: 14 — Declarative infrastructure (not started)**
+> Last updated: 2026-09-08, session-2026-09-08-001 (Phase 13 merged as `035d735`; review gate found 30 findings across three passes, all fixed)
 >
 > **Amendments:**
 > - 2026-09-04 — deps-amend [12.1] (session-2026-09-04-001) — names the real Node references (CLAUDE.md facts, both Docker stages, ARCHITECTURE), adds the toolchain note, records that the workflow pins no Node (alignment finding 1)
