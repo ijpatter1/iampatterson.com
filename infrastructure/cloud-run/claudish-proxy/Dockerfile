@@ -1,4 +1,4 @@
-FROM node:24-slim AS builder
+FROM node:26-slim AS builder
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -6,7 +6,7 @@ COPY tsconfig.json ./
 COPY src/ src/
 RUN npx tsc
 
-FROM node:24-slim
+FROM node:26-slim
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
