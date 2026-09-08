@@ -284,6 +284,23 @@
       "name": "dlv - rating",
       "type": "dataLayer",
       "dataLayerVariable": "rating"
+    },
+    {
+      "name": "ga4 - shared_event_settings",
+      "type": "eventSettings",
+      "parameters": {
+        "server_container_url": "{{const - server_container_url}}",
+        "timestamp": "{{dlv - timestamp}}",
+        "session_id": "{{dlv - session_id}}",
+        "page_path": "{{dlv - page_path}}",
+        "page_title": "{{dlv - page_title}}",
+        "iap_source": "{{dlv - iap_source}}",
+        "iap_session_id": "{{dlv - iap_session_id}}",
+        "consent_analytics": "{{dlv - consent_analytics}}",
+        "consent_marketing": "{{dlv - consent_marketing}}",
+        "consent_preferences": "{{dlv - consent_preferences}}"
+      },
+      "note": "Google Tag Event Settings variable. Supplies the parameters every GA4 event tag sends, so each tag's own parameter list holds only what is event-specific. Referenced by 17 tags via eventSettingsVariable; adopted into this spec on 2026-09-08 after the reconciler census found live had moved to it and the spec had not."
     }
   ],
   "triggers": [
@@ -419,164 +436,107 @@
       "type": "GA4 Event (gaawe)",
       "eventName": "page_view",
       "parameters": {
-        "iap_source": "{{dlv - iap_source}}",
-        "timestamp": "{{dlv - timestamp}}",
-        "session_id": "{{dlv - session_id}}",
-        "page_path": "{{dlv - page_path}}",
-        "page_title": "{{dlv - page_title}}",
-        "page_referrer": "{{dlv - page_referrer}}",
-        "consent_analytics": "{{dlv - consent_analytics}}",
-        "consent_marketing": "{{dlv - consent_marketing}}",
-        "consent_preferences": "{{dlv - consent_preferences}}"
+        "page_referrer": "{{dlv - page_referrer}}"
       },
       "firingTrigger": "ce - page_view",
       "consentSettings": {
         "analytics_storage": "required"
-      }
+      },
+      "note": "Common parameters come from {{ga4 - shared_event_settings}}; only event-specific ones are listed here."
     },
     {
       "name": "GA4 - scroll_depth",
       "type": "GA4 Event (gaawe)",
       "eventName": "scroll_depth",
       "parameters": {
-        "iap_source": "{{dlv - iap_source}}",
-        "timestamp": "{{dlv - timestamp}}",
-        "session_id": "{{dlv - session_id}}",
-        "page_path": "{{dlv - page_path}}",
-        "page_title": "{{dlv - page_title}}",
         "depth_percentage": "{{dlv - depth_percentage}}",
-        "depth_pixels": "{{dlv - depth_pixels}}",
-        "consent_analytics": "{{dlv - consent_analytics}}",
-        "consent_marketing": "{{dlv - consent_marketing}}",
-        "consent_preferences": "{{dlv - consent_preferences}}"
+        "depth_pixels": "{{dlv - depth_pixels}}"
       },
       "firingTrigger": "ce - scroll_depth",
       "consentSettings": {
         "analytics_storage": "required"
-      }
+      },
+      "note": "Common parameters come from {{ga4 - shared_event_settings}}; only event-specific ones are listed here."
     },
     {
       "name": "GA4 - click_nav",
       "type": "GA4 Event (gaawe)",
       "eventName": "click_nav",
       "parameters": {
-        "iap_source": "{{dlv - iap_source}}",
-        "timestamp": "{{dlv - timestamp}}",
-        "session_id": "{{dlv - session_id}}",
-        "page_path": "{{dlv - page_path}}",
-        "page_title": "{{dlv - page_title}}",
         "link_text": "{{dlv - link_text}}",
-        "link_url": "{{dlv - link_url}}",
-        "consent_analytics": "{{dlv - consent_analytics}}",
-        "consent_marketing": "{{dlv - consent_marketing}}",
-        "consent_preferences": "{{dlv - consent_preferences}}"
+        "link_url": "{{dlv - link_url}}"
       },
       "firingTrigger": "ce - click_nav",
       "consentSettings": {
         "analytics_storage": "required"
-      }
+      },
+      "note": "Common parameters come from {{ga4 - shared_event_settings}}; only event-specific ones are listed here."
     },
     {
       "name": "GA4 - click_cta",
       "type": "GA4 Event (gaawe)",
       "eventName": "click_cta",
       "parameters": {
-        "iap_source": "{{dlv - iap_source}}",
-        "timestamp": "{{dlv - timestamp}}",
-        "session_id": "{{dlv - session_id}}",
-        "page_path": "{{dlv - page_path}}",
-        "page_title": "{{dlv - page_title}}",
         "cta_text": "{{dlv - cta_text}}",
-        "cta_location": "{{dlv - cta_location}}",
-        "consent_analytics": "{{dlv - consent_analytics}}",
-        "consent_marketing": "{{dlv - consent_marketing}}",
-        "consent_preferences": "{{dlv - consent_preferences}}"
+        "cta_location": "{{dlv - cta_location}}"
       },
       "firingTrigger": "ce - click_cta",
       "consentSettings": {
         "analytics_storage": "required"
-      }
+      },
+      "note": "Common parameters come from {{ga4 - shared_event_settings}}; only event-specific ones are listed here."
     },
     {
       "name": "GA4 - form_field_focus",
       "type": "GA4 Event (gaawe)",
       "eventName": "form_field_focus",
       "parameters": {
-        "iap_source": "{{dlv - iap_source}}",
-        "timestamp": "{{dlv - timestamp}}",
-        "session_id": "{{dlv - session_id}}",
-        "page_path": "{{dlv - page_path}}",
-        "page_title": "{{dlv - page_title}}",
         "form_name": "{{dlv - form_name}}",
-        "field_name": "{{dlv - field_name}}",
-        "consent_analytics": "{{dlv - consent_analytics}}",
-        "consent_marketing": "{{dlv - consent_marketing}}",
-        "consent_preferences": "{{dlv - consent_preferences}}"
+        "field_name": "{{dlv - field_name}}"
       },
       "firingTrigger": "ce - form_field_focus",
       "consentSettings": {
         "analytics_storage": "required"
-      }
+      },
+      "note": "Common parameters come from {{ga4 - shared_event_settings}}; only event-specific ones are listed here."
     },
     {
       "name": "GA4 - form_start",
       "type": "GA4 Event (gaawe)",
       "eventName": "form_start",
       "parameters": {
-        "iap_source": "{{dlv - iap_source}}",
-        "timestamp": "{{dlv - timestamp}}",
-        "session_id": "{{dlv - session_id}}",
-        "page_path": "{{dlv - page_path}}",
-        "page_title": "{{dlv - page_title}}",
-        "form_name": "{{dlv - form_name}}",
-        "consent_analytics": "{{dlv - consent_analytics}}",
-        "consent_marketing": "{{dlv - consent_marketing}}",
-        "consent_preferences": "{{dlv - consent_preferences}}"
+        "form_name": "{{dlv - form_name}}"
       },
       "firingTrigger": "ce - form_start",
       "consentSettings": {
         "analytics_storage": "required"
-      }
+      },
+      "note": "Common parameters come from {{ga4 - shared_event_settings}}; only event-specific ones are listed here."
     },
     {
       "name": "GA4 - form_submit",
       "type": "GA4 Event (gaawe)",
       "eventName": "form_submit",
       "parameters": {
-        "iap_source": "{{dlv - iap_source}}",
-        "timestamp": "{{dlv - timestamp}}",
-        "session_id": "{{dlv - session_id}}",
-        "page_path": "{{dlv - page_path}}",
-        "page_title": "{{dlv - page_title}}",
         "form_name": "{{dlv - form_name}}",
-        "form_success": "{{dlv - form_success}}",
-        "consent_analytics": "{{dlv - consent_analytics}}",
-        "consent_marketing": "{{dlv - consent_marketing}}",
-        "consent_preferences": "{{dlv - consent_preferences}}"
+        "form_success": "{{dlv - form_success}}"
       },
       "firingTrigger": "ce - form_submit",
       "consentSettings": {
         "analytics_storage": "required"
-      }
+      },
+      "note": "Common parameters come from {{ga4 - shared_event_settings}}; only event-specific ones are listed here."
     },
     {
       "name": "GA4 - consent_update",
       "type": "GA4 Event (gaawe)",
       "eventName": "consent_update",
-      "parameters": {
-        "iap_source": "{{dlv - iap_source}}",
-        "timestamp": "{{dlv - timestamp}}",
-        "session_id": "{{dlv - session_id}}",
-        "page_path": "{{dlv - page_path}}",
-        "page_title": "{{dlv - page_title}}",
-        "consent_analytics": "{{dlv - consent_analytics}}",
-        "consent_marketing": "{{dlv - consent_marketing}}",
-        "consent_preferences": "{{dlv - consent_preferences}}"
-      },
+      "parameters": {},
       "firingTrigger": "ce - consent_update",
       "consentSettings": {
         "note": "No consent requirement — consent_update must fire regardless of consent state to track the consent change itself"
-      }
+      },
+      "note": "Common parameters come from {{ga4 - shared_event_settings}}; only event-specific ones are listed here."
     },
     {
       "name": "GA4 - product_view",

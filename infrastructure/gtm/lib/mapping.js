@@ -184,14 +184,17 @@ function triggerToApi(spec) {
 // ─── Variables ───────────────────────────────────────────────────────────────
 
 /** The two variable types these containers use. `v` is a data layer read, `c` a constant. */
-const VARIABLE_TYPE_TO_SPEC = { v: 'dataLayer', c: 'constant' };
-const VARIABLE_TYPE_TO_API = { dataLayer: 'v', constant: 'c' };
+const VARIABLE_TYPE_TO_SPEC = { v: 'dataLayer', c: 'constant', gtes: 'eventSettings' };
+const VARIABLE_TYPE_TO_API = { dataLayer: 'v', constant: 'c', eventSettings: 'gtes' };
 
 function variableFromApi(api) {
   const p = byKey(api.parameter);
   const spec = { name: api.name, type: VARIABLE_TYPE_TO_SPEC[api.type] || api.type };
   if (api.type === 'v' && p.name) spec.dataLayerVariable = p.name.value;
   if (api.type === 'c' && p.value) spec.value = p.value.value;
+  // A Google Tag Event Settings variable carries the parameters every tag
+  // shares, so each tag's own table holds only what is event-specific.
+  if (api.type === 'gtes') spec.parameters = bindingsFromApi(p.eventSettingsTable);
   return spec;
 }
 
@@ -205,6 +208,8 @@ function variableToApi(spec) {
     ];
   } else if (spec.type === 'constant') {
     api.parameter = [template('value', spec.value)];
+  } else if (spec.type === 'eventSettings') {
+    api.parameter = [bindingsToApi(spec.parameters)];
   }
   return api;
 }

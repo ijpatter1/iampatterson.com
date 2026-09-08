@@ -409,3 +409,58 @@ describe('googtag (the GA4 Config tag)', () => {
     expect(api.consentSettings.consentStatus).toBe('needed');
   });
 });
+
+describe('gtes (the shared event settings variable)', () => {
+  // Live supplies ten common GA4 parameters once through this variable, which
+  // 17 of 18 tags reference. The spec predated it and repeated them inline on
+  // every tag. Adopting the live design means the reconciler has to speak the
+  // variable type that carries it.
+  const LIVE_GTES = {
+    variableId: '77',
+    name: 'ga4 - shared_event_settings',
+    type: 'gtes',
+    parameter: [
+      {
+        type: 'list',
+        key: 'eventSettingsTable',
+        list: [
+          {
+            type: 'map',
+            map: [
+              { type: 'template', key: 'parameter', value: 'session_id' },
+              { type: 'template', key: 'parameterValue', value: '{{dlv - session_id}}' },
+            ],
+          },
+          {
+            type: 'map',
+            map: [
+              { type: 'template', key: 'parameter', value: 'page_path' },
+              { type: 'template', key: 'parameterValue', value: '{{dlv - page_path}}' },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+
+  it('reads its settings table as a flat parameters map', () => {
+    expect(variableFromApi(LIVE_GTES)).toEqual({
+      name: 'ga4 - shared_event_settings',
+      type: 'eventSettings',
+      parameters: { session_id: '{{dlv - session_id}}', page_path: '{{dlv - page_path}}' },
+    });
+  });
+
+  it('writes it back as an eventSettingsTable', () => {
+    const api = variableToApi(variableFromApi(LIVE_GTES));
+    expect(api.type).toBe('gtes');
+    const table = api.parameter.find((p: { key: string }) => p.key === 'eventSettingsTable');
+    expect(table.list).toHaveLength(2);
+    expect(table.list[0].map[0]).toEqual({ type: 'template', key: 'parameter', value: 'session_id' });
+  });
+
+  it('survives the round trip, so it is never spurious drift', () => {
+    const spec = variableFromApi(LIVE_GTES);
+    expect(variableFromApi({ ...LIVE_GTES, ...variableToApi(spec) })).toEqual(spec);
+  });
+});
