@@ -730,15 +730,27 @@ offer: not currency, because the runtime never moved, and not legibility, becaus
 nothing in the configuration said which image was running. Pinning gives up an
 auto-update that was never happening and buys a configuration that can be read.
 
-`infrastructure/sgtm/update-image.sh` is the operator path: `status` compares each
-service's live revision digest against what `:stable` resolves to today, and
-`update <service>` deploys the new digest with a health check either side and
-prints the rollback command on failure. Preview always goes first; its health is
-the evidence for production. The procedure is written up at
+**Implemented 2026-09-08, having been decided on 09-05 and not implemented in
+between.** Both services' specs, and `infrastructure/terraform/cloud-run.tf`, now
+carry an explicit digest where they carried the tag. The gap between the decision
+and its implementation was not academic: on 2026-09-05 a `gcloud run services
+update` that changed `--max-instances` created a revision which re-resolved
+`:stable`, carrying production sGTM five months forward from the 2026-04-03
+digest with nobody deciding it. A tag in a service spec is re-resolved by *any*
+service update, so it is not a passive default.
+
+`infrastructure/sgtm/update-image.sh` is the operator path: `status` compares the
+digest each service is **actually serving** — read from `status.traffic[0]`,
+not from the latest ready revision, because traffic can be pinned elsewhere —
+against what `:stable` resolves to today. `update <service>` deploys the new
+digest and then confirms the serving digest changed, because a health check
+cannot distinguish a successful update from a revision that was created and
+never took traffic. Preview always goes first. Written up at
 `docs/runbook/sgtm-image-update.md`.
 
-Terraform keeps the image in `ignore_changes` for both services, so this script
-and the declarative layer do not contest ownership of the field.
+Terraform keeps the image in `ignore_changes` for both services, so the script
+and the declarative layer do not contest ownership of the field; declaring the
+digest there is for legibility, so the configuration says what is serving.
 
 ### The operational runbook (13.5, written 2026-09-05)
 

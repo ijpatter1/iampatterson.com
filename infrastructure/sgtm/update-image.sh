@@ -55,12 +55,24 @@ resolve_tag() {
   gcloud container images describe "$IMAGE:$TAG" --format='value(image_summary.digest)' 2>/dev/null
 }
 
-# The digest a service is actually serving, read from its live revision rather
-# than from its spec — the spec is what lies here.
+# The revision actually receiving traffic. NOT latestReadyRevisionName: when a
+# service has traffic pinned to a revision — which deploy-cloud-run.sh promote
+# does by design — the newest ready revision is not the one visitors hit, and a
+# tool that reads it reports a stale service as current. That is the trap this
+# whole script exists to detect, so reading the wrong field would have made it
+# blind to its own subject.
+serving_revision() {
+  gcloud run services describe "$1" --project="$PROJECT" --region="$REGION" \
+    --format='value(status.traffic[0].revisionName)' 2>/dev/null
+}
+
+# The digest the serving revision runs. Empty means the question could not be
+# answered — expired credentials, a missing service — and callers must treat
+# that as a failure rather than as "no digest", because an empty string compares
+# equal to another empty string and every service would report `current`.
 running_digest() {
   local rev
-  rev="$(gcloud run services describe "$1" --project="$PROJECT" --region="$REGION" \
-         --format='value(status.latestReadyRevisionName)' 2>/dev/null)"
+  rev="$(serving_revision "$1")"
   [ -n "$rev" ] || { echo ""; return; }
   gcloud run revisions describe "$rev" --project="$PROJECT" --region="$REGION" \
     --format='value(status.imageDigest)' 2>/dev/null | sed 's/.*@//'
@@ -68,8 +80,7 @@ running_digest() {
 
 deployed_at() {
   local rev
-  rev="$(gcloud run services describe "$1" --project="$PROJECT" --region="$REGION" \
-         --format='value(status.latestReadyRevisionName)' 2>/dev/null)"
+  rev="$(serving_revision "$1")"
   [ -n "$rev" ] || { echo "unknown"; return; }
   gcloud run revisions describe "$rev" --project="$PROJECT" --region="$REGION" \
     --format='value(metadata.creationTimestamp)' 2>/dev/null | cut -dT -f1
@@ -90,16 +101,28 @@ check_health() {
 
 cmd_status() {
   local want; want="$(resolve_tag)"
+  # Without this guard an expired credential makes every lookup return empty,
+  # empty compares equal to empty, and the report reads all-current — a false
+  # all-clear from the one command the monthly cadence relies on. Credentials
+  # expire hourly on this project, so this is the common case, not the edge.
+  [ -n "$want" ] || { echo "❌ could not resolve $IMAGE:$TAG — check credentials (see docs/runbook/expired-gcloud-credentials.md)" >&2; exit 1; }
   echo "  :$TAG resolves to  $want"
   echo
   printf '  %-16s %-24s %-14s %s\n' SERVICE RUNNING DEPLOYED STATE
-  local s run
+  local s run state rc=0
   for s in "${SERVICES[@]}"; do
     run="$(running_digest "$s")"
-    local state="current"
-    [ "$run" = "$want" ] || state="BEHIND"
+    if [ -z "$run" ]; then
+      state="UNKNOWN"; rc=1
+    elif [ "$run" = "$want" ]; then
+      state="current"
+    else
+      state="BEHIND"
+    fi
     printf '  %-16s %-24s %-14s %s\n' "$s" "${run:0:23}" "$(deployed_at "$s")" "$state"
   done
+  [ "$rc" = "0" ] || echo "  ❌ at least one service could not be read; UNKNOWN is not current" >&2
+  return $rc
 }
 
 cmd_update() {
@@ -110,6 +133,10 @@ cmd_update() {
   want="$(resolve_tag)"
   run="$(running_digest "$svc")"
   [ -n "$want" ] || { echo "❌ could not resolve $IMAGE:$TAG" >&2; exit 1; }
+  # `run` is the digest the rollback hint hands the operator mid-incident. An
+  # empty one produces `--image=…@`, which is unusable at exactly the moment it
+  # is needed, so refuse to start rather than deploy without a way back.
+  [ -n "$run" ] || { echo "❌ could not read what $svc is currently serving; refusing to deploy without a rollback target" >&2; exit 1; }
 
   echo "  service   $svc"
   echo "  running   ${run:-none}"
@@ -131,14 +158,30 @@ cmd_update() {
     --image="$IMAGE@$want" --quiet >/dev/null
   echo "  deployed  $IMAGE@$want"
 
+  # Health alone cannot confirm this worked. `gcloud run deploy` creates a
+  # revision but does not move traffic on a service with traffic pinned to one,
+  # and the health endpoint answers from whatever is serving — so the OLD
+  # revision returns 200 and the update reads as a success while nothing
+  # changed. Ask what is actually serving instead. This is the same trap that
+  # bit data-generator on 2026-09-05.
+  local now; now="$(running_digest "$svc")"
   local after; after="$(check_health "$svc")"
+  echo "  serving   ${now:-unreadable}"
   echo "  health    $after (after)"
+
+  if [ "$now" != "$want" ]; then
+    echo "  ❌ $svc is still serving ${now:-an unreadable revision}, not the digest just deployed." >&2
+    echo "     The revision was created but traffic did not move — this service has traffic pinned." >&2
+    echo "     Route it deliberately, then re-check:" >&2
+    echo "       gcloud run services update-traffic $svc --project=$PROJECT --region=$REGION --to-latest" >&2
+    exit 2
+  fi
   if [ "$after" != "200" ]; then
     echo "  ❌ $svc did not return 200 after the update. Roll back with:" >&2
     echo "     gcloud run deploy $svc --project=$PROJECT --region=$REGION --image=$IMAGE@$run" >&2
     exit 2
   fi
-  echo "  ✅ $svc healthy on the new digest"
+  echo "  ✅ $svc serving the new digest and healthy"
 }
 
 case "$CMD" in

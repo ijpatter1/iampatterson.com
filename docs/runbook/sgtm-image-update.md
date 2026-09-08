@@ -76,9 +76,32 @@ from `gcloud run revisions list --service=sgtm`.
 arriving: `iampatterson_raw.events_raw` should keep gaining rows on a weekday,
 and the *Cloud Run 5xx* and *Pub/Sub backlog* alerts should stay quiet.
 
-## Open at the time of writing
+## What actually happened on 2026-09-05, and the lesson in it
 
-`sgtm` in production is still on the 2026-04-03 digest. 13.2 rehearsed the update
-on `sgtm-preview` only, deliberately: the deliverable scopes the real run to
-preview, and sGTM failing takes the measurement pipeline with it quietly. Running
-the third command above is the outstanding action, and it is a person's call.
+This page originally closed by saying production `sgtm` was still on the
+2026-04-03 digest and that updating it was the outstanding action. That is no
+longer true, and *how* it stopped being true is the most useful thing on this
+page.
+
+Production was upgraded **by accident**. A `gcloud run services update` that
+changed `--max-instances` created revision `sgtm-00015-kdj`, and because the
+service spec held the *tag* `:stable` rather than a digest, the new revision
+re-resolved that tag to whatever it pointed at that day. Five months of container
+updates arrived as a side effect of a scaling change. Nobody reviewed it and
+nobody decided it.
+
+That is exactly the risk the pin decision was written to remove, and it happened
+within hours of the decision being recorded — which is the clearest possible
+argument that a floating tag in a service spec is not a passive default. **Any**
+service update re-resolves it.
+
+Both services now declare an explicit digest, in the live spec and in
+`infrastructure/terraform/cloud-run.tf`. An unrelated `gcloud run services
+update` can no longer move the image. Updates happen when someone runs the
+command in this page.
+
+| | |
+| --- | --- |
+| Serving digest, both services | `sha256:688d35c6…` |
+| Pinned explicitly | 2026-09-08 |
+| Production health after pinning | `io.iampatterson.com/healthy` 200 |

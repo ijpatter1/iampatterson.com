@@ -14,6 +14,14 @@
 # is in ignore_changes either way; updates go through
 # infrastructure/sgtm/update-image.sh, which pins the digest deliberately.
 #
+# The declared value is now the digest rather than the tag, because a tag in a
+# service spec is not inert: any `gcloud run services update` — for scaling, for
+# a service account, for anything — creates a revision that re-resolves it. That
+# happened on 2026-09-05, when a maxScale change silently carried sgtm five
+# months forward from the 2026-04-03 digest to current :stable. Nobody decided
+# that. Declaring the digest here means the configuration says what is serving,
+# which is the legibility half of the 13.2 decision.
+#
 # `traffic` is ignored on every service for the same reason, added by 13.7 on
 # 2026-09-05. `scripts/deploy-cloud-run.sh promote` exists to route traffic to
 # one exact revision after its field diff is reviewed, so live traffic is pinned
@@ -164,7 +172,7 @@ resource "google_cloud_run_v2_service" "sgtm_preview" {
       base_image_uri = null
       command        = []
       depends_on     = []
-      image          = "gcr.io/cloud-tagging-10302018/gtm-cloud-image:stable"
+      image          = "gcr.io/cloud-tagging-10302018/gtm-cloud-image@sha256:688d35c6c54473be42d5128befa4d98a722d76d6fdf9cb84d63b52a3f223a1e6"
       name           = null
       working_dir    = null
       env {
@@ -259,7 +267,7 @@ resource "google_cloud_run_v2_service" "sgtm" {
       base_image_uri = null
       command        = []
       depends_on     = []
-      image          = "gcr.io/cloud-tagging-10302018/gtm-cloud-image:stable"
+      image          = "gcr.io/cloud-tagging-10302018/gtm-cloud-image@sha256:688d35c6c54473be42d5128befa4d98a722d76d6fdf9cb84d63b52a3f223a1e6"
       name           = null
       working_dir    = null
       env {
