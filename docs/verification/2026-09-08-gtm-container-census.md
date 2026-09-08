@@ -96,10 +96,17 @@ BigQuery API          fires on clientName - GA4
 ```
 
 **So the generic-forwarding architecture is real and needs no route change.** What
-is wrong is the name. ARCHITECTURE, `deploy-claudish.js`'s header comment and the
-amended [14.4] all call that trigger `All GA4 Events`, which does not exist. The
-amended wording took the name from the spec on the same day this census
-falsified it.
+is wrong is the name. `deploy-claudish.js:8` calls it "All-GA4-Events",
+`pubsub-tag-template.js:16` names it in its setup comment, and the [14.4] wording
+amended earlier this session calls it `All GA4 Events`. None of those triggers
+exists; the live one is `clientName - GA4`. The amended wording took the name
+from the spec on the same day this census falsified it.
+
+*(Corrected 2026-09-08, minutes after first writing: this paragraph originally
+said ARCHITECTURE also carried the name. It does not — `grep -rn "All GA4 Events"
+docs/` returns no hit in `ARCHITECTURE.md`. The claim was asserted from memory of
+what the spec said rather than checked, which is the failure this document exists
+to report in others.)*
 
 `ce - conversions` fires the two simulated ad-platform tags, filtered to
 `purchase|trial_signup|form_complete` — consistent with the simulation constraint.
