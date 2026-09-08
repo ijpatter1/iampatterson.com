@@ -20,6 +20,9 @@ import {
   triggerToApi,
   variableFromApi,
   variableToApi,
+  specToCanonical,
+  consentToApi,
+  consentFromApi,
 } from '../../../infrastructure/gtm/lib/mapping.js';
 
 /** Name↔id resolution the reconciler builds from a live workspace read. */
@@ -110,7 +113,7 @@ describe('tags', () => {
         quantity: '{{dlv - quantity}}',
       },
       measurementId: '{{const - ga4_measurement_id}}',
-      consentStatus: 'notNeeded',
+      consentRequired: [],
     });
   });
 
@@ -126,7 +129,7 @@ describe('tags', () => {
     ]);
   });
 
-  it('preserves consentSettings, which the consent parity pin reads', () => {
+  it('carries consent through as the canonical required-list, which the parity pin reads', () => {
     const api = tagToApi(tagFromApi(LIVE_TAG, ctx), ctx);
     expect(api.consentSettings).toEqual({ consentStatus: 'notNeeded' });
   });
@@ -200,5 +203,77 @@ describe('round trip', () => {
   ])('%s survives spec → API → spec unchanged', (_label, live: any, from: any, to: any) => {
     const spec = from(live, ctx);
     expect(from({ ...live, ...to(spec, ctx) }, ctx)).toEqual(spec);
+  });
+});
+
+/**
+ * The committed specs are not a mechanical projection of the API. They use
+ * human type labels ("GA4 Event (gaawe)"), carry prose `note` fields, and
+ * describe consent as `{ analytics_storage: "required" }` where the API wants
+ * a `consentStatus` enum and a LIST parameter. `specToCanonical` is the second
+ * half of the mapping the deliverable names: it brings a committed entity into
+ * the same shape `fromApi` produces, so the diff compares like with like.
+ */
+describe('specToCanonical', () => {
+  it('reads the human type label the specs use', () => {
+    expect(specToCanonical({ name: 'x', type: 'GA4 Event (gaawe)' }).type).toBe('gaawe');
+    // The parenthetical says gtag; the API calls it googtag. An alias, not a
+    // parse — stripping parentheses alone would produce a type the API rejects.
+    expect(specToCanonical({ name: 'x', type: 'Google Tag (gtag)' }).type).toBe('googtag');
+  });
+
+  it('drops `note`, which documents intent and is not configuration', () => {
+    const spec = { name: 'ce - a', type: 'customEvent', eventName: 'a', note: 'why this exists' };
+    expect(specToCanonical(spec)).not.toHaveProperty('note');
+    // And dropping it must not read as a change, or every noted entity is
+    // permanently drifted.
+    expect(specToCanonical(spec)).toEqual({ name: 'ce - a', type: 'customEvent', eventName: 'a' });
+  });
+
+  it('translates the spec consent vocabulary into the API enum', () => {
+    expect(specToCanonical({ name: 'x', type: 'GA4 Event (gaawe)',
+      consentSettings: { analytics_storage: 'required', note: 'ignored' } }).consentRequired)
+      .toEqual(['analytics_storage']);
+    expect(specToCanonical({ name: 'x', type: 'GA4 Event (gaawe)', consentSettings: {} }).consentRequired)
+      .toEqual([]);
+  });
+});
+
+describe('consent round trip', () => {
+  // Shape confirmed empirically on 2026-09-08 against an isolated throwaway
+  // workspace: the list item type is `template`, not the `STRING` the API
+  // reference names. Guessing from the docs would have written a silently
+  // wrong consent configuration onto 21 production tags.
+  const API_NEEDED = {
+    consentStatus: 'needed',
+    consentType: { type: 'list', list: [{ type: 'template', value: 'analytics_storage' }] },
+  };
+
+  it('writes the shape the API actually accepted', () => {
+    expect(consentToApi(['analytics_storage'])).toEqual(API_NEEDED);
+    expect(consentToApi([])).toEqual({ consentStatus: 'notNeeded' });
+  });
+
+  it('reads it back to the same list', () => {
+    expect(consentFromApi(API_NEEDED)).toEqual(['analytics_storage']);
+    expect(consentFromApi({ consentStatus: 'notNeeded' })).toEqual([]);
+    expect(consentFromApi(undefined)).toEqual([]);
+  });
+});
+
+describe('built-in triggers', () => {
+  // `GA4 - Config` fires on 2147479573, which is not in the workspace triggers
+  // collection — built-in trigger ids live in their own range. The spec calls
+  // it "All Pages". The reconciler treats such a reference as opaque and keeps
+  // whatever live already uses, rather than inventing an id it cannot verify.
+  it('preserves an unresolvable trigger when the live tag already has one', () => {
+    const spec = { name: 'GA4 - Config', type: 'googtag', firingTrigger: 'All Pages', parameters: {} };
+    const existing = { firingTriggerId: ['2147479573'] };
+    expect(tagToApi(spec, ctx, existing).firingTriggerId).toEqual(['2147479573']);
+  });
+
+  it('still refuses an unresolvable trigger on a tag that does not exist yet', () => {
+    const spec = { name: 'GA4 - New', type: 'gaawe', firingTrigger: 'All Pages', parameters: {} };
+    expect(() => tagToApi(spec, ctx)).toThrow(/All Pages/);
   });
 });

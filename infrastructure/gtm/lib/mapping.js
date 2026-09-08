@@ -68,14 +68,18 @@ function tagFromApi(api, ctx) {
   };
   if (p.eventName) spec.eventName = p.eventName.value;
   if (p.measurementIdOverride) spec.measurementId = p.measurementIdOverride.value;
-  if (api.consentSettings && api.consentSettings.consentStatus) {
-    spec.consentStatus = api.consentSettings.consentStatus;
-  }
+  spec.consentRequired = consentFromApi(api.consentSettings);
   return spec;
 }
 
-function tagToApi(spec, ctx) {
-  const id = (ctx.triggerIdByName || {})[spec.firingTrigger];
+function tagToApi(spec, ctx, existing) {
+  let id = (ctx.triggerIdByName || {})[spec.firingTrigger];
+  if (!id && existing && (existing.firingTriggerId || []).length) {
+    // Built-in triggers ("All Pages" and friends) are not in the workspace
+    // triggers collection and their ids cannot be looked up. Where live
+    // already fires the tag on one, keep it rather than invent an id.
+    [id] = existing.firingTriggerId;
+  }
   if (!id) {
     // An empty firingTriggerId is accepted by the API and produces a tag that
     // never fires. That reads as a successful apply and is invisible until
@@ -88,9 +92,13 @@ function tagToApi(spec, ctx) {
   if (spec.eventName) parameter.push(template('eventName', spec.eventName));
   if (spec.measurementId) parameter.push(template('measurementIdOverride', spec.measurementId));
 
-  const api = { name: spec.name, type: spec.type, parameter, firingTriggerId: [id] };
-  if (spec.consentStatus) api.consentSettings = { consentStatus: spec.consentStatus };
-  return api;
+  return {
+    name: spec.name,
+    type: spec.type,
+    parameter,
+    firingTriggerId: [id],
+    consentSettings: consentToApi(spec.consentRequired),
+  };
 }
 
 // ─── Triggers ────────────────────────────────────────────────────────────────
@@ -151,7 +159,69 @@ function variableToApi(spec) {
   return api;
 }
 
+/**
+ * Consent, in both directions.
+ *
+ * The API reference describes the consentType list items as type STRING; the
+ * API actually accepts and returns `template`. Confirmed empirically on
+ * 2026-09-08 by writing one tag in a throwaway workspace and reading it back,
+ * because writing the documented shape onto 21 production tags and finding out
+ * later is not a recoverable mistake.
+ */
+function consentToApi(required) {
+  if (!required || !required.length) return { consentStatus: 'notNeeded' };
+  return {
+    consentStatus: 'needed',
+    consentType: { type: 'list', list: required.map((v) => ({ type: 'template', value: v })) },
+  };
+}
+
+function consentFromApi(consentSettings) {
+  if (!consentSettings || consentSettings.consentStatus !== 'needed') return [];
+  const list = (consentSettings.consentType && consentSettings.consentType.list) || [];
+  return list.map((item) => item.value);
+}
+
+/**
+ * Type labels as the committed specs write them. The parenthetical is not a
+ * reliable parse: the specs say `gtag` where the API says `googtag`, so this
+ * is an alias table with a parenthetical fallback rather than a regex.
+ */
+const SPEC_TYPE_ALIASES = {
+  'GA4 Event (gaawe)': 'gaawe',
+  'Google Tag (gtag)': 'googtag',
+};
+
+function normalizeType(type) {
+  if (SPEC_TYPE_ALIASES[type]) return SPEC_TYPE_ALIASES[type];
+  const parenthetical = /\(([^)]+)\)\s*$/.exec(type || '');
+  return parenthetical ? parenthetical[1] : type;
+}
+
+/**
+ * Bring a committed spec entity into the same shape `fromApi` produces, so the
+ * diff compares like with like. `note` is documentation and is dropped — were
+ * it kept, every entity carrying one would read as permanently drifted.
+ */
+function specToCanonical(entity) {
+  const out = {};
+  for (const [k, v] of Object.entries(entity)) {
+    if (k === 'note' || k === 'consentSettings') continue;
+    out[k] = k === 'type' ? normalizeType(v) : v;
+  }
+  if (entity.consentSettings) {
+    out.consentRequired = Object.entries(entity.consentSettings)
+      .filter(([k, v]) => k !== 'note' && v === 'required')
+      .map(([k]) => k);
+  }
+  return out;
+}
+
 module.exports = {
+  specToCanonical,
+  consentToApi,
+  consentFromApi,
+  normalizeType,
   tagFromApi,
   tagToApi,
   triggerFromApi,
