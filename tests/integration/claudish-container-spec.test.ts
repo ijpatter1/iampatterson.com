@@ -19,7 +19,6 @@ import * as path from 'path';
 const read = (p: string) => fs.readFileSync(path.resolve(__dirname, p), 'utf-8');
 const webContainer = JSON.parse(read('../../infrastructure/gtm/web-container.json'));
 const serverContainer = JSON.parse(read('../../infrastructure/gtm/server-container.json'));
-const deploySource = read('../../infrastructure/gtm/deploy-claudish.js');
 const bqSchema = JSON.parse(read('../../infrastructure/bigquery/schema.json')) as Array<{
   name: string;
   type: string;
@@ -144,29 +143,56 @@ describe('server container coverage', () => {
   });
 });
 
-describe('deploy-claudish.js allow-lists', () => {
-  it('declares every claudish trigger event', () => {
+/**
+ * Re-homed 2026-09-08 ([14.1]) off `deploy-claudish.js`'s source text.
+ *
+ * These asserted that the deploy script's hardcoded allow-lists mentioned every
+ * claudish event and dlv. The script has been retired: the reconciler applies
+ * the committed spec, and the census proved the script had never been run
+ * against production anyway — the spec claimed four pipelines that did not
+ * exist until 2026-09-08. Asserting the spec is asserting what production runs.
+ */
+describe('the claudish pipelines are declared in the container spec', () => {
+  it('declares a trigger and a GA4 tag for every claudish event', () => {
     for (const eventName of Object.keys(CLAUDISH_EVENTS)) {
-      expect(deploySource).toContain(`'${eventName}'`);
+      const trigger = webContainer.triggers.find(
+        (t: { name: string; eventName?: string }) => t.eventName === eventName,
+      );
+      expect(trigger).toBeDefined();
+      const tag = webContainer.tags.find((t: { name: string }) => t.name === `GA4 - ${eventName}`);
+      expect(tag).toBeDefined();
+      expect(tag.firingTrigger).toBe(trigger.name);
     }
   });
 
-  it('declares every dlv the tags reference', () => {
+  it('declares a data layer variable for every parameter those tags send', () => {
+    const declared = new Set(webContainer.variables.map((v: { name: string }) => v.name));
     for (const params of Object.values(CLAUDISH_EVENTS)) {
-      for (const param of params) {
-        expect(deploySource).toContain(`'${param}'`);
+      for (const param of params as string[]) {
+        expect(declared).toContain(`dlv - ${param}`);
       }
     }
   });
 
-  it('carries the do-not-repeat-this warning instead of a page_location step', () => {
-    // The warning comment may name the API field; executable code may not.
-    const code = deploySource
-      .replace(/\/\*[\s\S]*?\*\//g, '')
-      .replace(/(^|[^:])\/\/.*$/gm, '$1');
-    expect(code).not.toContain('configSettingsTable');
-    expect(code).not.toContain('page_location');
-    expect(deploySource).toContain('freezes every SPA hit');
+  it('binds each tag parameter to its variable, not just to a name', () => {
+    // The failure this catches: a dlv exists and the tag never references it,
+    // so the column lands null and the overlay claims a field it did not send.
+    for (const [eventName, params] of Object.entries(CLAUDISH_EVENTS)) {
+      const tag = webContainer.tags.find((t: { name: string }) => t.name === `GA4 - ${eventName}`);
+      for (const param of params as string[]) {
+        expect(tag.parameters[param]).toBe(`{{dlv - ${param}}}`);
+      }
+    }
+  });
+
+  it('keeps the page_location warning on the config tag, where the container carries it', () => {
+    // The warning outlived the script that used to hold it: setting
+    // page_location in configSettings freezes every SPA hit at the landing URL,
+    // a site-wide attribution regression caught by adversarial review.
+    const config = webContainer.tags.find((t: { name: string }) => t.name === 'GA4 - Config');
+    expect(config.note).toContain('NEVER set page_location');
+    // And the spec must not actually do it.
+    expect(Object.keys(config.configSettings ?? {})).not.toContain('page_location');
   });
 });
 
