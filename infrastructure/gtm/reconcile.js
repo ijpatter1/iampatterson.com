@@ -67,7 +67,9 @@ function parseArgs(argv) {
     else if (arg === '--allow-deletes') opts.allowDeletes = true;
     else if (arg === '--publish') opts.publish = true;
     else if (arg === '--capture') opts.capture = true;
-    else if (arg.startsWith('--container=')) {
+    else if (arg.startsWith('--version-name=')) {
+      opts.versionName = arg.slice('--version-name='.length);
+    } else if (arg.startsWith('--container=')) {
       const which = arg.slice('--container='.length);
       named = which !== 'both';
       if (which === 'both') opts.containers = ['web', 'server'];
@@ -188,6 +190,7 @@ async function main() {
       apply: opts.apply,
       allowDeletes: opts.allowDeletes,
       publish: opts.publish,
+      versionName: opts.versionName,
     });
     report(name, result.diff);
     if (result.problems.length) {

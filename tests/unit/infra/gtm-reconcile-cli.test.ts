@@ -96,3 +96,17 @@ describe('review finding 2 — the server container is opt-in', () => {
     expect(parseArgs(['--capture', '--container=server']).containers).toEqual(['server']);
   });
 });
+
+describe('--version-name', () => {
+  it('carries a name for the published container version', () => {
+    // GTM keeps every version and a prior one can be republished, so the
+    // version list is the rollback menu. A timestamp tells the next operator
+    // nothing about which one to go back to.
+    expect(parseArgs(['--apply', '--container=web', '--publish', '--version-name=14.1 gating']))
+      .toMatchObject({ versionName: '14.1 gating' });
+  });
+
+  it('defaults to none, letting the core stamp a timestamp', () => {
+    expect(parseArgs(['--container=web']).versionName).toBeUndefined();
+  });
+});
