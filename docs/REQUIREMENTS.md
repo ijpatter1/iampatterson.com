@@ -88,6 +88,16 @@ The second was not satisfiable as written: 12.3's acceptance asks that each of t
 4. **[14.4]** `web_vital` and `page_engagement` wiring: custom-event triggers and GA4 event tags in the web container spec, the matching sGTM route, applied through the reconciler, so real-user Web Vitals and engagement rows land in `iampatterson_raw.events_raw` `[deps: 14.1]`
    - *Acceptance:* both events queryable in BigQuery from production traffic within a day of the apply; the coverage test that pins the event roster updated.
 
+**Errata on the sealed Phase 13 (2026-09-08).** Two acceptance clauses were not met as written. Phase 13 is complete and immutable, so they are recorded here rather than corrected in place, exactly as Phase 12's were recorded in the Phase 13 notes above.
+
+The user approved amending both through `/guv:replan`, and the engine refused both: `status=REFUSED — phase 13 is completed and immutable`. That refusal is correct and the amendment was not forced by hand. What follows is therefore an erratum, not a rewrite.
+
+The first is **13.3's "at least one update pull request produced."** Dependabot reads its configuration from the repository's default branch, so no pull request can exist until this work merges to `main`. The clause is unmeetable from a feature branch by construction — not by omission — and the deliverable was marked ✅ with the gap named in its tracker entry and its verification record rather than hidden. What it should have said: *the configuration committed, and a Dependabot pull request confirmed after merge.* The check remains outstanding and belongs to whoever merges PR #62.
+
+The second is **13.4's "abort counts recorded from the 12.3 metric before the scaling change and again after."** The before half is impossible as written: log-based metrics are not retroactive, the `cloud_run_no_instance` metric was created on 2026-09-04, and queried over seven days it returns a single abort — a misleading all-clear against the 96 the logs actually record for the 30 days to 2026-09-05. Substituting the logs was the right call and finding the trap was worth more than the clause, but the clause was substituted rather than amended, and the *after* half needed no substitution at all since the metric is valid forward. What it should have said: *recorded from the logs before the change, and from the 12.3 metric after.*
+
+**The lesson, twice now.** The Phase 12 errata above closed with "amend an acceptance clause while its phase is still open, before the last deliverable is marked complete." That sentence was written into this document and then not followed: all seven Phase 13 deliverables were marked ✅ before the review gate ran, which sealed the phase before the gate could find anything wrong with its wording. **The gate belongs before the last ✅, not after it.** Phase 14 runs its review gate while at least one deliverable is still open.
+
 **Why this is Phase 14:** it is the largest surface and the one with the most moving parts, so it goes last, after the alerts that would catch a bad apply exist. If its pull request approaches the ceiling, 14.4 ships as a separate small pull request without an ultra review.
 
 **Validation:** the integration pins, the workflow's own runs, the review gate, a session handoff. One pull request under 8,000 changed lines, watched.

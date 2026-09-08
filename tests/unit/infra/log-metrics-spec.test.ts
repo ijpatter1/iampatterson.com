@@ -82,10 +82,16 @@ describe('infrastructure/monitoring/spec/log-metrics.json', () => {
 describe('infrastructure/monitoring/spec/retention.json', () => {
   const r = json<Retention>('infrastructure/monitoring/spec/retention.json');
 
-  it('sets a provisional _Default retention, pending the 13.1 decision, with no sink', () => {
+  it('sets a _Default retention 13.1 has now confirmed, with no sink', () => {
+    // 12.3 set this provisionally and pointed at 13.1; this assertion pinned the
+    // marker so the handoff could not be forgotten. 13.1 confirmed the value on
+    // 2026-09-05, so what is pinned now is the confirmation, not the promise.
+    // The cross-spec agreement with infrastructure/retention/spec/retention.json
+    // is held by tests/unit/infra/retention-spec.test.ts.
     expect(r.bucket).toBe('_Default');
     expect(r.retentionDays).toBeGreaterThanOrEqual(30);
-    expect(r.status).toMatch(/provisional.*13\.1/i);
+    expect(r.status).toMatch(/confirmed by 13\.1/i);
+    expect(r.status).not.toMatch(/^provisional/);
     // No sink is declared, and the script has no sink path to leave half-built:
     // the day one is needed, both the field and its apply step arrive together.
     expect(r).not.toHaveProperty('sinks');
