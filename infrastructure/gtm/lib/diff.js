@@ -32,9 +32,17 @@ function indexByName(entities, side) {
   return out;
 }
 
-/** Field-level comparison over the union of both entities' keys, name excluded. */
+/**
+ * Field-level comparison over the keys the SPEC declares, name excluded.
+ *
+ * The spec is a partial specification: it asserts what it declares and is
+ * silent about the rest, the same contract as Terraform's ignore_changes. Live
+ * GA4 tags carry measurementIdOverride, sendEcommerceData and
+ * eventSettingsVariable that no spec entry describes; comparing the union
+ * would report all of them as permanent drift.
+ */
 function changedFields(before, after) {
-  const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+  const keys = new Set(Object.keys(after));
   keys.delete('name');
   const fields = [];
   for (const k of keys) {

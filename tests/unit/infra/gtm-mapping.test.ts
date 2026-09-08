@@ -277,3 +277,135 @@ describe('built-in triggers', () => {
     expect(() => tagToApi(spec, ctx)).toThrow(/All Pages/);
   });
 });
+
+describe('tagToApi merges over live rather than replacing it', () => {
+  // A PUT replaces the resource, and the specs describe a subset of a tag.
+  // Building the body from the spec alone would strip measurementIdOverride
+  // from 18 live tags — found by the first dry run, before any write.
+  const EXISTING = {
+    tagId: '107',
+    name: 'GA4 - add_to_cart',
+    type: 'gaawe',
+    parameter: [
+      { type: 'boolean', key: 'sendEcommerceData', value: 'false' },
+      { type: 'template', key: 'eventName', value: 'add_to_cart' },
+      { type: 'template', key: 'measurementIdOverride', value: '{{const - ga4_measurement_id}}' },
+      { type: 'template', key: 'eventSettingsVariable', value: '{{ga4 - shared_event_settings}}' },
+    ],
+    firingTriggerId: ['99'],
+    parentFolderId: '39',
+    tagFiringOption: 'oncePerEvent',
+  };
+  const SPEC = {
+    name: 'GA4 - add_to_cart',
+    type: 'gaawe',
+    eventName: 'add_to_cart',
+    firingTrigger: 'ce - add_to_cart',
+    parameters: { product_id: '{{dlv - product_id}}' },
+    consentRequired: ['analytics_storage'],
+  };
+
+  const paramsOf = (api: { parameter: { key: string; value?: string }[] }) =>
+    Object.fromEntries(api.parameter.map((p) => [p.key, p.value]));
+
+  it('keeps parameters the spec does not describe', () => {
+    const api = tagToApi(SPEC, ctx, EXISTING);
+    const p = paramsOf(api);
+    expect(p.measurementIdOverride).toBe('{{const - ga4_measurement_id}}');
+    expect(p.eventSettingsVariable).toBe('{{ga4 - shared_event_settings}}');
+    expect(p.sendEcommerceData).toBe('false');
+  });
+
+  it('keeps placement and firing options the spec has no vocabulary for', () => {
+    const api = tagToApi(SPEC, ctx, EXISTING);
+    expect(api.parentFolderId).toBe('39');
+    expect(api.tagFiringOption).toBe('oncePerEvent');
+  });
+
+  it('still applies what the spec does declare', () => {
+    const api = tagToApi(SPEC, ctx, EXISTING);
+    const table = api.parameter.find((p: { key: string }) => p.key === 'eventSettingsTable');
+    expect(table.list).toHaveLength(1);
+    expect(api.consentSettings.consentStatus).toBe('needed');
+  });
+});
+
+describe('googtag (the GA4 Config tag)', () => {
+  // The single highest-risk tag in the container: it initialises GA4, so a
+  // wrong body breaks every downstream tag. Its live configuration already
+  // matches the spec's intent, and the mapping exists so the diff says that
+  // honestly instead of reporting a difference in vocabulary.
+  const LIVE_CONFIG = {
+    tagId: '66',
+    name: 'GA4 - Config',
+    type: 'googtag',
+    parameter: [
+      { type: 'template', key: 'tagId', value: '{{const - ga4_measurement_id}}' },
+      {
+        type: 'list',
+        key: 'configSettingsTable',
+        list: [
+          {
+            type: 'map',
+            map: [
+              { type: 'template', key: 'parameter', value: 'server_container_url' },
+              { type: 'template', key: 'parameterValue', value: '{{const - server_container_url}}' },
+            ],
+          },
+          {
+            type: 'map',
+            map: [
+              { type: 'template', key: 'parameter', value: 'send_page_view' },
+              { type: 'template', key: 'parameterValue', value: 'false' },
+            ],
+          },
+        ],
+      },
+    ],
+    firingTriggerId: ['2147479573'],
+    consentSettings: { consentStatus: 'notNeeded' },
+  };
+
+  const SPEC_CONFIG = {
+    name: 'GA4 - Config',
+    type: 'Google Tag (gtag)',
+    measurementId: '{{const - ga4_measurement_id}}',
+    serverContainerUrl: '{{const - server_container_url}}',
+    configSettings: { send_page_view: false },
+    firingTrigger: 'All Pages',
+    consentSettings: { analytics_storage: 'required' },
+  };
+
+  it('reads tagId as the measurement id and unpacks configSettingsTable', () => {
+    const spec = tagFromApi(LIVE_CONFIG, ctx);
+    expect(spec.measurementId).toBe('{{const - ga4_measurement_id}}');
+    expect(spec.serverContainerUrl).toBe('{{const - server_container_url}}');
+    expect(spec.configSettings).toEqual({ send_page_view: 'false' });
+  });
+
+  it('normalises the spec boolean to the string the API stores', () => {
+    // The spec writes send_page_view: false; the API stores "false". Left
+    // uncompared, the Config tag reads as drifted on every single run.
+    expect(specToCanonical(SPEC_CONFIG).configSettings).toEqual({ send_page_view: 'false' });
+  });
+
+  it('agrees with live on everything the spec declares except consent', () => {
+    // The only intended change to this tag. If anything else shows up here,
+    // the mapping is wrong rather than the container.
+    const fromLive = tagFromApi(LIVE_CONFIG, ctx);
+    const fromSpec = specToCanonical(SPEC_CONFIG, new Set(['ce - add_to_cart']));
+    const differing = Object.keys(fromSpec).filter(
+      (k) => k !== 'name' && JSON.stringify(fromSpec[k]) !== JSON.stringify(fromLive[k]),
+    );
+    expect(differing).toEqual(['consentRequired']);
+  });
+
+  it('writes back a tagId and configSettingsTable, keeping the built-in trigger', () => {
+    const api = tagToApi(specToCanonical(SPEC_CONFIG, new Set(['ce - add_to_cart'])), ctx, LIVE_CONFIG);
+    const params = Object.fromEntries(api.parameter.map((p: { key: string }) => [p.key, p]));
+    expect(params.tagId.value).toBe('{{const - ga4_measurement_id}}');
+    expect(params.configSettingsTable.list).toHaveLength(2);
+    expect(api.firingTriggerId).toEqual(['2147479573']);
+    expect(api.consentSettings.consentStatus).toBe('needed');
+  });
+});

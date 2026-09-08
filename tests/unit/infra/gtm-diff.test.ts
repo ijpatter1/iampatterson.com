@@ -108,3 +108,29 @@ describe('diffContainer', () => {
     expect(Object.keys(d.collections).sort()).toEqual(['tags', 'triggers', 'variables']);
   });
 });
+
+describe('the spec is a partial specification', () => {
+  // It asserts what it declares and is silent about the rest, the same
+  // contract as Terraform's ignore_changes. Without this, every live field the
+  // spec does not mention reads as permanent drift — and worse, an apply built
+  // from the spec alone would delete it, because a PUT replaces the resource.
+  // Live GA4 tags carry measurementIdOverride, sendEcommerceData and
+  // eventSettingsVariable that no spec entry describes.
+  it('does not report a live field the spec never declares', () => {
+    const live = [{ name: 'GA4 - a', type: 'gaawe', parameters: {}, measurementId: '{{const - id}}' }];
+    const spec = [{ name: 'GA4 - a', type: 'gaawe', parameters: {} }];
+    expect(diffCollection(spec, live).changed).toBe(false);
+  });
+
+  it('still reports a field the spec declares differently', () => {
+    const live = [{ name: 'GA4 - a', type: 'gaawe', parameters: {}, measurementId: '{{const - old}}' }];
+    const spec = [{ name: 'GA4 - a', type: 'gaawe', parameters: {}, measurementId: '{{const - new}}' }];
+    expect(diffCollection(spec, live).updates[0].fields).toEqual(['measurementId']);
+  });
+
+  it('reports a field the spec declares that live lacks entirely', () => {
+    const live = [{ name: 'GA4 - a', type: 'gaawe', parameters: {} }];
+    const spec = [{ name: 'GA4 - a', type: 'gaawe', parameters: {}, consentRequired: ['analytics_storage'] }];
+    expect(diffCollection(spec, live).updates[0].fields).toEqual(['consentRequired']);
+  });
+});

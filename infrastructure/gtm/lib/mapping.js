@@ -28,6 +28,19 @@ function byKey(parameters) {
 
 const template = (key, value) => ({ type: 'template', key, value });
 
+/**
+ * Stand-in for a trigger that is not in the workspace triggers collection.
+ *
+ * GA4 - Config fires on 2147479573, a built-in trigger whose id cannot be
+ * looked up and whose name this codebase cannot verify — the spec calls it
+ * "All Pages", and that may or may not be what Google calls 2147479573.
+ * Rather than assert a name it cannot check, the reconciler treats built-in
+ * trigger assignment as unowned, the same as folders and custom templates:
+ * both sides canonicalise to this sentinel, so it is preserved on write and
+ * never reported as drift.
+ */
+const BUILT_IN_TRIGGER = '(built-in trigger)';
+
 // ─── Tags ────────────────────────────────────────────────────────────────────
 
 /**
@@ -62,12 +75,24 @@ function tagFromApi(api, ctx) {
     name: api.name,
     type: api.type,
     firingTrigger: (api.firingTriggerId || []).map(
-      (id) => (ctx.triggerNameById || {})[id] || id,
+      (id) => (ctx.triggerNameById || {})[id] || BUILT_IN_TRIGGER,
     )[0],
     parameters: bindingsFromApi(p.eventSettingsTable),
   };
   if (p.eventName) spec.eventName = p.eventName.value;
   if (p.measurementIdOverride) spec.measurementId = p.measurementIdOverride.value;
+  if (api.type === 'googtag') {
+    // The Google Tag speaks its own dialect: the measurement id rides in
+    // `tagId`, and the server container URL is one row of configSettingsTable
+    // rather than a field. The spec names both directly.
+    if (p.tagId) spec.measurementId = p.tagId.value;
+    const config = bindingsFromApi(p.configSettingsTable);
+    if (config.server_container_url !== undefined) {
+      spec.serverContainerUrl = config.server_container_url;
+      delete config.server_container_url;
+    }
+    spec.configSettings = config;
+  }
   spec.consentRequired = consentFromApi(api.consentSettings);
   return spec;
 }
@@ -88,11 +113,36 @@ function tagToApi(spec, ctx, existing) {
       `tagToApi: tag "${spec.name}" fires on trigger "${spec.firingTrigger}", which does not exist in this container`,
     );
   }
-  const parameter = [bindingsToApi(spec.parameters)];
-  if (spec.eventName) parameter.push(template('eventName', spec.eventName));
-  if (spec.measurementId) parameter.push(template('measurementIdOverride', spec.measurementId));
+  // A PUT replaces the resource and the spec describes a subset of a tag, so
+  // the body is built by overlaying what the spec owns onto what is live.
+  // Building it from the spec alone strips measurementIdOverride,
+  // sendEcommerceData and eventSettingsVariable — found by the first dry run
+  // against the live container, before any write.
+  const owned = new Map();
+  if (spec.type === 'googtag') {
+    if (spec.measurementId) owned.set('tagId', template('tagId', spec.measurementId));
+    if (spec.configSettings || spec.serverContainerUrl !== undefined) {
+      const config = { ...(spec.configSettings || {}) };
+      if (spec.serverContainerUrl !== undefined) config.server_container_url = spec.serverContainerUrl;
+      const table = bindingsToApi(config);
+      owned.set('configSettingsTable', { ...table, key: 'configSettingsTable' });
+    }
+  }
+  if (spec.parameters) owned.set('eventSettingsTable', bindingsToApi(spec.parameters));
+  if (spec.eventName) owned.set('eventName', template('eventName', spec.eventName));
+  if (spec.measurementId && spec.type !== 'googtag') {
+    owned.set('measurementIdOverride', template('measurementIdOverride', spec.measurementId));
+  }
+
+  const parameter = [];
+  for (const p of (existing && existing.parameter) || []) {
+    parameter.push(owned.has(p.key) ? owned.get(p.key) : p);
+    owned.delete(p.key);
+  }
+  parameter.push(...owned.values());
 
   return {
+    ...(existing || {}),
     name: spec.name,
     type: spec.type,
     parameter,
@@ -203,11 +253,24 @@ function normalizeType(type) {
  * diff compares like with like. `note` is documentation and is dropped — were
  * it kept, every entity carrying one would read as permanently drifted.
  */
-function specToCanonical(entity) {
+function specToCanonical(entity, knownTriggerNames) {
   const out = {};
   for (const [k, v] of Object.entries(entity)) {
     if (k === 'note' || k === 'consentSettings') continue;
     out[k] = k === 'type' ? normalizeType(v) : v;
+  }
+  // `knownTriggerNames` is every trigger the workspace has plus every trigger
+  // this spec declares — a trigger created later in the same run is not a
+  // built-in, it just does not exist yet.
+  if (knownTriggerNames && out.firingTrigger && !knownTriggerNames.has(out.firingTrigger)) {
+    out.firingTrigger = BUILT_IN_TRIGGER;
+  }
+  if (out.configSettings) {
+    // The specs write `send_page_view: false`; the API stores the string
+    // "false". Uncompared, the Config tag reads as drifted on every run.
+    out.configSettings = Object.fromEntries(
+      Object.entries(out.configSettings).map(([k, v]) => [k, String(v)]),
+    );
   }
   if (entity.consentSettings) {
     out.consentRequired = Object.entries(entity.consentSettings)
@@ -218,6 +281,7 @@ function specToCanonical(entity) {
 }
 
 module.exports = {
+  BUILT_IN_TRIGGER,
   specToCanonical,
   consentToApi,
   consentFromApi,
