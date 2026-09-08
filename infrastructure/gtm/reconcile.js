@@ -31,6 +31,7 @@ const { createClient } = require('./lib/client.js');
 const { reconcile } = require('./lib/reconcile-core.js');
 const { OWNED } = require('./lib/diff.js');
 const { tagFromApi, triggerFromApi, variableFromApi } = require('./lib/mapping.js');
+const { mergeCaptured } = require('./lib/capture.js');
 
 const ACCOUNT_ID = '6346433751';
 const CONTAINERS = {
@@ -151,15 +152,13 @@ async function capture(client, name) {
 
   const file = specPath(name);
   const existing = JSON.parse(fs.readFileSync(file, 'utf8'));
-  const captured = {
-    _meta: {
-      ...existing._meta,
-      note: `Captured from the live Default Workspace by reconcile.js --capture on ${new Date().toISOString().slice(0, 10)}. This file describes what is live; edit it to change the container, then apply.`,
-    },
+  // Merged, never rebuilt: prose notes and unowned collections live only in
+  // this file and the API cannot give them back.
+  const captured = mergeCaptured(existing, {
     variables: raw.variables.map((v) => variableFromApi(v)),
     triggers: raw.triggers.map((t) => triggerFromApi(t)),
     tags: raw.tags.map((t) => tagFromApi(t, ctx)),
-  };
+  });
   fs.writeFileSync(file, `${JSON.stringify(captured, null, 2)}\n`);
   console.log(
     `captured ${name}: ${captured.variables.length} variables, ${captured.triggers.length} triggers, ${captured.tags.length} tags → ${path.relative(process.cwd(), file)}`,

@@ -125,7 +125,52 @@ export function pushEvent(event: BaseEvent & Record<string, unknown>): void {
 - Collecting and storing consent preferences
 - Communicating consent state to GTM via Google Consent Mode v2
 
-**Cookiebot blocking mode: `manual`, with explicit gtag bridge.** Cookiebot is loaded with `data-blockingmode="manual"` (not `"auto"`). Auto mode rewrites `<script>` tags in `<head>` to gate execution; this is the older belt-and-suspenders pattern from before Consent Mode v2 was widely supported. With manual mode, Cookiebot does not modify the DOM — gating is delegated entirely to the GTM container's per-tag `consentSettings` (every analytics tag carries `analytics_storage: required`; every marketing tag carries `ad_storage: required`). The CookiebotConsentListener (`src/components/scripts/cookiebot-consent.tsx`) listens for `CookiebotOnAccept`/`CookiebotOnDecline` events and calls `trackConsentUpdate`/`initConsentState` in `src/lib/events/track.ts`, which both (a) push a `consent_update` event to the data layer for the under-the-hood visualization, and (b) explicitly call `window.gtag('consent', 'update', { ... })` with the Cookiebot-to-gtag signal mapping below. The explicit bridge is what auto-mode used to do implicitly. Manual mode also resolves a React-19/Next-16 hydration mismatch in dev: auto mode's DOM rewrite during script execution runs before React can hydrate, leaving the head DOM out of sync with React's tree (commit `b2147da` attempted to suppress at the React layer; suppression at the head element is one DOM-element deep and doesn't catch the mismatches on the rewritten script tags below).
+**Cookiebot blocking mode: `manual`, with explicit gtag bridge.** Cookiebot is loaded with `data-blockingmode="manual"` (not `"auto"`). Auto mode rewrites `<script>` tags in `<head>` to gate execution; this is the older belt-and-suspenders pattern from before Consent Mode v2 was widely supported. With manual mode, Cookiebot does not modify the DOM — gating is delegated entirely to the GTM container's per-tag `consentSettings` (every analytics tag carries `analytics_storage: required`). **This describes the container as of Phase 14, [14.1]; it was not true before then** — see "Where the gate actually was" below. The CookiebotConsentListener (`src/components/scripts/cookiebot-consent.tsx`) listens for `CookiebotOnAccept`/`CookiebotOnDecline` events and calls `trackConsentUpdate`/`initConsentState` in `src/lib/events/track.ts`, which both (a) push a `consent_update` event to the data layer for the under-the-hood visualization, and (b) explicitly call `window.gtag('consent', 'update', { ... })` with the Cookiebot-to-gtag signal mapping below. The explicit bridge is what auto-mode used to do implicitly. Manual mode also resolves a React-19/Next-16 hydration mismatch in dev: auto mode's DOM rewrite during script execution runs before React can hydrate, leaving the head DOM out of sync with React's tree (commit `b2147da` attempted to suppress at the React layer; suppression at the head element is one DOM-element deep and doesn't catch the mismatches on the rewritten script tags below).
+
+#### Where the gate actually was
+
+This section asserted per-tag `consentSettings` as the enforcement point from
+Phase 1 onward. The 2026-09-08 GTM census
+(`docs/verification/2026-09-08-gtm-container-census.md`) measured the live
+container and found **`consentStatus: notNeeded` on all eighteen tags**. The
+design was described and never implemented; nothing detected the gap for eight
+months because no test compared the document to the container.
+
+Two records disagreed about what that meant, and neither cited the other:
+
+- **This section** — gating is per-tag, in the container.
+- **`docs/sessions/session-2026-03-27-007.md`** — "GA4 sends cookieless pings
+  even when consent is denied, **transport is NOT blocked**", recorded as that
+  session's key learning. `iap_session_id` was added to the shared event
+  settings variable specifically so a *cookieless decliner's* events could still
+  be routed to the right SSE connection, because GA4 overwrites `session_id` on
+  those pings.
+
+Both were accurate about different layers. Consent Mode v2 gates *identifiers*
+and lets a denied visitor's request through as a cookieless ping; GTM per-tag
+consent gates *the tag firing at all*. Only the second was ever going to make
+this section's sentence true, and only the first was ever running.
+
+**Decision (Ian, 2026-09-08): the per-tag gate wins, and [14.1] implements it.**
+Twenty-one of twenty-two tags now require `analytics_storage`. A visitor who
+declines analytics fires no GA4 tag and generates no ping. The stricter posture
+is the one this site should demonstrate, and it is the one the document has been
+claiming.
+
+What that costs, recorded rather than discovered later:
+
+- The cookieless-routing motivation for `iap_session_id` is largely spent — a
+  declining visitor no longer produces cookieless pings to route. The parameter
+  stays: GA4 still remaps `session_id` for everyone, and `GA4 - consent_update`
+  is deliberately exempt from the gate, so that one event still travels and
+  still needs routing.
+- A declining visitor's real-time overlay now legitimately stays empty. The
+  fallback previously reported `ga4`/`bigquery`/`pubsub` as delivered
+  regardless of consent, which would have become a false claim the moment the
+  gate went live; `buildRouting` and the timeline's empty state were corrected
+  in the same deliverable so the overlay reports what actually happened.
+- Decliners go from many cookieless pings to exactly one, not to zero, because
+  of the `consent_update` exemption.
 
 **Integration sequence:**
 
