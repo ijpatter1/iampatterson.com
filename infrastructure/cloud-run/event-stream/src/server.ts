@@ -7,7 +7,11 @@ const app = express();
 const manager = new ConnectionManager();
 
 const ALLOWED_ORIGINS = (
-  process.env.ALLOWED_ORIGINS ?? 'https://iampatterson-com.vercel.app,https://iampatterson.com'
+  process.env.ALLOWED_ORIGINS ??
+  // Production redirects the apex to www, so www IS the browser origin and must
+  // be first: an unlisted origin falls back to ALLOWED_ORIGINS[0], and that
+  // fallback should name the real site rather than a preview host.
+  'https://www.iampatterson.com,https://iampatterson.com,https://iampatterson-com.vercel.app'
 ).split(',');
 const HEARTBEAT_INTERVAL_MS = 30_000;
 

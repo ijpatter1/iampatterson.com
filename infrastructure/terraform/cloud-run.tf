@@ -82,7 +82,7 @@ resource "google_cloud_run_v2_service" "event_stream" {
       working_dir    = null
       env {
         name  = "ALLOWED_ORIGINS"
-        value = "https://iampatterson-com.vercel.app,https://iampatterson.com"
+        value = "https://www.iampatterson.com,https://iampatterson.com,https://iampatterson-com.vercel.app"
       }
       ports {
         container_port = 8080
