@@ -619,3 +619,48 @@ describe('alignment finding 11 — the create path, as a class not an instance',
     expect(() => tagToApi(base, ctx, existing)).not.toThrow();
   });
 });
+
+describe('custom template tags', () => {
+  // The server container's three destination tags are custom templates
+  // (cvt_* / community). Their configuration is scalar — a topic path, a table
+  // id — and it was being captured as an empty `parameters` map, so a spec
+  // regenerated from live described their existence and nothing about what
+  // they point at. The BigQuery table id and the Pub/Sub topic are the two
+  // couplings most worth pinning in a committed spec.
+  const LIVE_PUBSUB = {
+    name: 'Pub/Sub Publish',
+    type: 'cvt_247531845_22',
+    parameter: [
+      { type: 'template', key: 'topicPath', value: 'projects/iampatterson/topics/iampatterson-events' },
+    ],
+    firingTriggerId: ['77'],
+  };
+
+  const ctxServer = { triggerNameById: { '77': 'clientName - GA4' }, triggerIdByName: { 'clientName - GA4': '77' } };
+
+  it('captures scalar template parameters instead of an empty map', () => {
+    const spec = tagFromApi(LIVE_PUBSUB, ctxServer);
+    expect(spec.templateParameters).toEqual({
+      topicPath: 'projects/iampatterson/topics/iampatterson-events',
+    });
+  });
+
+  it('writes them back unchanged', () => {
+    const spec = tagFromApi(LIVE_PUBSUB, ctxServer);
+    const api = tagToApi(spec, ctxServer, LIVE_PUBSUB);
+    const p = Object.fromEntries(api.parameter.map((x: { key: string; value?: string }) => [x.key, x.value]));
+    expect(p.topicPath).toBe('projects/iampatterson/topics/iampatterson-events');
+  });
+
+  it('does not impose the GA4 guards on a template tag', () => {
+    // measurementId and sharedEventSettings are gaawe concerns; a custom
+    // template has neither and must not be refused for lacking them.
+    const spec = tagFromApi(LIVE_PUBSUB, ctxServer);
+    expect(() => tagToApi(spec, ctxServer)).not.toThrow();
+  });
+
+  it('round-trips, so a captured server spec reports no drift', () => {
+    const spec = tagFromApi(LIVE_PUBSUB, ctxServer);
+    expect(tagFromApi({ ...LIVE_PUBSUB, ...tagToApi(spec, ctxServer, LIVE_PUBSUB) }, ctxServer)).toEqual(spec);
+  });
+});

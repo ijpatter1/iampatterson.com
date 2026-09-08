@@ -28,6 +28,9 @@ function byKey(parameters) {
 
 const template = (key, value) => ({ type: 'template', key, value });
 
+/** Tag types this mapping models field by field. Everything else is a custom template. */
+const KNOWN_TAG_TYPES = new Set(['gaawe', 'googtag']);
+
 /**
  * Stand-in for a trigger that is not in the workspace triggers collection.
  *
@@ -100,6 +103,17 @@ function tagFromApi(api, ctx) {
     }
     spec.configSettings = config;
   }
+  // A custom template tag (cvt_* / community) carries scalar configuration —
+  // a topic path, a table id — under its own keys. Left uncaptured, a spec
+  // regenerated from live would describe such a tag's existence and nothing
+  // about what it points at.
+  if (!KNOWN_TAG_TYPES.has(api.type)) {
+    const scalars = {};
+    for (const [key, param] of Object.entries(p)) {
+      if (param.value !== undefined) scalars[key] = param.value;
+    }
+    if (Object.keys(scalars).length) spec.templateParameters = scalars;
+  }
   spec.consentRequired = consentFromApi(api.consentSettings);
   return spec;
 }
@@ -149,6 +163,9 @@ function tagToApi(spec, ctx, existing) {
   }
   if (spec.sharedEventSettings) {
     owned.set('eventSettingsVariable', template('eventSettingsVariable', spec.sharedEventSettings));
+  }
+  for (const [key, value] of Object.entries(spec.templateParameters || {})) {
+    owned.set(key, template(key, value));
   }
 
   const parameter = [];

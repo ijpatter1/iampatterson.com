@@ -122,17 +122,25 @@ describe('R3 mitigation: the share payload never reaches GA4 (and never freezes 
 });
 
 describe('server container coverage', () => {
-  it('forwards claudish events through the generic All-GA4 pipeline (no per-event tags needed)', () => {
-    const allGa4 = serverContainer.triggers.find(
-      (t: { name: string }) => t.name === 'All GA4 Events'
+  it('forwards claudish events through the generic route, with no per-event tags', () => {
+    // Corrected 2026-09-08 ([14.1]). This named the trigger `All GA4 Events`
+    // and its tags `GA4 - Forwarding` / `BigQuery - Write All Events` /
+    // `Pub/Sub - Publish All Events`. The census found none of those exist:
+    // the spec had been describing an intended container, and this test was
+    // comparing that document to itself. The live route is `clientName - GA4`,
+    // a type=always trigger filtered on `{{Client Name}} contains GA4`.
+    const generic = serverContainer.triggers.find(
+      (t: { name: string }) => t.name === 'clientName - GA4'
     );
-    expect(allGa4).toBeDefined();
+    expect(generic).toBeDefined();
     const generics = serverContainer.tags.filter(
-      (t: { firingTrigger?: string }) => t.firingTrigger === 'All GA4 Events'
+      (t: { firingTrigger?: string }) => t.firingTrigger === 'clientName - GA4'
     );
-    expect(generics.map((t: { name: string }) => t.name)).toEqual(
-      expect.arrayContaining(['GA4 - Forwarding', 'BigQuery - Write All Events', 'Pub/Sub - Publish All Events'])
-    );
+    expect(generics.map((t: { name: string }) => t.name).sort()).toEqual([
+      'BigQuery API',
+      'Pub/Sub Publish',
+      '[Stape] GA4 - Base',
+    ]);
   });
 });
 
