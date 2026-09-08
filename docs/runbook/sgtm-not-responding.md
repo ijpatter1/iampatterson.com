@@ -89,7 +89,15 @@ that was actually broken.
 
 ## Rehearsal
 
-The uptime half of this entry was rehearsed on 2026-09-04 during Phase 12: an
-uptime check was pointed at a missing path, the alert fired and was read back
-off the Pub/Sub notification channel six minutes later, and the check was
-restored. Record: `docs/verification/2026-09-04-uptime-rehearsal.md`.
+**Partially rehearsed, and the part that was rehearsed was a different check.**
+On 2026-09-04 the `claudish-proxy-health` check was pointed at a missing path, the
+alert fired and was read off the Pub/Sub channel six minutes later, and the check
+was restored (`docs/verification/2026-09-04-uptime-rehearsal.md`). On 2026-09-08
+the same was done to `site-www`
+(`docs/verification/2026-09-05-operational-runbook.md`). Neither touched
+`sgtm-healthy`.
+
+So the uptime *mechanism* behind this entry is well proven, and this entry's own
+alert is not. The abort and 5xx paths have never been staged either. What has
+fired here for real is the Cloud Run instance-abort condition — 96 times in the
+30 days to 2026-09-05 — which is the diagnosis this entry leads with.

@@ -87,9 +87,18 @@ re-running the job query above for the current day. The alert closes on its own.
 
 ## Rehearsal
 
-Not rehearsed, and deliberately not. Firing this alert requires scanning a
-terabyte, which costs real money to stage and would itself be the incident. The
-alert's condition is a threshold on a metric BigQuery publishes continuously, and
-its notification path is the same one every other threshold policy in this
-project uses, two of which fired for real during Phase 12. Manufacturing a
-billing event to prove a threshold works is not a reasonable trade.
+Not rehearsed. The obvious staging — actually scanning a terabyte — costs real
+money and would itself be the incident.
+
+But that is a statement about cost, and the acceptance clause asks for a reason
+it cannot be rehearsed *safely*. The honest answer is narrower: this is a metric
+threshold, so it could be fired by temporarily lowering the threshold below
+current daily spend, the same misconfigure-and-restore technique used twice on
+uptime checks here, at no cost. That was considered and rejected because it
+mutates a live alert policy, and a policy left lowered by a crashed rehearsal
+would alarm on every ordinary day until someone noticed.
+
+What stands without it: the condition is a threshold on a metric BigQuery
+publishes continuously, and its notification path is the one every threshold
+policy here uses, two of which fired for real during Phase 12. The trade is
+recorded rather than dressed up as impossibility.

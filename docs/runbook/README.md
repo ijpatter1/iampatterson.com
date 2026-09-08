@@ -21,8 +21,8 @@ plus one per uptime check in `uptime.json`.
 
 | Alert | Entry |
 | --- | --- |
-| Cloud Run 5xx: more than 10 in 5 minutes on any service | [sGTM not responding](sgtm-not-responding.md) · [event pipeline backlog](event-pipeline-backlog.md) |
-| Cloud Run instance aborts: `no available instance` | [sGTM not responding](sgtm-not-responding.md) |
+| Cloud Run 5xx: more than 10 in 5 minutes on any service | **read `service_name` first** → [sGTM](sgtm-not-responding.md) · [event-stream](event-pipeline-backlog.md) · [claudish-proxy](claudish-proxy-over-budget.md) · [data-generator](data-generator-stuck.md) · [metabase](uptime-check-failing.md) |
+| Cloud Run instance aborts: 'no available instance' on any service | **read `service_name` first** → [sGTM](sgtm-not-responding.md) · [data-generator](data-generator-stuck.md) · others as above |
 | Cloud Run container failed to start or crash-looped | [a revision that will not start](revision-will-not-start.md) |
 | Pub/Sub backlog on iampatterson-events-push: oldest unacked message older than 5 minutes | [event pipeline backlog](event-pipeline-backlog.md) |
 | Pub/Sub backlog on iampatterson-events-push: more than 100 undelivered messages | [event pipeline backlog](event-pipeline-backlog.md) |
@@ -31,12 +31,27 @@ plus one per uptime check in `uptime.json`.
 | BigQuery billed scan above 1 TB in a day | [BigQuery spend](bigquery-spend.md) |
 | Claudish proxy budget threshold crossed (50/80/100 %) | [Claudish proxy over budget](claudish-proxy-over-budget.md) |
 | Claudish proxy refusing for capacity | [Claudish proxy over budget](claudish-proxy-over-budget.md) |
-| TLS certificate expiring within 14 days | [certificate renewal failure](certificate-renewal-failure.md) |
+| TLS certificate expiring within 14 days on a monitored surface | [certificate renewal failure](certificate-renewal-failure.md) |
 | Uptime `sgtm-healthy` failing | [sGTM not responding](sgtm-not-responding.md) |
 | Uptime `event-stream-health` failing | [event pipeline backlog](event-pipeline-backlog.md) |
 | Uptime `claudish-proxy-health` failing | [Claudish proxy over budget](claudish-proxy-over-budget.md) |
 | Uptime `site-www` failing | [a public surface is down](uptime-check-failing.md) |
 | Uptime `metabase-lb` failing | [a public surface is down](uptime-check-failing.md) |
+
+### Two alerts cover every service
+
+`Cloud Run 5xx` and `Cloud Run instance aborts` both fire on **any** service, so
+the entry you want depends on which one. The alert body carries
+`resource.labels.service_name`; read it before following a link. This matters:
+the abort alert is the one that has actually fired unprompted in this project,
+and it fired on `data-generator`, not on sGTM.
+
+```bash
+gcloud logging read \
+  'resource.type="cloud_run_revision" AND textPayload:"no available instance"' \
+  --project=iampatterson --limit=10 --freshness=1h \
+  --format='value(timestamp, resource.labels.service_name)'
+```
 
 ## Entries with no alert
 

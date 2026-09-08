@@ -84,6 +84,26 @@ has no recovery path beyond draining the backlog or waiting for it to age out.
 Similarly, `iampatterson_raw` carries a 60-day table and partition expiry. This
 deliverable records it; 13.1 decides whether 60 days is the right answer.
 
+## The health and delivery clause
+
+13.7's acceptance ends "every service answers its health endpoint and the event
+pipeline still delivers, checked after reconciliation." An earlier version of this
+record did not mention that clause at all, and its implicit answer — no apply ran,
+so nothing could have broken — is sound but was never stated. A clause discharged
+by inference is not discharged.
+
+Stated now: **the reconciliation changed files in the repository and not one
+resource in GCP.** No `terraform apply` was run in this deliverable, so there is
+no mechanism by which a service could have stopped answering or the pipeline
+stopped delivering. The clause is met by construction rather than by measurement.
+
+Measurement exists anyway, from adjacent work the same day: every service
+answered its health endpoint, and `events_raw` gained exactly the rows the
+generator reported sending (+712, then +117) under changed identities. That is
+13.4's evidence, recorded in
+`docs/verification/2026-09-05-cloud-run-adoption-measured.md`, and it post-dates
+this reconciliation — so it also serves as the after-check this clause asks for.
+
 ## Superseded in one respect by 13.4
 
 The "No changes" plan above was true when this record was written and is

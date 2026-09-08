@@ -18,7 +18,33 @@ overlay, which is the demonstration the site is built around.
 
 ## Diagnose
 
-How far behind is it?
+How far behind is it? The alerts name two numbers — oldest unacked age, and
+undelivered count — and both come from Monitoring rather than from the
+subscription itself:
+
+```bash
+TOK=$(gcloud auth print-access-token)
+for M in oldest_unacked_message_age num_undelivered_messages; do
+  echo "== $M =="
+  curl -s -G -H "Authorization: Bearer $TOK" \
+    "https://monitoring.googleapis.com/v3/projects/iampatterson/timeSeries" \
+    --data-urlencode "filter=metric.type=\"pubsub.googleapis.com/subscription/$M\" AND resource.labels.subscription_id=\"iampatterson-events-push\"" \
+    --data-urlencode "interval.startTime=$(date -u -v-30M +%Y-%m-%dT%H:%M:%SZ)" \
+    --data-urlencode "interval.endTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  | python3 -c "
+import json,sys
+for t in json.load(sys.stdin).get('timeSeries',[]):
+    for p in t.get('points',[])[:5]:
+        print(' ', p['interval']['endTime'][11:19], p['value'].get('int64Value'))"
+done
+```
+
+Rising oldest-unacked age is the one to watch: it means messages are arriving and
+not being accepted. A high undelivered count with a flat age is a burst that is
+still draining.
+
+Then confirm where the subscription is pointed, which is the usual cause when the
+numbers are bad:
 
 ```bash
 gcloud pubsub subscriptions describe iampatterson-events-push \
@@ -88,7 +114,18 @@ Confirm the overlay works by opening the site and watching an event appear.
 
 Not rehearsed. A backlog is produced by breaking the consumer, and the only
 honest way to do that is to stop `event-stream` while it is serving live SSE
-connections to whoever is on the site. The failure mode is well understood from
-its parts — the alert fired for real during Phase 12 capacity work — and the
-diagnosis above is exercised by the same commands used to verify normal
-operation. Written reason rather than a staged outage.
+connections to whoever is on the site.
+
+**Neither alert that leads here has ever fired.** An earlier version of this
+paragraph said "the alert fired for real during Phase 12 capacity work". That was
+false, and it is the kind of false that matters: an operator mid-incident reads it
+as *the notification path here is proven*. It is not.
+`docs/verification/2026-09-04-alert-policies.md` records both Pub/Sub policies as
+unfireable without stopping event-stream, and the one unprompted firing in this
+project was `Cloud Scheduler job attempt failed`, which leads to a different
+entry.
+
+What can be said honestly: both policies route to the same two channels as
+policies that have fired, so the delivery path is proven by a sibling rather than
+by these. The diagnosis above is exercised by the same commands used to verify
+normal operation.

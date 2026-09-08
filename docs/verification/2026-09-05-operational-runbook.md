@@ -7,7 +7,7 @@ Deliverable 13.5. Twelve entries, an index, and the rehearsals behind them.
 | Clause | Result |
 | --- | --- |
 | Every one of the sixteen Phase 12 alerts links to an entry | met, and asserted by test |
-| One dated rehearsal per entry, or a written reason it cannot be rehearsed safely | met, 9 rehearsed and 3 reasoned |
+| One dated rehearsal per entry, or a written reason it cannot be rehearsed safely | met — 6 rehearsed, 5 reasoned, 1 carrying a sibling's rehearsal and labelled as such |
 | The manual task card for the Vercel bypass secret exists | met, `docs/manual/task-2026-09-05-001.md` |
 
 Sixteen alerts: the eleven policies in
@@ -38,9 +38,13 @@ asks future deliverables to do.
 
 ## Rehearsals
 
-**Nine rehearsed.** Four inherited from Phase 12's real firings (uptime, the
-Claudish capacity trip, the Dataform nightly failure, the first real alert), and
-five performed for this deliverable:
+**Six rehearsed.** An earlier version of this record claimed nine, which
+double-counted: Phase 12's firings are cited *inside* entries that were also being
+counted, and the Dataform nightly failure was listed both as an inherited
+rehearsal and as one of the written reasons, in the same document. The honest
+count is six entries carrying a rehearsal of their own procedure, one
+(`sgtm-not-responding`) carrying a sibling check's, and five carrying reasons.
+Five of the six were performed for this deliverable:
 
 | Entry | What was done |
 | --- | --- |
@@ -50,9 +54,14 @@ five performed for this deliverable:
 | preview protection | the live PR #62 preview returned `302` to `vercel.com/sso-api` and on to a login page. |
 | expired gcloud credentials | happened for real, mid-session, on 2026-09-05. |
 
-**Three reasoned rather than staged**, each naming what a rehearsal would cost:
-scanning a terabyte of BigQuery, failing a certificate renewal on demand, or
-manufacturing a Dataform failure by breaking the nightly warehouse build.
+**Five reasoned rather than staged**, all named rather than only the strongest
+three: `bigquery-spend` (a threshold that could be lowered instead — considered,
+and rejected because a crashed rehearsal leaves a live policy alarming),
+`certificate-renewal-failure` (same shape, same trade),
+`dataform-assertion-failure` (the only reproducible failure is the one this phase
+fixed), `event-pipeline-backlog` (staging it means stopping event-stream while
+visitors are connected) and `vercel-build-failing` (staging it means pushing a
+deliberately broken runtime pin to production).
 
 ## Two corrections the rehearsals forced
 

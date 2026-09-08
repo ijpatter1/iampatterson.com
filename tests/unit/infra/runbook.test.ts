@@ -34,16 +34,62 @@ const checks = JSON.parse(read('infrastructure/monitoring/spec/uptime.json')) as
 const linked = [...index.matchAll(/\]\(([a-z0-9-]+\.md)\)/g)].map((m) => m[1]);
 
 describe('13.5 — every alert leads somewhere', () => {
-  it('the index covers all sixteen alerts: eleven policies plus one per uptime check', () => {
+  /**
+   * Every alert row in the index, as { alert, targets }. Parsed rather than
+   * substring-matched: an earlier version asserted the index merely *contained*
+   * each alert's name and, separately, that linked files existed — so a row
+   * carrying an alert name and no link at all satisfied both. That is exactly
+   * the defect the boundary review found in 13.5's original wording, reproduced
+   * in the test written to prevent it.
+   */
+  const alertRows = (): { alert: string; targets: string[] }[] =>
+    index
+      .split('\n')
+      .filter((l) => /^\|/.test(l) && !/^\|\s*(Alert|Situation|---)/.test(l))
+      .map((l) => {
+        const cells = l.split('|').map((c) => c.trim());
+        return {
+          alert: cells[1] ?? '',
+          targets: [...(cells[2] ?? '').matchAll(/\]\(([a-z0-9-]+\.md)\)/g)].map((m) => m[1]),
+        };
+      })
+      .filter((r) => r.alert);
+
+  it('every alert row resolves to at least one entry that exists', () => {
+    const rows = alertRows();
+    expect(rows.length).toBeGreaterThanOrEqual(16);
+    for (const r of rows) {
+      expect(r.targets.length).toBeGreaterThan(0);
+      for (const t of r.targets) {
+        expect(existsSync(path.join(root, RUNBOOK, t))).toBe(true);
+      }
+    }
+  });
+
+  it('covers all sixteen alerts: eleven policies plus one per uptime check', () => {
     expect(policies).toHaveLength(11);
     expect(checks).toHaveLength(5);
-    // Each policy's displayName should be recognisable in the index's table.
+    // Backticks are markdown formatting, not wording, so normalise them away —
+    // but compare the whole display name, because a prefix match is how the
+    // previous version let a row drift from what the alert email says.
+    const strip = (t: string) => t.replace(/`/g, '');
+    const rowText = alertRows().map((r) => strip(r.alert)).join('\n');
     for (const p of policies) {
-      const head = p.displayName.split(':')[0].slice(0, 34);
-      expect(index).toContain(head);
+      expect(rowText).toContain(strip(p.displayName.split('(')[0].trim()));
     }
     for (const c of checks) {
-      expect(index).toContain(c.displayName);
+      expect(rowText).toContain(c.displayName);
+    }
+  });
+
+  it('routes the two service-agnostic alerts to more than one entry', () => {
+    // Both fire on any service. The abort alert has fired unprompted here, on
+    // data-generator — an operator sent only to the sGTM entry reads a Fix
+    // section about raising sGTM's ceiling.
+    for (const needle of ['5xx', 'no available instance']) {
+      const row = alertRows().find((r) => r.alert.includes(needle));
+      expect(row).toBeDefined();
+      expect(row!.targets.length).toBeGreaterThan(1);
     }
   });
 

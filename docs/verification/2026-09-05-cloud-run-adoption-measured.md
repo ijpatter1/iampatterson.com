@@ -1,8 +1,20 @@
-# Cloud Run adoption: measured and decided, not yet applied
+# Cloud Run adoption: measured, decided, and applied
 
-Deliverable 13.4, **partial**. Everything that can be established without
-changing production is here. The changes themselves are not made, and the reason
-is at the bottom.
+Deliverable 13.4, complete. Every Cloud Run service now runs on a dedicated
+identity, the scaling is corrected, and the proxy adoption is imported into
+Terraform with a clean plan.
+
+> **How to read this file.** It was written in two passes and the sections are in
+> the order they happened, not in order of importance. The measurement and the
+> decisions came first, while the changes were deliberately not being made; the
+> changes came after permission was given. The section "Original reasoning,
+> retained" near the bottom is the *superseded* first-pass argument for **not**
+> applying, kept because the reasoning is still the right reasoning for an
+> unattended session. It is history, not current state.
+>
+> The first version of this file opened by saying the changes were not made, and
+> kept that opening after they were — which made the first five lines of the
+> record a reader lands on false. Corrected at the review gate on 2026-09-08.
 
 ## The scaling measurement the deliverable requires
 
@@ -182,9 +194,15 @@ other project machinery may still rely on it, and a project-wide role is not
 something to remove without checking what breaks. It is the natural next
 hardening step.
 
-## Original reasoning, retained
+## Superseded: the original reasoning for not applying
 
-## Not applied, and why
+Everything below this line was written **before** permission was given, and
+describes a decision that was later reversed. It is kept because the reasoning
+holds for any unattended session facing the same work — not because it describes
+what happened.
+
+
+### (superseded) Not applied, and why
 
 This session ran unattended, and the remaining half of 13.4 is a set of
 production mutations: raising sGTM's instance ceiling, creating four service

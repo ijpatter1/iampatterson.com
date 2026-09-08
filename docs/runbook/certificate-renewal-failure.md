@@ -74,9 +74,18 @@ The expiry date has moved out, and the uptime check `metabase-lb` stays green.
 
 ## Rehearsal
 
-Not rehearsed, and it cannot honestly be. You cannot fail a certificate renewal
-on demand: the failure is Google declining to renew, usually because of a DNS
-condition, and staging it means pointing production DNS away from the load
-balancer and waiting weeks for the alert window. The check that produces the
-signal is the same uptime check that was rehearsed on 2026-09-04, so the
-measurement path is proven even though this specific condition has never fired.
+Not rehearsed. You cannot fail a certificate renewal on demand: the failure is
+Google declining to renew, usually because of a DNS condition, and staging it
+means pointing production DNS away from the load balancer and waiting weeks for
+the alert window.
+
+Two honest qualifications. The uptime rehearsal of 2026-09-04 was performed on
+`claudish-proxy-health`, not on a certificate-bearing host, so it establishes the
+mechanism rather than this signal — the inference from a sibling is an inference.
+And the alert is a metric threshold, so it *could* be fired without touching DNS
+by temporarily raising the threshold above the live days-to-expiry, the same
+misconfigure-and-restore technique used twice on uptime checks here. That was
+considered and not done: it mutates a live alert policy for a signal whose
+delivery path is already evidenced, and a policy left misconfigured by a crashed
+rehearsal is a worse outcome than an unrehearsed entry. The trade is recorded so
+the next person can weigh it differently.

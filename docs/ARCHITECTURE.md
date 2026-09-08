@@ -769,11 +769,18 @@ not it can still write to BigQuery, so a health check is not a verification. The
 entries that matter verify by counting rows.
 
 **A rehearsal or a written reason, never silence.** Borrowed from 12.4's wording,
-which 13.5's original text had lost. Nine entries carry dated rehearsals; three
-carry reasons that name what staging the failure would actually cost — scanning a
-terabyte of BigQuery, failing a certificate renewal on demand, or manufacturing a
-Dataform failure by breaking the nightly warehouse build. A test asserts that
-each entry has one or the other.
+which 13.5's original text had lost. Six entries carry a dated rehearsal of their
+own procedure, five carry a written reason, and one — `sgtm-not-responding` —
+carries a sibling check's rehearsal and says so. The five reasons are
+`bigquery-spend`, `certificate-renewal-failure`, `dataform-assertion-failure`,
+`event-pipeline-backlog` and `vercel-build-failing`. A test asserts that each
+entry has one or the other.
+
+An earlier version of this paragraph said "nine dated rehearsals; three written
+reasons", which double-counted Phase 12 firings cited *inside* entries that were
+also being counted, and named only the three strongest reasons while omitting the
+two weakest. Reporting the strongest subset as the whole is the failure Rule 10
+exists to prevent, and the alignment review caught it.
 
 **The gaps are entries, not omissions.** The push subscription has no dead-letter
 topic, so a message `event-stream` cannot process has no recovery path beyond
