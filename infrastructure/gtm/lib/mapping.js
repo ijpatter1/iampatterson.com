@@ -141,6 +141,16 @@ function tagToApi(spec, ctx, existing) {
   }
   parameter.push(...owned.values());
 
+  // The API rejects a GA4 event tag whose measurementIdOverride is empty.
+  // Existing tags survive on the merge because live already carries it; a tag
+  // being created has nothing to merge from. Refusing here means a dry run
+  // reports it, instead of an apply failing after other entities have landed.
+  if (spec.type === 'gaawe' && !parameter.some((p) => p.key === 'measurementIdOverride')) {
+    throw new Error(
+      `tagToApi: tag "${spec.name}" is a GA4 event tag with no measurement id; declare measurementId in the spec`,
+    );
+  }
+
   return {
     ...(existing || {}),
     name: spec.name,

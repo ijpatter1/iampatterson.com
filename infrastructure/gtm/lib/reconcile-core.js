@@ -57,6 +57,16 @@ function buildTriggerIndex(triggers) {
   return { triggerIdByName, triggerNameById };
 }
 
+/**
+ * Triggers this run will create, given placeholder ids so a tag that depends
+ * on one validates during the dry run rather than only at apply time.
+ */
+function plannedTriggerIds(diff) {
+  const out = {};
+  for (const t of diff.collections.triggers.adds) out[t.name] = 'planned';
+  return out;
+}
+
 async function reconcile({
   client,
   containerId,
@@ -94,8 +104,35 @@ async function reconcile({
   }
 
   const diff = diffContainer(specCanonical, liveCanonical);
+
+  // Convert every planned write before making any of them. An apply that
+  // fails partway leaves the container in a state nobody described, and the
+  // dry run that preceded it gave no warning — which is exactly what happened
+  // on 2026-09-08, after sixteen variables and four triggers had landed.
+  const problems = [];
+  for (const collection of APPLY_ORDER) {
+    const d = diff.collections[collection];
+    for (const entity of d.adds) {
+      try {
+        TO_API[collection](entity, { ...ctx, triggerIdByName: { ...ctx.triggerIdByName, ...plannedTriggerIds(diff) } });
+      } catch (err) {
+        problems.push(err.message);
+      }
+    }
+    for (const { name, after } of d.updates) {
+      try {
+        TO_API[collection](after, ctx, rawByName[collection].get(name));
+      } catch (err) {
+        problems.push(err.message);
+      }
+    }
+  }
+
   if (!apply || !diff.changed) {
-    return { diff, applied: false, workspaceId, versionId: null };
+    return { diff, problems, applied: false, workspaceId, versionId: null };
+  }
+  if (problems.length) {
+    throw new Error(`refusing to apply; ${problems.length} planned write(s) cannot be built:\n  ${problems.join('\n  ')}`);
   }
 
   for (const collection of APPLY_ORDER) {
@@ -136,7 +173,7 @@ async function reconcile({
     await client.publish(containerId, versionId);
   }
 
-  return { diff, applied: true, workspaceId, versionId };
+  return { diff, problems, applied: true, workspaceId, versionId };
 }
 
 module.exports = { reconcile, APPLY_ORDER };

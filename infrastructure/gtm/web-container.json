@@ -442,7 +442,8 @@
       "consentSettings": {
         "analytics_storage": "required"
       },
-      "note": "Common parameters come from {{ga4 - shared_event_settings}}; only event-specific ones are listed here."
+      "note": "Common parameters come from {{ga4 - shared_event_settings}}; only event-specific ones are listed here.",
+      "measurementId": "{{const - ga4_measurement_id}}"
     },
     {
       "name": "GA4 - scroll_depth",
@@ -456,7 +457,8 @@
       "consentSettings": {
         "analytics_storage": "required"
       },
-      "note": "Common parameters come from {{ga4 - shared_event_settings}}; only event-specific ones are listed here."
+      "note": "Common parameters come from {{ga4 - shared_event_settings}}; only event-specific ones are listed here.",
+      "measurementId": "{{const - ga4_measurement_id}}"
     },
     {
       "name": "GA4 - click_nav",
@@ -470,7 +472,8 @@
       "consentSettings": {
         "analytics_storage": "required"
       },
-      "note": "Common parameters come from {{ga4 - shared_event_settings}}; only event-specific ones are listed here."
+      "note": "Common parameters come from {{ga4 - shared_event_settings}}; only event-specific ones are listed here.",
+      "measurementId": "{{const - ga4_measurement_id}}"
     },
     {
       "name": "GA4 - click_cta",
@@ -484,7 +487,8 @@
       "consentSettings": {
         "analytics_storage": "required"
       },
-      "note": "Common parameters come from {{ga4 - shared_event_settings}}; only event-specific ones are listed here."
+      "note": "Common parameters come from {{ga4 - shared_event_settings}}; only event-specific ones are listed here.",
+      "measurementId": "{{const - ga4_measurement_id}}"
     },
     {
       "name": "GA4 - form_field_focus",
@@ -498,7 +502,8 @@
       "consentSettings": {
         "analytics_storage": "required"
       },
-      "note": "Common parameters come from {{ga4 - shared_event_settings}}; only event-specific ones are listed here."
+      "note": "Common parameters come from {{ga4 - shared_event_settings}}; only event-specific ones are listed here.",
+      "measurementId": "{{const - ga4_measurement_id}}"
     },
     {
       "name": "GA4 - form_start",
@@ -511,7 +516,8 @@
       "consentSettings": {
         "analytics_storage": "required"
       },
-      "note": "Common parameters come from {{ga4 - shared_event_settings}}; only event-specific ones are listed here."
+      "note": "Common parameters come from {{ga4 - shared_event_settings}}; only event-specific ones are listed here.",
+      "measurementId": "{{const - ga4_measurement_id}}"
     },
     {
       "name": "GA4 - form_submit",
@@ -525,7 +531,8 @@
       "consentSettings": {
         "analytics_storage": "required"
       },
-      "note": "Common parameters come from {{ga4 - shared_event_settings}}; only event-specific ones are listed here."
+      "note": "Common parameters come from {{ga4 - shared_event_settings}}; only event-specific ones are listed here.",
+      "measurementId": "{{const - ga4_measurement_id}}"
     },
     {
       "name": "GA4 - consent_update",
@@ -536,7 +543,8 @@
       "consentSettings": {
         "note": "No consent requirement — consent_update must fire regardless of consent state to track the consent change itself"
       },
-      "note": "Common parameters come from {{ga4 - shared_event_settings}}; only event-specific ones are listed here."
+      "note": "Common parameters come from {{ga4 - shared_event_settings}}; only event-specific ones are listed here.",
+      "measurementId": "{{const - ga4_measurement_id}}"
     },
     {
       "name": "GA4 - product_view",
@@ -552,7 +560,8 @@
       "consentSettings": {
         "analytics_storage": "required"
       },
-      "note": "Base params (iap_source, timestamp, session_id, page_path, page_title, consent_*) inherited via shared_event_settings"
+      "note": "Base params (iap_source, timestamp, session_id, page_path, page_title, consent_*) inherited via shared_event_settings",
+      "measurementId": "{{const - ga4_measurement_id}}"
     },
     {
       "name": "GA4 - add_to_cart",
@@ -567,7 +576,8 @@
       "firingTrigger": "ce - add_to_cart",
       "consentSettings": {
         "analytics_storage": "required"
-      }
+      },
+      "measurementId": "{{const - ga4_measurement_id}}"
     },
     {
       "name": "GA4 - remove_from_cart",
@@ -582,7 +592,8 @@
       "firingTrigger": "ce - remove_from_cart",
       "consentSettings": {
         "analytics_storage": "required"
-      }
+      },
+      "measurementId": "{{const - ga4_measurement_id}}"
     },
     {
       "name": "GA4 - begin_checkout",
@@ -595,7 +606,8 @@
       "firingTrigger": "ce - begin_checkout",
       "consentSettings": {
         "analytics_storage": "required"
-      }
+      },
+      "measurementId": "{{const - ga4_measurement_id}}"
     },
     {
       "name": "GA4 - purchase",
@@ -610,7 +622,8 @@
       "firingTrigger": "ce - purchase",
       "consentSettings": {
         "analytics_storage": "required"
-      }
+      },
+      "measurementId": "{{const - ga4_measurement_id}}"
     },
     {
       "name": "GA4 - plan_select",
@@ -624,7 +637,8 @@
       "firingTrigger": "ce - plan_select",
       "consentSettings": {
         "analytics_storage": "required"
-      }
+      },
+      "measurementId": "{{const - ga4_measurement_id}}"
     },
     {
       "name": "GA4 - trial_signup",
@@ -638,7 +652,8 @@
       "firingTrigger": "ce - trial_signup",
       "consentSettings": {
         "analytics_storage": "required"
-      }
+      },
+      "measurementId": "{{const - ga4_measurement_id}}"
     },
     {
       "name": "GA4 - form_complete",
@@ -653,7 +668,8 @@
       "firingTrigger": "ce - form_complete",
       "consentSettings": {
         "analytics_storage": "required"
-      }
+      },
+      "measurementId": "{{const - ga4_measurement_id}}"
     },
     {
       "name": "GA4 - lead_qualify",
@@ -668,7 +684,8 @@
       "firingTrigger": "ce - lead_qualify",
       "consentSettings": {
         "analytics_storage": "required"
-      }
+      },
+      "measurementId": "{{const - ga4_measurement_id}}"
     },
     {
       "name": "GA4 - claudish_translate",
@@ -690,7 +707,8 @@
       "firingTrigger": "ce - claudish_translate",
       "consentSettings": {
         "analytics_storage": "required"
-      }
+      },
+      "measurementId": "{{const - ga4_measurement_id}}"
     },
     {
       "name": "GA4 - claudish_detected",
@@ -704,7 +722,8 @@
       "firingTrigger": "ce - claudish_detected",
       "consentSettings": {
         "analytics_storage": "required"
-      }
+      },
+      "measurementId": "{{const - ga4_measurement_id}}"
     },
     {
       "name": "GA4 - claudish_share",
@@ -720,7 +739,8 @@
       "firingTrigger": "ce - claudish_share",
       "consentSettings": {
         "analytics_storage": "required"
-      }
+      },
+      "measurementId": "{{const - ga4_measurement_id}}"
     },
     {
       "name": "GA4 - claudish_rate",
@@ -734,7 +754,8 @@
       "firingTrigger": "ce - claudish_rate",
       "consentSettings": {
         "analytics_storage": "required"
-      }
+      },
+      "measurementId": "{{const - ga4_measurement_id}}"
     }
   ]
 }

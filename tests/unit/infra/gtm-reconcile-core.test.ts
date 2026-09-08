@@ -62,6 +62,7 @@ const spec = {
       eventName: 'claudish_translate',
       firingTrigger: 'ce - claudish_translate',
       parameters: { direction: '{{dlv - direction}}' },
+      measurementId: '{{const - ga4_measurement_id}}',
       consentSettings: { analytics_storage: 'required' },
     },
   ],
@@ -277,6 +278,11 @@ describe('publish', () => {
               ],
             },
             { type: 'template', key: 'eventName', value: 'claudish_translate' },
+            {
+              type: 'template',
+              key: 'measurementIdOverride',
+              value: '{{const - ga4_measurement_id}}',
+            },
           ],
           consentSettings: {
             consentStatus: 'needed',
@@ -294,5 +300,38 @@ describe('publish', () => {
     });
     expect(result.diff.changed).toBe(false);
     expect(written).toHaveLength(0);
+  });
+});
+
+describe('a dry run validates that an apply could succeed', () => {
+  // The apply on 2026-09-08 failed on the first tag after sixteen variables
+  // and four triggers had already been written. A dry run that only diffs
+  // cannot warn about that; one that also converts every planned write can.
+  it('reports a conversion failure without writing anything', async () => {
+    const written: Written[] = [];
+    const bad = {
+      ...spec,
+      // gaawe with no measurementId, and nothing live to merge one from.
+      tags: [{ ...spec.tags[0], measurementId: undefined }],
+    };
+    const result = await reconcile({ client: fakeClient(empty, written), containerId: '247511905', spec: bad });
+    expect(written).toHaveLength(0);
+    expect(result.problems).toHaveLength(1);
+    expect(result.problems[0]).toMatch(/measurement id/i);
+  });
+
+  it('refuses to apply when a dry run would have reported problems', async () => {
+    const written: Written[] = [];
+    const bad = { ...spec, tags: [{ ...spec.tags[0], measurementId: undefined }] };
+    await expect(
+      reconcile({ client: fakeClient(empty, written), containerId: '247511905', spec: bad, apply: true }),
+    ).rejects.toThrow(/measurement id/i);
+    expect(written).toHaveLength(0);
+  });
+
+  it('reports no problems for a spec that can be applied', async () => {
+    const written: Written[] = [];
+    const result = await reconcile({ client: fakeClient(empty, written), containerId: '247511905', spec });
+    expect(result.problems).toEqual([]);
   });
 });

@@ -179,6 +179,11 @@ async function main() {
       publish: opts.publish,
     });
     report(name, result.diff);
+    if (result.problems.length) {
+      console.log('  planned writes that cannot be built:');
+      for (const p of result.problems) console.log(`    ! ${p}`);
+      console.log('  an apply would refuse until these are fixed.');
+    }
     anyChange = anyChange || result.diff.changed;
     if (result.applied) console.log(`  applied to workspace ${result.workspaceId}`);
     if (result.versionId) console.log(`  published version ${result.versionId}`);

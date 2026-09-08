@@ -464,3 +464,36 @@ describe('gtes (the shared event settings variable)', () => {
     expect(variableFromApi({ ...LIVE_GTES, ...variableToApi(spec) })).toEqual(spec);
   });
 });
+
+describe('a new GA4 event tag needs a measurement id', () => {
+  // The API rejects a gaawe tag whose measurementIdOverride is empty. Existing
+  // tags survive because the body is merged over live, which already carries
+  // it; a tag being CREATED has nothing to merge from. Caught here so a dry
+  // run reports it, rather than mid-apply after the triggers have landed —
+  // which is how it was actually found on 2026-09-08.
+  const NEW_TAG = {
+    name: 'GA4 - claudish_translate',
+    type: 'gaawe',
+    eventName: 'claudish_translate',
+    firingTrigger: 'ce - add_to_cart',
+    parameters: {},
+    consentRequired: [],
+  };
+
+  it('refuses to build one without it', () => {
+    expect(() => tagToApi(NEW_TAG, ctx)).toThrow(/measurement id/i);
+  });
+
+  it('accepts one that declares it', () => {
+    const api = tagToApi({ ...NEW_TAG, measurementId: '{{const - ga4_measurement_id}}' }, ctx);
+    const p = Object.fromEntries(api.parameter.map((x: { key: string; value?: string }) => [x.key, x.value]));
+    expect(p.measurementIdOverride).toBe('{{const - ga4_measurement_id}}');
+  });
+
+  it('accepts an existing tag that already has one live', () => {
+    const existing = {
+      parameter: [{ type: 'template', key: 'measurementIdOverride', value: '{{const - ga4_measurement_id}}' }],
+    };
+    expect(() => tagToApi(NEW_TAG, ctx, existing)).not.toThrow();
+  });
+});
