@@ -7,7 +7,7 @@ config {
     event_name: "Snake_case event name",
     event_timestamp: "Event timestamp as TIMESTAMP (from client-side ISO string or server received_timestamp)",
     received_at: "Server-side timestamp when sGTM processed the event",
-    session_id: "Session identifier (UUID)",
+    session_id: "Resolved session key: COALESCE(iap_session_id, session_id). The raw session_id is reserved in gtag.js and is NULL on every real-browser row.",
     client_id: "GA4 client ID",
     business_model: "Derived business model: ecommerce, subscription, leadgen, or consulting",
     page_location: "Full page URL",
@@ -32,15 +32,19 @@ js {
 WITH raw_events AS (
   SELECT
     *,
-    -- `session_id` is a reserved GA4 parameter name: the GA4 client in sGTM
-    -- consumes it, so every row from a real browser arrives with it NULL and
-    -- only the data generator (which posts to sGTM directly) still carries it.
+    -- `session_id` is reserved in gtag.js, which treats it as a configuration
+    -- field and consumes it before the hit is built, so `ep.session_id` never
+    -- leaves the page and every row from a real browser arrives with it NULL.
+    -- The generator is not exempt because it skips the GA4 client — it posts to
+    -- the same /g/collect endpoint with the same v=2 protocol — but because it
+    -- hand-builds the query string and sets ep.session_id explicitly
+    -- (data-generator/src/transport.ts).
     -- `iap_session_id` was added in 2026-03 precisely because GA4 will not
     -- remap it. Partitioning on the raw column groups every real event under
     -- NULL, so ROW_NUMBER collapses unrelated visitors into one partition and
     -- the dedup filter discards them.
     ROW_NUMBER() OVER (
-      PARTITION BY event_name, COALESCE(session_id, iap_session_id), received_timestamp
+      PARTITION BY event_name, COALESCE(iap_session_id, session_id), received_timestamp, page_path
       ORDER BY page_path, COALESCE(timestamp, '')
     ) AS _row_num
   FROM
@@ -51,7 +55,7 @@ SELECT
   -- Synthetic event ID for deduplication tracking
   TO_HEX(SHA256(CONCAT(
     COALESCE(event_name, ''), '|',
-    COALESCE(session_id, iap_session_id, ''), '|',
+    COALESCE(iap_session_id, session_id, ''), '|',
     CAST(received_timestamp AS STRING), '|',
     COALESCE(page_path, '')
   ))) AS event_id,
@@ -69,8 +73,14 @@ SELECT
 
   -- The resolved session key. Downstream models and every mart read this as
   -- `session_id`, so the repair lands once here rather than in each of them.
-  COALESCE(session_id, iap_session_id) AS session_id,
-  iap_session_id,
+  --
+  -- `iap_session_id` FIRST, matching pubsub-tag-template.js:54, which resolves
+  -- iap_session_id || ga_session_id || cookie and never consults `session_id`
+  -- because that is the field GA4 rewrites. Preferring it here means the
+  -- warehouse and the real-time overlay key the same visitor identically by
+  -- construction, rather than by the accident that GA4 currently leaves
+  -- `session_id` empty.
+  COALESCE(iap_session_id, session_id) AS session_id,
   client_id,
 
   -- Derive business model from page path
@@ -96,8 +106,22 @@ SELECT
   consent_marketing,
   consent_preferences,
 
-  -- Synthetic flag
-  CASE WHEN iap_source = 'true' THEN TRUE ELSE FALSE END AS is_synthetic,
+  -- Generator traffic, and only generator traffic.
+  --
+  -- This read `iap_source = 'true'`, which the real site sends as well: that
+  -- marker separates our instrumented events from GA4's own enhanced-measurement
+  -- hits, a different question from the one this column's name asks. Every real
+  -- visitor was therefore labelled synthetic. Unobservable until the session key
+  -- was resolved, because no real session reached stg_sessions to be mislabelled.
+  --
+  -- `iap_synthetic` is sent only by the generator (data-generator/src/transport.ts).
+  -- It appears only on rows written after that deploy, so the user agent — which
+  -- the generator has always set — labels the rest of the 60-day raw window.
+  COALESCE(
+    iap_synthetic = 'true',
+    user_agent = 'iampatterson-data-generator/1.0',
+    FALSE
+  ) AS is_synthetic,
 
   -- E-commerce fields
   product_id,
