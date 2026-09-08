@@ -138,9 +138,22 @@ interface EventTimelineProps {
   events: PipelineEvent[];
   onSelectEvent?: (event: PipelineEvent) => void;
   selectedEventId?: string;
+  /**
+   * The visitor's analytics consent, when it is known. Every GA4 tag requires
+   * `analytics_storage` (Phase 14, [14.1]), so a declining visitor's events
+   * never leave the browser and this panel stays empty for their session.
+   * Undefined before the banner is answered — guessing would be its own
+   * dishonesty.
+   */
+  analyticsConsent?: 'granted' | 'denied';
 }
 
-export function EventTimeline({ events, onSelectEvent, selectedEventId }: EventTimelineProps) {
+export function EventTimeline({
+  events,
+  onSelectEvent,
+  selectedEventId,
+  analyticsConsent,
+}: EventTimelineProps) {
   // Stable handler for the memoized row. Without this, a fresh closure
   // per render would break React.memo's shallow prop-compare on
   // `onSelect`, defeating the D6 optimization. `onSelectEvent` comes
@@ -154,17 +167,31 @@ export function EventTimeline({ events, onSelectEvent, selectedEventId }: EventT
   );
 
   if (events.length === 0) {
+    // A declining visitor is not waiting for anything: their choice is being
+    // honoured and nothing will arrive. Telling them to interact harder reads
+    // as their fault, on the surface this site exists to demonstrate.
+    const declined = analyticsConsent === 'denied';
     return (
       <div>
         <div className="mb-3 font-mono text-[10px] uppercase tracking-widest text-accent-current">
-          Session timeline, streaming
+          {declined ? 'Session timeline, nothing sent' : 'Session timeline, streaming'}
         </div>
         <h3 className="font-display text-2xl font-normal leading-tight text-u-ink">
-          Waiting for events.
+          {declined ? 'Nothing is being collected.' : 'Waiting for events.'}
         </h3>
         <p className="mt-3 max-w-[62ch] text-sm leading-relaxed text-u-ink-2">
-          Interact with the page, scroll, click, navigate, and each event will appear here with its
-          routing destinations.
+          {declined ? (
+            <>
+              You declined analytics, so no tag fires and nothing reaches the server. This panel
+              stays empty for the rest of your visit, which is the point of it. Change your mind in
+              cookie settings and the pipeline appears here as it runs.
+            </>
+          ) : (
+            <>
+              Interact with the page, scroll, click, navigate, and each event will appear here with
+              its routing destinations.
+            </>
+          )}
         </p>
       </div>
     );

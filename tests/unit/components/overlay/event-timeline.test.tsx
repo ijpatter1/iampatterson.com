@@ -285,3 +285,39 @@ describe('EventTimeline', () => {
     });
   });
 });
+
+/**
+ * The declining visitor's empty state (Phase 14, alignment review 2026-09-08).
+ *
+ * [14.1] puts `analytics_storage: required` on every GA4 tag, so a visitor who
+ * declines analytics sends nothing to sGTM and the timeline stays empty for
+ * their whole session. The generic "Interact with the page, scroll, click"
+ * copy then reads as the visitor's fault for not trying hard enough, on the
+ * one surface this site exists to demonstrate. Their choice is being honoured;
+ * the overlay should say so.
+ */
+describe('empty state when analytics consent is declined', () => {
+  it('explains that the visitor’s own choice is why the timeline is empty', () => {
+    render(<EventTimeline events={[]} analyticsConsent="denied" />);
+    expect(screen.getByText(/declined analytics/i)).toBeInTheDocument();
+    // And does not blame them for not interacting.
+    expect(screen.queryByText(/Interact with the page/i)).not.toBeInTheDocument();
+  });
+
+  it('names the consent control so the choice is reversible from here', () => {
+    render(<EventTimeline events={[]} analyticsConsent="denied" />);
+    expect(screen.getByText(/cookie settings/i)).toBeInTheDocument();
+  });
+
+  it('keeps the ordinary waiting copy when consent was granted', () => {
+    render(<EventTimeline events={[]} analyticsConsent="granted" />);
+    expect(screen.getByText(/Interact with the page/i)).toBeInTheDocument();
+  });
+
+  it('keeps the ordinary waiting copy when consent is not yet known', () => {
+    // Before the banner is answered there is nothing to explain, and guessing
+    // would be its own dishonesty.
+    render(<EventTimeline events={[]} />);
+    expect(screen.getByText(/Interact with the page/i)).toBeInTheDocument();
+  });
+});

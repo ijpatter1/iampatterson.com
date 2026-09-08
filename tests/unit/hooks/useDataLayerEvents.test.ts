@@ -223,3 +223,66 @@ describe('useDataLayerEvents', () => {
     expect(result.current.events[0].event_name).toBe('page_view');
   });
 });
+
+/**
+ * Consent honesty in the fallback path (Phase 14, alignment review 2026-09-08).
+ *
+ * The overlay's dataLayer fallback hardcoded ga4/bigquery/pubsub as 'sent' and
+ * conditioned only Meta and Google Ads on marketing consent. That was true
+ * enough while the GTM container required no consent of its own: the tags
+ * fired, sGTM received the event, and the server stamped the honest
+ * blocked_consent labels a visitor saw.
+ *
+ * [14.1] adds `analytics_storage: required` to 21 tags, so a declining
+ * visitor's events now stop at the browser. Left alone, the fallback would
+ * tell that visitor their event was "routed" and "Delivered" to GA4 and
+ * BigQuery — on the site whose subject is honest measurement, to the one
+ * person most likely to check.
+ */
+describe('routing honesty when analytics consent is denied', () => {
+  beforeEach(() => {
+    window.dataLayer = [];
+    window.sessionStorage.clear();
+  });
+
+  afterEach(() => {
+    delete (window as Record<string, unknown>).dataLayer;
+    jest.useRealTimers();
+  });
+
+  const statusOf = (event: PipelineEvent, destination: string) =>
+    event.routing.find((r) => r.destination === destination)?.status;
+
+  it('does not claim GA4, BigQuery or Pub/Sub delivery for a declining visitor', () => {
+    jest.useFakeTimers();
+    const { result } = renderHook(() => useDataLayerEvents());
+
+    act(() => {
+      window.dataLayer.push(makeDataLayerEntry({ consent_analytics: false }));
+      jest.advanceTimersByTime(500);
+    });
+
+    const event = result.current.events[0];
+    expect(event.consent.analytics_storage).toBe('denied');
+    expect(statusOf(event, 'ga4')).toBe('blocked_consent');
+    expect(statusOf(event, 'bigquery')).toBe('blocked_consent');
+    expect(statusOf(event, 'pubsub')).toBe('blocked_consent');
+  });
+
+  it('still reports delivery when analytics consent is granted', () => {
+    jest.useFakeTimers();
+    const { result } = renderHook(() => useDataLayerEvents());
+
+    act(() => {
+      window.dataLayer.push(makeDataLayerEntry({ consent_analytics: true }));
+      jest.advanceTimersByTime(500);
+    });
+
+    const event = result.current.events[0];
+    expect(statusOf(event, 'ga4')).toBe('sent');
+    expect(statusOf(event, 'bigquery')).toBe('sent');
+    expect(statusOf(event, 'pubsub')).toBe('sent');
+    // Marketing stays separately gated, unchanged by this fix.
+    expect(statusOf(event, 'meta_capi')).toBe('blocked_consent');
+  });
+});
