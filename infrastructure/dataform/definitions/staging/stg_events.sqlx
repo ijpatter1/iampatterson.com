@@ -32,8 +32,15 @@ js {
 WITH raw_events AS (
   SELECT
     *,
+    -- `session_id` is a reserved GA4 parameter name: the GA4 client in sGTM
+    -- consumes it, so every row from a real browser arrives with it NULL and
+    -- only the data generator (which posts to sGTM directly) still carries it.
+    -- `iap_session_id` was added in 2026-03 precisely because GA4 will not
+    -- remap it. Partitioning on the raw column groups every real event under
+    -- NULL, so ROW_NUMBER collapses unrelated visitors into one partition and
+    -- the dedup filter discards them.
     ROW_NUMBER() OVER (
-      PARTITION BY event_name, session_id, received_timestamp
+      PARTITION BY event_name, COALESCE(session_id, iap_session_id), received_timestamp
       ORDER BY page_path, COALESCE(timestamp, '')
     ) AS _row_num
   FROM
@@ -44,7 +51,7 @@ SELECT
   -- Synthetic event ID for deduplication tracking
   TO_HEX(SHA256(CONCAT(
     COALESCE(event_name, ''), '|',
-    COALESCE(session_id, ''), '|',
+    COALESCE(session_id, iap_session_id, ''), '|',
     CAST(received_timestamp AS STRING), '|',
     COALESCE(page_path, '')
   ))) AS event_id,
@@ -60,7 +67,10 @@ SELECT
 
   TIMESTAMP_MILLIS(received_timestamp) AS received_at,
 
-  session_id,
+  -- The resolved session key. Downstream models and every mart read this as
+  -- `session_id`, so the repair lands once here rather than in each of them.
+  COALESCE(session_id, iap_session_id) AS session_id,
+  iap_session_id,
   client_id,
 
   -- Derive business model from page path

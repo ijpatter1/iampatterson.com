@@ -1,16 +1,67 @@
 config {
   type: "assertion",
-  description: "Validates stg_sessions: no null session_ids, session_start <= session_end, non-negative duration."
+  description: "Validates stg_sessions: session_start present and <= session_end, non-negative duration, and that real (non-synthetic) sessions are present at all."
 }
 
-SELECT
-  session_id,
-  session_start,
-  session_end,
-  session_duration_seconds
-FROM ${ref("stg_sessions")}
-WHERE
-  session_id IS NULL
-  OR session_start IS NULL
-  OR session_start > session_end
-  OR session_duration_seconds < 0
+/*
+ * Rewritten 2026-09-08.
+ *
+ * The previous version selected rows `WHERE session_id IS NULL` from
+ * stg_sessions — a model whose own WHERE clause removes exactly those rows. It
+ * could never return one. It reported green for months while the table held
+ * 193,323 sessions of which zero were real, because `session_id` is a reserved
+ * GA4 parameter name that the GA4 client in sGTM consumes, leaving every
+ * browser row NULL and dropping every real visitor at that filter.
+ *
+ * An assertion that cannot fail is worse than no assertion: it occupies the
+ * place where a real check would have gone. The null check is kept only where
+ * it can still bite (the session key after resolution), and the check that
+ * would have caught the actual fault is added: real sessions must exist.
+ */
+
+WITH quality AS (
+  SELECT
+    session_id,
+    session_start,
+    session_end,
+    session_duration_seconds,
+    'row_quality' AS failure
+  FROM ${ref("stg_sessions")}
+  WHERE
+    -- No `session_id IS NULL` clause: stg_sessions filters those rows out
+    -- itself, so asserting their absence here can never fail. That was the
+    -- whole of the previous assertion.
+    session_start IS NULL
+    OR session_start > session_end
+    OR session_duration_seconds < 0
+),
+
+/*
+ * The fault this assertion exists for. Real traffic is low-volume next to the
+ * generator, so an aggregate null-rate check would not have moved; the only
+ * signal that distinguishes "the warehouse describes visitors" from "the
+ * warehouse describes the generator" is whether any non-synthetic session
+ * survives the pipeline at all.
+ *
+ * Scoped to the last 7 days so a historical gap does not fail forever, and so
+ * a future regression surfaces within a day rather than being averaged away.
+ */
+real_sessions_present AS (
+  SELECT
+    CAST(NULL AS STRING) AS session_id,
+    CAST(NULL AS TIMESTAMP) AS session_start,
+    CAST(NULL AS TIMESTAMP) AS session_end,
+    CAST(NULL AS INT64) AS session_duration_seconds,
+    'no_real_sessions_in_7d' AS failure
+  FROM (SELECT 1)
+  WHERE NOT EXISTS (
+    SELECT 1
+    FROM ${ref("stg_sessions")}
+    WHERE is_synthetic = FALSE
+      AND session_start >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)
+  )
+)
+
+SELECT * FROM quality
+UNION ALL
+SELECT * FROM real_sessions_present
