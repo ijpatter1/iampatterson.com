@@ -41,12 +41,30 @@ function indexByName(entities, side) {
  * eventSettingsVariable that no spec entry describes; comparing the union
  * would report all of them as permanent drift.
  */
+/**
+ * Order-insensitive serialisation. The live API returns parameters in its own
+ * list order and the committed JSON has its authoring order, so comparing raw
+ * serialised forms manufactured updates for semantically identical entities —
+ * which then ran the merge paths, on a report an operator publishes from.
+ */
+function stable(value) {
+  if (Array.isArray(value)) return JSON.stringify([...value].map(stable).sort());
+  if (value && typeof value === 'object') {
+    return JSON.stringify(
+      Object.keys(value)
+        .sort()
+        .map((k) => [k, stable(value[k])]),
+    );
+  }
+  return JSON.stringify(value);
+}
+
 function changedFields(before, after) {
   const keys = new Set(Object.keys(after));
   keys.delete('name');
   const fields = [];
   for (const k of keys) {
-    if (JSON.stringify(before[k]) !== JSON.stringify(after[k])) fields.push(k);
+    if (stable(before[k]) !== stable(after[k])) fields.push(k);
   }
   return fields.sort();
 }

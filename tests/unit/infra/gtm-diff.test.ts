@@ -134,3 +134,28 @@ describe('the spec is a partial specification', () => {
     expect(diffCollection(spec, live).updates[0].fields).toEqual(['consentRequired']);
   });
 });
+
+describe('review finding 6 — comparison must not depend on ordering', () => {
+  // The live API returns parameters in its own list order; the committed JSON
+  // has its authoring order. Comparing serialised forms manufactured updates
+  // for semantically identical tags — which then ran the merge paths that
+  // findings 4 and 5 were about. A dry run an operator publishes on must not
+  // invent changes.
+  it('treats a parameters map with the same pairs in another order as unchanged', () => {
+    const live = [tag('GA4 - a', { parameters: { b: '{{dlv - b}}', a: '{{dlv - a}}' } })];
+    const spec = [tag('GA4 - a', { parameters: { a: '{{dlv - a}}', b: '{{dlv - b}}' } })];
+    expect(diffCollection(spec, live).changed).toBe(false);
+  });
+
+  it('treats a consent list in another order as unchanged', () => {
+    const live = [tag('GA4 - a', { consentRequired: ['analytics_storage', 'ad_storage'] })];
+    const spec = [tag('GA4 - a', { consentRequired: ['ad_storage', 'analytics_storage'] })];
+    expect(diffCollection(spec, live).changed).toBe(false);
+  });
+
+  it('still sees a genuine difference in the same shapes', () => {
+    const live = [tag('GA4 - a', { parameters: { a: '{{dlv - a}}' } })];
+    const spec = [tag('GA4 - a', { parameters: { a: '{{dlv - other}}' } })];
+    expect(diffCollection(spec, live).updates[0].fields).toEqual(['parameters']);
+  });
+});

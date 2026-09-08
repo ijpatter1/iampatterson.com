@@ -63,7 +63,9 @@ function createClient({ accountId, token, fetchImpl = fetch }) {
     const items = [];
     let pageToken;
     do {
-      const body = await request(pageToken ? `${url}?pageToken=${pageToken}` : url);
+      const body = await request(
+        pageToken ? `${url}?pageToken=${encodeURIComponent(pageToken)}` : url,
+      );
       items.push(...(body[key] || []));
       pageToken = body.nextPageToken;
     } while (pageToken);
@@ -79,8 +81,14 @@ function createClient({ accountId, token, fetchImpl = fetch }) {
   async function defaultWorkspaceId(containerId) {
     const body = await request(`${base}/containers/${containerId}/workspaces`);
     const spaces = body.workspace || [];
-    const found = spaces.find((w) => w.name === 'Default Workspace') || spaces[0];
-    if (!found) throw new Error(`defaultWorkspaceId: container ${containerId} has no workspaces`);
+    const found = spaces.find((w) => w.name === 'Default Workspace');
+    if (!found) {
+      // Falling back to spaces[0] would write into a renamed default, or into
+      // a colleague's in-progress workspace that happened to sort first.
+      throw new Error(
+        `defaultWorkspaceId: container ${containerId} has no workspace named "Default Workspace" (found: ${spaces.map((w) => w.name).join(', ') || 'none'})`,
+      );
+    }
     return found.workspaceId;
   }
 

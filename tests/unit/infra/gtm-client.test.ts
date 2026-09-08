@@ -130,3 +130,43 @@ describe('createClient', () => {
     expect(COLLECTION_KEYS.triggers).toBe('trigger');
   });
 });
+
+describe('review findings 9 and 12', () => {
+  it('stops loudly when there is no Default Workspace, rather than writing to any workspace', async () => {
+    // Finding 9. `|| spaces[0]` meant a renamed default, or a colleague's
+    // in-progress workspace sorting first, silently became the write target.
+    // A hard-coded id is wrong; "whatever is first" is not the safe
+    // alternative for a tool that writes to production.
+    const client = createClient({
+      accountId: '6346433751',
+      token: 'tok',
+      fetchImpl: async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({ workspace: [{ workspaceId: '3', name: "someone's draft" }] }),
+      }),
+    });
+    await expect(client.defaultWorkspaceId('247511905')).rejects.toThrow(/Default Workspace/);
+  });
+
+  it('encodes a page token containing URL-significant characters', async () => {
+    // Finding 12. GTM tokens are base64-ish and can carry + and =. Unencoded,
+    // a + decodes server-side as a space, giving an invalid token or a
+    // silently short list — the truncation the pagination loop exists to stop.
+    const calls: string[] = [];
+    let page = 0;
+    const client = createClient({
+      accountId: '6346433751',
+      token: 'tok',
+      fetchImpl: async (u: string) => {
+        calls.push(u);
+        page += 1;
+        return page === 1
+          ? { ok: true, status: 200, json: async () => ({ tag: [], nextPageToken: 'a+b=c' }) }
+          : { ok: true, status: 200, json: async () => ({ tag: [] }) };
+      },
+    });
+    await client.list('247511905', '9', 'tags');
+    expect(calls[1]).toContain('pageToken=a%2Bb%3Dc');
+  });
+});

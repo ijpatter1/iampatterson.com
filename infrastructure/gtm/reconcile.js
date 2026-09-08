@@ -60,6 +60,7 @@ function parseArgs(argv) {
     publish: false,
     capture: false,
   };
+  let named = false;
   for (const arg of argv) {
     if (arg === '--apply') opts.apply = true;
     else if (arg === '--allow-deletes') opts.allowDeletes = true;
@@ -67,6 +68,7 @@ function parseArgs(argv) {
     else if (arg === '--capture') opts.capture = true;
     else if (arg.startsWith('--container=')) {
       const which = arg.slice('--container='.length);
+      named = which !== 'both';
       if (which === 'both') opts.containers = ['web', 'server'];
       else if (CONTAINERS[which]) opts.containers = [which];
       else throw new Error(`unknown container "${which}"; expected web, server or both`);
@@ -76,6 +78,15 @@ function parseArgs(argv) {
   }
   if (opts.publish && !opts.apply) {
     throw new Error('--publish requires --apply; there is nothing to publish from a dry run');
+  }
+  // Reading both containers is harmless; writing to one you did not name is
+  // not. The 2026-09-08 census found server-container.json describes a
+  // container that was planned and never built, so a bare `--apply` would
+  // have created nine triggers and five malformed tags in a working pipeline.
+  if ((opts.apply || opts.capture) && !named) {
+    throw new Error(
+      'writing needs an explicit --container=web or --container=server; refusing to act on a container you did not name',
+    );
   }
   return opts;
 }
@@ -168,6 +179,7 @@ async function main() {
   }
 
   let anyChange = false;
+  let exitCode = 0;
   for (const name of opts.containers) {
     const spec = JSON.parse(fs.readFileSync(specPath(name), 'utf8'));
     const result = await reconcile({
@@ -183,6 +195,7 @@ async function main() {
       console.log('  planned writes that cannot be built:');
       for (const p of result.problems) console.log(`    ! ${p}`);
       console.log('  an apply would refuse until these are fixed.');
+      exitCode = 1;
     }
     anyChange = anyChange || result.diff.changed;
     if (result.applied) console.log(`  applied to workspace ${result.workspaceId}`);
@@ -192,6 +205,9 @@ async function main() {
   if (!opts.apply && anyChange) {
     console.log('\nDry run. Nothing was written. Re-run with --apply to converge.');
   }
+  // Finding 11: a dry run whose proof failed must not read as a pass to
+  // anything gating on the exit code.
+  if (exitCode) process.exitCode = exitCode;
 }
 
 if (require.main === module) {

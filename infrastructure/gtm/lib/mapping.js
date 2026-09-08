@@ -62,9 +62,12 @@ function bindingsToApi(parameters) {
   return {
     type: 'list',
     key: 'eventSettingsTable',
+    // Values are coerced because the API stores everything as a string and
+    // reads it back as one: a spec writing `false` would otherwise be
+    // permanent drift and a write on every apply.
     list: Object.entries(parameters || {}).map(([name, value]) => ({
       type: 'map',
-      map: [template('parameter', name), template('parameterValue', value)],
+      map: [template('parameter', name), template('parameterValue', String(value))],
     })),
   };
 }
@@ -81,6 +84,10 @@ function tagFromApi(api, ctx) {
   };
   if (p.eventName) spec.eventName = p.eventName.value;
   if (p.measurementIdOverride) spec.measurementId = p.measurementIdOverride.value;
+  // The shared settings variable is what supplies the ten common parameters.
+  // A created tag has nothing to merge it from, so the spec must declare it
+  // and the diff must be able to see it.
+  if (p.eventSettingsVariable) spec.sharedEventSettings = p.eventSettingsVariable.value;
   if (api.type === 'googtag') {
     // The Google Tag speaks its own dialect: the measurement id rides in
     // `tagId`, and the server container URL is one row of configSettingsTable
@@ -99,6 +106,7 @@ function tagFromApi(api, ctx) {
 
 function tagToApi(spec, ctx, existing) {
   let id = (ctx.triggerIdByName || {})[spec.firingTrigger];
+  const resolvedFromSpec = Boolean(id);
   if (!id && existing && (existing.firingTriggerId || []).length) {
     // Built-in triggers ("All Pages" and friends) are not in the workspace
     // triggers collection and their ids cannot be looked up. Where live
@@ -122,7 +130,13 @@ function tagToApi(spec, ctx, existing) {
   if (spec.type === 'googtag') {
     if (spec.measurementId) owned.set('tagId', template('tagId', spec.measurementId));
     if (spec.configSettings || spec.serverContainerUrl !== undefined) {
-      const config = { ...(spec.configSettings || {}) };
+      // Merge over whatever live already configures. Rebuilding the table from
+      // a spec that declares only the URL would drop send_page_view and every
+      // other row, on the one tag whose misconfiguration breaks all the others.
+      const liveConfig = bindingsFromApi(
+        byKey((existing && existing.parameter) || {}).configSettingsTable,
+      );
+      const config = { ...liveConfig, ...(spec.configSettings || {}) };
       if (spec.serverContainerUrl !== undefined) config.server_container_url = spec.serverContainerUrl;
       const table = bindingsToApi(config);
       owned.set('configSettingsTable', { ...table, key: 'configSettingsTable' });
@@ -132,6 +146,9 @@ function tagToApi(spec, ctx, existing) {
   if (spec.eventName) owned.set('eventName', template('eventName', spec.eventName));
   if (spec.measurementId && spec.type !== 'googtag') {
     owned.set('measurementIdOverride', template('measurementIdOverride', spec.measurementId));
+  }
+  if (spec.sharedEventSettings) {
+    owned.set('eventSettingsVariable', template('eventSettingsVariable', spec.sharedEventSettings));
   }
 
   const parameter = [];
@@ -150,15 +167,52 @@ function tagToApi(spec, ctx, existing) {
       `tagToApi: tag "${spec.name}" is a GA4 event tag with no measurement id; declare measurementId in the spec`,
     );
   }
+  // The shared event settings variable supplies iap_source, which the sGTM
+  // Pub/Sub tag gates on: without it an event is discarded server-side and the
+  // BigQuery row lands with a null session. The API accepts its absence
+  // silently and the diff cannot see an undeclared field, so the refusal has
+  // to happen here — on creations only. A live tag that lacks the field is the
+  // partial-specification contract at work, not this guard's business.
+  if (!existing && spec.type === 'gaawe' && !parameter.some((p) => p.key === 'eventSettingsVariable')) {
+    throw new Error(
+      `tagToApi: tag "${spec.name}" is a GA4 event tag with no shared event settings variable; declare sharedEventSettings in the spec`,
+    );
+  }
 
-  return {
+  // Every firing trigger survives. Reading only the first and writing a
+  // single-element array silently stopped a multi-trigger tag firing on its
+  // others, with nothing in the dry run to say so.
+  // The spec vocabulary names one firing trigger. Where live fires on several,
+  // the spec is partial about them the same way it is partial about fields:
+  // the live set is preserved, and a spec naming a trigger outside that set is
+  // a hard stop rather than a silent truncation to one.
+  let firingTriggerId = [id];
+  const liveTriggers = (existing && existing.firingTriggerId) || [];
+  if (liveTriggers.length > 1) {
+    if (resolvedFromSpec && !liveTriggers.includes(id)) {
+      throw new Error(
+        `tagToApi: tag "${spec.name}" fires on ${liveTriggers.length} triggers live, and the spec names "${spec.firingTrigger}", which is not among them; the spec cannot express this change`,
+      );
+    }
+    firingTriggerId = liveTriggers;
+  }
+
+  const api = {
     ...(existing || {}),
     name: spec.name,
     type: spec.type,
     parameter,
-    firingTriggerId: [id],
-    consentSettings: consentToApi(spec.consentRequired),
+    firingTriggerId,
   };
+  // Consent is merged like any other unowned field. Written unconditionally it
+  // downgraded a tag to notNeeded whenever the spec was silent, and the diff
+  // never compared the field, so no dry run could show it.
+  if (spec.consentRequired !== undefined) {
+    api.consentSettings = consentToApi(spec.consentRequired);
+  } else if (existing && existing.consentSettings) {
+    api.consentSettings = existing.consentSettings;
+  }
+  return api;
 }
 
 // ─── Triggers ────────────────────────────────────────────────────────────────

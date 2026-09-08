@@ -63,6 +63,7 @@ const spec = {
       firingTrigger: 'ce - claudish_translate',
       parameters: { direction: '{{dlv - direction}}' },
       measurementId: '{{const - ga4_measurement_id}}',
+      sharedEventSettings: '{{ga4 - shared_event_settings}}',
       consentSettings: { analytics_storage: 'required' },
     },
   ],
@@ -201,6 +202,16 @@ describe('apply', () => {
   });
 });
 
+/**
+ * A test here once asserted that a publish requires drift. The 2026-09-08
+ * review showed the rationale was wrong: it conflated spec-versus-workspace
+ * with workspace-versus-published-version, and only the second is about
+ * publishing. Gating on the first made the documented apply, inspect, publish
+ * flow impossible — once an apply landed there was nothing left to publish
+ * from. It was removed rather than adjusted. What it meant to protect is
+ * covered by the dry-run guarantee below and by the CLI refusing --publish
+ * without --apply (gtm-reconcile-cli.test.ts).
+ */
 describe('publish', () => {
   it('does not publish on a dry run, however the flag is set', async () => {
     const written: Written[] = [];
@@ -226,81 +237,7 @@ describe('publish', () => {
     expect(result.versionId).toBe('77');
   });
 
-  it('does not publish when there was nothing to apply', async () => {
-    // A publish with no change still burns the workspace and creates a version,
-    // which makes the container history lie about when things changed.
-    const written: Written[] = [];
-    const live = {
-      ...empty,
-      variables: [
-        {
-          name: 'dlv - direction',
-          type: 'v',
-          parameter: [
-            { type: 'integer', key: 'dataLayerVersion', value: '2' },
-            { type: 'template', key: 'name', value: 'direction' },
-          ],
-        },
-      ],
-      triggers: [
-        {
-          name: 'ce - claudish_translate',
-          triggerId: '99',
-          type: 'customEvent',
-          customEventFilter: [
-            {
-              type: 'equals',
-              parameter: [
-                { type: 'template', key: 'arg0', value: '{{_event}}' },
-                { type: 'template', key: 'arg1', value: 'claudish_translate' },
-              ],
-            },
-          ],
-        },
-      ],
-      tags: [
-        {
-          name: 'GA4 - claudish_translate',
-          type: 'gaawe',
-          firingTriggerId: ['99'],
-          parameter: [
-            {
-              type: 'list',
-              key: 'eventSettingsTable',
-              list: [
-                {
-                  type: 'map',
-                  map: [
-                    { type: 'template', key: 'parameter', value: 'direction' },
-                    { type: 'template', key: 'parameterValue', value: '{{dlv - direction}}' },
-                  ],
-                },
-              ],
-            },
-            { type: 'template', key: 'eventName', value: 'claudish_translate' },
-            {
-              type: 'template',
-              key: 'measurementIdOverride',
-              value: '{{const - ga4_measurement_id}}',
-            },
-          ],
-          consentSettings: {
-            consentStatus: 'needed',
-            consentType: { type: 'list', list: [{ type: 'template', value: 'analytics_storage' }] },
-          },
-        },
-      ],
-    };
-    const result = await reconcile({
-      client: fakeClient(live, written),
-      containerId: '247511905',
-      spec,
-      apply: true,
-      publish: true,
-    });
-    expect(result.diff.changed).toBe(false);
-    expect(written).toHaveLength(0);
-  });
+
 });
 
 describe('a dry run validates that an apply could succeed', () => {
@@ -333,5 +270,71 @@ describe('a dry run validates that an apply could succeed', () => {
     const written: Written[] = [];
     const result = await reconcile({ client: fakeClient(empty, written), containerId: '247511905', spec });
     expect(result.problems).toEqual([]);
+  });
+});
+
+describe('review findings 3 and 7', () => {
+  it('deletes tags before the triggers and variables they reference', async () => {
+    // Finding 7. Deletion ran in creation order, so a trigger was removed
+    // while the tag firing on it still existed. Destruction needs the reverse.
+    const live = {
+      ...empty,
+      tags: [{ name: 'GA4 - gone', type: 'gaawe', parameter: [], firingTriggerId: ['1'], path: 'p/tag' }],
+      triggers: [{ name: 'ce - gone', triggerId: '1', type: 'customEvent', path: 'p/trigger' }],
+      variables: [{ name: 'dlv - gone', type: 'v', parameter: [], path: 'p/var' }],
+    };
+    const written: Written[] = [];
+    await reconcile({
+      client: fakeClient(live, written),
+      containerId: '247511905',
+      spec: { ...spec, tags: [], triggers: [], variables: [] },
+      apply: true,
+      allowDeletes: true,
+    });
+    expect(written.filter((w) => w.op === 'delete').map((w) => w.path)).toEqual([
+      'p/tag',
+      'p/trigger',
+      'p/var',
+    ]);
+  });
+
+  it('publishes a workspace that already matches the spec', async () => {
+    // Finding 3. The documented flow is apply, inspect in the GTM UI, then
+    // publish. Returning early on "no drift" made that impossible: once the
+    // apply landed there was nothing to publish from. Spec-matches-workspace
+    // and workspace-matches-published-version are different comparisons, and
+    // only the second is about publishing.
+    const written: Written[] = [];
+    const live = {
+      ...empty,
+      variables: [
+        { name: 'dlv - direction', type: 'v', parameter: [
+          { type: 'integer', key: 'dataLayerVersion', value: '2' },
+          { type: 'template', key: 'name', value: 'direction' }] },
+      ],
+      triggers: [{ name: 'ce - claudish_translate', triggerId: '99', type: 'customEvent',
+        customEventFilter: [{ type: 'equals', parameter: [
+          { type: 'template', key: 'arg0', value: '{{_event}}' },
+          { type: 'template', key: 'arg1', value: 'claudish_translate' }] }] }],
+      tags: [{ name: 'GA4 - claudish_translate', type: 'gaawe', firingTriggerId: ['99'],
+        parameter: [
+          { type: 'list', key: 'eventSettingsTable', list: [{ type: 'map', map: [
+            { type: 'template', key: 'parameter', value: 'direction' },
+            { type: 'template', key: 'parameterValue', value: '{{dlv - direction}}' }] }] },
+          { type: 'template', key: 'eventName', value: 'claudish_translate' },
+          { type: 'template', key: 'measurementIdOverride', value: '{{const - ga4_measurement_id}}' },
+          { type: 'template', key: 'eventSettingsVariable', value: '{{ga4 - shared_event_settings}}' },
+        ],
+        consentSettings: { consentStatus: 'needed',
+          consentType: { type: 'list', list: [{ type: 'template', value: 'analytics_storage' }] } } }],
+    };
+    const result = await reconcile({
+      client: fakeClient(live, written),
+      containerId: '247511905',
+      spec, apply: true, publish: true,
+    });
+    expect(result.diff.changed).toBe(false);
+    expect(written.map((w) => w.op)).toEqual(['publish']);
+    expect(result.versionId).toBe('77');
   });
 });

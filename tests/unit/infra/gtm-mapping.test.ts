@@ -59,6 +59,7 @@ const LIVE_TAG = {
     },
     { type: 'template', key: 'eventName', value: 'add_to_cart' },
     { type: 'template', key: 'measurementIdOverride', value: '{{const - ga4_measurement_id}}' },
+    { type: 'template', key: 'eventSettingsVariable', value: '{{ga4 - shared_event_settings}}' },
   ],
   firingTriggerId: ['99'],
   parentFolderId: '39',
@@ -113,6 +114,7 @@ describe('tags', () => {
         quantity: '{{dlv - quantity}}',
       },
       measurementId: '{{const - ga4_measurement_id}}',
+      sharedEventSettings: '{{ga4 - shared_event_settings}}',
       consentRequired: [],
     });
   });
@@ -485,15 +487,135 @@ describe('a new GA4 event tag needs a measurement id', () => {
   });
 
   it('accepts one that declares it', () => {
-    const api = tagToApi({ ...NEW_TAG, measurementId: '{{const - ga4_measurement_id}}' }, ctx);
+    const api = tagToApi(
+      {
+        ...NEW_TAG,
+        measurementId: '{{const - ga4_measurement_id}}',
+        sharedEventSettings: '{{ga4 - shared_event_settings}}',
+      },
+      ctx,
+    );
     const p = Object.fromEntries(api.parameter.map((x: { key: string; value?: string }) => [x.key, x.value]));
     expect(p.measurementIdOverride).toBe('{{const - ga4_measurement_id}}');
   });
 
   it('accepts an existing tag that already has one live', () => {
     const existing = {
-      parameter: [{ type: 'template', key: 'measurementIdOverride', value: '{{const - ga4_measurement_id}}' }],
+      parameter: [
+        { type: 'template', key: 'measurementIdOverride', value: '{{const - ga4_measurement_id}}' },
+        { type: 'template', key: 'eventSettingsVariable', value: '{{ga4 - shared_event_settings}}' },
+      ],
     };
     expect(() => tagToApi(NEW_TAG, ctx, existing)).not.toThrow();
+  });
+});
+
+describe('review findings, 2026-09-08 — fields the merge could not protect', () => {
+  const LIVE = {
+    name: 'GA4 - x',
+    type: 'gaawe',
+    parameter: [
+      { type: 'template', key: 'eventName', value: 'x' },
+      { type: 'template', key: 'measurementIdOverride', value: '{{const - ga4_measurement_id}}' },
+      { type: 'template', key: 'eventSettingsVariable', value: '{{ga4 - shared_event_settings}}' },
+    ],
+    firingTriggerId: ['99'],
+    consentSettings: {
+      consentStatus: 'needed',
+      consentType: { type: 'list', list: [{ type: 'template', value: 'ad_storage' }] },
+    },
+  };
+
+  it('a CREATED tag carries the shared settings variable the spec declares', () => {
+    // Finding 1, confirmed against the staged workspace: the four Claudish
+    // tags were created without eventSettingsVariable, so they would have sent
+    // none of the ten shared parameters — including iap_source, which the sGTM
+    // route keys on. The merge protects existing tags; a creation has nothing
+    // to merge from, so the spec must be able to say it.
+    const api = tagToApi(
+      {
+        name: 'GA4 - new',
+        type: 'gaawe',
+        eventName: 'new',
+        firingTrigger: 'ce - add_to_cart',
+        parameters: {},
+        measurementId: '{{const - ga4_measurement_id}}',
+        sharedEventSettings: '{{ga4 - shared_event_settings}}',
+      },
+      ctx,
+    );
+    const p = Object.fromEntries(api.parameter.map((x: { key: string; value?: string }) => [x.key, x.value]));
+    expect(p.eventSettingsVariable).toBe('{{ga4 - shared_event_settings}}');
+  });
+
+  it('reads the shared settings variable back, so the diff can see it', () => {
+    expect(tagFromApi(LIVE, ctx).sharedEventSettings).toBe('{{ga4 - shared_event_settings}}');
+  });
+
+  it('does not wipe live consent when the spec is silent about it', () => {
+    // Finding 4. consentSettings was written unconditionally, outside the
+    // merge, so a spec omitting it silently downgraded a tag to notNeeded —
+    // and the diff never compared the field, so no dry run would show it.
+    const spec = { name: 'GA4 - x', type: 'gaawe', eventName: 'x', firingTrigger: 'ce - add_to_cart', parameters: {} };
+    expect(tagToApi(spec, ctx, LIVE).consentSettings).toEqual(LIVE.consentSettings);
+  });
+
+  it('still applies consent the spec does declare', () => {
+    const spec = {
+      name: 'GA4 - x', type: 'gaawe', eventName: 'x', firingTrigger: 'ce - add_to_cart',
+      parameters: {}, consentRequired: ['analytics_storage'],
+    };
+    expect(tagToApi(spec, ctx, LIVE).consentSettings.consentType.list).toEqual([
+      { type: 'template', value: 'analytics_storage' },
+    ]);
+  });
+
+  it('keeps every firing trigger of a multi-trigger tag', () => {
+    // Finding 5. tagFromApi read only firingTriggerId[0] and tagToApi wrote a
+    // single-element array, so editing any other field silently stopped the
+    // tag firing on its second trigger, with nothing in the dry run to say so.
+    const multi = { ...LIVE, firingTriggerId: ['99', '88'] };
+    const spec = { name: 'GA4 - x', type: 'gaawe', eventName: 'x', firingTrigger: 'ce - add_to_cart', parameters: {} };
+    expect(tagToApi(spec, ctx, multi).firingTriggerId).toEqual(['99', '88']);
+  });
+});
+
+describe('alignment finding 11 — the create path, as a class not an instance', () => {
+  // Every gaawe body built with no `existing` must carry both a measurement id
+  // and the shared event settings variable. The first fails loudly at the API;
+  // the second is accepted silently and the diff deliberately cannot see it,
+  // which is why four dead tags reached a workspace. One assertion closes the
+  // class rather than the instance.
+  const base = {
+    name: 'GA4 - new',
+    type: 'gaawe',
+    eventName: 'new',
+    firingTrigger: 'ce - add_to_cart',
+    parameters: {},
+  };
+
+  it('refuses a created tag with no shared event settings variable', () => {
+    expect(() => tagToApi({ ...base, measurementId: '{{const - id}}' }, ctx)).toThrow(
+      /shared event settings/i,
+    );
+  });
+
+  it('refuses a created tag with no measurement id', () => {
+    expect(() => tagToApi({ ...base, sharedEventSettings: '{{ga4 - s}}' }, ctx)).toThrow(
+      /measurement id/i,
+    );
+  });
+
+  it('accepts one that declares both', () => {
+    expect(() =>
+      tagToApi({ ...base, measurementId: '{{const - id}}', sharedEventSettings: '{{ga4 - s}}' }, ctx),
+    ).not.toThrow();
+  });
+
+  it('does not impose either on a tag that already exists live without them', () => {
+    // A live tag the spec is only editing is not this guard's business; the
+    // merge decides, and an existing container may legitimately differ.
+    const existing = { parameter: [{ type: 'template', key: 'measurementIdOverride', value: '{{x}}' }] };
+    expect(() => tagToApi(base, ctx, existing)).not.toThrow();
   });
 });

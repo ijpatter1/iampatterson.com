@@ -128,7 +128,10 @@ async function reconcile({
     }
   }
 
-  if (!apply || !diff.changed) {
+  // A publish is about workspace-versus-published-version, not
+  // spec-versus-workspace. Returning early on "no drift" made the documented
+  // flow — apply, inspect in the GTM UI, then publish — impossible.
+  if (!apply || (!diff.changed && !publish)) {
     return { diff, problems, applied: false, workspaceId, versionId: null };
   }
   if (problems.length) {
@@ -155,8 +158,13 @@ async function reconcile({
       await client.update(existing.path, body);
     }
 
-    if (allowDeletes) {
-      for (const entity of d.deletes) {
+  }
+
+  // Destruction is the reverse of creation: a trigger must outlive the tag
+  // that fires on it, and a variable the tags that reference it.
+  if (allowDeletes) {
+    for (const collection of [...APPLY_ORDER].reverse()) {
+      for (const entity of diff.collections[collection].deletes) {
         await client.remove(rawByName[collection].get(entity.name).path);
       }
     }
@@ -170,10 +178,15 @@ async function reconcile({
       versionName || `reconcile ${new Date().toISOString()}`,
     );
     versionId = created && created.containerVersion && created.containerVersion.containerVersionId;
+    if (!versionId) {
+      throw new Error(
+        'createVersion returned no container version; refusing to publish an undefined version',
+      );
+    }
     await client.publish(containerId, versionId);
   }
 
-  return { diff, problems, applied: true, workspaceId, versionId };
+  return { diff, problems, applied: diff.changed, workspaceId, versionId };
 }
 
 module.exports = { reconcile, APPLY_ORDER };
