@@ -45,6 +45,35 @@ The assertions live in `infrastructure/dataform/definitions/assertions/`. Open
 the one that failed and read the query. Each is a `SELECT` that should return
 nothing.
 
+## If no action failed
+
+The query above can come back with **zero actions**. That is not a broken query;
+it means the invocation failed before it ran anything, so no assertion is
+involved and nothing in the next section applies.
+
+Check the invocation's own record and its compilation result:
+
+```bash
+curl -s -H "Authorization: Bearer $TOK" \
+  "https://dataform.googleapis.com/v1/projects/iampatterson/locations/us-central1/repositories/iampatterson-dataform/workflowInvocations/<id>" \
+| python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('state'), d.get('invocationTiming'))"
+```
+
+A start and end time seconds apart, with `compilationErrors: 0` on the resolved
+compilation result, means the invocation failed at the platform rather than in
+your code. There is no fix to make and nothing to correct in the repository.
+
+**This happened on 2026-09-07.** The run failed 29 seconds in, having executed
+none of its twenty actions, with a clean compilation and no detail in the audit
+log. The runs either side of it — 09-06 and 09-08 — both succeeded. Treat a
+single occurrence as transient and let the next night's run be the check; a
+second consecutive one is a real signal and worth escalating.
+
+The trap this section exists to prevent: reading "workflow invocation failed" and
+going straight to the assertions, finding nothing wrong with them, and concluding
+the alert is broken. The alert is correct. The invocation did fail. It simply
+failed somewhere the assertions are not.
+
 ## The question to ask
 
 An assertion failure means one of two things, and they need opposite responses:

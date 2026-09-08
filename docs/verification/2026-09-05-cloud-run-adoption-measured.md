@@ -143,13 +143,28 @@ assertion.
 
 | Window | sgtm | data-generator |
 | --- | --- | --- |
-| 30 days to 2026-09-05, before the change | 96 | 1 |
-| 7 days to 2026-09-05, before | 13 | 1 |
-| 12 hours after `maxScale` 3 → 10 | **0** | **0** |
+| 30 days to 2026-09-05, before the change | 96 (3.2/day) | 1 |
+| 12 hours after `maxScale` 3 → 10 | 0 | 0 |
+| **2026-09-05 05:10 to 09-08 (3 days), after** | **6 log lines across 3 moments** | **0** |
 
-Directionally right and not yet conclusive. Twelve hours is a short window and a
-quiet one; the comparison worth making is another 30-day count against the 96.
-That is a check for a later session, not a result this deliverable can claim.
+Updated 2026-09-08 with three days of data, which supersedes the twelve-hour
+zero this record first carried. **The aborts are reduced, not eliminated**, and
+the honest reading is roughly 2 log lines per day against 3.2 before — an
+improvement of the same order as the change, not a fix.
+
+The distribution is more interesting than the rate. All six fall on **2026-09-07**,
+in three pairs seconds apart, at 17:20, 19:40 and 21:40 UTC. Friday, Saturday and
+Monday produced none. So this is not a steady trickle at the new ceiling; it is
+one bad afternoon.
+
+Worth noting without asserting a cause: the Dataform invocation that failed
+having run zero actions also fell on 2026-09-07. Two unrelated subsystems
+misbehaving on one day, both recovering by themselves, is consistent with a
+platform-side event, and consistent with coincidence. Neither is established, and
+a single day is not enough to claim either.
+
+The comparison this deliverable actually wants is still a full 30-day window
+against the 96. Three days is directional.
 
 ## What remains outstanding
 
