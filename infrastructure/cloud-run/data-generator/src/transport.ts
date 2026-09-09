@@ -142,6 +142,11 @@ export function buildCollectParams(
 
   // Custom event parameters — use ep.* for strings, epn.* for numbers/booleans
   params.set('ep.iap_source', 'true');
+  // Marks this event as generator output. `iap_source` cannot carry that: the
+  // real site sends it too (src/lib/events/track.ts), because it means "one of
+  // our instrumented events" rather than "synthetic". Deriving is_synthetic
+  // from iap_source labelled every real visitor as generator traffic.
+  params.set('ep.iap_synthetic', 'true');
   params.set('ep.session_id', event.session_id);
   params.set('ep.iap_session_id', event.iap_session_id);
   params.set('ep.page_path', event.page_path);

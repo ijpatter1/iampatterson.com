@@ -125,7 +125,52 @@ export function pushEvent(event: BaseEvent & Record<string, unknown>): void {
 - Collecting and storing consent preferences
 - Communicating consent state to GTM via Google Consent Mode v2
 
-**Cookiebot blocking mode: `manual`, with explicit gtag bridge.** Cookiebot is loaded with `data-blockingmode="manual"` (not `"auto"`). Auto mode rewrites `<script>` tags in `<head>` to gate execution; this is the older belt-and-suspenders pattern from before Consent Mode v2 was widely supported. With manual mode, Cookiebot does not modify the DOM — gating is delegated entirely to the GTM container's per-tag `consentSettings` (every analytics tag carries `analytics_storage: required`; every marketing tag carries `ad_storage: required`). The CookiebotConsentListener (`src/components/scripts/cookiebot-consent.tsx`) listens for `CookiebotOnAccept`/`CookiebotOnDecline` events and calls `trackConsentUpdate`/`initConsentState` in `src/lib/events/track.ts`, which both (a) push a `consent_update` event to the data layer for the under-the-hood visualization, and (b) explicitly call `window.gtag('consent', 'update', { ... })` with the Cookiebot-to-gtag signal mapping below. The explicit bridge is what auto-mode used to do implicitly. Manual mode also resolves a React-19/Next-16 hydration mismatch in dev: auto mode's DOM rewrite during script execution runs before React can hydrate, leaving the head DOM out of sync with React's tree (commit `b2147da` attempted to suppress at the React layer; suppression at the head element is one DOM-element deep and doesn't catch the mismatches on the rewritten script tags below).
+**Cookiebot blocking mode: `manual`, with explicit gtag bridge.** Cookiebot is loaded with `data-blockingmode="manual"` (not `"auto"`). Auto mode rewrites `<script>` tags in `<head>` to gate execution; this is the older belt-and-suspenders pattern from before Consent Mode v2 was widely supported. With manual mode, Cookiebot does not modify the DOM — gating is delegated entirely to the GTM container's per-tag `consentSettings` (every analytics tag carries `analytics_storage: required`). **This describes the container as of Phase 14, [14.1]; it was not true before then** — see "Where the gate actually was" below. The CookiebotConsentListener (`src/components/scripts/cookiebot-consent.tsx`) listens for `CookiebotOnAccept`/`CookiebotOnDecline` events and calls `trackConsentUpdate`/`initConsentState` in `src/lib/events/track.ts`, which both (a) push a `consent_update` event to the data layer for the under-the-hood visualization, and (b) explicitly call `window.gtag('consent', 'update', { ... })` with the Cookiebot-to-gtag signal mapping below. The explicit bridge is what auto-mode used to do implicitly. Manual mode also resolves a React-19/Next-16 hydration mismatch in dev: auto mode's DOM rewrite during script execution runs before React can hydrate, leaving the head DOM out of sync with React's tree (commit `b2147da` attempted to suppress at the React layer; suppression at the head element is one DOM-element deep and doesn't catch the mismatches on the rewritten script tags below).
+
+#### Where the gate actually was
+
+This section asserted per-tag `consentSettings` as the enforcement point from
+Phase 1 onward. The 2026-09-08 GTM census
+(`docs/verification/2026-09-08-gtm-container-census.md`) measured the live
+container and found **`consentStatus: notNeeded` on all eighteen tags**. The
+design was described and never implemented; nothing detected the gap for eight
+months because no test compared the document to the container.
+
+Two records disagreed about what that meant, and neither cited the other:
+
+- **This section** — gating is per-tag, in the container.
+- **`docs/sessions/session-2026-03-27-007.md`** — "GA4 sends cookieless pings
+  even when consent is denied, **transport is NOT blocked**", recorded as that
+  session's key learning. `iap_session_id` was added to the shared event
+  settings variable specifically so a *cookieless decliner's* events could still
+  be routed to the right SSE connection, because GA4 overwrites `session_id` on
+  those pings.
+
+Both were accurate about different layers. Consent Mode v2 gates *identifiers*
+and lets a denied visitor's request through as a cookieless ping; GTM per-tag
+consent gates *the tag firing at all*. Only the second was ever going to make
+this section's sentence true, and only the first was ever running.
+
+**Decision (Ian, 2026-09-08): the per-tag gate wins, and [14.1] implements it.**
+Twenty-one of twenty-two tags now require `analytics_storage`. A visitor who
+declines analytics fires no GA4 tag and generates no ping. The stricter posture
+is the one this site should demonstrate, and it is the one the document has been
+claiming.
+
+What that costs, recorded rather than discovered later:
+
+- The cookieless-routing motivation for `iap_session_id` is largely spent — a
+  declining visitor no longer produces cookieless pings to route. The parameter
+  stays: GA4 still remaps `session_id` for everyone, and `GA4 - consent_update`
+  is deliberately exempt from the gate, so that one event still travels and
+  still needs routing.
+- A declining visitor's real-time overlay now legitimately stays empty. The
+  fallback previously reported `ga4`/`bigquery`/`pubsub` as delivered
+  regardless of consent, which would have become a false claim the moment the
+  gate went live; `buildRouting` and the timeline's empty state were corrected
+  in the same deliverable so the overlay reports what actually happened.
+- Decliners go from many cookieless pings to exactly one, not to zero, because
+  of the `consent_update` exemption.
 
 **Integration sequence:**
 
@@ -824,6 +869,31 @@ Recovered from the Phase 11 work, and still correct. The tool follows the resour
 - **Dataform model SQL → git.** Mirrored to the `dataform` branch by a GitHub Action. Terraform may own the release and workflow-config resources; the `.sqlx` definitions stay in the repository.
 - **Monitoring (Phase 12) → committed specs and `apply.sh`.** Not in Terraform, and nothing depends on that yet; it can be absorbed into either the Terraform layer or the Phase 14 reconcilers when one of them is the obvious home.
 
+### The session key, and what of it is recoverable
+
+`session_id` is reserved in gtag.js: it is treated as a configuration field and
+consumed before the hit is built, so `ep.session_id` never leaves the page and
+every real-browser row in `iampatterson_raw.events_raw` carries it NULL. The
+data generator is not exempt because it skips the GA4 client — it posts to the
+same `/g/collect` endpoint with the same `v=2` protocol — but because it
+hand-builds its query string and sets the parameter explicitly. `iap_session_id`
+was added in 2026-03 for exactly this reason and is the field the sGTM Pub/Sub
+tag keys on.
+
+Until 2026-09-08 the Dataform layer keyed on the raw column and `stg_sessions`
+filtered `WHERE session_id IS NOT NULL`, so the session layer contained no real
+visitors at all and every mart and dashboard above it described the generator.
+[14.6] resolves `COALESCE(iap_session_id, session_id)` at the staging boundary.
+
+**What history is recoverable, stated because it is easy to assume otherwise.**
+`iampatterson_raw` carries a 60-day partition expiration (the retention table
+below). Everything before roughly 2026-07-10 has been deleted by partition
+expiry and cannot be reconstructed — staging and marts are full-rebuild tables
+with no independent retention, so there is no copy elsewhere. Within the
+surviving window there is nothing to decide: every Dataform model is
+`type: "table"`, so the next scheduled run rebuilds the full window with the
+resolved key and no operator action is needed.
+
 ### Recorded gaps in the transport
 
 The push subscription `iampatterson-events-push` has **no dead-letter topic**,
@@ -845,4 +915,4 @@ Every in-scope resource already serves production, so the first pass on any of t
 ### Phase 14 — Declarative infrastructure
 
 
-`infrastructure/gtm/reconcile.js` and `infrastructure/metabase/reconcile.sh` driven by committed specs, a GitHub Actions workflow with a dry-run diff on pull requests and a manually approved live apply through Workload Identity Federation, and the `web_vital` and `page_engagement` wiring applied through the GTM reconciler.
+`infrastructure/gtm/reconcile.js` driven by the committed container specs, measured against a recorded census of both live containers before any write, with apply and publish as separate steps; the Metabase load-balancer topology **retired onto the Terraform layer that already declares it** rather than reimplemented in a second writer, leaving only the IAP residue — the OAuth brand and client as a console procedure, the service agent's `run.invoker` binding declared, and the `roles/iap.httpsResourceAccessor` allowlist as a runbook procedure so its additive-only semantics survive an auto-apply; a GitHub Actions workflow with a dry-run diff on pull requests touching `infrastructure/gtm/**` and a manually approved live apply through Workload Identity Federation, whose `infra-production` environment carries a required reviewer *before* `vars.GCP_WIF_PROVIDER` is set, since that one variable also arms the existing `infra-terraform.yml` apply; the `web_vital` and `page_engagement` wiring applied through the GTM reconciler; and the claudish-proxy service imported into `cloud-run.tf` with the `KILL_SWITCH` env exclusion, completing the adoption 13.4 began.

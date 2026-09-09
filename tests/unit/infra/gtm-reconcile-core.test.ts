@@ -1,0 +1,340 @@
+/**
+ * The reconciler's orchestration (Phase 14, deliverable 14.1).
+ *
+ * The CLI in reconcile.js is a thin shell over this; everything that decides
+ * what to write lives here and runs against a fake client, so the whole apply
+ * path is exercised without a network or a container.
+ *
+ * The ordering test is the one that matters most. A tag names its trigger, and
+ * the API wants a numeric id, so a tag created before its trigger has no id to
+ * resolve — the reconciler would either write an unfired tag or abort halfway
+ * through, leaving the container half-applied.
+ */
+import { reconcile } from '../../../infrastructure/gtm/lib/reconcile-core.js';
+
+interface Written {
+  op: string;
+  collection?: string;
+  name?: string;
+  path?: string;
+}
+
+/** A client that records writes and hands back ids for anything created. */
+function fakeClient(live: Record<string, unknown[]>, written: Written[], failOn?: string) {
+  let nextId = 500;
+  return {
+    written,
+    defaultWorkspaceId: async () => '9',
+    list: async (_c: string, _w: string, collection: string) => live[collection] || [],
+    create: async (_c: string, _w: string, collection: string, entity: { name: string }) => {
+      if (entity.name === failOn) throw new Error(`API 400: rejected ${entity.name}`);
+      written.push({ op: 'create', collection, name: entity.name });
+      nextId += 1;
+      const idKey = { tags: 'tagId', triggers: 'triggerId', variables: 'variableId' }[collection]!;
+      return { ...entity, [idKey]: String(nextId) };
+    },
+    update: async (path: string, entity: { name: string }) => {
+      written.push({ op: 'update', path, name: entity.name });
+      return entity;
+    },
+    remove: async (path: string) => {
+      written.push({ op: 'delete', path });
+      return {};
+    },
+    createVersion: async () => ({ containerVersion: { containerVersionId: '77' } }),
+    publish: async () => {
+      written.push({ op: 'publish' });
+      return {};
+    },
+  };
+}
+
+const spec = {
+  _meta: { containerId: 'GTM-MWHFMTZN' },
+  variables: [{ name: 'dlv - direction', type: 'dataLayer', dataLayerVariable: 'direction' }],
+  triggers: [
+    { name: 'ce - claudish_translate', type: 'customEvent', eventName: 'claudish_translate' },
+  ],
+  tags: [
+    {
+      name: 'GA4 - claudish_translate',
+      type: 'GA4 Event (gaawe)',
+      eventName: 'claudish_translate',
+      firingTrigger: 'ce - claudish_translate',
+      parameters: { direction: '{{dlv - direction}}' },
+      measurementId: '{{const - ga4_measurement_id}}',
+      sharedEventSettings: '{{ga4 - shared_event_settings}}',
+      consentSettings: { analytics_storage: 'required' },
+    },
+  ],
+};
+
+const empty = { tags: [], triggers: [], variables: [], built_in_variables: [], folders: [] };
+
+describe('dry run', () => {
+  it('writes nothing at all', async () => {
+    const written: Written[] = [];
+    const result = await reconcile({
+      client: fakeClient(empty, written),
+      containerId: '247511905',
+      spec,
+    });
+    expect(written).toHaveLength(0);
+    expect(result.diff.totals.adds).toBe(3);
+    expect(result.applied).toBe(false);
+  });
+});
+
+describe('apply', () => {
+  it('creates variables and triggers before the tags that reference them', async () => {
+    // Without this order a tag has no trigger id to resolve. Asserting the
+    // sequence rather than the set is the point.
+    const written: Written[] = [];
+    await reconcile({
+      client: fakeClient(empty, written),
+      containerId: '247511905',
+      spec,
+      apply: true,
+    });
+    expect(written.map((w) => w.collection)).toEqual(['variables', 'triggers', 'tags']);
+  });
+
+  it('resolves a tag onto the trigger it just created', async () => {
+    const written: Written[] = [];
+    const client = fakeClient(empty, written);
+    const created: Record<string, unknown>[] = [];
+    const wrapped = {
+      ...client,
+      create: async (c: string, w: string, coll: string, e: Record<string, unknown>) => {
+        const out = await client.create(c, w, coll, e as { name: string });
+        created.push({ collection: coll, entity: out });
+        return out;
+      },
+    };
+    await reconcile({ client: wrapped, containerId: '247511905', spec, apply: true });
+    const trigger = created.find((x) => x.collection === 'triggers')!.entity as {
+      triggerId: string;
+    };
+    const tag = created.find((x) => x.collection === 'tags')!.entity as {
+      firingTriggerId: string[];
+    };
+    expect(tag.firingTriggerId).toEqual([trigger.triggerId]);
+  });
+
+  it('carries the spec consent requirement onto the tag it writes', async () => {
+    const written: Written[] = [];
+    const client = fakeClient(empty, written);
+    let tagBody: { consentSettings?: unknown } = {};
+    const wrapped = {
+      ...client,
+      create: async (c: string, w: string, coll: string, e: Record<string, unknown>) => {
+        if (coll === 'tags') tagBody = e;
+        return client.create(c, w, coll, e as { name: string });
+      },
+    };
+    await reconcile({ client: wrapped, containerId: '247511905', spec, apply: true });
+    expect(tagBody.consentSettings).toEqual({
+      consentStatus: 'needed',
+      consentType: { type: 'list', list: [{ type: 'template', value: 'analytics_storage' }] },
+    });
+  });
+
+  it('leaves live entities the spec omits alone unless deletes are allowed', async () => {
+    const live = {
+      ...empty,
+      tags: [
+        {
+          name: 'GA4 - orphan',
+          type: 'gaawe',
+          parameter: [],
+          firingTriggerId: ['1'],
+          path: 'p/orphan',
+        },
+      ],
+    };
+    const written: Written[] = [];
+    const result = await reconcile({
+      client: fakeClient(live, written),
+      containerId: '247511905',
+      spec,
+      apply: true,
+    });
+    expect(result.diff.collections.tags.deletes).toHaveLength(1);
+    expect(written.filter((w) => w.op === 'delete')).toHaveLength(0);
+  });
+
+  it('deletes only behind allowDeletes', async () => {
+    const live = {
+      ...empty,
+      tags: [
+        {
+          name: 'GA4 - orphan',
+          type: 'gaawe',
+          parameter: [],
+          firingTriggerId: ['1'],
+          path: 'p/orphan',
+        },
+      ],
+    };
+    const written: Written[] = [];
+    await reconcile({
+      client: fakeClient(live, written),
+      containerId: '247511905',
+      spec,
+      apply: true,
+      allowDeletes: true,
+    });
+    expect(written.filter((w) => w.op === 'delete').map((w) => w.path)).toEqual(['p/orphan']);
+  });
+
+  it('stops on the first API failure rather than continuing half-applied', async () => {
+    const written: Written[] = [];
+    await expect(
+      reconcile({
+        client: fakeClient(empty, written, 'ce - claudish_translate'),
+        containerId: '247511905',
+        spec,
+        apply: true,
+      }),
+    ).rejects.toThrow(/rejected ce - claudish_translate/);
+    // The variable landed; nothing after the failure was attempted.
+    expect(written.map((w) => w.collection)).toEqual(['variables']);
+  });
+});
+
+/**
+ * A test here once asserted that a publish requires drift. The 2026-09-08
+ * review showed the rationale was wrong: it conflated spec-versus-workspace
+ * with workspace-versus-published-version, and only the second is about
+ * publishing. Gating on the first made the documented apply, inspect, publish
+ * flow impossible — once an apply landed there was nothing left to publish
+ * from. It was removed rather than adjusted. What it meant to protect is
+ * covered by the dry-run guarantee below and by the CLI refusing --publish
+ * without --apply (gtm-reconcile-cli.test.ts).
+ */
+describe('publish', () => {
+  it('does not publish on a dry run, however the flag is set', async () => {
+    const written: Written[] = [];
+    await reconcile({
+      client: fakeClient(empty, written),
+      containerId: '247511905',
+      spec,
+      publish: true,
+    });
+    expect(written.filter((w) => w.op === 'publish')).toHaveLength(0);
+  });
+
+  it('publishes after a successful apply when asked, and reports the version', async () => {
+    const written: Written[] = [];
+    const result = await reconcile({
+      client: fakeClient(empty, written),
+      containerId: '247511905',
+      spec,
+      apply: true,
+      publish: true,
+    });
+    expect(written.at(-1)!.op).toBe('publish');
+    expect(result.versionId).toBe('77');
+  });
+
+
+});
+
+describe('a dry run validates that an apply could succeed', () => {
+  // The apply on 2026-09-08 failed on the first tag after sixteen variables
+  // and four triggers had already been written. A dry run that only diffs
+  // cannot warn about that; one that also converts every planned write can.
+  it('reports a conversion failure without writing anything', async () => {
+    const written: Written[] = [];
+    const bad = {
+      ...spec,
+      // gaawe with no measurementId, and nothing live to merge one from.
+      tags: [{ ...spec.tags[0], measurementId: undefined }],
+    };
+    const result = await reconcile({ client: fakeClient(empty, written), containerId: '247511905', spec: bad });
+    expect(written).toHaveLength(0);
+    expect(result.problems).toHaveLength(1);
+    expect(result.problems[0]).toMatch(/measurement id/i);
+  });
+
+  it('refuses to apply when a dry run would have reported problems', async () => {
+    const written: Written[] = [];
+    const bad = { ...spec, tags: [{ ...spec.tags[0], measurementId: undefined }] };
+    await expect(
+      reconcile({ client: fakeClient(empty, written), containerId: '247511905', spec: bad, apply: true }),
+    ).rejects.toThrow(/measurement id/i);
+    expect(written).toHaveLength(0);
+  });
+
+  it('reports no problems for a spec that can be applied', async () => {
+    const written: Written[] = [];
+    const result = await reconcile({ client: fakeClient(empty, written), containerId: '247511905', spec });
+    expect(result.problems).toEqual([]);
+  });
+});
+
+describe('review findings 3 and 7', () => {
+  it('deletes tags before the triggers and variables they reference', async () => {
+    // Finding 7. Deletion ran in creation order, so a trigger was removed
+    // while the tag firing on it still existed. Destruction needs the reverse.
+    const live = {
+      ...empty,
+      tags: [{ name: 'GA4 - gone', type: 'gaawe', parameter: [], firingTriggerId: ['1'], path: 'p/tag' }],
+      triggers: [{ name: 'ce - gone', triggerId: '1', type: 'customEvent', path: 'p/trigger' }],
+      variables: [{ name: 'dlv - gone', type: 'v', parameter: [], path: 'p/var' }],
+    };
+    const written: Written[] = [];
+    await reconcile({
+      client: fakeClient(live, written),
+      containerId: '247511905',
+      spec: { ...spec, tags: [], triggers: [], variables: [] },
+      apply: true,
+      allowDeletes: true,
+    });
+    expect(written.filter((w) => w.op === 'delete').map((w) => w.path)).toEqual([
+      'p/tag',
+      'p/trigger',
+      'p/var',
+    ]);
+  });
+
+  it('publishes a workspace that already matches the spec', async () => {
+    // Finding 3. The documented flow is apply, inspect in the GTM UI, then
+    // publish. Returning early on "no drift" made that impossible: once the
+    // apply landed there was nothing to publish from. Spec-matches-workspace
+    // and workspace-matches-published-version are different comparisons, and
+    // only the second is about publishing.
+    const written: Written[] = [];
+    const live = {
+      ...empty,
+      variables: [
+        { name: 'dlv - direction', type: 'v', parameter: [
+          { type: 'integer', key: 'dataLayerVersion', value: '2' },
+          { type: 'template', key: 'name', value: 'direction' }] },
+      ],
+      triggers: [{ name: 'ce - claudish_translate', triggerId: '99', type: 'customEvent',
+        customEventFilter: [{ type: 'equals', parameter: [
+          { type: 'template', key: 'arg0', value: '{{_event}}' },
+          { type: 'template', key: 'arg1', value: 'claudish_translate' }] }] }],
+      tags: [{ name: 'GA4 - claudish_translate', type: 'gaawe', firingTriggerId: ['99'],
+        parameter: [
+          { type: 'list', key: 'eventSettingsTable', list: [{ type: 'map', map: [
+            { type: 'template', key: 'parameter', value: 'direction' },
+            { type: 'template', key: 'parameterValue', value: '{{dlv - direction}}' }] }] },
+          { type: 'template', key: 'eventName', value: 'claudish_translate' },
+          { type: 'template', key: 'measurementIdOverride', value: '{{const - ga4_measurement_id}}' },
+          { type: 'template', key: 'eventSettingsVariable', value: '{{ga4 - shared_event_settings}}' },
+        ],
+        consentSettings: { consentStatus: 'needed',
+          consentType: { type: 'list', list: [{ type: 'template', value: 'analytics_storage' }] } } }],
+    };
+    const result = await reconcile({
+      client: fakeClient(live, written),
+      containerId: '247511905',
+      spec, apply: true, publish: true,
+    });
+    expect(result.diff.changed).toBe(false);
+    expect(written.map((w) => w.op)).toEqual(['publish']);
+    expect(result.versionId).toBe('77');
+  });
+});

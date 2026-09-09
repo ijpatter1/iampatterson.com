@@ -8,6 +8,7 @@ import { EventTimeline } from '@/components/overlay/event-timeline';
 import { NarrativeFlow } from '@/components/overlay/narrative-flow';
 import { useOverlay } from '@/components/overlay/overlay-context';
 import { OverviewTab } from '@/components/overlay/overview-tab';
+import { useSessionState } from '@/components/session-state-provider';
 import { useFilteredEvents } from '@/hooks/useFilteredEvents';
 import { useLiveEvents } from '@/hooks/useLiveEvents';
 import { useStorageInspector } from '@/hooks/useStorageInspector';
@@ -129,6 +130,20 @@ export function OverlayView() {
   const { events } = useLiveEvents();
   const { filteredEvents } = useFilteredEvents(events, false);
   const storage = useStorageInspector(isOpen);
+  const sessionState = useSessionState();
+
+  /**
+   * The visitor's analytics consent, but only once they have actually chosen.
+   *
+   * `consent_snapshot.analytics` is derived from booleans, so an unanswered
+   * banner and a decline both read as 'denied'. Telling a first-time visitor
+   * they declined before they chose would be its own dishonesty, so the
+   * presence of Cookiebot's own `CookieConsent` cookie — which the storage
+   * inspector already reads — is what distinguishes the two.
+   */
+  const hasChosen = storage.entries.some((e) => e.name === 'CookieConsent');
+  const analyticsConsent =
+    hasChosen && sessionState ? sessionState.consent_snapshot.analytics : undefined;
 
   const [viewMode, setViewMode] = useState<ViewMode>('overview');
   const [selectedEvent, setSelectedEvent] = useState<PipelineEvent | null>(null);
@@ -376,7 +391,11 @@ export function OverlayView() {
             <>
               {viewMode === 'overview' && <OverviewTab storage={storage} />}
               {viewMode === 'timeline' && (
-                <EventTimeline events={filteredEvents} onSelectEvent={setSelectedEvent} />
+                <EventTimeline
+                  events={filteredEvents}
+                  onSelectEvent={setSelectedEvent}
+                  analyticsConsent={analyticsConsent}
+                />
               )}
               {viewMode === 'consent' && <ConsentView events={filteredEvents} storage={storage} />}
             </>

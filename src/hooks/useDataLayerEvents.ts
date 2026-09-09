@@ -42,20 +42,34 @@ function buildConsent(entry: Record<string, unknown>): ConsentState {
   };
 }
 
+/**
+ * The routing this fallback can honestly claim.
+ *
+ * Every GA4 tag in the container carries `analytics_storage: required` (Phase
+ * 14, [14.1]), so a visitor who declines analytics sends nothing to sGTM and
+ * nothing reaches GA4, BigQuery or Pub/Sub. Reporting those as 'sent' — which
+ * this did while the container required no consent of its own — tells the one
+ * visitor most likely to check that their choice was ignored.
+ *
+ * This is the fallback path only. When the SSE stream is delivering, the
+ * server stamps the real per-destination statuses and they win.
+ */
 function buildRouting(consent: ConsentState, timestamp: string): RoutingResult[] {
   const marketingGranted = consent.ad_storage === 'granted';
+  const analyticsGranted = consent.analytics_storage === 'granted';
+  const analyticsStatus = analyticsGranted ? 'sent' : 'blocked_consent';
   return [
-    { destination: 'ga4', status: 'sent', timestamp },
-    { destination: 'bigquery', status: 'sent', timestamp },
-    { destination: 'pubsub', status: 'sent', timestamp },
+    { destination: 'ga4', status: analyticsStatus, timestamp },
+    { destination: 'bigquery', status: analyticsStatus, timestamp },
+    { destination: 'pubsub', status: analyticsStatus, timestamp },
     {
       destination: 'meta_capi',
-      status: marketingGranted ? 'sent' : 'blocked_consent',
+      status: marketingGranted && analyticsGranted ? 'sent' : 'blocked_consent',
       timestamp,
     },
     {
       destination: 'google_ads',
-      status: marketingGranted ? 'sent' : 'blocked_consent',
+      status: marketingGranted && analyticsGranted ? 'sent' : 'blocked_consent',
       timestamp,
     },
   ];

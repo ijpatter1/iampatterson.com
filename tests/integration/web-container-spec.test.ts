@@ -1,6 +1,10 @@
 /**
- * Verifies the web GTM container spec + the deploy-phase6 script
- * agree on the Phase 6 demo event allow-list.
+ * Verifies the web GTM container spec declares the Phase 6 demo events.
+ *
+ * Until 2026-09-08 this also parsed `deploy-phase6.js`'s source and asserted
+ * the two agreed. Neither was an input to the other, so the pin compared two
+ * hand-maintained lists; the script has been retired and the spec is now what
+ * the reconciler applies.
  *
  * Guards against the drift pattern flagged in
  * MEMORY.md → project_hardcoded_allowlists.md: schema adds a new
@@ -12,10 +16,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const webContainerPath = path.resolve(__dirname, '../../infrastructure/gtm/web-container.json');
-const deployScriptPath = path.resolve(__dirname, '../../infrastructure/gtm/deploy-phase6.js');
 
 const webContainer = JSON.parse(fs.readFileSync(webContainerPath, 'utf-8'));
-const deployScriptSource = fs.readFileSync(deployScriptPath, 'utf-8');
 
 type Trigger = { name: string; type: string; eventName?: string };
 type TagParams = Record<string, string>;
@@ -98,33 +100,48 @@ describe('web GTM container spec, Phase 6 ecommerce cart events', () => {
   });
 });
 
-describe('deploy-phase6.js, Phase 6 ecommerce cart events', () => {
-  it('PHASE6_TRIGGER_EVENTS lists remove_from_cart', () => {
-    const triggerBlock =
-      deployScriptSource.match(/const PHASE6_TRIGGER_EVENTS = \[([\s\S]*?)\];/)?.[1] ?? '';
-    expect(triggerBlock).toContain("'remove_from_cart'");
+/**
+ * Re-homed 2026-09-08 ([14.1]) off `deploy-phase6.js`'s source text.
+ *
+ * Four assertions here used to parse the deploy script with regexes —
+ * PHASE6_TRIGGER_EVENTS, the `GA4 - remove_from_cart` block, its trigger and
+ * its params. They existed to catch the drift the file header names: the
+ * schema gains an event and the GTM trigger/tag pair never follows. But they
+ * checked a hardcoded JS constant against a JSON file where neither was an
+ * input to the other, and the script has now been retired.
+ *
+ * The reconciler applies the committed spec, so the spec is what production
+ * runs. Asserting against it is both a real pin and a stronger one: this
+ * generalises to every ecommerce event rather than hardcoding the one that
+ * happened to go missing in 2026-04.
+ */
+describe('every ecommerce event the schema declares is wired in the container', () => {
+  const ECOMMERCE_EVENTS = [
+    'product_view',
+    'add_to_cart',
+    'remove_from_cart',
+    'begin_checkout',
+    'purchase',
+  ];
+
+  it.each(ECOMMERCE_EVENTS)('%s has a customEvent trigger', (eventName) => {
+    expect(findTrigger(eventName)).toBeDefined();
   });
 
-  it('PHASE6_TAGS declares a GA4 - remove_from_cart entry', () => {
-    expect(deployScriptSource).toMatch(/name:\s*'GA4 - remove_from_cart'/);
+  it.each(ECOMMERCE_EVENTS)('%s has a GA4 tag bound to that trigger', (eventName) => {
+    const tag = findGA4Tag(eventName);
+    expect(tag).toBeDefined();
+    expect(tag?.firingTrigger).toBe(`ce - ${eventName}`);
   });
 
-  it('GA4 - remove_from_cart tag fires on the remove_from_cart trigger', () => {
-    const tagBlock =
-      deployScriptSource.match(
-        /name:\s*'GA4 - remove_from_cart',[\s\S]*?triggerEvent:\s*'([^']+)'/,
-      )?.[1] ?? '';
-    expect(tagBlock).toBe('remove_from_cart');
-  });
-
-  it('GA4 - remove_from_cart params mirror add_to_cart (product_id/name/price/quantity)', () => {
-    const tagBlock = deployScriptSource.match(
-      /name:\s*'GA4 - remove_from_cart',[\s\S]*?params:\s*\[([\s\S]*?)\],\s*\},/,
-    )?.[1];
-    expect(tagBlock).toBeDefined();
-    expect(tagBlock).toContain("'product_id'");
-    expect(tagBlock).toContain("'product_name'");
-    expect(tagBlock).toContain("'product_price'");
-    expect(tagBlock).toContain("'quantity'");
+  it('cart events carry the product parameters the demo claims to send', () => {
+    // The near-cart toast tells a visitor the event routed to GA4 and
+    // BigQuery with these fields. A tag missing them makes that a false claim.
+    for (const eventName of ['add_to_cart', 'remove_from_cart']) {
+      const params = findGA4Tag(eventName)?.parameters ?? {};
+      for (const field of ['product_id', 'product_name', 'product_price', 'quantity']) {
+        expect(Object.keys(params)).toContain(field);
+      }
+    }
   });
 });
