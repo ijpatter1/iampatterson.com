@@ -60,11 +60,39 @@ been inert behind it since Phase 11.
 The five [14.5] Terraform imports were applied first, so no in-flight import
 could be performed by an unattended apply.
 
+## Armed
+
+Ian added `infra-deployer@iampatterson.iam.gserviceaccount.com` to GTM account
+`6346433751` with **Publish** on both containers. The Tag Manager API authorises
+on that membership, not on GCP IAM — federation produces an identity, not
+access — so without it the workflow would have authenticated and then failed on
+its first API call.
+
+The repository variables were then set, which is the step that arms **both**
+workflows:
+
+```
+GCP_WIF_PROVIDER = projects/262727068689/locations/global/workloadIdentityPools/github/providers/github
+GCP_DEPLOYER_SA  = infra-deployer@iampatterson.iam.gserviceaccount.com
+```
+
+`terraform plan` was confirmed a no-op immediately beforehand, so the apply job
+this arms has nothing outstanding to perform.
+
 ## Open
 
-**The deployer is not yet a member of GTM account `6346433751`.** The Tag
-Manager API authorises on GTM account membership, not GCP IAM: federation
-produces an identity, not access. Until that grant exists, `infra-reconcile.yml`
-would authenticate and then fail on the first API call. It is a browser step —
-`docs/manual/task-2026-09-09-001.md` step 4 — and the repository variables are
-deliberately not set until it is done.
+**The deployer's GTM access is not independently verified.** The intended check
+was to impersonate `infra-deployer` and call the accounts endpoint, but the
+`serviceAccountTokenCreator` binding created for that test was still propagating
+when the session ended — the same lag the `gtm-reconciler` grant showed earlier,
+which cleared after a few minutes. The membership Ian granted is what matters
+and is not in doubt; only my shortcut for confirming it early is missing.
+
+**The real verification is [14.3]'s own acceptance** and it has not run: one
+pull request showing the dry-run comment, one merge showing the approval gate
+and a successful apply. Both need the branch pushed, which `bash-guard` reserves
+to a person. Until that happens this deliverable is armed but unproven.
+
+If the first dry run fails with a Tag Manager permission error rather than a
+diff, the cause is that membership rather than anything in the workflow — check
+it in the GTM UI before debugging the CI.
