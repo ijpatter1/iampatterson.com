@@ -88,11 +88,17 @@ person's call made against a rehearsal.
 
 ## Open
 
-**Not applied.** The five imports are declared and planned; `terraform apply` is
-refused by the auto-mode classifier as an unattended production write and waits
-on a person. Until it runs, the resources are declared and unmanaged — the state
-they were already in, so nothing is worse, and the captured plan is the evidence
-the import is a no-op.
+**Applied 2026-09-09** by Ian, from his own shell after the classifier refused an
+unattended production apply:
+
+```
+Apply complete! Resources: 5 imported, 0 added, 0 changed, 0 destroyed.
+```
+
+A following `terraform plan` reports no differences. The proxy is unaffected:
+`/health` 200, the site 200, `/claudish` 200, and `KILL_SWITCH` still reads
+`off` in the live service — present in state, owned by nobody, which is the
+whole point of the env exclusion.
 
 **Dataset-level grants remain undeclared.** [13.4] added `WRITER` access entries
 on the BigQuery datasets for three accounts. Declaring them means
