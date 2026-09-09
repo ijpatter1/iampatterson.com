@@ -79,7 +79,31 @@ interact harder with a page that is correctly sending nothing.
 
 ## Open
 
-**The acceptance clause is not yet met.** `claudish_translate`,
+**Closed 2026-09-09.** All four families are in `events_raw` from production
+traffic, every row with `consent_analytics: true`:
+
+| Event | Rows | Landed |
+| --- | --- | --- |
+| `claudish_translate` | 2 | 02:54:36 |
+| `claudish_detected` | 1 | 02:54:30 |
+| `claudish_share` | 2 | 02:57:12 |
+| `claudish_rate` | 1 | 02:57:07 |
+
+**The consent gate is proven in the same run, which the acceptance did not ask
+for and is the more valuable result.** A session with `analytics_storage`
+denied fired 36 events into the data layer — 12 translate, 5 share, 2 detect,
+13 web_vital, 4 engagement — and put **none** of them in the warehouse. The one
+event that did land from a denied session was `consent_update`, the single
+deliberately exempt tag, which is how a decliner's own choice still reaches the
+pipeline. Before version 9 every one of those 36 would have been collected.
+
+`web_vital` and `page_engagement` fired and reached nothing, correctly: they
+have no container wiring. That is [14.4], now with production evidence behind
+the gap rather than an inference from the spec.
+
+## The original wording, for the record
+
+**The acceptance clause was not met when this record was first written.** `claudish_translate`,
 `claudish_detected`, `claudish_share` and `claudish_rate` must be queryable in
 `iampatterson_raw.events_raw`, and as of the publish they return zero rows over
 both the preceding fourteen days and the minutes since — the pipeline is wired
