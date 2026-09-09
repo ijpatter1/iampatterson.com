@@ -555,3 +555,186 @@ resource "google_cloud_run_v2_service" "metabase" {
     type     = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
   }
 }
+
+# ─── claudish-proxy ──────────────────────────────────────────────────────────
+
+# Adopted by [14.5], closing the half of the spec's section-10 workstream that
+# [13.4] left undone. That record said "the proxy adoption imported", which was
+# true of five service accounts and one API and not of this service: it sat
+# outside the declarative layer for three months while every other Cloud Run
+# service was inside it.
+#
+# No plan could have reported that. A resource in neither the configuration nor
+# the state produces no plan output at all — the plan only ever describes the
+# gap between those two, so "No changes" was compatible with the omission. The
+# check that catches it is the structural pin in
+# tests/unit/infrastructure/terraform-cloud-run.test.ts, which walks the service
+# directories under infrastructure/cloud-run/ and would have failed on
+# 2026-09-03, the day this service entered the repository.
+#
+# The body below was generated from the live service with
+# `terraform plan -generate-config-out` rather than hand-written, because a
+# hand-written minimal block proposed to null out execution_environment,
+# cpu_idle, startup_cpu_boost and the service-level scaling block — a change,
+# where the brownfield contract requires an import to be a no-op.
+# Please review these resources and move them into your main configuration files.
+
+resource "google_cloud_run_v2_service" "claudish_proxy" {
+  annotations          = {}
+  client               = "gcloud"
+  client_version       = "574.0.0"
+  custom_audiences     = []
+  deletion_protection  = true
+  description          = null
+  ingress              = "INGRESS_TRAFFIC_ALL"
+  invoker_iam_disabled = false
+  labels               = {}
+  launch_stage         = "GA"
+  location             = "us-central1"
+  name                 = "claudish-proxy"
+  project              = "iampatterson"
+  build_config {
+    base_image               = null
+    enable_automatic_updates = false
+    environment_variables    = {}
+    function_target          = null
+    image_uri                = "us-central1-docker.pkg.dev/iampatterson/cloud-run-source-deploy/claudish-proxy"
+    service_account          = null
+    source_location          = "gs://run-sources-iampatterson-us-central1/services/claudish-proxy/1788534939.812152-434a1d7e9ba3470783f83f81eb54bf8b.zip#1788534951479996"
+    worker_pool              = null
+  }
+  scaling {
+    manual_instance_count = 0
+    min_instance_count    = 0
+    scaling_mode          = null
+  }
+  template {
+    annotations                      = {}
+    encryption_key                   = null
+    execution_environment            = "EXECUTION_ENVIRONMENT_GEN2"
+    gpu_zonal_redundancy_disabled    = false
+    labels                           = {}
+    max_instance_request_concurrency = 80
+    revision                         = null
+    service_account                  = "claudish-proxy@iampatterson.iam.gserviceaccount.com"
+    session_affinity                 = false
+    timeout                          = "60s"
+    containers {
+      args           = []
+      base_image_uri = null
+      command        = []
+      depends_on     = []
+      image          = "us-central1-docker.pkg.dev/iampatterson/cloud-run-source-deploy/claudish-proxy@sha256:c0ec81a6df4b504b8dfa10eadd2ba129ada4aa4942fe59c469ef659a208fb1ed"
+      name           = null
+      working_dir    = null
+      env {
+        name  = "ALLOWED_ORIGINS"
+        value = "https://iampatterson.com,https://www.iampatterson.com,https://iampatterson-com.vercel.app,https://iampatterson-com-*.vercel.app,http://localhost:3000,http://192.168.86.*:3000"
+      }
+      env {
+        name  = "ANTHROPIC_FEDERATION_RULE_ID"
+        value = "fdrl_01RYv2ptEbtu7jpssKo1ZcRH"
+      }
+      env {
+        name  = "ANTHROPIC_ORGANIZATION_ID"
+        value = "ff69f7b8-02fa-4bbb-b4a9-d0047c05299c"
+      }
+      env {
+        name  = "ANTHROPIC_SERVICE_ACCOUNT_ID"
+        value = "svac_014RW8M13t3K3QXY6pL7mrLo"
+      }
+      env {
+        name  = "ANTHROPIC_WORKSPACE_ID"
+        value = "wrkspc_01K3PnFVDjmiNyuH6DQUJwKo"
+      }
+      env {
+        name  = "CL2EN_ENGINE"
+        value = "gemini-loop"
+      }
+      env {
+        name  = "DAILY_BUDGET_USD"
+        value = "23"
+      }
+      env {
+        name  = "GCP_PROJECT"
+        value = "iampatterson"
+      }
+      env {
+        name  = "GEMINI_LOCATION"
+        value = "global"
+      }
+      env {
+        name  = "GEMINI_MODEL_ID"
+        value = "gemini-3.5-flash-lite"
+      }
+      env {
+        name  = "KILL_SWITCH"
+        value = "off"
+      }
+      env {
+        name  = "LANES"
+        value = "vertex-global,vertex-regional,anthropic-api,cache-only"
+      }
+      env {
+        name  = "MAX_INSTANCES"
+        value = "4"
+      }
+      env {
+        name  = "MODEL_ID_CONFIRMED"
+        value = "1"
+      }
+      env {
+        name  = "VERTEX_FALLBACK_REGION"
+        value = "us-east5"
+      }
+      ports {
+        container_port = 8080
+        name           = "http1"
+      }
+      resources {
+        cpu_idle = true
+        limits = {
+          cpu    = "1"
+          memory = "512Mi"
+        }
+        startup_cpu_boost = true
+      }
+      startup_probe {
+        failure_threshold     = 1
+        initial_delay_seconds = 0
+        period_seconds        = 240
+        timeout_seconds       = 240
+        tcp_socket {
+          port = 8080
+        }
+      }
+    }
+    scaling {
+      max_instance_count = 4
+      min_instance_count = 1
+    }
+  }
+  traffic {
+    percent  = 100
+    revision = null
+    tag      = null
+    type     = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+  }
+  lifecycle {
+    ignore_changes = [
+      client,
+      client_version,
+      build_config,
+      template[0].containers[0].image,
+      # The kill switch. KILL_SWITCH lives in the service env, so if Terraform
+      # owned this block an emergency
+      # `gcloud run services update --update-env-vars KILL_SWITCH=on` would be
+      # silently reverted by the next apply — mid-incident.
+      # IMPORT_PLAN.md calls this "the class of thing this plan exists to
+      # catch". It was written in advance and is only now implemented.
+      # Never remove this line without reading that document first.
+      template[0].containers[0].env,
+      traffic,
+    ]
+  }
+}

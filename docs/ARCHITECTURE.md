@@ -751,11 +751,49 @@ in `events_raw`, and `sgtm` under its new identity exactly +117 more.
 0 changed, 0 destroyed`. State holds 52 resources and `terraform plan` reports no
 changes, so the layer now describes the identities it governs.
 
-**Still open.** `roles/editor` remains on the default compute account. No Cloud Run
-service uses that identity any more, so the exposure is closed; revoking the role
-itself is a separate change, because Cloud Build and other project machinery may
-still rely on it. The Secret Manager and IAM-member halves of `IMPORT_PLAN.md` target
-modules that do not exist in this root and are a decision rather than a step.
+**Still open — corrected 2026-09-09 ([14.5]).** As written this paragraph named
+`roles/editor` and the Secret Manager and IAM halves of `IMPORT_PLAN.md`, and
+omitted the largest item: **the `claudish-proxy` Cloud Run service itself was
+never imported.** "The proxy adoption imported — 6 imported" was true of five
+service accounts and one API. The service sat outside the declarative layer for
+three months while every other Cloud Run service was inside it, and no plan
+could have said so: a resource in neither the configuration nor the state
+produces no plan output at all, so "No changes" was compatible with the
+omission. [14.5] declares and imports it, and the check that would have caught
+it is a structural pin over the service directories under
+`infrastructure/cloud-run/` — current by construction, where the 2026-06-03
+`IMPORT_INVENTORY.md` census was not.
+
+The IAM half is closed the same way: this root held no IAM resources of any
+kind, so every least-privilege grant [13.4] created lived only in live IAM.
+`iam.tf` now declares the four project-level bindings and records that
+`sgtm-runtime` and `event-stream-runtime` deliberately hold none. Dataset-level
+`WRITER` access remains undeclared and is named as outstanding rather than
+half-done.
+
+**`roles/editor` on the default compute account: measured, and it cannot be
+revoked yet.** All six Cloud Run services run as dedicated identities and the
+three schedulers use `data-gen-scheduler`, so nothing *runs* as that account.
+But **Cloud Build does**: every source deploy — `event-stream`,
+`data-generator`, `claudish-proxy`, including the 2026-09-08 generator deploy —
+builds under
+`262727068689-compute@developer.gserviceaccount.com`. Revoking `roles/editor`
+would break `gcloud run deploy --source` for three services.
+
+*Recommendation, not done here:* give Cloud Build a narrower set —
+`roles/logging.logWriter`, `roles/artifactregistry.writer`, `roles/run.developer`
+and object access on the source bucket — or a dedicated build service account,
+verify a source deploy still succeeds, and only then revoke `editor`. That is a
+production IAM change with a deploy-breaking failure mode, so it is a person's
+call made against a rehearsal, not a passing cleanup.
+
+**The break-glass secret decision is deferred with a reason.**
+`claudish-anthropic-api-key` predates the 2026-08-31 WIF switch, holds no
+version and is mounted by nothing. The recommendation is to **import it rather
+than delete it**: an unused secret costs nothing, deletion is irreversible, and
+importing puts its emptiness on the record where a reader will see it. It was
+not done in [14.5] because verifying the secret's live state needs `gcloud
+secrets`, which was outside the session's permission set.
 
 ### sGTM container lifecycle: pin the digest (13.2, decided 2026-09-05)
 
