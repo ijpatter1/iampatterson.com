@@ -290,11 +290,20 @@ describe('EventTimeline', () => {
  * The declining visitor's empty state (Phase 14, alignment review 2026-09-08).
  *
  * [14.1] puts `analytics_storage: required` on every GA4 tag, so a visitor who
- * declines analytics sends nothing to sGTM and the timeline stays empty for
- * their whole session. The generic "Interact with the page, scroll, click"
- * copy then reads as the visitor's fault for not trying hard enough, on the
- * one surface this site exists to demonstrate. Their choice is being honoured;
- * the overlay should say so.
+ * declines analytics sends nothing to sGTM. The generic "Interact with the
+ * page, scroll, click" copy then reads as the visitor's fault for not trying
+ * hard enough, on the one surface this site exists to demonstrate. Their choice
+ * is being honoured; the overlay should say so.
+ *
+ * **Amended 2026-09-09.** This block used to say the timeline "stays empty for
+ * their whole session". It does not, and should not. `pushEvent` is
+ * unconditional, so a decliner's data-layer buffer fills as they browse, and
+ * since the timeline now sources from it when analytics is denied they see
+ * every event they generated with each destination struck through. The empty
+ * state below is therefore reachable only BEFORE the first event fires; the
+ * explanation a decliner actually reads is the `timeline-declined-note` in the
+ * non-empty branch. An empty panel is indistinguishable from a broken one,
+ * which is the whole reason the behaviour changed.
  */
 describe('empty state when analytics consent is declined', () => {
   it('explains that the visitor’s own choice is why the timeline is empty', () => {

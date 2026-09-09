@@ -141,9 +141,16 @@ interface EventTimelineProps {
   /**
    * The visitor's analytics consent, when it is known. Every GA4 tag requires
    * `analytics_storage` (Phase 14, [14.1]), so a declining visitor's events
-   * never leave the browser and this panel stays empty for their session.
-   * Undefined before the banner is answered — guessing would be its own
-   * dishonesty.
+   * never leave the browser — but they are still SHOWN, sourced from the data
+   * layer and routed `blocked_consent`, because an empty panel is
+   * indistinguishable from a broken one and this overlay exists to show a
+   * visitor their own session. Undefined before the banner is answered —
+   * guessing would be its own dishonesty.
+   *
+   * This comment used to read "this panel stays empty for their session". That
+   * was the intent, and it was not what happened: the one consent-exempt tag
+   * reached the server, latched the source to SSE, and left the panel showing
+   * exactly that event beside a counter reporting nine.
    */
   analyticsConsent?: 'granted' | 'denied';
 }
@@ -154,6 +161,7 @@ export function EventTimeline({
   selectedEventId,
   analyticsConsent,
 }: EventTimelineProps) {
+  const declined = analyticsConsent === 'denied';
   // Stable handler for the memoized row. Without this, a fresh closure
   // per render would break React.memo's shallow prop-compare on
   // `onSelect`, defeating the D6 optimization. `onSelectEvent` comes
@@ -170,7 +178,6 @@ export function EventTimeline({
     // A declining visitor is not waiting for anything: their choice is being
     // honoured and nothing will arrive. Telling them to interact harder reads
     // as their fault, on the surface this site exists to demonstrate.
-    const declined = analyticsConsent === 'denied';
     return (
       <div>
         <div className="mb-3 font-mono text-[10px] uppercase tracking-widest text-accent-current">
@@ -178,13 +185,16 @@ export function EventTimeline({
         </div>
         <h3 className="font-display text-2xl font-normal leading-tight text-u-ink">
           {declined ? 'Nothing is being collected.' : 'Waiting for events.'}
+          {/* Accurate either way: for a decliner nothing is COLLECTED, though
+              their events are still shown below once they browse. */}
         </h3>
         <p className="mt-3 max-w-[62ch] text-sm leading-relaxed text-u-ink-2">
           {declined ? (
             <>
-              You declined analytics, so no tag fires and nothing reaches the server. This panel
-              stays empty for the rest of your visit, which is the point of it. Change your mind in
-              cookie settings and the pipeline appears here as it runs.
+              You declined analytics, so no tag fires and nothing reaches the server. Your events
+              still appear here as you browse, marked <strong>blocked</strong> — that is what the
+              gate did on your behalf. Change your mind in cookie settings and they start being
+              delivered instead.
             </>
           ) : (
             <>
@@ -208,6 +218,23 @@ export function EventTimeline({
       <p className="mt-3 max-w-[62ch] text-sm leading-relaxed text-u-ink-2">
         Most recent first. Click any row for the step-by-step journey through the pipeline.
       </p>
+
+      {/* The declined explanation has to live HERE, not only in the empty
+          state. `pushEvent` is unconditional, so a decliner who has browsed at
+          all has a non-empty buffer and never sees the empty branch — the
+          explanation "never rendered" before this fix because the list held one
+          event, and would still never render after it because the list holds
+          ten. Without this the intent is delivered only through badge colour. */}
+      {declined && (
+        <p
+          data-testid="timeline-declined-note"
+          className="mt-2 max-w-[62ch] text-sm leading-relaxed text-u-deny"
+        >
+          You declined analytics, so these events stopped at your browser — every destination
+          below is struck through because the consent gate blocked it. The one exception is the
+          consent record itself, which fires either way so your choice is logged.
+        </p>
+      )}
 
       <ul className="mt-6 divide-y divide-u-rule-soft border-y border-u-rule-soft">
         {events.map((event) => (

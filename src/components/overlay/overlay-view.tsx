@@ -10,6 +10,7 @@ import { useOverlay } from '@/components/overlay/overlay-context';
 import { OverviewTab } from '@/components/overlay/overview-tab';
 import { useSessionState } from '@/components/session-state-provider';
 import { useFilteredEvents } from '@/hooks/useFilteredEvents';
+import { useAnalyticsConsent } from '@/hooks/useAnalyticsConsent';
 import { useLiveEvents } from '@/hooks/useLiveEvents';
 import { useStorageInspector } from '@/hooks/useStorageInspector';
 import {
@@ -127,23 +128,20 @@ function Tabs({
 export function OverlayView() {
   const { isOpen, close, pendingTab, consumePendingTab } = useOverlay();
 
-  const { events } = useLiveEvents();
-  const { filteredEvents } = useFilteredEvents(events, false);
   const storage = useStorageInspector(isOpen);
   const sessionState = useSessionState();
 
-  /**
-   * The visitor's analytics consent, but only once they have actually chosen.
-   *
-   * `consent_snapshot.analytics` is derived from booleans, so an unanswered
-   * banner and a decline both read as 'denied'. Telling a first-time visitor
-   * they declined before they chose would be its own dishonesty, so the
-   * presence of Cookiebot's own `CookieConsent` cookie — which the storage
-   * inspector already reads — is what distinguishes the two.
-   */
-  const hasChosen = storage.entries.some((e) => e.name === 'CookieConsent');
-  const analyticsConsent =
-    hasChosen && sessionState ? sessionState.consent_snapshot.analytics : undefined;
+  // Consent comes from the shared hook rather than the storage inspector: the
+  // inspector empties its snapshot when the overlay closes, which flipped
+  // consent to undefined mid-fade, released the SSE pin, and dropped the
+  // Timeline badge from 9 to 1 while the panel faded out.
+  const analyticsConsent = useAnalyticsConsent();
+
+  // Consent is resolved BEFORE the event source is chosen: a decliner is pinned
+  // to the data layer, so they see their own events marked blocked rather than
+  // the single consent_update that is all SSE can offer them.
+  const { events } = useLiveEvents({ analyticsConsent });
+  const { filteredEvents } = useFilteredEvents(events, false);
 
   const [viewMode, setViewMode] = useState<ViewMode>('overview');
   const [selectedEvent, setSelectedEvent] = useState<PipelineEvent | null>(null);

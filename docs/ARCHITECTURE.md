@@ -164,11 +164,47 @@ What that costs, recorded rather than discovered later:
   stays: GA4 still remaps `session_id` for everyone, and `GA4 - consent_update`
   is deliberately exempt from the gate, so that one event still travels and
   still needs routing.
-- A declining visitor's real-time overlay now legitimately stays empty. The
-  fallback previously reported `ga4`/`bigquery`/`pubsub` as delivered
-  regardless of consent, which would have become a false claim the moment the
-  gate went live; `buildRouting` and the timeline's empty state were corrected
-  in the same deliverable so the overlay reports what actually happened.
+- A declining visitor's real-time overlay reports what happened rather than
+  asserting delivery. The fallback previously reported `ga4`/`bigquery`/`pubsub`
+  as delivered regardless of consent, which would have become a false claim the
+  moment the gate went live; `buildRouting` and the timeline's empty state were
+  corrected in the same deliverable.
+
+  **Amended 2026-09-09.** This bullet used to read "now legitimately stays
+  empty", and that was wrong twice over. It was wrong as *intent* — an empty
+  panel is indistinguishable from a broken one, and the site's whole thesis is
+  showing a visitor their own session, so a decliner should see their events
+  marked blocked rather than nothing. It was also wrong as *description*, which
+  is how it was found: `useLiveEvents` picks one source rather than merging
+  (`useSse ? sseEvents : dlEvents`) behind a sticky `sseEverDelivered` latch that
+  flips on the first SSE event. Because the gate exempts exactly one tag, a
+  decliner's single `consent_update` travels, returns over SSE, flips the latch,
+  and the ~10 data-layer events already carrying `blocked_consent` are discarded
+  for the rest of the session. The panel was therefore never empty — it showed
+  one event, with the explanatory empty state suppressed precisely because the
+  list was not empty, and the counter beside it reporting nine. The timeline now
+  reads from the data layer whenever analytics is denied.
+
+  It only manifested where `NEXT_PUBLIC_EVENT_STREAM_URL` is set — production.
+  Local development has no SSE, so `sseEnabled` is false, the timeline falls back
+  to the data layer, and it looks correct. That is why no test caught it.
+
+  Pinning to the data layer alone would trade under-reporting for
+  over-reporting: `consent_update` is exempt, so it genuinely does reach GA4,
+  BigQuery and Pub/Sub, and `buildRouting` marked every destination blocked. It
+  now knows the container's exemption set, pinned against `web-container.json`
+  by `tests/unit/hooks/consent-exemption-parity.test.ts`. Measured under denied
+  consent: 42 destinations blocked and 3 sent — the three analytics
+  destinations of the one event that really was delivered.
+
+  **Why [14.1] in `docs/REQUIREMENTS.md` still says "legitimately empty".** The
+  plan engine refuses to reword a completed phase (`status=REFUSED — phase 14 is
+  completed and immutable`), and that refusal is correct: REQUIREMENTS and
+  PHASE_STATUS are the append-only record of what was planned and shipped, and
+  Phase 14 did ship the empty-panel intent. ARCHITECTURE is the living
+  description of the system as it is. The divergence between them is deliberate
+  and this paragraph is where it is reconciled; the behaviour changed on
+  2026-09-09, after the phase closed.
 - Decliners go from many cookieless pings to exactly one, not to zero, because
   of the `consent_update` exemption.
 
