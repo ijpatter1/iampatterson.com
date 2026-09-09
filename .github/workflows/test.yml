@@ -1,0 +1,93 @@
+name: test
+
+# The suites, on every pull request and every push to main.
+#
+# Until 2026-09-09 no workflow ran any test. `jest.config.js` roots are `tests/`
+# and `src/`; the three Cloud Run services carry their own `jest.config.json`;
+# and the three existing workflows are path-scoped to Terraform, the GTM
+# reconciler and the dataform mirror. So 2,749 tests existed and none of them
+# gated anything.
+#
+# What that cost was visible in the Dependabot backlog: of eleven open PRs the
+# four riskiest reported green and the two safest reported red, because a "pass"
+# mostly meant Vercel had built the Next.js site — which does not import the
+# changed package. `express` 4→5 across all three services, `uuid` 9→14 into
+# CommonJS services, `@google-cloud/bigquery` 8→9, `@dataform/core` 2→3 and
+# Node 24→26 in three Dockerfiles all passed with nothing having exercised them.
+#
+# Deliberately NOT here, each for a stated reason rather than by omission:
+#
+#   - GOLDEN_TEST / LATENCY_TEST spend real money per run against Vertex. They
+#     are an operator gate before and after a deploy (scripts/run-claudish-*.sh),
+#     and a per-PR check that bills per invocation is a check people disable.
+#     A test in this repo asserts they stay out.
+#   - E2E (E2E_ENABLED=1) is excluded because the suite is red on arrival: two
+#     specs in ecommerce-sessionpulse.spec.ts fail against `getByRole('tab')`
+#     for markup that carries no tab role, and on demo_progress stages. Both
+#     predate this workflow — verified 2026-09-09 against the commit before the
+#     overlay changes. A gate that is red for reasons unrelated to the change
+#     trains people to ignore it, which is worse than no gate. Fixing those two
+#     specs and adding a browser job is recorded in docs/BACKLOG.md.
+#   - Docker image builds. Nothing here builds them, so the Node 24→26
+#     Dockerfile bumps stay unverified by CI. Named in the backlog rather than
+#     quietly left out.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A newer push supersedes an in-flight run on the same ref. Dependabot opens
+# many PRs at once and each rerun is otherwise queued behind the last.
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '24' # matches engines.node and tests/unit/infra/runtime-currency.test.ts
+
+jobs:
+  root:
+    name: root suite + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: jest
+        run: npm test
+      - name: build
+        # The build is the only thing that catches a compile-level break —
+        # Tailwind 3→4 fails here and nowhere else.
+        run: npm run build
+
+  services:
+    name: ${{ matrix.service }} suite
+    runs-on: ubuntu-latest
+    strategy:
+      # One service failing should not hide the other two, which is the whole
+      # point when a grouped dependency PR touches all three at once.
+      fail-fast: false
+      matrix:
+        service: [claudish-proxy, data-generator, event-stream]
+    defaults:
+      run:
+        working-directory: infrastructure/cloud-run/${{ matrix.service }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: infrastructure/cloud-run/${{ matrix.service }}/package-lock.json
+      - run: npm ci
+      - name: jest
+        # Env-gated suites inside these services (golden, latency) skip on their
+        # own when the flag is absent; nothing here sets one.
+        run: npm test
