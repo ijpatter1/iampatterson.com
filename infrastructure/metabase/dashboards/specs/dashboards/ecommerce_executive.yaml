@@ -18,6 +18,8 @@ description: |
 #   │  Customer LTV distribution                       │
 #   ├──────────────────────────────────────────────────┤ row 24  (size_y=6)
 #   │  Ecommerce funnel drop-off  (Phase 10d D3)       │
+#   ├──────────────────────────────────────────────────┤ row 30  (size_y=10)
+#   │  Real visitors vs generated traffic              │
 #   └──────────────────────────────────────────────────┘
 cards:
   - card: 'Daily revenue trend (30 days)'
@@ -73,4 +75,7 @@ cards:
     row: 30
     col: 0
     size_x: 24
-    size_y: 6
+    # 10, not the 6 the charts use. Rows are ~22px and this is a table of up to
+    # thirty days: at 6 the reader sees four rows and has to scroll inside a
+    # footnote to find the pattern.
+    size_y: 10

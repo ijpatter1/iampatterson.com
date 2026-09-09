@@ -3,6 +3,12 @@ description: |
   Daily total purchase revenue for the ecommerce demo, last 30 days.
   Powers the actionable-insight card on the confirmation page's under-the-hood
   view (deliverable 6b).
+
+  Every purchase in this chart is generated. The data generator runs on weekdays
+  to keep the demo populated, and no real visitor has completed a checkout —
+  4,711 purchases in the warehouse, none of them real. The "Real visitors vs
+  generated traffic" card at the foot of this dashboard shows the session-level
+  split, which is where real traffic does appear.
 display: line
 enable_embedding: true
 visualization_settings:
