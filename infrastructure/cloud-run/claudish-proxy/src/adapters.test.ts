@@ -2,6 +2,18 @@
  * claudish-proxy — adapter tests (feat/claudish, proxy T11).
  * Parameter shaping + event translation only; no SDK network surface.
  */
+const mockVertex = { constructions: 0 };
+jest.mock('@anthropic-ai/vertex-sdk', () => ({
+  AnthropicVertex: class {
+    messages = {
+      create: () => Promise.reject(new Error('stream not exercised by this suite')),
+    };
+    constructor() {
+      mockVertex.constructions += 1;
+    }
+  },
+}));
+
 import { adaptAnthropicStream, buildMessageParams, buildLanes } from './adapters';
 import { loadConfig, MAX_TOKENS } from './config';
 import { CANARY_TOKEN } from './prompts';
@@ -162,5 +174,45 @@ describe('buildLanes', () => {
     const lanes = buildLanes(config, {});
     expect(lanes.map((l) => l.name)).toEqual(['vertex-global', 'vertex-regional']);
     expect(lanes[0].modelId).toBe(config.vertexModelId);
+  });
+
+  // `new AnthropicVertex()` starts GoogleAuth.getClient() in its constructor and
+  // holds that promise unhandled until a request awaits it. Building a lane and
+  // never streaming from it therefore left a floating rejection that killed the
+  // process wherever no ADC exists. `server.ts` builds lanes before it listens,
+  // so that was a boot crash rather than a lane falling through to the next one.
+  //
+  // It surfaced only in CI because a local `gcloud auth` supplies ADC and the
+  // runner has none — and because `describe.skip` still runs its body, the
+  // GOLDEN_TEST gate did not spare the golden suite either. Counting
+  // constructions keeps this deterministic: no credentials, no crash, a number.
+  it('constructs no SDK client while merely building lanes', () => {
+    const config = loadConfig({ LANES: 'vertex-global,vertex-regional' });
+    mockVertex.constructions = 0;
+
+    const lanes = buildLanes(config, {});
+
+    expect(lanes.map((l) => l.name)).toEqual(['vertex-global', 'vertex-regional']);
+    expect(mockVertex.constructions).toBe(0);
+  });
+
+  it('constructs the client on first stream, and reuses it after', async () => {
+    // The mirror: deferring construction must not mean never constructing it.
+    // The mock rejects in create(), so pulling the iterator is how we observe
+    // that the factory ran at all — and that it ran exactly once across two.
+    const config = loadConfig({ LANES: 'vertex-global,vertex-regional' });
+    const lane = buildLanes(config, {})[0];
+    mockVertex.constructions = 0;
+
+    for (let i = 0; i < 2; i += 1) {
+      await expect(
+        lane
+          .stream({ text: 'hi', direction: 'en2cl' }, new AbortController().signal)
+          [Symbol.asyncIterator]()
+          .next()
+      ).rejects.toThrow('stream not exercised by this suite');
+    }
+
+    expect(mockVertex.constructions).toBe(1);
   });
 });

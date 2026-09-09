@@ -139,15 +139,35 @@ export async function* adaptAnthropicStream(
   };
 }
 
+/**
+ * A lane over a client built on FIRST STREAM, never at construction.
+ *
+ * `new AnthropicVertex()` starts `GoogleAuth.getClient()` in its constructor and
+ * stores the promise (vertex-sdk client.js:118), attaching no handler until a
+ * request awaits it. Build a lane and never stream from it and that rejection
+ * floats: with no ADC it takes the process down as an unhandled rejection.
+ *
+ * That is a boot-time crash, not a lane failure — `server.ts` builds lanes
+ * before listening, so an ADC hiccup killed the process instead of degrading to
+ * the next lane (Rule 15). It also made `buildLanes` untestable anywhere without
+ * live credentials, which is how CI found it: locally `gcloud auth` supplies ADC,
+ * and the runner has none.
+ *
+ * Deferring construction makes `buildLanes` a pure config-to-lane mapping — no
+ * auth, no network — and moves any credential failure onto the request that
+ * needs it, where the ladder can fall through to the next lane.
+ */
 function laneFromClient(
   name: LaneName,
   modelId: string,
-  client: StreamClient
+  createClient: () => StreamClient
 ): LaneClient {
+  let client: StreamClient | undefined;
   return {
     name,
     modelId,
     async *stream(req: LaneRequest, signal: AbortSignal): AsyncIterable<UpstreamEvent> {
+      client ??= createClient();
       const stream = await client.messages.create(
         buildMessageParams(req.direction, req.text, modelId),
         { signal }
@@ -165,10 +185,11 @@ export function buildLanes(config: Config, env: NodeJS.ProcessEnv = process.env)
         laneFromClient(
           name,
           config.vertexModelId,
-          new AnthropicVertex({
-            projectId: config.projectId,
-            region: 'global',
-          }) as unknown as StreamClient
+          () =>
+            new AnthropicVertex({
+              projectId: config.projectId,
+              region: 'global',
+            }) as unknown as StreamClient
         )
       );
     } else if (name === 'vertex-regional') {
@@ -176,10 +197,11 @@ export function buildLanes(config: Config, env: NodeJS.ProcessEnv = process.env)
         laneFromClient(
           name,
           config.vertexModelId,
-          new AnthropicVertex({
-            projectId: config.projectId,
-            region: config.vertexFallbackRegion,
-          }) as unknown as StreamClient
+          () =>
+            new AnthropicVertex({
+              projectId: config.projectId,
+              region: config.vertexFallbackRegion,
+            }) as unknown as StreamClient
         )
       );
     } else if (name === 'anthropic-api') {
@@ -189,7 +211,10 @@ export function buildLanes(config: Config, env: NodeJS.ProcessEnv = process.env)
         laneFromClient(
           name,
           config.anthropicModelId,
-          new Anthropic({ credentials: anthropicWifCredentials(wif) }) as unknown as StreamClient
+          () =>
+            new Anthropic({
+              credentials: anthropicWifCredentials(wif),
+            }) as unknown as StreamClient
         )
       );
     }
