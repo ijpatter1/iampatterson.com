@@ -97,7 +97,11 @@ jobs:
           # holding a pull-requests:write token. infra-terraform.yml carried
           # exactly that sink until 004f7a3 removed it; a check over
           # .github/workflows/*.yml pins the shape for both.
-          DIFF_STDOUT: ${{ steps.dryrun.outputs.stdout }}
+          # Only the outcome comes through an expression, and it is a fixed
+          # enum ("success"/"failure") that no pull request can influence. The
+          # diff itself is read from the file the step wrote — a `run:` step
+          # emits no `outputs.stdout`, so routing it through an expression
+          # would be both dead and misleading.
           DIFF_OUTCOME: ${{ steps.dryrun.outcome }}
         with:
           script: |

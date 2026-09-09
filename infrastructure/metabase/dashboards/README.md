@@ -50,8 +50,12 @@ The split is declared in `infrastructure/terraform/metabase-lb.tf`: a non-IAP ba
 ### 1. Apply the URL-map split with Terraform
 
 ```bash
-cd /workspace/infrastructure/metabase
-terraform -chdir=../../terraform apply   # see docs/runbook/metabase-access.md for IAP
+# From the repository root. `-chdir` is relative to where you invoke it, so
+# this path assumes the root — the earlier `cd` into infrastructure/metabase
+# made ../../terraform resolve one level too high, to a directory that does
+# not exist.
+GOOGLE_OAUTH_ACCESS_TOKEN=$(gcloud auth print-access-token) \
+  terraform -chdir=infrastructure/terraform apply   # IAP: docs/runbook/metabase-access.md
 ```
 
 Idempotent — existing LB components are skipped, the new non-IAP backend + path matcher are added.

@@ -404,67 +404,46 @@ do this for Internal-user-type brands:
 After the consent screen is saved, the project has an OAuth brand that
 the IAP configuration can use.
 
-### Then run the script
+### What IAP consists of
 
-```bash
-# IAP is configured; the load balancer and its IAP block are declared in
-# infrastructure/terraform/metabase-lb.tf. Granting and revoking access are
-# procedures, not a script — see docs/runbook/metabase-access.md.
-gcloud iap web get-iam-policy --resource-type=backend-services \
-  --service=metabase-backend --project=iampatterson   # who has access today
-```
+Not a script any more — `setup-iap.sh` was retired in [14.2]. These are the
+pieces, so the section below is still useful when something is missing:
 
-What it does:
+1. An OAuth 2.0 client named `metabase-iap-client`, created once against a
+   console-configured consent screen. The brand cannot be automated for an
+   Internal user type.
+2. Its id and secret in Secret Manager as `metabase-iap-client-id` and
+   `metabase-iap-client-secret`. `metabase-lb.tf` reads the *secret* from there;
+   the *id* is a literal in that file, which is why storing a new id is not
+   enough on its own.
+3. IAP enabled on the `metabase-backend` backend service, wired to that client —
+   the `iap {}` block in `metabase-lb.tf`.
+4. The IAP service agent
+   (`service-<PROJECT_NUMBER>@gcp-sa-iap.iam.gserviceaccount.com`) holding
+   `roles/run.invoker` on the Cloud Run service. Without it IAP enforces at the
+   load balancer and then cannot invoke Cloud Run: every browser gets a 403
+   while the service is healthy and nothing names the cause. Declared as
+   `google_cloud_run_v2_service_iam_member.metabase_iap_agent` in
+   `metabase-lb.tf` since [14.2].
+5. `roles/iap.httpsResourceAccessor` granted per member. This one is
+   deliberately **not** in Terraform — see below.
 
-1. Creates an OAuth 2.0 client named `metabase-iap-client` (idempotent
-   via displayName match — re-runs find the existing one).
-2. Stores the OAuth client ID and secret in Secret Manager as
-   `metabase-iap-client-id` and `metabase-iap-client-secret`. Neither
-   value appears on the command line or in logs.
-3. Enables IAP on the `metabase-backend` backend service, wired to the
-   OAuth client.
-4. Provisions the IAP service agent
-   (`service-<PROJECT_NUMBER>@gcp-sa-iap.iam.gserviceaccount.com`) on the
-   project and grants it `roles/run.invoker` on the Cloud Run service.
-   Without this, IAP enforces successfully at the LB but fails to
-   invoke Cloud Run — the browser sees "The IAP service account is
-   not provisioned." The `allUsers run.invoker` binding `deploy.sh`
-   set is for the pre-IAP path; once IAP is enforcing, requests reach
-   Cloud Run as the IAP agent, not anonymously.
-5. Grants `roles/iap.httpsResourceAccessor` to each member of the
-   `ALLOWLIST` array at the top of the script.
+### Granting and revoking access
 
-### Editing the allowlist
+**The procedure lives in `docs/runbook/metabase-access.md`.** There is no
+allowlist array to edit: the retired script kept one, and access is now granted
+one member at a time.
 
-Follow **Grant access** in `docs/runbook/metabase-access.md`. There is no allowlist array to edit — the retired script kept one; access is now granted per member:
+Removal is deliberately manual, and deliberately outside Terraform. A config
+that removed on drift would mean deleting a line from a file revokes someone's
+access on the next merge — and with `infra-terraform.yml` applying on merge to
+`main` since [14.3], that is not hypothetical. Access to the BI tool should not
+be one push away from vanishing.
 
-```bash
-ALLOWLIST=(
-  "user:ian@tunameltsmyheart.com"
-  "user:newperson@example.com"   # add a line like this
-)
-```
-
-Re-run the script. Additions land; existing members are left alone.
-
-**Removal is deliberately manual.** If a member is removed from the
-array and the script re-runs, they stay granted. This is by design —
-a config that removes on drift would silently lock people out if a
-line gets commented or removed accidentally. To revoke:
-
-```bash
-gcloud iap web remove-iam-policy-binding \
-  --resource-type=backend-services --service=metabase-backend \
-  --member="user:someone@example.com" \
-  --role="roles/iap.httpsResourceAccessor" \
-  --project=iampatterson
-```
-
-> **Plan fidelity:** the deployment plan contains two allowlist rules
-> that look contradictory ("exactly those specified" vs "adds new
-> members, does not remove"). Additive-only is the safer failure mode
-> — accidental removal of an array line can't silently lock someone
-> out. The two rules are equivalent under the intended usage pattern.
+> **Plan fidelity:** the deployment plan contains two allowlist rules that look
+> contradictory ("exactly those specified" vs "adds new members, does not
+> remove"). Additive-only is the safer failure mode, and the two are equivalent
+> under the intended usage pattern.
 
 ### Verify
 
@@ -479,7 +458,7 @@ gcloud compute backend-services describe metabase-backend \
 gcloud iap web get-iam-policy \
   --resource-type=backend-services --service=metabase-backend \
   --project=iampatterson --format='value(bindings.members)'
-# expect: all ALLOWLIST members
+# expect: every member granted per docs/runbook/metabase-access.md
 ```
 
 Open `https://bi.iampatterson.com/` in a browser:
