@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Phase 14 — Declarative infrastructure — User Acceptance Test
 #
-# QA: PASS — vetted by guv:reviewer — re-vet FIX FIRST → 3 blockers fixed and mutation-verified; flake found and closed; 2 cold runs deterministic
+# QA: NEEDS WORK — guv:reviewer found issues — re-vet verdict FIX FIRST; 3 blockers fixed + mutation-verified, awaiting reviewer confirmation
 #
 # Phase 14 closes initiative 002 (Phases 12-14, operational readiness). Its
 # thesis: a committed spec drifts from the live system when nothing compares the
