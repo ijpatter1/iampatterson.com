@@ -41,3 +41,12 @@ import {
   to = google_compute_global_forwarding_rule.metabase
   id = "projects/iampatterson/global/forwardingRules/metabase-forwarding-rule"
 }
+
+# IAM (IAP allowlist) is still handled outside Terraform — see
+# docs/runbook/metabase-access.md — but the IAP service agent's run.invoker
+# binding is declared, because losing it breaks every browser request through
+# the load balancer with a 403 that names no cause.
+import {
+  to = google_cloud_run_v2_service_iam_member.metabase_iap_agent
+  id = "projects/iampatterson/locations/us-central1/services/metabase roles/run.invoker serviceAccount:service-262727068689@gcp-sa-iap.iam.gserviceaccount.com"
+}

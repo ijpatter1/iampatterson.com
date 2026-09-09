@@ -127,3 +127,34 @@ resource "google_compute_global_forwarding_rule" "metabase" {
   ip_protocol           = "TCP"
   load_balancing_scheme = "EXTERNAL_MANAGED"
 }
+
+# ─── IAP service agent ───────────────────────────────────────────────────────
+
+# Without this binding IAP authenticates a browser request and then cannot
+# forward it: every request through the load balancer returns 403 while the
+# Cloud Run service itself is healthy, and nothing in the LB or the service logs
+# names the cause. `setup-iap.sh` created it with
+# `gcloud beta services identity create` followed by an add-iam-policy-binding;
+# that script is retired by [14.2], so the binding is declared here.
+#
+# `_iam_member` is deliberate, not `_iam_binding` or `_iam_policy`. The member
+# resources are additive: they leave members this configuration does not name
+# alone. An authoritative resource here would revoke everything else holding
+# run.invoker on this service the first time it applied — see the note below
+# about `allUsers`.
+resource "google_cloud_run_v2_service_iam_member" "metabase_iap_agent" {
+  project  = var.project_id
+  location = var.region
+  name     = google_cloud_run_v2_service.metabase.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:service-${var.project_number}@gcp-sa-iap.iam.gserviceaccount.com"
+}
+
+# Recorded, not managed: `allUsers` also holds roles/run.invoker on this
+# service. It is not an active exposure — the service is
+# INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER, so the public internet cannot reach
+# it directly and IAP remains the only route in. But the two controls are
+# independent, and loosening ingress would make Metabase publicly invokable
+# with no IAP check. Removing the binding is a production IAM change with its
+# own blast radius, so it is named here for a person to decide rather than
+# revoked in passing.

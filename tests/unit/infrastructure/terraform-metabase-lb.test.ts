@@ -107,3 +107,43 @@ describe('Phase 11 D9 — Metabase LB/IAP', () => {
     });
   });
 });
+
+/**
+ * The IAP service agent, declared by [14.2] when `setup-iap.sh` was retired.
+ *
+ * Without this binding IAP authenticates a browser request and then cannot
+ * forward it: every request through the load balancer returns 403 while the
+ * Cloud Run service is healthy, and neither the LB nor the service logs name
+ * the cause. It was created by a one-shot script that no longer exists.
+ */
+describe('IAP service agent binding', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let member: any;
+
+  beforeAll(async () => {
+    const json = await parse('metabase-lb.tf', read('metabase-lb.tf'));
+    member = json.resource.google_cloud_run_v2_service_iam_member?.metabase_iap_agent?.[0];
+  });
+
+  it('grants run.invoker to the IAP service agent on the metabase service', () => {
+    expect(member).toBeDefined();
+    expect(member.role).toBe('roles/run.invoker');
+    expect(member.member).toContain('gcp-sa-iap.iam.gserviceaccount.com');
+  });
+
+  it('uses the additive per-member resource, not an authoritative one', () => {
+    // _iam_binding or _iam_policy would revoke every member this configuration
+    // does not name the first time it applied — including the `allUsers`
+    // binding that is deliberately left alone, and any IAP allowlist entry.
+    // The resource type IS the safety property here.
+    const tf = read('metabase-lb.tf');
+    expect(tf).not.toMatch(/resource\s+"google_cloud_run_v2_service_iam_binding"/);
+    expect(tf).not.toMatch(/resource\s+"google_cloud_run_v2_service_iam_policy"/);
+  });
+
+  it('is imported rather than created, since it already exists live', () => {
+    expect(read('imports-lb.tf')).toContain(
+      'google_cloud_run_v2_service_iam_member.metabase_iap_agent',
+    );
+  });
+});

@@ -8,6 +8,16 @@ naming conventions, evaluator checks, cost expectations — lives at
 Scripts are sequenced and land task-by-task: do not jump ahead. Each task
 is idempotent and safe to re-run.
 
+
+> **The two one-shot setup scripts were retired on 2026-09-08 ([14.2]).**
+> `setup-domain.sh` and `setup-iap.sh` provisioned the load balancer and IAP
+> before Terraform covered them. `infrastructure/terraform/metabase-lb.tf` now
+> declares the whole topology and `terraform plan` reports no changes against
+> live, so the scripts could only have drifted from it — `setup-domain.sh` had
+> already lost the `/app/*` carve-out added after the 9F incident. Granting and
+> revoking access, and rebuilding IAP from nothing, are procedures in
+> `docs/runbook/metabase-access.md`.
+
 ## Traffic path
 
 ```
@@ -308,9 +318,6 @@ prerequisite for Task 6 — IAP on Cloud Run works only through a
 load-balancer-fronted backend service, not the direct `.run.app` URL.
 
 ```bash
-./setup-domain.sh              # provision + print DNS + poll cert
-./setup-domain.sh --dry-run    # preview
-./setup-domain.sh --no-wait    # provision + print DNS; skip cert poll
 ```
 
 Seven components created, each name-pinned for idempotent re-runs:
@@ -375,7 +382,7 @@ somehow exposed or misconfigured.
 > - Console-only path: manage brand + clients via the Cloud Console UI
 >   at APIs & Services → Credentials → OAuth 2.0 Client IDs
 >
-> When the shutdown forces a rewrite, the changes in `setup-iap.sh`
+> When the shutdown forces a rewrite, the changes in `docs/runbook/metabase-access.md`
 > are localized to Step 1 (OAuth client create) — everything after
 > (secret storage, IAP enable, allowlist reconciliation, IAP service
 > agent provisioning) stays the same because those use non-deprecated
@@ -396,13 +403,13 @@ do this for Internal-user-type brands:
 6. Save
 
 After the consent screen is saved, the project has an OAuth brand that
-`setup-iap.sh` can use.
+`docs/runbook/metabase-access.md` can use.
 
 ### Then run the script
 
 ```bash
-./setup-iap.sh              # configure IAP + reconcile allowlist
-./setup-iap.sh --dry-run    # preview
+./docs/runbook/metabase-access.md              # configure IAP + reconcile allowlist
+./docs/runbook/metabase-access.md --dry-run    # preview
 ```
 
 What it does:
@@ -427,7 +434,7 @@ What it does:
 
 ### Editing the allowlist
 
-Open `setup-iap.sh`. The `ALLOWLIST` array is at the top, near line 50:
+Open `docs/runbook/metabase-access.md`. The `ALLOWLIST` array is at the top, near line 50:
 
 ```bash
 ALLOWLIST=(
@@ -492,7 +499,7 @@ account on the `ALLOWLIST` from Task 6. You should land on Metabase's
 first-run wizard.
 
 If you get "You don't have access": the Google account isn't in the
-IAP allowlist. Add it to `setup-iap.sh` and re-run, or grant ad-hoc
+IAP allowlist. Add it to `docs/runbook/metabase-access.md` and re-run, or grant ad-hoc
 via the manual `gcloud iap web add-iam-policy-binding` command.
 
 ### 2. Create the admin account
@@ -796,7 +803,7 @@ consequence statement.
 
 ### Add or remove an IAP allowlist member
 
-Adding: edit the `ALLOWLIST` array at the top of `setup-iap.sh` and
+Adding: edit the `ALLOWLIST` array at the top of `docs/runbook/metabase-access.md` and
 re-run the script. See the Task 6 "Editing the allowlist" section.
 
 Removing: manual, via `gcloud iap web remove-iam-policy-binding`. See
@@ -811,6 +818,6 @@ Task 6 for the command.
 | Restore | Bad upgrade, instance issue | `gcloud sql backups restore <ID> ...` |
 | Rollback (image only) | Bad upgrade, no schema drift | `METABASE_IMAGE=<prior> ./deploy.sh` |
 | Rotate BQ key | Annually | See "Rotate the BigQuery SA key" |
-| Add allowlist member | Granting IAP access | Edit `setup-iap.sh` → re-run |
+| Add allowlist member | Granting IAP access | Edit `docs/runbook/metabase-access.md` → re-run |
 | Remove allowlist member | Revoking IAP access | `gcloud iap web remove-iam-policy-binding ...` |
 | View daily backup | Check automated snapshots | `gcloud sql backups list --instance=metabase-app-db` |
