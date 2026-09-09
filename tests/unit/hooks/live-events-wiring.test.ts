@@ -18,7 +18,7 @@
  * every subsequent event is discarded. It only reproduces where
  * NEXT_PUBLIC_EVENT_STREAM_URL is set, which is production.
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 
 const CALL_SITES = [
@@ -51,7 +51,6 @@ describe('every useLiveEvents call site is consent-aware', () => {
     const roots = ['src/components', 'src/hooks', 'src/app'];
     const found: string[] = [];
     const walk = (dir: string) => {
-      const { readdirSync, statSync } = require('node:fs') as typeof import('node:fs');
       for (const entry of readdirSync(path.join(process.cwd(), dir))) {
         const rel = `${dir}/${entry}`;
         const full = path.join(process.cwd(), rel);

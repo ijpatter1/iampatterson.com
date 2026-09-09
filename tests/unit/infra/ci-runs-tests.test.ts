@@ -27,16 +27,51 @@ const all = readdirSync(WORKFLOWS)
   .filter((f) => f.endsWith('.yml') || f.endsWith('.yaml'))
   .map((f) => ({ file: f, body: readFileSync(path.join(WORKFLOWS, f), 'utf8') }));
 
-/** Workflows that run on pull requests — the ones a reviewer actually sees. */
-const onPullRequest = all.filter((w) => /^on:[\s\S]*?pull_request:/m.test(w.body));
+interface WorkflowDoc {
+  on?: Record<string, { paths?: string[]; 'paths-ignore'?: string[] } | null>;
+  jobs?: Record<string, { strategy?: { matrix?: Record<string, unknown> }; steps?: unknown[] }>;
+}
+
+/**
+ * Workflows that gate EVERY pull request — parsed, and path filters disqualify.
+ *
+ * Path-scoping is not an incidental detail: it is the recorded cause of the
+ * original gap. `infra-reconcile.yml` and `infra-terraform.yml` both carry
+ * `paths:`, which is exactly why 2,749 tests existed and none of them gated a
+ * dependency PR. A regex that only looked for `pull_request:` would stay green
+ * if someone later added `paths: ['src/**']` here as a CI-cost optimisation,
+ * while service-only and dataform-only PRs silently stopped being gated — the
+ * incident, restored, with the guard still reporting success.
+ */
+const onPullRequest = all.filter((w) => {
+  const doc = yaml.load(w.body) as WorkflowDoc;
+  const trigger = doc.on?.pull_request;
+  if (trigger === undefined) return false;
+  // `on: pull_request:` with no body parses as null and gates everything.
+  if (trigger === null) return true;
+  return !trigger.paths && !trigger['paths-ignore'];
+});
 
 describe('CI runs the tests', () => {
   it('finds workflows to check, so an empty directory is not a silent pass', () => {
     expect(all.length).toBeGreaterThanOrEqual(3);
   });
 
+  /** Every `run:` string in every step of a workflow — the commands, not the prose. */
+  function runCommands(body: string): string[] {
+    const doc = yaml.load(body) as WorkflowDoc;
+    return Object.values(doc.jobs ?? {}).flatMap((job) =>
+      ((job?.steps ?? []) as { run?: string }[]).map((step) => step?.run ?? ''),
+    );
+  }
+
   it('a pull-request workflow runs the root suite', () => {
-    const runsRoot = onPullRequest.some((w) => /\b(npm (run )?test|npx jest)\b/.test(w.body));
+    // Commands, not raw text. A regex over the whole body passes for a workflow
+    // that merely mentions `npm test` in a comment — the same objection this
+    // file already makes about the matrix, applied consistently (Rule 7).
+    const runsRoot = onPullRequest.some((w) =>
+      runCommands(w.body).some((c) => /\b(npm (run )?test|npx jest)\b/.test(c)),
+    );
     expect(runsRoot).toBe(true);
   });
 
@@ -82,8 +117,19 @@ describe('CI runs the tests', () => {
   });
 
   it('a pull-request workflow runs the production build', () => {
-    const builds = onPullRequest.some((w) => /\bnpm run build\b/.test(w.body));
+    const builds = onPullRequest.some((w) =>
+      runCommands(w.body).some((c) => /\bnpm run build\b/.test(c)),
+    );
     expect(builds).toBe(true);
+  });
+
+  it('a pull-request workflow runs lint', () => {
+    // Next 16 no longer lints at build, so without this the ESLint 9->10 bump
+    // in the open dev-tooling PR reports green with nothing having looked.
+    const lints = onPullRequest.some((w) =>
+      runCommands(w.body).some((c) => /\bnpm run lint\b/.test(c)),
+    );
+    expect(lints).toBe(true);
   });
 
   it('the paid suites stay out of CI', () => {
