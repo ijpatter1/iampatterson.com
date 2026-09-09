@@ -24,7 +24,12 @@ refactor(hooks): extract useEventStream from overlay component
 ### Branching
 
 - `main`, production-ready code
-- `phase/N-name`, branch per phase, using the exact lowercase phase names from `docs/PHASE_STATUS.md`:
+> **Amended 2026-09-09.** The project is in `task` mode: there are no more
+> phases, so new work branches as `fix/description` or `feat/description` off
+> `main` and merges by PR. The phase branches below are kept as the record of
+> initiatives 001 and 002 — you will meet them in `git log`.
+
+- `phase/N-name`, branch per phase (historical), named from the archived trackers in `docs/initiatives/`:
   - `phase/1-foundation`
   - `phase/2-realtime-event-pipeline`
   - `phase/3-flip-the-card-ui`

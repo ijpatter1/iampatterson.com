@@ -2,7 +2,7 @@
 
 <!-- STATUS:START -->
 
-**All phases complete** · 18/18 deliverables
+**Maintenance mode** · initiatives 001 and 002 complete, 18/18 deliverables · open work in [docs/BACKLOG.md](docs/BACKLOG.md)
 
 <!-- STATUS:END -->
 

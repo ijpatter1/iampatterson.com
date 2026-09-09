@@ -9,7 +9,7 @@
 ### Starting a Session
 
 1. **Run the tests:** `npm test`, establish baseline
-2. **Load context:** Read `docs/PHASE_STATUS.md` and the latest file in `docs/sessions/`
+2. **Load context:** Read `docs/BACKLOG.md` and the latest file in `docs/sessions/`. (Amended 2026-09-09: `docs/PHASE_STATUS.md` is archived — the project is in `task` mode and BACKLOG is the only tracker.)
 3. **Review recent changes:** `git log --oneline -10` to orient on recent work
 4. **Plan:** Identify the next feature to implement within the current phase. State what you'll build and how you'll test it before writing code
 
@@ -36,7 +36,7 @@
   - **Evaluator Results:** summary of the evaluator's scores and any unresolved issues
   - **Test State:** number of tests, all passing/any failing
   - **Next Steps:** the logical next feature(s) to tackle
-- Update `docs/PHASE_STATUS.md` with current completion state
+- Update `docs/BACKLOG.md` — delete what landed, add what was found. Don't let an entry rot to "probably done" 
 
 ### Session Artifact Conventions
 
@@ -44,4 +44,4 @@ When **writing** handoff artifacts, be concrete: "Built ContactForm with email, 
 
 When **reading** handoff artifacts, prioritize: In Progress → Blocked → Next Steps → Evaluator Results. These determine what happens next. If unresolved critical issues from the evaluator exist, address those before new feature work.
 
-When **updating PHASE_STATUS.md**, use the format: `✅ YYYY-MM-DD, session-YYYY-MM-DD-NNN` for completed deliverables. Update the "Last updated" header line with the current date and session reference. See `.claude/skills/session-management/SKILL.md` for additional conventions on context continuity patterns across different gap durations.
+**Superseded 2026-09-09** (kept because the archived trackers still use this format and you will read them): when updating a PHASE_STATUS.md, the convention was `✅ YYYY-MM-DD, session-YYYY-MM-DD-NNN` per completed deliverable, with the "Last updated" header carrying the date and session. In task mode there is no tracker to update. See `.claude/skills/session-management/SKILL.md` for additional conventions on context continuity patterns across different gap durations.
