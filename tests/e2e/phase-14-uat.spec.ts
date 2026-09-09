@@ -111,34 +111,42 @@ test.describe('Phase 14 [14.1] — the consent gate actually gates', () => {
     test.setTimeout(120_000); // cold dev-server route compiles, as above
     await withDeniedConsent(page);
     await page.goto('/');
-    await page.mouse.wheel(0, 1500);
+    await page.mouse.wheel(0, 1800);
+    // Dwell before opening. The property under test is that events accumulate
+    // and are shown; asserting it too early is what made the previous version
+    // pass on a race rather than on behaviour.
+    await page.waitForTimeout(2000);
 
     await page
       .getByRole('button', { name: /session/i })
       .first()
       .click();
     await expect(page.getByTestId('overview-tab')).toBeVisible();
+    await page.waitForTimeout(1500);
 
-    // Assert the honesty-bearing STATE, not the absence of phrases.
+    // Assert the honesty-bearing STATE.
     //
-    // The first version checked that the tab did not contain "delivered to GA4"
-    // or "sent to Google Analytics". Neither phrase appears anywhere in src/,
-    // so it could not fail — and the shell script sells this test as covering
-    // "the factual half" precisely so the surviving confirm() need only ask
-    // about wording. A vacuous check there would have left the factual half
-    // unexamined by anyone.
+    // Two earlier versions of this were wrong, in opposite directions. The first
+    // checked the tab did not contain "delivered to GA4" — a phrase that appears
+    // nowhere in src/, so it could not fail. The second asserted the coverage
+    // readout was 0/27, which is worse: measured with adequate dwell the overlay
+    // reports 6/27 with six chips fired, so that assertion passed only by
+    // reading the readout before events accumulated. It rewarded a broken
+    // overlay (permanently zero) and punished the correct one.
     //
-    // What actually makes the overlay honest to a declining visitor: all three
-    // consent rows read DENIED, and the coverage readout counts ZERO events as
-    // having fired. If a regression let events count as fired while consent was
-    // denied, the readout moves off 0/ and this fails.
+    // The site's thesis is showing a visitor their own session. A declining
+    // visitor should see their events — that is the transparency — and see that
+    // they were BLOCKED rather than delivered. So the honest state is:
+    // consent reads DENIED, and the timeline is NOT empty.
     for (const signal of ['analytics', 'marketing', 'preferences']) {
       await expect(page.getByTestId(`consent-row-${signal}`)).toContainText('DENIED');
     }
-    // Anchored, not a substring: toContainText('0/') also passes on "10/27" and
-    // "20/27", so a regression would have been caught at every fired-count
-    // except 10-19. Found by the reviewer inside this very fix.
-    await expect(page.getByTestId('coverage-readout')).toHaveText(/^>?\s*0\/\d+/);
+
+    // Events fired client-side and are shown. Anchored so a stuck-at-zero
+    // overlay fails rather than passing as "nothing to report".
+    await expect(page.getByTestId('coverage-readout')).toHaveText(/^>?\s*[1-9]\d*\/\d+/);
+    const firedChips = page.locator('[data-chip="event-chip"][data-fired="true"]');
+    await expect(firedChips.first()).toBeAttached();
   });
 });
 
