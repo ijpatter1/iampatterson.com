@@ -169,6 +169,11 @@ async function translateCl2EnAsServed(
 describeIfGolden('golden set (live API)', () => {
   jest.setTimeout(60000);
   const config = loadConfig(process.env);
+  // Safe in a skipped block ONLY because buildLanes does no I/O: describe.skip
+  // still executes its body to register the skipped tests, so this line runs on
+  // every CI job. It used to construct a live SDK client here and take the whole
+  // process down where no ADC exists. If lane construction ever reacquires a
+  // side effect, move this into beforeAll as latency.test.ts already does.
   const lanes = buildLanes(config, process.env);
   const lane = lanes[0];
 

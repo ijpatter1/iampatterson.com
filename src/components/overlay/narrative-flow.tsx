@@ -35,8 +35,7 @@ function describeAction(event: PipelineEvent): string {
     case 'claudish_translate': {
       // feat/claudish: sizes + direction only — the text itself never
       // reaches the data layer, so the narrative can't (and shouldn't) quote it.
-      const into =
-        params.direction === 'claudish_to_en' ? 'into English' : 'into Claudish';
+      const into = params.direction === 'claudish_to_en' ? 'into English' : 'into Claudish';
       if (params.outcome === 'refused') {
         return `Your translation was refused (${params.input_chars ?? '?'} characters)`;
       }
@@ -111,7 +110,6 @@ function StageCard({
 interface NarrativeFlowProps {
   event: PipelineEvent | null;
 }
-
 
 /** Destinations gated by `analytics_storage` rather than `ad_storage`. */
 const ANALYTICS_DESTINATIONS = new Set(['ga4', 'bigquery', 'pubsub']);

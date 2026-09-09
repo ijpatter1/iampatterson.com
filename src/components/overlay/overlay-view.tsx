@@ -8,7 +8,6 @@ import { EventTimeline } from '@/components/overlay/event-timeline';
 import { NarrativeFlow } from '@/components/overlay/narrative-flow';
 import { useOverlay } from '@/components/overlay/overlay-context';
 import { OverviewTab } from '@/components/overlay/overview-tab';
-import { useSessionState } from '@/components/session-state-provider';
 import { useFilteredEvents } from '@/hooks/useFilteredEvents';
 import { useAnalyticsConsent } from '@/hooks/useAnalyticsConsent';
 import { useLiveEvents } from '@/hooks/useLiveEvents';
@@ -129,7 +128,6 @@ export function OverlayView() {
   const { isOpen, close, pendingTab, consumePendingTab } = useOverlay();
 
   const storage = useStorageInspector(isOpen);
-  const sessionState = useSessionState();
 
   // Consent comes from the shared hook rather than the storage inspector: the
   // inspector empties its snapshot when the overlay closes, which flipped

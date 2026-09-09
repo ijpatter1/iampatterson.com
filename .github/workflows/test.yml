@@ -1,0 +1,126 @@
+name: test
+
+# The suites, on every pull request and every push to main.
+#
+# Until 2026-09-09 no workflow ran any test. `jest.config.js` roots are `tests/`
+# and `src/`; the three Cloud Run services carry their own `jest.config.json`;
+# and the three existing workflows are path-scoped to Terraform, the GTM
+# reconciler and the dataform mirror. So 2,758 tests existed and none of them
+# gated anything.
+#
+# What that cost was visible in the Dependabot backlog: of eleven open PRs the
+# four riskiest reported green and the two safest reported red, because a "pass"
+# mostly meant Vercel had built the Next.js site — which does not import the
+# changed package. `express` 4→5 across all three services, `uuid` 9→14 into
+# CommonJS services, `@google-cloud/bigquery` 8→9, `@dataform/core` 2→3 and
+# Node 24→26 in three Dockerfiles all passed with nothing having exercised them.
+#
+# Deliberately NOT here, each for a stated reason rather than by omission:
+#
+#   - GOLDEN_TEST / LATENCY_TEST spend real money per run against Vertex. They
+#     are an operator gate before and after a deploy (scripts/run-claudish-*.sh),
+#     and a per-PR check that bills per invocation is a check people disable.
+#     A test in this repo asserts they stay out.
+#   - E2E (E2E_ENABLED=1) is excluded because the suite is red on arrival: two
+#     specs in ecommerce-sessionpulse.spec.ts fail against `getByRole('tab')`
+#     for markup that carries no tab role, and on demo_progress stages. Both
+#     predate this workflow — verified 2026-09-09 against the commit before the
+#     overlay changes. A gate that is red for reasons unrelated to the change
+#     trains people to ignore it, which is worse than no gate. Fixing those two
+#     specs and adding a browser job is recorded in docs/BACKLOG.md.
+#   - Docker image *builds*. Nothing here builds them. Note this does NOT mean
+#     the Node 24→26 Dockerfile bumps sail through: tests/unit/infra/
+#     runtime-currency.test.ts asserts every FROM line is node:24-slim, and the
+#     root suite now runs on every PR, so those three PRs go RED. The pin
+#     catches the bump; nothing builds the image. Two different facts.
+#   - infrastructure/dataform. `.github/dependabot.yml` watches it as a fifth
+#     npm surface, and its package.json has no scripts and no test — covering
+#     @dataform/core 2→3 means compiling the project, which needs @dataform/cli
+#     (not a dependency; GCP compiles from the `dataform` branch). So that PR
+#     still passes with nothing having exercised it, which is why the backlog
+#     says to take it last. Stated here rather than left to be discovered,
+#     because this block claims to have no silent omissions.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A newer push supersedes an in-flight run on the same ref. Dependabot opens
+# many PRs at once and each rerun is otherwise queued behind the last.
+concurrency:
+  group: test-${{ github.ref }}
+  # PRs only. Applied to pushes as well, two merges close together cancel the
+  # first — leaving the commit that actually landed on main with a cancelled
+  # check and no run that ever tested it. The reason for cancelling at all
+  # (Dependabot opening PRs in bursts) concerns PR refs and nothing else.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '24' # matches engines.node and tests/unit/infra/runtime-currency.test.ts
+
+jobs:
+  root:
+    name: root suite + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: jest
+        run: npm test
+      - name: lint
+        # Next 16 no longer lints at build, so without this the ESLint 9→10
+        # bump in the open dev-tooling PR reports green on nothing having looked.
+        run: npm run lint
+      - name: build
+        # The build is the only thing that catches a compile-level break —
+        # Tailwind 3→4 fails here and nowhere else.
+        run: npm run build
+
+  services:
+    name: ${{ matrix.service }} suite
+    runs-on: ubuntu-latest
+    strategy:
+      # One service failing should not hide the other two, which is the whole
+      # point when a grouped dependency PR touches all three at once.
+      fail-fast: false
+      matrix:
+        service: [claudish-proxy, data-generator, event-stream]
+    defaults:
+      run:
+        working-directory: infrastructure/cloud-run/${{ matrix.service }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: infrastructure/cloud-run/${{ matrix.service }}/package-lock.json
+      - run: npm ci
+      - name: jest
+        # Env-gated suites inside these services (golden, latency) skip on their
+        # own when the flag is absent; nothing here sets one.
+        #
+        # The first real CI run killed claudish-proxy's workers ("4 child process
+        # exceptions"). That was NOT pool sizing — --maxWorkers=2 was tried and
+        # changed nothing. The cause was an unhandled rejection: a lane client
+        # constructed at import time started a credential fetch and never handled
+        # its failure, which no developer machine reproduces because gcloud auth
+        # supplies ADC and a runner has none. Fixed in adapters.ts; reproduce that
+        # condition locally with
+        #   env -u GOOGLE_APPLICATION_CREDENTIALS CLOUDSDK_CONFIG=$(mktemp -d) npm test
+        run: npm test
+      - name: build
+        # ts-jest only typechecks what a test imports, so a file no test touches
+        # — quality-capture.ts in claudish-proxy, index.ts in data-generator —
+        # can break on an express 5 or Node typings bump and still pass jest.
+        # Each service's build script is tsc, so this is the compile check the
+        # root job gets from `next build`.
+        run: npm run build

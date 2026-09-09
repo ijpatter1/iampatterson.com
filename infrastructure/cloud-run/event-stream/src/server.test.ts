@@ -22,7 +22,7 @@ describe('GET /health', () => {
   it('returns 200 with status ok', async () => {
     const res = await fetch(`${baseUrl}/health`);
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as { status: string; connections: number };
     expect(body.status).toBe('ok');
     expect(typeof body.connections).toBe('number');
   });
@@ -82,7 +82,11 @@ describe('POST /pubsub/push', () => {
       body: JSON.stringify(body),
     });
     expect(res.status).toBe(200);
-    const json = await res.json();
+    // `res.json()` is `unknown` on this service's own dependency set. It typed
+    // as `any` locally only because TypeScript walks up to the repo-root
+    // node_modules/@types, which a per-service `npm ci` — CI's, and the
+    // Dockerfile's — does not have. First CI run caught it: TS18046.
+    const json = (await res.json()) as { delivered: boolean };
     expect(json.delivered).toBe(false);
   });
 });

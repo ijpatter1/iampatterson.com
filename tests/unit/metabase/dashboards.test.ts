@@ -109,9 +109,11 @@ describe('Question specs', () => {
     '06_daily_revenue_trend.yaml',
     // Phase 10d D3: cross-event funnel reporting via mart_ecommerce_funnel.
     '07_ecommerce_funnel_drop_off.yaml',
+    // 2026-09-09: the only card that tells real visitors from the generator.
+    '08_real_vs_generated_sessions.yaml',
   ];
 
-  test('all seven question specs present', () => {
+  test('all eight question specs present', () => {
     const actual = fs
       .readdirSync(path.join(SPECS_ROOT, 'questions'))
       .filter((f) => f.endsWith('.yaml'))
@@ -164,6 +166,83 @@ describe('Question specs', () => {
 // ---------------------------------------------------------------------------
 // Dashboard spec
 // ---------------------------------------------------------------------------
+/**
+ * The BI layer must be able to tell real visitors from generated traffic.
+ *
+ * [14.6] fixed `is_synthetic` — it derived from `iap_source`, which the real
+ * site also sends, so every recovered visitor was labelled synthetic. The
+ * dimension became correct and nothing consumed it: a UAT check measured 45
+ * Metabase cards and found zero referencing it, so every dashboard described
+ * the data generator alone while quietly including ~90 real sessions.
+ *
+ * That gap surfaced only because a rubber-stamp confirm() gate — "does at least
+ * one dashboard distinguish synthetic from real traffic?" — was converted into
+ * a real check. A human would very likely have clicked through it. These are
+ * that check made permanent.
+ */
+describe('Question specs discriminate real traffic from the generator', () => {
+  // Comments are stripped before matching. The spec's SQL carries a comment
+  // header naming is_synthetic three times, so matching raw text would pass for
+  // a card that only MENTIONS the column in prose while doing nothing with it.
+  const sqlOf = (q: { query: string }) => q.query.replace(/--[^\n]*/g, '');
+
+  const questions = fs
+    .readdirSync(path.join(SPECS_ROOT, 'questions'))
+    .filter((f) => f.endsWith('.yaml'))
+    .sort() // every other read here sorts; `find` on an unsorted read grades
+    .map((f) => loadQuestion(f)); // whichever spec happens to come back first
+
+  const discriminating = questions.filter((q) => /is_synthetic/.test(sqlOf(q)));
+
+  test('at least one card references is_synthetic in its SQL, not its comments', () => {
+    expect(discriminating.map((q) => q.name)).not.toHaveLength(0);
+  });
+
+  test('and reports BOTH populations rather than filtering one out', () => {
+    // `.some` across every discriminating spec, not `.find` on the first.
+    const reportsBoth = discriminating.some(
+      (q) => /NOT is_synthetic/.test(sqlOf(q)) && /IF\(is_synthetic/.test(sqlOf(q)),
+    );
+    expect(reportsBoth).toBe(true);
+  });
+
+  test('and does not filter the generator out in its WHERE clause', () => {
+    // The SELECT-list check above passes for `WHERE NOT is_synthetic AND …`,
+    // which leaves generated_sessions constant 0 and real_pct constant 100 —
+    // precisely the failure the previous test is named after. Verified by
+    // running that mutation: the suite stayed green.
+    for (const q of discriminating) {
+      const sql = sqlOf(q);
+      const where = sql.slice(sql.search(/\bWHERE\b/i));
+      const clause = where.slice(0, where.search(/\bGROUP BY\b/i));
+      expect(clause).not.toMatch(/is_synthetic/);
+    }
+  });
+
+  test('and reads the one mart that carries the column', () => {
+    // Only mart_session_events has is_synthetic. Retargeting the query to any
+    // other mart keeps the generic `iampatterson_marts.mart_` pin green and
+    // breaks the card in Metabase.
+    for (const q of discriminating) {
+      expect(sqlOf(q)).toMatch(/iampatterson_marts\.mart_session_events/);
+    }
+  });
+
+  test('and is actually placed on a dashboard', () => {
+    // A spec sitting in a directory satisfies nothing. Deleting the card entry
+    // from ecommerce_executive.yaml left the whole suite green — the existing
+    // reference test only walks dashboard -> question, never the reverse.
+    const placed = new Set<string>();
+    for (const f of fs
+      .readdirSync(path.join(SPECS_ROOT, 'dashboards'))
+      .filter((x) => x.endsWith('.yaml'))) {
+      for (const c of loadDashboard(f).cards) placed.add(c.card);
+    }
+    const onADashboard = discriminating.filter((q) => placed.has(q.name));
+    expect(onADashboard.map((q) => q.name)).not.toHaveLength(0);
+  });
+});
+
 describe('Dashboard spec', () => {
   test('ecommerce_executive.yaml present', () => {
     expect(fs.existsSync(path.join(SPECS_ROOT, 'dashboards', 'ecommerce_executive.yaml'))).toBe(

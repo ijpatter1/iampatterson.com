@@ -1,0 +1,67 @@
+name: 'Real visitors vs generated traffic'
+description: |
+  Daily sessions split by origin, with the real share as a percentage. The data
+  generator runs on weekdays to keep this dashboard populated; real visitors are
+  everyone else.
+
+  Read the rest of this dashboard with that in mind. Revenue, AOV, ROAS and LTV
+  are built entirely on generated purchases, because no real visitor has ever
+  completed one. The funnel card mixes a small number of real sessions into
+  generator volume without distinguishing them.
+
+  Both counts here are lower bounds on real traffic. Around a quarter of real
+  events carry no session key, so a distinct count drops them: GA4 consumes
+  `session_id` as a reserved name, and its enhanced-measurement events never
+  receive `iap_session_id`. The generator always sends its own key, so the
+  undercount only ever runs one way.
+display: table
+# Not embeddable as a STANDALONE card. This flag governs per-card embedding,
+# and the exact-three set is pinned in tests/unit/metabase/dashboards.test.ts.
+#
+# It does not decide whether visitors see this card. src/lib/metabase/embed.ts
+# signs `{ resource: { dashboard: dashboardId } }` and returns a
+# /embed/dashboard/ URL; `cardIds` is shape-validated and never used to build
+# one. The confirmation page renders that single full-dashboard iframe, so every
+# dashcard travels with it, including this one. That is the right outcome given
+# the copy above the iframe tells a visitor their order "just landed in
+# production BigQuery and is rolling into today's revenue below".
+enable_embedding: false
+visualization_settings:
+  table.pivot: false
+  column_settings:
+    '["name","real_pct"]':
+      suffix: '%'
+query: |
+  -- `is_synthetic` exists because of [14.6]. It derived from `iap_source`,
+  -- which the real site also sends, so every recovered visitor was labelled
+  -- synthetic until the generator started sending its own `iap_synthetic`
+  -- marker. Only `mart_session_events` carries it; the other ten marts drop it
+  -- at the mart boundary.
+  --
+  -- An earlier version of this comment claimed no other card could make the
+  -- distinction. That was wrong: 01, 02 and 06 all read this same mart. The
+  -- reason they are not broken out is narrower and worth stating, because it
+  -- decides whether a split is even meaningful — every purchase in the
+  -- warehouse is synthetic (4,711 all-time, zero real), so a revenue or AOV
+  -- breakout renders one populated series and one that is simply absent. For
+  -- those cards a sentence in the description is honest; a split is a phantom
+  -- legend entry. Card 06 carries that sentence.
+  --
+  -- Added 2026-09-09 after a UAT check found 45 Metabase cards and none
+  -- referencing is_synthetic: the dimension was correct and nothing consumed
+  -- it, so every dashboard described the generator alone.
+  SELECT
+    DATE(event_timestamp) AS day,
+    COUNT(DISTINCT IF(NOT is_synthetic, session_id, NULL)) AS real_sessions,
+    COUNT(DISTINCT IF(is_synthetic, session_id, NULL)) AS generated_sessions,
+    ROUND(
+      SAFE_DIVIDE(
+        COUNT(DISTINCT IF(NOT is_synthetic, session_id, NULL)),
+        COUNT(DISTINCT session_id)
+      ) * 100,
+      2
+    ) AS real_pct
+  FROM `iampatterson.iampatterson_marts.mart_session_events`
+  WHERE DATE(event_timestamp) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
+  GROUP BY day
+  ORDER BY day DESC
