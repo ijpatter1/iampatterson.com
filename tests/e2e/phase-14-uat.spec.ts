@@ -50,6 +50,18 @@ test.describe('Phase 14 [14.1] — the consent gate actually gates', () => {
   test('a declining visitor leaks no analytics hit beyond the consent_update exemption', async ({
     page,
   }) => {
+    // Four navigations against a COLD Next.js dev server, each compiling its
+    // route on first hit. Playwright's 30s default is not enough and the test
+    // flaked once inside a full UAT run — reporting FAIL when nothing was wrong,
+    // which in an acceptance script is as damaging as a check that cannot fail.
+    //
+    // Warming the routes first would be the faster fix and is deliberately NOT
+    // taken: a leak on FIRST load is a plausible shape (a page_view racing the
+    // consent state), and warming would fire exactly that navigation with the
+    // listener detached. The measured window must include the first load, so
+    // the budget moves instead.
+    test.setTimeout(180_000);
+
     // Recorded before navigation so nothing fires before the listener attaches.
     const collectHits: string[] = [];
     page.on('request', (req) => {
@@ -96,6 +108,7 @@ test.describe('Phase 14 [14.1] — the consent gate actually gates', () => {
   });
 
   test('the overlay does not claim delivery for events the gate blocked', async ({ page }) => {
+    test.setTimeout(120_000); // cold dev-server route compiles, as above
     await withDeniedConsent(page);
     await page.goto('/');
     await page.mouse.wheel(0, 1500);
@@ -106,12 +119,23 @@ test.describe('Phase 14 [14.1] — the consent gate actually gates', () => {
       .click();
     await expect(page.getByTestId('overview-tab')).toBeVisible();
 
-    // The factual half of what used to be a human question. Whether the wording
-    // is *well phrased* stays a confirm() in the shell script; whether it
-    // asserts a falsehood is checkable, and this is that check.
-    const body = (await page.getByTestId('overview-tab').innerText()).toLowerCase();
-    expect(body).not.toMatch(/\bdelivered to (ga4|bigquery)\b/);
-    expect(body).not.toMatch(/\bsent to google analytics\b/);
+    // Assert the honesty-bearing STATE, not the absence of phrases.
+    //
+    // The first version checked that the tab did not contain "delivered to GA4"
+    // or "sent to Google Analytics". Neither phrase appears anywhere in src/,
+    // so it could not fail — and the shell script sells this test as covering
+    // "the factual half" precisely so the surviving confirm() need only ask
+    // about wording. A vacuous check there would have left the factual half
+    // unexamined by anyone.
+    //
+    // What actually makes the overlay honest to a declining visitor: all three
+    // consent rows read DENIED, and the coverage readout counts ZERO events as
+    // having fired. If a regression let events count as fired while consent was
+    // denied, the readout moves off 0/ and this fails.
+    for (const signal of ['analytics', 'marketing', 'preferences']) {
+      await expect(page.getByTestId(`consent-row-${signal}`)).toContainText('DENIED');
+    }
+    await expect(page.getByTestId('coverage-readout')).toContainText('0/');
   });
 });
 
@@ -119,6 +143,7 @@ test.describe('Phase 14 [14.4] — web_vital reaches the overlay', () => {
   test.skip(!ENABLED, 'E2E_ENABLED=1 required');
 
   test('the web_vital coverage chip renders on the Overview tab', async ({ page }) => {
+    test.setTimeout(120_000); // cold dev-server route compiles, as above
     await page.goto('/');
     await page
       .getByRole('button', { name: /session/i })

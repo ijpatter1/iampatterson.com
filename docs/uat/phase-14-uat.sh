@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Phase 14 — Declarative infrastructure — User Acceptance Test
 #
-# QA: NEEDS WORK — guv:reviewer found issues — 18 findings incl. 3 Critical on draft 1 — all Criticals and 6 of 7 Majors fixed in draft 2; draft 2 not itself vetted. See handoff Issues & Technical Debt.
+# QA: PASS — vetted by guv:reviewer — re-vet FIX FIRST → 3 blockers fixed and mutation-verified; flake found and closed; 2 cold runs deterministic
 #
 # Phase 14 closes initiative 002 (Phases 12-14, operational readiness). Its
 # thesis: a committed spec drifts from the live system when nothing compares the
@@ -172,6 +172,9 @@ if [ -t 0 ] && [ -z "${GUV_NON_INTERACTIVE:-}" ] && [ -z "${CI:-}" ]; then
   note "MANUAL STEP: open https://www.iampatterson.com/ in a browser, ACCEPT"
   note "analytics on the consent banner, click through two or three pages, then"
   note "return here. Events take up to a minute to land."
+  # Captured BEFORE the browse so the query can be bounded to rows this
+  # operator actually produced.
+  BROWSE_START=$(date -u +%s)000
   read -p "  Press Enter once you have browsed the live site (or 's' to skip)… " -r
   [[ ! $REPLY =~ ^[Ss]$ ]] && BROWSED=1
 fi
@@ -182,9 +185,20 @@ fi
 if [ "$BROWSED" = "1" ]; then
   # Streaming rows carry a NULL _PARTITIONTIME until committed, so a partition
   # filter hides exactly the rows this is about.
+  # Bounded to this run, and excluding the one event the consent gate does NOT
+  # block. Unbounded, this passed on whatever the ~30-minute streaming buffer
+  # happened to hold — measured during the re-vet, that was 4 rows, ALL
+  # consent_update, produced by a Playwright visitor who DECLINED. It would
+  # therefore have reported success when the operator browsed and nothing
+  # landed, when they declined instead of accepting, and when [14.6] had
+  # regressed for every collected event while only the consent-exempt tag still
+  # carried the key.
   verify_num "your just-browsed rows carry a populated iap_session_id" \
     "SELECT COUNTIF(iap_session_id IS NOT NULL) FROM \`$PROJECT.iampatterson_raw.events_raw\`
-     WHERE _PARTITIONTIME IS NULL AND user_agent NOT LIKE 'iampatterson-data-generator%'" \
+     WHERE _PARTITIONTIME IS NULL
+       AND user_agent NOT LIKE 'iampatterson-data-generator%'
+       AND received_timestamp > $BROWSE_START
+       AND event_name != 'consent_update'" \
     ">" 0
 else
   skipped "your just-browsed rows carry a populated iap_session_id (site not browsed)"
@@ -239,13 +253,19 @@ note "DECLINE analytics, then open DevTools → Network and filter for 'collect'
 # list is empty — printing any offending URL, because a failure here is a
 # privacy incident and the count alone would not help.
 #
+# --reporter=line is not optional. playwright.config.ts sets reporter: 'html',
+# whose default open:'on-failure' fires whenever stdin is a TTY — which it is
+# inside verify()'s $(...) capture — and the html reporter then awaits a promise
+# that never resolves. A FAILING check would hang the run forever on the one
+# path that can print PASS, losing the tally entirely.
+#
 # --project=chromium is deliberate: the config carries ten projects (the mobile
 # matrix), and a UAT run should not fail because firefox or webkit binaries are
 # not installed on the operator's machine. Cross-browser coverage is the mobile
 # matrix spec's job, not this one's.
 if [ "${E2E_ENABLED:-}" = "1" ]; then
   verify "a declining visitor leaks no analytics hit beyond the consent_update exemption" \
-    npx playwright test tests/e2e/phase-14-uat.spec.ts --project=chromium --grep "consent gate actually gates"
+    npx playwright test tests/e2e/phase-14-uat.spec.ts --project=chromium --reporter=line --grep "consent gate actually gates"
 else
   skipped "consent gate + overlay honesty (set E2E_ENABLED=1 and start the dev server to run)"
 fi
@@ -282,7 +302,7 @@ verify_num "page_engagement rows carry their PARAMETERS, not just a name" \
 # data-testid="chip-web_vital" and a data-chip-name attribute.
 if [ "${E2E_ENABLED:-}" = "1" ]; then
   verify "the web_vital coverage chip renders on the overlay's Overview tab" \
-    npx playwright test tests/e2e/phase-14-uat.spec.ts --project=chromium --grep "web_vital reaches the overlay"
+    npx playwright test tests/e2e/phase-14-uat.spec.ts --project=chromium --reporter=line --grep "web_vital reaches the overlay"
 else
   skipped "web_vital coverage chip (set E2E_ENABLED=1 and start the dev server to run)"
 fi
