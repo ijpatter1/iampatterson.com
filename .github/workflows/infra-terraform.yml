@@ -3,8 +3,10 @@ name: infra-terraform
 # Phase 11 D9 — Terraform CI/CD for the GCP infrastructure-as-code.
 # - PRs touching infrastructure/terraform/**: fmt + validate (no auth) then a
 #   WIF-authed `terraform plan` posted back as a PR comment.
-# - Push to main: `terraform apply` behind the `infra-production` environment,
-#   which is configured in repo settings to require manual approval.
+# - Push to main: `terraform apply` behind the `infra-production` environment.
+#   The apply job's first step VERIFIES that environment carries protection
+#   rules and exits 1 if it does not — this file used to assert the safeguard in
+#   a comment instead, and the assertion was measured false on 2026-09-08.
 #
 # Auth is via Workload Identity Federation — no service-account JSON key in repo
 # secrets. PREREQUISITE: a WIF pool/provider + a deployer service account must
@@ -115,9 +117,38 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.GCP_WIF_PROVIDER != ''
     needs: validate
     runs-on: ubuntu-latest
-    environment: infra-production # repo setting requires manual approval
+    environment: infra-production
     steps:
       - uses: actions/checkout@v4
+
+      # The environment line above used to carry a trailing comment asserting
+      # that repo settings gated this job. It was not true: measured 2026-09-08, no
+      # `infra-production` environment existed, and the two that did carried no
+      # protection rules. GitHub creates a referenced-but-missing environment
+      # implicitly and UNPROTECTED, so the comment described a safeguard that
+      # was absent from the job it sat on — one that applies the entire
+      # Terraform root with `-auto-approve`.
+      #
+      # A comment cannot check an external fact. This step can, and [14.3] asks
+      # for it on *each* apply job. infra-reconcile.yml got it first; this job
+      # ran once without it (2026-09-09, run 34358564379) before a generic check
+      # over every workflow deploying to infra-production caught the asymmetry.
+      - name: refuse an unprotected environment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          rules=$(gh api "repos/${{ github.repository }}/environments/infra-production" \
+                    --jq '.protection_rules | length' 2>/dev/null || echo "missing")
+          if [ "$rules" = "missing" ]; then
+            echo "::error::the infra-production environment does not exist — GitHub created it implicitly and unprotected"
+            exit 1
+          fi
+          if [ "$rules" -eq 0 ]; then
+            echo "::error::infra-production has no protection rules; an apply here would be unreviewed"
+            exit 1
+          fi
+          echo "infra-production carries $rules protection rule(s)."
+
       - uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}

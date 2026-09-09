@@ -50,8 +50,18 @@ curl -s -X POST -H "Authorization: Bearer $PUBLISH_TOKEN" \
 
 Known-good references as of 2026-09-09: **version 9** is Claudish wiring plus
 `analytics_storage` gating; **version 10** adds `web_vital` and
-`page_engagement`. Going back past 9 removes the consent gate — a privacy
+`page_engagement`; **version 11** (`ci: 80a2ff1 on 2026-09-09`) is the first
+version CI published and is content-identical to 10 — the apply that made it
+reported `no drift`. Going back past 9 removes the consent gate — a privacy
 regression, not just a rollback. Do not go past it without meaning to.
+
+**Expect version churn, and do not read a high version number as a change.**
+The publish step is deliberately not gated on drift, so every merge touching
+`infrastructure/gtm/**` mints a version even when the container is already
+converged. Names carry the commit (`ci: <sha> on <date>`), so identify a
+known-good version by its name and its commit rather than by assuming the newest
+one changed something. If you need to know whether two adjacent versions differ,
+diff them rather than trusting the numbering.
 
 **Then reconcile the spec to what you published**, or the next merge re-applies
 the bad state. Republishing changes the container; it does not change the

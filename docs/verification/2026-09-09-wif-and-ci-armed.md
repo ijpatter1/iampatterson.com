@@ -36,12 +36,45 @@ the phase delivers. Narrowing this set is a legitimate follow-up.
 | `roles/cloudsql.admin` | `metabase-app-db` instance, database and user |
 | `roles/pubsub.admin` | the events topic and push subscription |
 | `roles/bigquery.admin` | the four datasets in `bigquery.tf` |
-| `roles/secretmanager.secretAccessor` | reads the IAP client secret version at plan time |
+| `roles/secretmanager.secretAccessor` | reads the IAP client secret *payload* at plan time |
+| `roles/secretmanager.viewer` | reads that secret's *metadata* — added 2026-09-09, see below |
 | `roles/serviceusage.serviceUsageAdmin` | the twenty-one entries in `project-services.tf` |
 | `roles/iam.serviceAccountAdmin` | the ten accounts in `service-accounts.tf` |
 | `roles/iam.serviceAccountUser` | acting as runtime accounts when setting them on services |
 | `roles/resourcemanager.projectIamAdmin` | the project IAM members in `iam.tf` |
 | `roles/storage.objectAdmin` on `gs://iampatterson-tfstate` | the remote state |
+
+### The grant was incomplete, and the first real plan proved it
+
+The list above originally ended at eleven roles. The first CI `terraform plan` —
+run against PR #75 on 2026-09-09, the first time this identity did real work —
+failed:
+
+```
+Error: error retrieving available secret manager secret versions:
+googleapi: Error 403: Permission 'secretmanager.versions.get' denied
+```
+
+`roles/secretmanager.secretAccessor` carries `secretmanager.versions.access` and
+nothing else. The `google_secret_manager_secret_version` data source at
+`metabase-lb.tf:75` reads the version's **metadata** before its payload, and
+`versions.get` lives in `roles/secretmanager.viewer`. Verified by diffing the two
+role definitions rather than guessing:
+
+| Role | Relevant permissions |
+|---|---|
+| `secretmanager.secretAccessor` | `versions.access` |
+| `secretmanager.viewer` | `secrets.get`, `secrets.list`, `versions.get`, `versions.list` |
+
+Granted at project level (Ian's call, offered against a secret-scoped
+alternative): it is read-only metadata with no payload access, consistent with
+how the other eleven were granted, and it does not break again when the root
+gains a second secret data source. The plan then reported **"No changes. Your
+infrastructure matches the configuration."**
+
+The lesson is the phase's own: a role list that had been *recorded and justified*
+on paper still had a hole, and only running the thing found it. Twelve roles now,
+plus `storage.objectAdmin` on the state bucket.
 
 **This is close to the `roles/editor` that [13.4] spent a deliverable removing
 from a runtime identity, now reachable from a push to `main`.** That is stated

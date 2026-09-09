@@ -75,6 +75,47 @@ describe('workflows do not compile untrusted values into script bodies', () => {
   });
 });
 
+describe('every job that applies to production refuses an unprotected environment', () => {
+  // Scoped to one workflow, this check passed while infra-terraform.yml — the
+  // job that runs `terraform apply -auto-approve` over the entire project —
+  // carried no preflight at all, only the comment `# repo setting requires
+  // manual approval` that was measured FALSE on 2026-09-08. [14.3] asks for the
+  // guard on *each* apply job, so the check iterates instead of naming one file.
+  const guarded = files
+    .map((f) => [f, readFileSync(path.join(WORKFLOWS, f), 'utf8')] as const)
+    .filter(([, y]) => /environment:\s*infra-production/.test(y));
+
+  it('finds the workflows that deploy to infra-production', () => {
+    expect(guarded.length).toBeGreaterThanOrEqual(2);
+    expect(guarded.map(([f]) => f)).toEqual(
+      expect.arrayContaining(['infra-reconcile.yml', 'infra-terraform.yml']),
+    );
+  });
+
+  it.each(guarded.map(([f]) => f))('%s asserts protection rules before applying', (file) => {
+    const y = readFileSync(path.join(WORKFLOWS, file), 'utf8');
+    expect(y).toContain('environments/infra-production');
+    expect(y).toMatch(/protection_rules \| length/);
+    // The assertion must precede the step it guards. Anchor on the step's
+    // `name:` — matching the bare command catches prose, and infra-reconcile.yml
+    // discusses `terraform apply -auto-approve` in its prerequisites comment
+    // eighty lines above its own guard.
+    const guard = y.indexOf('protection_rules');
+    const applyStep = y.search(/^\s+- name: (terraform apply|reconcile apply)/m);
+    expect(guard).toBeGreaterThan(-1);
+    expect(applyStep).toBeGreaterThan(-1);
+    expect(guard).toBeLessThan(applyStep);
+  });
+
+  it('no apply job asserts approval in a comment instead of checking it', () => {
+    // A comment cannot verify an external fact. This exact comment sat on
+    // infra-terraform.yml's apply job while no such environment existed.
+    for (const [, y] of guarded) {
+      expect(y).not.toMatch(/#\s*repo setting requires manual approval/);
+    }
+  });
+});
+
 describe('the reconcile workflow refuses an unprotected environment', () => {
   const yaml = readFileSync(path.join(WORKFLOWS, 'infra-reconcile.yml'), 'utf8');
 
