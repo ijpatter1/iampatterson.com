@@ -15,3 +15,4 @@
 {"schema":"guv.gate.v1","ts":"2026-09-09T20:48:43Z","session":"session-2026-09-09-001","level":"high","commits":["891e554","dc972c5"],"instruments":[{"name":"code-review","outcome":"ran"},{"name":"guv:reviewer","outcome":"ran"}],"result":"gated"}
 {"schema":"guv.gate.v1","ts":"2026-09-09T20:51:50Z","session":"session-2026-09-09-001","level":"high","commits":["de8d134"],"instruments":[{"name":"code-review","outcome":"ran"},{"name":"guv:reviewer","outcome":"ran"}],"result":"gated"}
 {"schema":"guv.gate.v1","ts":"2026-09-09T21:20:38Z","session":"session-2026-09-09-001","level":"high","commits":["27ff108","2551289"],"instruments":[{"name":"code-review","outcome":"ran"},{"name":"guv:reviewer","outcome":"ran"}],"result":"gated"}
+{"schema":"guv.gate.v1","ts":"2026-09-09T22:23:31Z","session":"session-2026-09-09-002","level":"high","commits":["f1a889e","9ef6d1e"],"instruments":[{"name":"code-review","outcome":"ran"},{"name":"reviewer","outcome":"ran"}],"result":"gated"}
