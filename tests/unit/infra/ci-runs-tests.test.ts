@@ -35,9 +35,12 @@ const CLOUD_RUN = path.join(process.cwd(), 'infrastructure', 'cloud-run');
 interface Step {
   run?: string;
   uses?: string;
+  if?: string | boolean;
+  'continue-on-error'?: boolean;
 }
 interface Job {
   if?: string | boolean;
+  needs?: string | string[];
   strategy?: { matrix?: Record<string, unknown> };
   defaults?: { run?: { 'working-directory'?: string } };
   steps?: Step[];
@@ -71,8 +74,38 @@ const gating = all.filter((w) => {
  * workflow closes. Neither is evaluable here, so any `if:` disqualifies.
  */
 function reachableJobs(w: (typeof all)[number]): [string, Job][] {
-  return Object.entries(w.doc.jobs ?? {}).filter(([, job]) => job?.if === undefined);
+  const jobs = w.doc.jobs ?? {};
+  const unreachable = new Set<string>();
+  for (const [id, job] of Object.entries(jobs)) if (job?.if !== undefined) unreachable.add(id);
+  // GitHub skips a job whose dependency was skipped, so unreachability is
+  // transitive through `needs:`. Without this, a `gate` job with `if: false`
+  // plus `needs: gate` on both real jobs stops CI entirely while every check
+  // here still reports coverage — verified as a surviving mutation.
+  for (let changed = true; changed; ) {
+    changed = false;
+    for (const [id, job] of Object.entries(jobs)) {
+      if (unreachable.has(id)) continue;
+      const needs = typeof job?.needs === 'string' ? [job.needs] : (job?.needs ?? []);
+      if (needs.some((n) => unreachable.has(n))) {
+        unreachable.add(id);
+        changed = true;
+      }
+    }
+  }
+  return Object.entries(jobs).filter(([id]) => !unreachable.has(id));
 }
+
+/** Jobs that run in the repo root — i.e. not the per-service matrix. */
+const rootJobs = (w: (typeof all)[number]) =>
+  reachableJobs(w).filter(
+    ([, job]) => !(job.defaults?.run?.['working-directory'] ?? '').includes('cloud-run'),
+  );
+
+/** Jobs that run inside a Cloud Run service directory. */
+const serviceJobs = (w: (typeof all)[number]) =>
+  reachableJobs(w).filter(([, job]) =>
+    (job.defaults?.run?.['working-directory'] ?? '').includes('cloud-run'),
+  );
 
 /** A matrix dimension's values, with `exclude:` entries removed. */
 function effectiveMatrix(job: Job, key: string): string[] {
@@ -84,11 +117,28 @@ function effectiveMatrix(job: Job, key: string): string[] {
   return values.filter((v) => !excluded.includes(v));
 }
 
-/** Every `run:` command in a job's steps. */
+/**
+ * Every `run:` command in a job's steps that can actually fail the job.
+ *
+ * A step carrying `if:` may not execute; `continue-on-error: true` cannot fail
+ * the job; `|| true` swallows the exit code; `--listTests` enumerates without
+ * running. Each of those left the 2,288-test root suite un-run or unable to
+ * fail while every check here passed — the job-level `if:` defect one level
+ * down, in a function whose docstring claimed to read what a job actually runs.
+ */
 const commands = (job: Job): string[] =>
-  (job.steps ?? []).map((s) => s?.run ?? '').filter((c) => c.length > 0);
+  (job.steps ?? [])
+    .filter((s) => s?.if === undefined && s?.['continue-on-error'] !== true)
+    .map((s) => s?.run ?? '')
+    .filter((c) => c.length > 0 && !/\|\|\s*true/.test(c) && !/--listTests/.test(c));
 
-const RUNS_JEST = /\b(npm (run )?test|npx jest|jest\b)/;
+// Anchored to the start of a line, not merely contained. `run: echo skipping
+// npm test` satisfied an unanchored match — a no-op step that mentions the
+// command, which is the same "a string exists somewhere" defect this file has
+// now been rewritten three times to remove. `/m` so multi-line `run: |` blocks
+// are checked line by line.
+const RUNS_JEST = /^\s*(npm (run )?test|npx jest|jest)\b/m;
+const runsScript = (script: string) => new RegExp(`^\\s*npm run ${script}\\b`, 'm');
 
 /** Service directories that carry their own jest config. */
 const serviceDirs = readdirSync(CLOUD_RUN, { withFileTypes: true })
@@ -124,11 +174,26 @@ describe('CI runs the tests', () => {
     expect(found).toBe(true);
   });
 
-  it.each(['lint', 'build'])('a reachable job runs npm run %s', (script) => {
+  it.each(['lint', 'build'])('the ROOT job runs npm run %s', (script) => {
+    // Scoped to the root job. Adding `npm run build` to the services matrix
+    // took that string from one occurrence to two, after which this assertion
+    // was satisfied by either job and the root build step — "the only thing
+    // that catches a compile-level break", per its own comment — could be
+    // deleted silently. That regression arrived in the commit that fixed the
+    // identical defect on the root-suite check.
     const found = gating.some((w) =>
-      reachableJobs(w).some(([, job]) =>
-        commands(job).some((c) => new RegExp(`npm run ${script}\\b`).test(c)),
+      rootJobs(w).some(([, job]) =>
+        commands(job).some((c) => runsScript(script).test(c)),
       ),
+    );
+    expect(found).toBe(true);
+  });
+
+  it('the SERVICE jobs run npm run build, so files no test imports are typechecked', () => {
+    // The mirror of the above: with one shared assertion, deleting the services
+    // build step also passed, because the root job satisfied it.
+    const found = gating.some((w) =>
+      serviceJobs(w).some(([, job]) => commands(job).some((c) => runsScript('build').test(c))),
     );
     expect(found).toBe(true);
   });
@@ -152,6 +217,17 @@ describe('CI runs the tests', () => {
     expect(covered).toBe(true);
   });
 
+  it('the workflow also runs on pushes to main', () => {
+    // `gating` keys on pull_request alone, so deleting the push trigger left
+    // every check green — including the one below asserting a property of "a
+    // merge to main", about a trigger that would no longer exist.
+    const onMain = gating.some((w) => {
+      const push = (w.doc.on as Record<string, { branches?: string[] }> | undefined)?.push;
+      return push?.branches?.includes('main') ?? false;
+    });
+    expect(onMain).toBe(true);
+  });
+
   it('the paid suites stay out of CI, quoted or not', () => {
     // GOLDEN_TEST and LATENCY_TEST bill per run against Vertex. The services
     // compare `=== '1'`, so the QUOTED form is the one that switches them on —
@@ -172,7 +248,11 @@ describe('CI runs the tests', () => {
         'cancel-in-progress'
       ];
       if (cancel === undefined) continue;
-      expect(String(cancel)).not.toBe('true');
+      // Not a literal comparison. `${{ github.event_name != 'schedule' }}` and
+      // `${{ true }}` both differ from the string "true" while cancelling
+      // pushes exactly as before, and the value is already an expression — so
+      // an edit is how the next change to this line will arrive.
+      expect(String(cancel)).toMatch(/pull_request/);
     }
   });
 });
