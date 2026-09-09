@@ -14,10 +14,26 @@ import json
 import sys
 
 
+# BigQuery reports legacy type names and accepts standard SQL ones, so the live
+# table and the committed schema describe identical columns in two vocabularies.
+# Comparing them raw reports every INT64 and BOOL column as drifted forever.
+TYPE_ALIASES = {
+    "INTEGER": "INT64",
+    "FLOAT": "FLOAT64",
+    "BOOLEAN": "BOOL",
+    "RECORD": "STRUCT",
+}
+
+
+def canonical_type(name):
+    t = name.upper()
+    return TYPE_ALIASES.get(t, t)
+
+
 def index(fields):
     """{name: (type, mode)} — BigQuery omits mode when it is NULLABLE."""
     return {
-        f["name"]: (f["type"].upper(), (f.get("mode") or "NULLABLE").upper())
+        f["name"]: (canonical_type(f["type"]), (f.get("mode") or "NULLABLE").upper())
         for f in fields
     }
 

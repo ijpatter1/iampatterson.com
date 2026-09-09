@@ -186,3 +186,34 @@ describe('schema.json is additive-only, which is what makes reconciling safe', (
     }
   });
 });
+
+describe('legacy and standard BigQuery type names are the same type', () => {
+  const script = path.join(root, 'infrastructure/bigquery/schema-diff.py');
+  function diff(live: object[], declared: object[]): number {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'schema-alias-'));
+    const a = path.join(dir, 'live.json');
+    const b = path.join(dir, 'declared.json');
+    fs.writeFileSync(a, JSON.stringify(live));
+    fs.writeFileSync(b, JSON.stringify(declared));
+    return spawnSync('python3', [script, a, b], { encoding: 'utf-8' }).status ?? -1;
+  }
+
+  // Found by running the differ against the real table the moment it existed:
+  // bq reports INTEGER/BOOLEAN, schema.json declares INT64/BOOL, and every one
+  // of those columns read as drifted. A differ that cries drift on every run is
+  // as useless as one that never does — the operator stops reading it.
+  it.each([
+    ['INTEGER', 'INT64'],
+    ['FLOAT', 'FLOAT64'],
+    ['BOOLEAN', 'BOOL'],
+    ['RECORD', 'STRUCT'],
+  ])('treats %s and %s as the same type', (legacy, standard) => {
+    expect(diff([{ name: 'c', type: legacy, mode: 'NULLABLE' }],
+                [{ name: 'c', type: standard, mode: 'NULLABLE' }])).toBe(0);
+  });
+
+  it('still reports a genuine type change between unrelated types', () => {
+    expect(diff([{ name: 'c', type: 'INTEGER', mode: 'NULLABLE' }],
+                [{ name: 'c', type: 'STRING', mode: 'NULLABLE' }])).toBe(1);
+  });
+});
