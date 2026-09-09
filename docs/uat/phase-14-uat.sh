@@ -232,11 +232,30 @@ note ""
 note "MANUAL STEP: open https://www.iampatterson.com/ in a PRIVATE window,"
 note "DECLINE analytics, then open DevTools → Network and filter for 'collect'."
 
-confirm "With analytics declined, are there NO requests to google-analytics.com/g/collect?" \
-  "Consent gate blocks GA4 collection when analytics_storage is denied"
+# Was a confirm(). "Are there NO requests to /g/collect" is a network
+# assertion, and asking a human to eyeball DevTools at the end of a 50-check run
+# is a check that cannot fail. tests/e2e/phase-14-uat.spec.ts drives a declining
+# visitor through three routes with scroll and engagement, and asserts the hit
+# list is empty — printing any offending URL, because a failure here is a
+# privacy incident and the count alone would not help.
+#
+# --project=chromium is deliberate: the config carries ten projects (the mobile
+# matrix), and a UAT run should not fail because firefox or webkit binaries are
+# not installed on the operator's machine. Cross-browser coverage is the mobile
+# matrix spec's job, not this one's.
+if [ "${E2E_ENABLED:-}" = "1" ]; then
+  verify "a declining visitor leaks no analytics hit beyond the consent_update exemption" \
+    npx playwright test tests/e2e/phase-14-uat.spec.ts --project=chromium --grep "consent gate actually gates"
+else
+  skipped "consent gate + overlay honesty (set E2E_ENABLED=1 and start the dev server to run)"
+fi
 
-confirm "Does the under-the-hood overlay tell a declining visitor the truth about what was sent?" \
-  "Overlay does not claim delivery for events the consent gate blocked"
+# The FACTUAL half of what used to be one human question is asserted in that
+# same spec: the overlay must not claim delivery for blocked events. What
+# survives as judgment is the wording — a sentence can be technically true and
+# still mislead, and no assertion catches that.
+confirm "Reading the overlay as a declining visitor, is the wording honest rather than merely accurate?" \
+  "Overlay's phrasing does not mislead a visitor who declined"
 
 # ─────────────────────────────────────────────────────────────────────────────
 hdr "Scenario 4 — Web Vitals and engagement land WITH their payloads  [14.4]"
@@ -259,8 +278,14 @@ verify_num "page_engagement rows carry their PARAMETERS, not just a name" \
      AND TIMESTAMP_MILLIS(received_timestamp) > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 30 DAY)" \
   ">" 0
 
-confirm "On the under-the-hood overlay's Overview tab, does the web_vital coverage chip render?" \
-  "[14.4]'s visitor-facing payoff is present on the overlay"
+# Was a confirm(). "Does the chip render" is a DOM assertion; the chip carries
+# data-testid="chip-web_vital" and a data-chip-name attribute.
+if [ "${E2E_ENABLED:-}" = "1" ]; then
+  verify "the web_vital coverage chip renders on the overlay's Overview tab" \
+    npx playwright test tests/e2e/phase-14-uat.spec.ts --project=chromium --grep "web_vital reaches the overlay"
+else
+  skipped "web_vital coverage chip (set E2E_ENABLED=1 and start the dev server to run)"
+fi
 
 # ─────────────────────────────────────────────────────────────────────────────
 hdr "Scenario 5 — Terraform owns the infrastructure it claims to own  [14.2, 14.5]"
@@ -344,8 +369,18 @@ verify "those applies passed through the environment gate, not around it" \
   bash -c "gh api repos/$REPO/deployments --jq '.[].environment' \
              | grep -q infra-production || { echo 'no infra-production deployment recorded'; exit 1; }"
 
-confirm "In the Actions UI, did the apply jobs wait for your approval rather than starting on their own?" \
-  "The approval gate held on a real merge"
+# Was a confirm(), and the worst of the set: GitHub records the answer. A
+# deployment that waited for review carries `waiting` in its status history, so
+# this asks the API what it asked the operator to remember. Measured 2026-09-09,
+# three infra-production deployments each read: success in_progress queued waiting.
+verify "the applies WAITED for review rather than starting on their own" \
+  bash -c "found=0
+    for id in \$(gh api repos/$REPO/deployments \
+                   --jq '.[] | select(.environment==\"infra-production\") | .id' | head -5); do
+      gh api repos/$REPO/deployments/\$id/statuses --jq '.[].state' \
+        | grep -q waiting && found=1
+    done
+    [ \"\$found\" = 1 ] || { echo 'no infra-production deployment shows a waiting state'; exit 1; }"
 
 # ─────────────────────────────────────────────────────────────────────────────
 hdr "Scenario 8 — EDGE: the assertion that could not fail, can now  [14.6]"
@@ -467,6 +502,33 @@ bad=[m for m in ms if m not in allowed]
 if bad:
     print('unexpected tokenCreator member(s):', bad); sys.exit(1)
 \"" 
+
+# ─────────────────────────────────────────────────────────────────────────────
+hdr "Scenario 12 — The BI layer describes real visitors, not just the generator  [14.6]"
+note "Every mart above stg_sessions was built on a table containing zero real"
+note "sessions, so every Metabase dashboard described the data generator. Draft 1"
+note "asked a human to open the dashboards and eyeball this; both halves are"
+note "facts the warehouse and the Metabase API already hold."
+
+verify_num "the marts the dashboards read contain real, non-synthetic sessions" \
+  "SELECT COUNTIF(is_synthetic = FALSE) FROM \`$PROJECT.iampatterson_staging.stg_sessions\`" \
+  ">" 0
+
+verify_num "those real sessions carry events, so the dashboards are not drawing empty rows" \
+  "SELECT COUNT(*) FROM \`$PROJECT.iampatterson_staging.stg_events\`
+   WHERE is_synthetic = FALSE AND session_id IS NOT NULL" \
+  ">" 0
+
+# What [14.6] actually promises is that the DIMENSION works: is_synthetic must
+# be populated and must separate the two populations. Whether a dashboard uses
+# it is not an acceptance clause of this deliverable, so it is not asserted here
+# — inventing acceptance criteria at UAT time is its own failure. Measured
+# 2026-09-09: 45 Metabase cards, zero reference is_synthetic. That gap is real
+# and is carried in the handoff as debt, not as a phase blocker.
+verify_num "is_synthetic separates two populations, so the dimension is usable" \
+  "SELECT LEAST(COUNTIF(is_synthetic = TRUE), COUNTIF(is_synthetic = FALSE))
+   FROM \`$PROJECT.iampatterson_staging.stg_sessions\`" \
+  ">" 0
 
 # ─────────────────────────────────────────────────────────────────────────────
 hdr "Results"
