@@ -869,6 +869,31 @@ Recovered from the Phase 11 work, and still correct. The tool follows the resour
 - **Dataform model SQL → git.** Mirrored to the `dataform` branch by a GitHub Action. Terraform may own the release and workflow-config resources; the `.sqlx` definitions stay in the repository.
 - **Monitoring (Phase 12) → committed specs and `apply.sh`.** Not in Terraform, and nothing depends on that yet; it can be absorbed into either the Terraform layer or the Phase 14 reconcilers when one of them is the obvious home.
 
+### The session key, and what of it is recoverable
+
+`session_id` is reserved in gtag.js: it is treated as a configuration field and
+consumed before the hit is built, so `ep.session_id` never leaves the page and
+every real-browser row in `iampatterson_raw.events_raw` carries it NULL. The
+data generator is not exempt because it skips the GA4 client — it posts to the
+same `/g/collect` endpoint with the same `v=2` protocol — but because it
+hand-builds its query string and sets the parameter explicitly. `iap_session_id`
+was added in 2026-03 for exactly this reason and is the field the sGTM Pub/Sub
+tag keys on.
+
+Until 2026-09-08 the Dataform layer keyed on the raw column and `stg_sessions`
+filtered `WHERE session_id IS NOT NULL`, so the session layer contained no real
+visitors at all and every mart and dashboard above it described the generator.
+[14.6] resolves `COALESCE(iap_session_id, session_id)` at the staging boundary.
+
+**What history is recoverable, stated because it is easy to assume otherwise.**
+`iampatterson_raw` carries a 60-day partition expiration (the retention table
+below). Everything before roughly 2026-07-10 has been deleted by partition
+expiry and cannot be reconstructed — staging and marts are full-rebuild tables
+with no independent retention, so there is no copy elsewhere. Within the
+surviving window there is nothing to decide: every Dataform model is
+`type: "table"`, so the next scheduled run rebuilds the full window with the
+resolved key and no operator action is needed.
+
 ### Recorded gaps in the transport
 
 The push subscription `iampatterson-events-push` has **no dead-letter topic**,

@@ -30,5 +30,12 @@ query: |
     AND utm_source IS NOT NULL
     AND DATE(event_timestamp) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
   GROUP BY utm_source
-  HAVING sessions >= 10
+  -- Lowered from 10 on 2026-09-08 ([14.6]). The threshold existed to keep
+  -- single-session channels out of a conversion-rate chart, which is sound
+  -- when every session is generator traffic and volume is in the thousands.
+  -- Real visitors were absent from the warehouse entirely until [14.6]; at
+  -- their measured volume (12 sessions across two days, spread over channels)
+  -- a floor of 10 would filter out every one of them, so the fix would land
+  -- and this chart would keep showing the generator alone.
+  HAVING sessions >= 3
   ORDER BY sessions DESC

@@ -83,5 +83,10 @@
     "sessions": 1,
     "fraction": 0.5,
     "size": "medium"
+  },
+  "14.6": {
+    "sessions": 1,
+    "fraction": 0.5,
+    "size": "medium"
   }
 }
