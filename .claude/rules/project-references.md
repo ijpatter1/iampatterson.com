@@ -4,9 +4,18 @@
 
 ## References
 
-- `docs/REQUIREMENTS.md`, the full 11-phase development plan with deliverables and dependencies
+> **Amended 2026-09-09.** Initiative 002 closed and the project moved to
+> `ceremony: task`. The plan documents below are archived, not deleted — they
+> are the record of what was planned and shipped, and the engine refuses to
+> rewrite a completed phase. Task mode has no tracker, so **`docs/BACKLOG.md` is
+> where open work lives now.**
+
+- `docs/BACKLOG.md`, the open-work list — the only tracker task mode has
+- `docs/initiatives/002-operational-readiness/`, Phases 12–14 frozen (REQUIREMENTS, PHASE_STATUS, ARCHITECTURE snapshot)
+- `docs/initiatives/001-greenfield-through-launch/`, Phases 1–11 frozen
+- ~~`docs/REQUIREMENTS.md`~~, archived — see above
 - `docs/ARCHITECTURE.md`, technical architecture, infrastructure diagrams, data flow specifications
-- `docs/PHASE_STATUS.md`, living tracker of phase completion
+- ~~`docs/PHASE_STATUS.md`~~, archived — there is no live tracker in task mode
 - `docs/sessions/`, session handoff artifacts with detailed state from prior work sessions
 - `.claude/agents/evaluator.md`, QA/evaluator subagent for post-feature evaluation
 - `docs/STYLE_GUIDE.md`, design direction, voice/tone, typography, component patterns. Note: the design is in active iteration (clean slate as of session 018), the style guide documents the design intent, not necessarily the current implementation state
