@@ -109,9 +109,11 @@ describe('Question specs', () => {
     '06_daily_revenue_trend.yaml',
     // Phase 10d D3: cross-event funnel reporting via mart_ecommerce_funnel.
     '07_ecommerce_funnel_drop_off.yaml',
+    // 2026-09-09: the only card that tells real visitors from the generator.
+    '08_real_vs_generated_sessions.yaml',
   ];
 
-  test('all seven question specs present', () => {
+  test('all eight question specs present', () => {
     const actual = fs
       .readdirSync(path.join(SPECS_ROOT, 'questions'))
       .filter((f) => f.endsWith('.yaml'))
@@ -164,6 +166,41 @@ describe('Question specs', () => {
 // ---------------------------------------------------------------------------
 // Dashboard spec
 // ---------------------------------------------------------------------------
+/**
+ * The BI layer must be able to tell real visitors from generated traffic.
+ *
+ * [14.6] fixed `is_synthetic` — it derived from `iap_source`, which the real
+ * site also sends, so every recovered visitor was labelled synthetic. The
+ * dimension became correct and nothing consumed it: a UAT check measured 45
+ * Metabase cards and found zero referencing it, so every dashboard described
+ * the data generator alone while quietly including ~90 real sessions.
+ *
+ * That gap surfaced only because a rubber-stamp confirm() gate — "does at least
+ * one dashboard distinguish synthetic from real traffic?" — was converted into
+ * a real check. A human would very likely have clicked through it. These are
+ * that check made permanent.
+ */
+describe('Question specs discriminate real traffic from the generator', () => {
+  const questions = fs
+    .readdirSync(path.join(SPECS_ROOT, 'questions'))
+    .filter((f) => f.endsWith('.yaml'))
+    .map((f) => loadQuestion(f));
+
+  test('at least one card references is_synthetic', () => {
+    const discriminating = questions.filter((q) => /is_synthetic/.test(q.query));
+    expect(discriminating.map((q) => q.name)).not.toHaveLength(0);
+  });
+
+  test('and reports BOTH populations rather than filtering one out', () => {
+    const q = questions.find((x) => /is_synthetic/.test(x.query));
+    expect(q).toBeDefined();
+    // Filtering the generator out would hide it, not distinguish it — and
+    // would leave the dashboard describing ~90 sessions instead of ~193k.
+    expect(q!.query).toMatch(/NOT is_synthetic/);
+    expect(q!.query).toMatch(/IF\(is_synthetic/);
+  });
+});
+
 describe('Dashboard spec', () => {
   test('ecommerce_executive.yaml present', () => {
     expect(fs.existsSync(path.join(SPECS_ROOT, 'dashboards', 'ecommerce_executive.yaml'))).toBe(

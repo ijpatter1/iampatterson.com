@@ -64,3 +64,13 @@ cards:
     col: 0
     size_x: 24
     size_y: 6
+
+  # Placed last, deliberately. Every card above mixes generator traffic with
+  # real visitors without saying so, and the generator outnumbers real traffic
+  # by roughly two hundred to one — so this is the footnote that tells you how
+  # to read the rest of the dashboard, not a headline.
+  - card: 'Real visitors vs generated traffic'
+    row: 30
+    col: 0
+    size_x: 24
+    size_y: 6

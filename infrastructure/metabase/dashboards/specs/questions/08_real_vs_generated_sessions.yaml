@@ -1,0 +1,46 @@
+name: 'Real visitors vs generated traffic'
+description: |
+  Daily session counts split by origin. The data generator runs on weekdays to
+  keep this dashboard populated; real visitors are everyone else. Every other
+  card here mixes the two without saying so, and the generator outnumbers real
+  traffic by roughly two hundred to one, so read the totals elsewhere with this
+  table in mind.
+
+  A table rather than a chart on purpose: at 5,355 generated sessions against
+  24 real, a stacked bar renders the real figure as a line one pixel high.
+display: table
+# Not embeddable. The three embeddable cards (funnel, AOV, daily revenue) feed
+# the site's signed embed and are pinned as an exact set in
+# tests/unit/metabase/dashboards.test.ts. This one is a footnote for readers of
+# the dashboard itself, not a standalone panel.
+enable_embedding: false
+visualization_settings:
+  table.pivot: false
+  column_settings:
+    '["name","real_pct"]':
+      suffix: '%'
+query: |
+  -- `is_synthetic` exists because of [14.6]. It derived from `iap_source`,
+  -- which the real site also sends, so every recovered visitor was labelled
+  -- synthetic until the generator started sending its own `iap_synthetic`
+  -- marker. The column reaches only this mart; the other ten drop it at the
+  -- mart boundary, which is why no other card can make this distinction.
+  --
+  -- Added 2026-09-09 after a UAT check found 45 Metabase cards and none
+  -- referencing is_synthetic: the dimension was correct and nothing consumed
+  -- it, so every dashboard described the generator alone.
+  SELECT
+    DATE(event_timestamp) AS day,
+    COUNT(DISTINCT IF(NOT is_synthetic, session_id, NULL)) AS real_sessions,
+    COUNT(DISTINCT IF(is_synthetic, session_id, NULL)) AS generated_sessions,
+    ROUND(
+      SAFE_DIVIDE(
+        COUNT(DISTINCT IF(NOT is_synthetic, session_id, NULL)),
+        COUNT(DISTINCT session_id)
+      ) * 100,
+      2
+    ) AS real_pct
+  FROM `iampatterson.iampatterson_marts.mart_session_events`
+  WHERE DATE(event_timestamp) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
+  GROUP BY day
+  ORDER BY day DESC
