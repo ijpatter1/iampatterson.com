@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
+import { useAnalyticsConsent } from '@/hooks/useAnalyticsConsent';
 import { useLiveEvents } from '@/hooks/useLiveEvents';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useSessionId } from '@/hooks/useSessionId';
@@ -56,7 +57,11 @@ function formatPayload(
 export function PipelineEditorial() {
   const [activeIndex, setActiveIndex] = useState(0);
   const sessionId = useSessionId();
-  const { events } = useLiveEvents();
+  // Consent-aware for the same reason the overlay is: without it a declining
+  // visitor's feed latches to SSE on the one exempt event and never adds
+  // another row, on the page most visitors see first.
+  const analyticsConsent = useAnalyticsConsent();
+  const { events } = useLiveEvents({ analyticsConsent });
   // `t0` marks the instant this PipelineEditorial component mounted;
   // footnote-row timestamps render as offsets from this anchor so all
   // visible rows share a single "since session start" reference. Lazy

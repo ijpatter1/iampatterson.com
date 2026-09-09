@@ -112,8 +112,17 @@ interface NarrativeFlowProps {
   event: PipelineEvent | null;
 }
 
+
+/** Destinations gated by `analytics_storage` rather than `ad_storage`. */
+const ANALYTICS_DESTINATIONS = new Set(['ga4', 'bigquery', 'pubsub']);
+
 export function NarrativeFlow({ event }: NarrativeFlowProps) {
   if (!event) return null;
+
+  // An event only touched sGTM if something downstream was actually delivered.
+  // For a decliner every destination is blocked, so the journey stops at the
+  // data layer and the card below must say so.
+  const reachedServer = event.routing.some((r) => r.status === 'sent');
 
   const sentRoutes = event.routing.filter((r) => r.status === 'sent');
   const blockedRoutes = event.routing.filter((r) => r.status === 'blocked_consent');
@@ -137,11 +146,26 @@ export function NarrativeFlow({ event }: NarrativeFlowProps) {
 
       <FlowArrow />
 
-      {/* Stage 3: sGTM */}
-      <StageCard
-        title="sGTM Container"
-        description="Server-side Google Tag Manager processed the event and routed it"
-      />
+      {/* Stage 3: sGTM.
+          Consent-aware since 2026-09-09. A declining visitor's rows are
+          data-layer events that never left the browser, and this card said
+          "Server-side Google Tag Manager processed the event and routed it"
+          about every one of them — the same false claim [14.1] removed from
+          `buildRouting`, re-entering through a different door. It only became
+          reachable when the timeline started sourcing a decliner's events from
+          the data layer, which is to say this fix created its own audience. */}
+      {reachedServer ? (
+        <StageCard
+          title="sGTM Container"
+          description="Server-side Google Tag Manager processed the event and routed it"
+        />
+      ) : (
+        <StageCard
+          title="sGTM Container"
+          description="Never reached. The consent gate stopped this event in the browser"
+          variant="blocked"
+        />
+      )}
 
       <FlowArrow />
 
@@ -154,11 +178,21 @@ export function NarrativeFlow({ event }: NarrativeFlowProps) {
             description="Delivered"
           />
         ))}
+        {/* The reason is derived, not fixed. This read "Ad tracking not
+            permitted" for every blocked destination — correct when only
+            meta_capi and google_ads could be blocked, but [14.1] made
+            analytics_storage gate GA4, BigQuery and Pub/Sub too. A visitor who
+            declined ANALYTICS was then told three times that their AD tracking
+            was blocked, which is a different claim about a different choice. */}
         {blockedRoutes.map((route, i) => (
           <StageCard
             key={`blocked-${i}`}
             title={destinationLabel(route.destination)}
-            description="Blocked by consent. Ad tracking not permitted"
+            description={
+              ANALYTICS_DESTINATIONS.has(route.destination)
+                ? 'Blocked by consent. Analytics storage not permitted'
+                : 'Blocked by consent. Ad tracking not permitted'
+            }
             variant="blocked"
           />
         ))}

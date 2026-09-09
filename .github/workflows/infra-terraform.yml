@@ -119,36 +119,45 @@ jobs:
     runs-on: ubuntu-latest
     environment: infra-production
     steps:
-      - uses: actions/checkout@v4
-
-      # The environment line above used to carry a trailing comment asserting
-      # that repo settings gated this job. It was not true: measured 2026-09-08, no
-      # `infra-production` environment existed, and the two that did carried no
-      # protection rules. GitHub creates a referenced-but-missing environment
-      # implicitly and UNPROTECTED, so the comment described a safeguard that
-      # was absent from the job it sat on — one that applies the entire
-      # Terraform root with `-auto-approve`.
+      # DELIBERATELY THE FIRST STEP. It needs no working tree — it calls the
+      # API with github.token — so nothing is fetched and no credential is
+      # minted before the environment is confirmed to require a human.
       #
-      # A comment cannot check an external fact. This step can, and [14.3] asks
-      # for it on *each* apply job. infra-reconcile.yml got it first; this job
-      # ran once without it (2026-09-09, run 34358564379) before a generic check
-      # over every workflow deploying to infra-production caught the asymmetry.
+      # It checks for a REQUIRED REVIEWER, not for "some protection rule".
+      # `.protection_rules | length` counts wait timers and branch policies too,
+      # so an environment carrying only a wait timer reports 1, the guard prints
+      # a reassuring count, and the apply proceeds with nobody reviewing it —
+      # the exact state this deliverable exists to prevent, passing the check
+      # written to prevent it.
+      #
+      # A 404 and an unreadable response are different diagnoses, and both fail
+      # closed; only the message differs, so an operator debugging a blocked
+      # apply is not told the environment is missing when a token scope changed.
       - name: refuse an unprotected environment
         env:
           GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
         run: |
-          rules=$(gh api "repos/${{ github.repository }}/environments/infra-production" \
-                    --jq '.protection_rules | length' 2>/dev/null || echo "missing")
-          if [ "$rules" = "missing" ]; then
-            echo "::error::the infra-production environment does not exist — GitHub created it implicitly and unprotected"
+          status=$(gh api "repos/$REPO/environments/infra-production" \
+                     --silent -i 2>/dev/null | head -1 | awk '{print $2}')
+          if [ "$status" = "404" ]; then
+            echo "::error::infra-production does not exist — GitHub creates a referenced-but-missing environment implicitly and UNPROTECTED"
             exit 1
           fi
-          if [ "$rules" -eq 0 ]; then
-            echo "::error::infra-production has no protection rules; an apply here would be unreviewed"
+          reviewers=$(gh api "repos/$REPO/environments/infra-production" \
+                        --jq '[.protection_rules[] | select(.type=="required_reviewers")] | length' \
+                        2>/dev/null || echo "unreadable")
+          if [ "$reviewers" = "unreadable" ]; then
+            echo "::error::could not read infra-production (HTTP ${status:-unknown}) — refusing to apply without confirming a required reviewer"
             exit 1
           fi
-          echo "infra-production carries $rules protection rule(s)."
+          if [ "$reviewers" -eq 0 ]; then
+            echo "::error::infra-production carries no required-reviewer rule; an apply here would be unreviewed even if other protection rules exist"
+            exit 1
+          fi
+          echo "infra-production carries $reviewers required-reviewer rule(s)."
 
+      - uses: actions/checkout@v4
       - uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}

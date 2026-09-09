@@ -25,6 +25,36 @@ const files = readdirSync(WORKFLOWS)
   .filter((f) => f.endsWith('.yml') || f.endsWith('.yaml'))
   .sort();
 
+/**
+ * The top-level job blocks of a workflow, by name.
+ *
+ * Needed because a whole-file string index cannot tell which *job* a step lives
+ * in. The guard-position check below compared indices across the entire file,
+ * so moving the preflight out of `apply` and into `validate` — leaving
+ * `terraform apply -auto-approve` with no guard at all — still passed. That is
+ * the same regression class the guard was added to close.
+ */
+function jobBlocks(yaml: string): Record<string, string> {
+  const lines = yaml.split('\n');
+  const jobsAt = lines.findIndex((l) => /^jobs:\s*$/.test(l));
+  if (jobsAt < 0) return {};
+  const out: Record<string, string> = {};
+  let name = '';
+  let body: string[] = [];
+  for (let i = jobsAt + 1; i < lines.length; i += 1) {
+    const header = /^ {2}([A-Za-z0-9_-]+):\s*$/.exec(lines[i]);
+    if (header) {
+      if (name) out[name] = body.join('\n');
+      name = header[1];
+      body = [];
+    } else if (name) {
+      body.push(lines[i]);
+    }
+  }
+  if (name) out[name] = body.join('\n');
+  return out;
+}
+
 /** The `script:` blocks of every actions/github-script step in a workflow. */
 function scriptBodies(yaml: string): string[] {
   const bodies: string[] = [];
@@ -94,17 +124,92 @@ describe('every job that applies to production refuses an unprotected environmen
 
   it.each(guarded.map(([f]) => f))('%s asserts protection rules before applying', (file) => {
     const y = readFileSync(path.join(WORKFLOWS, file), 'utf8');
-    expect(y).toContain('environments/infra-production');
-    expect(y).toMatch(/protection_rules \| length/);
-    // The assertion must precede the step it guards. Anchor on the step's
-    // `name:` — matching the bare command catches prose, and infra-reconcile.yml
-    // discusses `terraform apply -auto-approve` in its prerequisites comment
-    // eighty lines above its own guard.
-    const guard = y.indexOf('protection_rules');
-    const applyStep = y.search(/^\s+- name: (terraform apply|reconcile apply)/m);
-    expect(guard).toBeGreaterThan(-1);
-    expect(applyStep).toBeGreaterThan(-1);
-    expect(guard).toBeLessThan(applyStep);
+    // Scope to the job that actually deploys. A file-level search passes while
+    // the guard sits in a sibling job that deploys nothing.
+    const deploying = Object.entries(jobBlocks(y)).filter(([, b]) =>
+      /environment:\s*infra-production/.test(b),
+    );
+    expect(deploying.length).toBeGreaterThan(0);
+
+    for (const [jobName, body] of deploying) {
+      // The guard must be IN this job, not merely somewhere in the file.
+      expect(`${file}:${jobName} → ${body}`).toMatch(/protection_rules \| length/);
+      expect(body).toContain('environments/infra-production');
+
+      // …and before the step it guards.
+      const guard = body.indexOf('protection_rules');
+      const applyStep = body.search(/^\s+- name: (terraform apply|reconcile apply)/m);
+      expect(applyStep).toBeGreaterThan(-1);
+      expect(guard).toBeGreaterThan(-1);
+      expect(guard).toBeLessThan(applyStep);
+    }
+  });
+
+  it.each(guarded.map(([f]) => f))('%s checks for a REQUIRED REVIEWER, not any rule', (file) => {
+    const y = readFileSync(path.join(WORKFLOWS, file), 'utf8');
+    // `.protection_rules | length` counts wait timers and branch policies too.
+    // An environment carrying only a wait timer reports 1, the guard prints a
+    // reassuring count, and the apply proceeds unreviewed — the exact state
+    // [14.3] exists to prevent, passing the check written to prevent it.
+    expect(y).toMatch(/select\(\.type\s*==\s*"required_reviewers"\)/);
+    expect(y).not.toMatch(/--jq '\.protection_rules \| length'/);
+  });
+
+  it.each(guarded.map(([f]) => f))('%s runs the guard as the FIRST step', (file) => {
+    const y = readFileSync(path.join(WORKFLOWS, file), 'utf8');
+    for (const [, body] of Object.entries(jobBlocks(y)).filter(([, b]) =>
+      /environment:\s*infra-production/.test(b),
+    )) {
+      // The guard needs no working tree, so nothing — not even a checkout —
+      // should happen before the environment is confirmed to require a human.
+      const firstStep = /^\s+- (?:name|uses):\s*(.+)$/m.exec(body.slice(body.indexOf('steps:')));
+      expect(firstStep?.[1]).toContain('refuse an unprotected environment');
+    }
+  });
+
+  it('the guard is byte-identical across every workflow that carries it', () => {
+    // Two hand-maintained copies diverged one commit after being unified: one
+    // gained a 404-vs-unreadable distinction and the other kept collapsing them.
+    // Presence and position checks cannot see that; equality can.
+    const blocks = guarded.map(([, y]) => {
+      const i = y.indexOf('- name: refuse an unprotected environment');
+      const j = y.indexOf('\n      - ', i + 1);
+      return y.slice(i, j === -1 ? undefined : j).trim();
+    });
+    expect(blocks.length).toBeGreaterThanOrEqual(2);
+    for (const b of blocks.slice(1)) expect(b).toEqual(blocks[0]);
+  });
+
+  it('no run: block compiles an untrusted expression into shell', () => {
+    // A `run:` block interpolates ${{ }} into shell exactly as `script:`
+    // interpolates it into JS. The original check looked only at script bodies,
+    // so this category was open. github.repository and github.token are not
+    // attacker-controlled; anything else reaching shell must come via env:.
+    const TRUSTED = /^(github\.(repository|token|sha|ref|run_id)|env\.[A-Z_]+|vars\.[A-Z_]+|secrets\.[A-Z_]+|steps\.[a-z_]+\.outputs\.[a-z_]+)$/;
+    for (const file of files) {
+      const y = readFileSync(path.join(WORKFLOWS, file), 'utf8');
+      const lines = y.split('\n');
+      let inRun = false;
+      let indent = 0;
+      for (const line of lines) {
+        const open = /^(\s*)run:\s*\|/.exec(line);
+        if (open) {
+          inRun = true;
+          indent = open[1].length;
+          continue;
+        }
+        if (inRun) {
+          if (line.trim() !== '' && line.length - line.trimStart().length <= indent) inRun = false;
+          else {
+            for (const m of line.matchAll(/\$\{\{\s*([^}]+?)\s*\}\}/g)) {
+              expect(`${file}: \${{ ${m[1]} }}`).toMatch(
+                new RegExp(`\\$\\{\\{ (?:${TRUSTED.source.slice(1, -1)}) \\}\\}`),
+              );
+            }
+          }
+        }
+      }
+    }
   });
 
   it('no apply job asserts approval in a comment instead of checking it', () => {
@@ -156,7 +261,10 @@ describe('the reconcile workflow refuses an unprotected environment', () => {
     // it is pinned here rather than left to a comment.
     const dryRun = yaml.slice(yaml.indexOf('id: dryrun'), yaml.indexOf('name: post the diff'));
     expect(dryRun).toMatch(/tee -a/);
-    expect(dryRun).toMatch(/shell: bash/);
+    // Anchored to a real YAML key, not the prose. The unanchored form matched
+    // the comment above the key that explains why the key is there, so deleting
+    // the key left this green — the exact vacuity this file exists to prevent.
+    expect(dryRun).toMatch(/^\s+shell: bash\s*$/m);
   });
 
   it('publishes as a step after the apply, not folded into it', () => {

@@ -54,9 +54,29 @@ function buildConsent(entry: Record<string, unknown>): ConsentState {
  * This is the fallback path only. When the SSE stream is delivering, the
  * server stamps the real per-destination statuses and they win.
  */
-function buildRouting(consent: ConsentState, timestamp: string): RoutingResult[] {
+/**
+ * Event names the GTM container fires REGARDLESS of consent state.
+ *
+ * `GA4 - consent_update` carries "No consent requirement — consent_update must
+ * fire regardless of consent state to track the consent change itself" in
+ * `infrastructure/gtm/web-container.json`; every other GA4 tag requires
+ * `analytics_storage`. So for a declining visitor this event genuinely does
+ * reach GA4, BigQuery and Pub/Sub, and marking it blocked is a false claim in
+ * the other direction — on the one event whose delivery is real.
+ *
+ * Pinned against the container by tests/unit/hooks/consent-exemption-parity.test.ts
+ * so this cannot silently drift from what the container actually exempts.
+ */
+export const CONSENT_EXEMPT_EVENTS = new Set(['consent_update']);
+
+function buildRouting(
+  consent: ConsentState,
+  timestamp: string,
+  eventName?: string,
+): RoutingResult[] {
   const marketingGranted = consent.ad_storage === 'granted';
-  const analyticsGranted = consent.analytics_storage === 'granted';
+  const exempt = eventName !== undefined && CONSENT_EXEMPT_EVENTS.has(eventName);
+  const analyticsGranted = consent.analytics_storage === 'granted' || exempt;
   const analyticsStatus = analyticsGranted ? 'sent' : 'blocked_consent';
   return [
     { destination: 'ga4', status: analyticsStatus, timestamp },
@@ -121,7 +141,7 @@ function dataLayerEntryToPipelineEvent(entry: Record<string, unknown>): Pipeline
     page_location: typeof window !== 'undefined' ? window.location.href : '',
     parameters: extractParameters(entry),
     consent,
-    routing: buildRouting(consent, timestamp),
+    routing: buildRouting(consent, timestamp, eventName),
   };
 }
 

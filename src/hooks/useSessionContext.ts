@@ -4,6 +4,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 
 import { readSessionCookie, subscribeSessionCookie } from '@/lib/events/session';
 
+import { useAnalyticsConsent } from './useAnalyticsConsent';
 import { useLiveEvents } from './useLiveEvents';
 
 // Passive cookie read (no UUID generation / cookie refresh side-effects)
@@ -67,7 +68,11 @@ const EMPTY_CONTEXT: SessionContext = {
 const TIME_TICK_MS = 5_000;
 
 export function useSessionContext(): SessionContext {
-  const { events } = useLiveEvents();
+  // Consent-aware: otherwise a decliner's seconds_since_last_event climbs from
+  // the consent timestamp forever and add_to_cart_in_last_30s stays false right
+  // after an add-to-cart, feeding the demo AI panels a contradictory picture.
+  const analyticsConsent = useAnalyticsConsent();
+  const { events } = useLiveEvents({ analyticsConsent });
   const sessionId = useSyncExternalStore(
     subscribeSessionCookie,
     getSessionCookieSnapshot,

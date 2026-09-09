@@ -4,8 +4,10 @@ name: infra-reconcile
 #
 # - PRs touching infrastructure/gtm/**: a dry run against the live Default
 #   Workspace, posted back as a PR comment.
-# - Push to main: the live apply, behind the `infra-production` environment,
-#   which repo settings configure to require manual approval.
+# - Push to main: the live apply, behind the `infra-production` environment.
+#   The apply job's first step VERIFIES that environment carries protection
+#   rules and exits 1 if it does not. This header used to assert the safeguard
+#   instead — the same unverifiable claim measured false on 2026-09-08.
 #
 # The Metabase path this deliverable originally carried is gone: [14.2] retired
 # those one-shots onto Terraform, so `infrastructure/metabase/**` changes are
@@ -90,9 +92,15 @@ jobs:
         shell: bash
         env:
           GTM_TOKEN: ${{ steps.auth.outputs.access_token }}
+        # Both containers are diffed even when the first fails. Bare `-e` would
+        # abort the step at the web reconcile, and the PR comment would then show
+        # a truncated diff with no signal that the server half is missing rather
+        # than empty. Statuses are collected; the step fails at the end.
         run: |
-          node infrastructure/gtm/reconcile.js --container=web   | tee -a /tmp/diff.txt
-          node infrastructure/gtm/reconcile.js --container=server | tee -a /tmp/diff.txt
+          rc=0
+          node infrastructure/gtm/reconcile.js --container=web    | tee -a /tmp/diff.txt || rc=1
+          node infrastructure/gtm/reconcile.js --container=server | tee -a /tmp/diff.txt || rc=1
+          exit $rc
 
       - name: post the diff
         uses: actions/github-script@v7
@@ -148,28 +156,45 @@ jobs:
     runs-on: ubuntu-latest
     environment: infra-production
     steps:
-      - uses: actions/checkout@v4
-
-      # The comment on infra-terraform.yml's apply job asserted that repo
-      # settings require manual approval. It was not true: measured 2026-09-08,
-      # no `infra-production` environment existed and the two that did carried
-      # no protection rules. A comment cannot check an external fact; this can.
+      # DELIBERATELY THE FIRST STEP. It needs no working tree — it calls the
+      # API with github.token — so nothing is fetched and no credential is
+      # minted before the environment is confirmed to require a human.
+      #
+      # It checks for a REQUIRED REVIEWER, not for "some protection rule".
+      # `.protection_rules | length` counts wait timers and branch policies too,
+      # so an environment carrying only a wait timer reports 1, the guard prints
+      # a reassuring count, and the apply proceeds with nobody reviewing it —
+      # the exact state this deliverable exists to prevent, passing the check
+      # written to prevent it.
+      #
+      # A 404 and an unreadable response are different diagnoses, and both fail
+      # closed; only the message differs, so an operator debugging a blocked
+      # apply is not told the environment is missing when a token scope changed.
       - name: refuse an unprotected environment
         env:
           GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
         run: |
-          rules=$(gh api "repos/${{ github.repository }}/environments/infra-production" \
-                    --jq '.protection_rules | length' 2>/dev/null || echo "missing")
-          if [ "$rules" = "missing" ]; then
-            echo "::error::the infra-production environment does not exist — GitHub created it implicitly and unprotected"
+          status=$(gh api "repos/$REPO/environments/infra-production" \
+                     --silent -i 2>/dev/null | head -1 | awk '{print $2}')
+          if [ "$status" = "404" ]; then
+            echo "::error::infra-production does not exist — GitHub creates a referenced-but-missing environment implicitly and UNPROTECTED"
             exit 1
           fi
-          if [ "$rules" -eq 0 ]; then
-            echo "::error::infra-production has no protection rules; an apply here would be unreviewed"
+          reviewers=$(gh api "repos/$REPO/environments/infra-production" \
+                        --jq '[.protection_rules[] | select(.type=="required_reviewers")] | length' \
+                        2>/dev/null || echo "unreadable")
+          if [ "$reviewers" = "unreadable" ]; then
+            echo "::error::could not read infra-production (HTTP ${status:-unknown}) — refusing to apply without confirming a required reviewer"
             exit 1
           fi
-          echo "infra-production carries $rules protection rule(s)."
+          if [ "$reviewers" -eq 0 ]; then
+            echo "::error::infra-production carries no required-reviewer rule; an apply here would be unreviewed even if other protection rules exist"
+            exit 1
+          fi
+          echo "infra-production carries $reviewers required-reviewer rule(s)."
 
+      - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
