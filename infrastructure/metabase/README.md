@@ -317,10 +317,9 @@ Google-managed SSL cert for `bi.iampatterson.com`. The LB is a hard
 prerequisite for Task 6 — IAP on Cloud Run works only through a
 load-balancer-fronted backend service, not the direct `.run.app` URL.
 
-```bash
-```
 
-Seven components created, each name-pinned for idempotent re-runs:
+Seven components, each declared in `infrastructure/terraform/metabase-lb.tf` and
+reconciled by `terraform apply` (the script that once created them is retired):
 
 1. **Static IP** `metabase-lb-ip` (global)
 2. **SSL cert** `metabase-cert` — Google-managed, for `bi.iampatterson.com`
@@ -382,7 +381,7 @@ somehow exposed or misconfigured.
 > - Console-only path: manage brand + clients via the Cloud Console UI
 >   at APIs & Services → Credentials → OAuth 2.0 Client IDs
 >
-> When the shutdown forces a rewrite, the changes in `docs/runbook/metabase-access.md`
+> When the shutdown forces a rewrite, the IAP changes
 > are localized to Step 1 (OAuth client create) — everything after
 > (secret storage, IAP enable, allowlist reconciliation, IAP service
 > agent provisioning) stays the same because those use non-deprecated
@@ -403,13 +402,16 @@ do this for Internal-user-type brands:
 6. Save
 
 After the consent screen is saved, the project has an OAuth brand that
-`docs/runbook/metabase-access.md` can use.
+the IAP configuration can use.
 
 ### Then run the script
 
 ```bash
-./docs/runbook/metabase-access.md              # configure IAP + reconcile allowlist
-./docs/runbook/metabase-access.md --dry-run    # preview
+# IAP is configured; the load balancer and its IAP block are declared in
+# infrastructure/terraform/metabase-lb.tf. Granting and revoking access are
+# procedures, not a script — see docs/runbook/metabase-access.md.
+gcloud iap web get-iam-policy --resource-type=backend-services \
+  --service=metabase-backend --project=iampatterson   # who has access today
 ```
 
 What it does:
@@ -434,7 +436,7 @@ What it does:
 
 ### Editing the allowlist
 
-Open `docs/runbook/metabase-access.md`. The `ALLOWLIST` array is at the top, near line 50:
+Follow **Grant access** in `docs/runbook/metabase-access.md`. There is no allowlist array to edit — the retired script kept one; access is now granted per member:
 
 ```bash
 ALLOWLIST=(
@@ -499,7 +501,7 @@ account on the `ALLOWLIST` from Task 6. You should land on Metabase's
 first-run wizard.
 
 If you get "You don't have access": the Google account isn't in the
-IAP allowlist. Add it to `docs/runbook/metabase-access.md` and re-run, or grant ad-hoc
+IAP allowlist. Grant it with the command in `docs/runbook/metabase-access.md`, or ad-hoc
 via the manual `gcloud iap web add-iam-policy-binding` command.
 
 ### 2. Create the admin account
@@ -803,7 +805,7 @@ consequence statement.
 
 ### Add or remove an IAP allowlist member
 
-Adding: edit the `ALLOWLIST` array at the top of `docs/runbook/metabase-access.md` and
+Adding: run the grant command in `docs/runbook/metabase-access.md` and
 re-run the script. See the Task 6 "Editing the allowlist" section.
 
 Removing: manual, via `gcloud iap web remove-iam-policy-binding`. See
@@ -818,6 +820,6 @@ Task 6 for the command.
 | Restore | Bad upgrade, instance issue | `gcloud sql backups restore <ID> ...` |
 | Rollback (image only) | Bad upgrade, no schema drift | `METABASE_IMAGE=<prior> ./deploy.sh` |
 | Rotate BQ key | Annually | See "Rotate the BigQuery SA key" |
-| Add allowlist member | Granting IAP access | Edit `docs/runbook/metabase-access.md` → re-run |
+| Add allowlist member | Granting IAP access | `docs/runbook/metabase-access.md` → **Grant access** |
 | Remove allowlist member | Revoking IAP access | `gcloud iap web remove-iam-policy-binding ...` |
 | View daily backup | Check automated snapshots | `gcloud sql backups list --instance=metabase-app-db` |

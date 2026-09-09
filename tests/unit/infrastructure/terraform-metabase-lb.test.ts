@@ -7,7 +7,7 @@
  * Phase 9F production incident (an asset path silently falling under IAP).
  */
 import { parse } from '@cdktf/hcl2json';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 
 const TF_DIR = path.join(process.cwd(), 'infrastructure', 'terraform');
@@ -131,14 +131,24 @@ describe('IAP service agent binding', () => {
     expect(member.member).toContain('gcp-sa-iap.iam.gserviceaccount.com');
   });
 
-  it('uses the additive per-member resource, not an authoritative one', () => {
-    // _iam_binding or _iam_policy would revoke every member this configuration
-    // does not name the first time it applied — including the `allUsers`
-    // binding that is deliberately left alone, and any IAP allowlist entry.
-    // The resource type IS the safety property here.
-    const tf = read('metabase-lb.tf');
-    expect(tf).not.toMatch(/resource\s+"google_cloud_run_v2_service_iam_binding"/);
-    expect(tf).not.toMatch(/resource\s+"google_cloud_run_v2_service_iam_policy"/);
+  it('uses the additive per-member resource, not an authoritative one — anywhere in the root', () => {
+    // _iam_binding or _iam_policy is authoritative: on first apply it revokes
+    // every member this configuration does not name, including the `allUsers`
+    // binding deliberately left alone and the IAP service agent binding this
+    // deliverable just imported. The resource TYPE is the safety property.
+    //
+    // Scoped to the whole root, not this file. [14.5] is queued to add the
+    // first IAM resources here; an authoritative binding dropped into iam.tf
+    // or cloud-run.tf would pass a file-scoped check and still revoke them.
+    const dir = path.join(TF_DIR);
+    const offenders: string[] = [];
+    for (const file of readdirSync(dir).filter((f) => f.endsWith('.tf'))) {
+      const body = readFileSync(path.join(dir, file), 'utf8');
+      if (/resource\s+"google_cloud_run_v2_service_iam_(binding|policy)"/.test(body)) {
+        offenders.push(file);
+      }
+    }
+    expect(offenders).toEqual([]);
   });
 
   it('is imported rather than created, since it already exists live', () => {

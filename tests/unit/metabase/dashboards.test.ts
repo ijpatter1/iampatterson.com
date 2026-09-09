@@ -67,7 +67,10 @@ describe('Metabase dashboards-as-code scaffold', () => {
   test('README.md documents auth, setup, and authoring conventions', () => {
     const readme = fs.readFileSync(path.join(DASHBOARDS_ROOT, 'README.md'), 'utf-8');
     expect(readme).toMatch(/metabase-api-key/);
-    expect(readme).toMatch(/setup-domain\.sh/);
+    // Was /setup-domain\.sh/. That script was retired in [14.2], and this
+    // assertion required the docs to keep naming it — so correcting the README
+    // turned the suite red. The URL-map split is Terraform's now.
+    expect(readme).toMatch(/metabase-lb\.tf/);
     expect(readme).toMatch(/apply\.sh/);
   });
 

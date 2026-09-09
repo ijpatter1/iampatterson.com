@@ -41,17 +41,17 @@ infrastructure/metabase/dashboards/
 
 **The `/api/*` path on `bi.iampatterson.com` bypasses IAP.** This is intentional — an admin API key is the auth credential for the API path, not Google SSO. The UI path (`/*`) remains IAP-gated; only allowlisted accounts can browse the Metabase frontend.
 
-The split is provisioned by `infrastructure/metabase/setup-domain.sh` (step 8: non-IAP backend service + URL-map path matcher for `/api/*` and `/embed/*`). Re-run `setup-domain.sh` once to apply it if this is a fresh deployment from before the split landed.
+The split is declared in `infrastructure/terraform/metabase-lb.tf`: a non-IAP backend service (`metabase-backend-direct`) and a URL-map path matcher carving `/api/*`, `/app/*` and `/embed/*` out to it. `terraform apply` reconciles it. The one-shot `setup-domain.sh` that originally provisioned this was retired in [14.2]; it had already lost the `/app/*` path added after the 9F incident, so it could no longer reproduce production.
 
 ---
 
 ## One-time setup
 
-### 1. Re-run `setup-domain.sh` for the URL-map split
+### 1. Apply the URL-map split with Terraform
 
 ```bash
 cd /workspace/infrastructure/metabase
-./setup-domain.sh --no-wait
+terraform -chdir=../../terraform apply   # see docs/runbook/metabase-access.md for IAP
 ```
 
 Idempotent — existing LB components are skipped, the new non-IAP backend + path matcher are added.

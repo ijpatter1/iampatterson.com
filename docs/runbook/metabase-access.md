@@ -117,15 +117,19 @@ recorded in `metabase-lb.tf` and the secret is read from Secret Manager.
    gcloud iap oauth-brands list --project=iampatterson
    gcloud iap oauth-clients create <BRAND_NAME> --display_name='Metabase IAP' --project=iampatterson
    ```
-3. **Store the credentials.** The secrets `metabase-iap-client-id` and
-   `metabase-iap-client-secret` already exist; add a new version to each rather
-   than recreating them, because `metabase-lb.tf` reads the secret version:
+3. **Store the credentials.** Both secrets already exist; add a new version to
+   each rather than recreating them. Note the asymmetry, because stopping here
+   leaves IAP broken: only the **secret** is read from Secret Manager by
+   Terraform (`data.google_secret_manager_secret_version.metabase_iap_client_secret`).
+   The client **id** is a literal in `metabase-lb.tf`, so storing it here
+   records it but changes nothing until step 4:
    ```bash
    printf '%s' '<client-id>'     | gcloud secrets versions add metabase-iap-client-id     --data-file=- --project=iampatterson
    printf '%s' '<client-secret>' | gcloud secrets versions add metabase-iap-client-secret --data-file=- --project=iampatterson
    ```
-4. **Update the client id** in `metabase-lb.tf` (it is a literal, not a secret)
-   and `terraform apply`.
+4. **Update the client id** in `metabase-lb.tf` and `terraform apply`. This is
+   not optional bookkeeping — it is what puts the new client on the backend
+   service. Skip it and IAP keeps failing against the old client.
 5. **Re-grant the allowlist** using the command above — it does not survive a
    brand rebuild.
 

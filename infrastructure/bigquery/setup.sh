@@ -19,6 +19,8 @@ DATASET="iampatterson_raw"
 TABLE="events_raw"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SCHEMA_FILE="${SCRIPT_DIR}/schema.json"
+TMP_LIVE="$(mktemp)"
+trap 'rm -f "${TMP_LIVE}"' EXIT
 
 echo "==> Project:  ${PROJECT}"
 echo "==> Location: ${LOCATION}"
@@ -54,21 +56,34 @@ fi
 # cannot drop or retype a column, which is the property that makes running this
 # on every deploy reasonable rather than frightening.
 if bq --project_id="${PROJECT}" show "${DATASET}.${TABLE}" > /dev/null 2>&1; then
-  BEFORE=$(bq --project_id="${PROJECT}" show --schema "${DATASET}.${TABLE}" | tr ',' '\n' | grep -c '"name"')
-  DECLARED=$(grep -c '"name"' "${SCHEMA_FILE}")
-  echo "Table ${DATASET}.${TABLE} exists with ${BEFORE} columns; schema.json declares ${DECLARED}."
-  if [ "${BEFORE}" -eq "${DECLARED}" ]; then
-    echo "Schema already matches, nothing to reconcile."
+  # Compare the two schemas properly, by (name, type, mode) — not by counting.
+  #
+  # The first version of this compared column COUNTS, which is not a
+  # comparison: renaming a column, changing metric_value from FLOAT64 to
+  # STRING, or deleting one column and adding another in the same edit all
+  # leave the count unchanged, so the reconcile would short-circuit and the
+  # payload would be silently dropped at the BigQuery write. That is the exact
+  # defect this script exists to fix, reintroduced through the check chosen to
+  # detect it. Caught by review before it shipped.
+  #
+  # Both sides are JSON and both are already being read, so diff them as JSON.
+  bq --project_id="${PROJECT}" show --schema --format=json "${DATASET}.${TABLE}" > "${TMP_LIVE}"
+  if DIFF=$(python3 "${SCRIPT_DIR}/schema-diff.py" "${TMP_LIVE}" "${SCHEMA_FILE}"); then
+    echo "Table ${DATASET}.${TABLE}: schema already matches schema.json."
   else
-    echo "Reconciling schema (additive; existing rows untouched)..."
+    echo "Table ${DATASET}.${TABLE} differs from schema.json:"
+    printf '%s\n' "${DIFF}"
+    echo "Reconciling (additive; existing rows untouched)..."
     bq --project_id="${PROJECT}" update \
       --schema="${SCHEMA_FILE}" \
       "${PROJECT}:${DATASET}.${TABLE}"
-    AFTER=$(bq --project_id="${PROJECT}" show --schema "${DATASET}.${TABLE}" | tr ',' '\n' | grep -c '"name"')
-    echo "Schema reconciled: ${BEFORE} -> ${AFTER} columns."
-    if [ "${AFTER}" -ne "${DECLARED}" ]; then
-      echo "WARNING: table has ${AFTER} columns but schema.json declares ${DECLARED}." >&2
-      echo "         A column may have been dropped from schema.json — bq update cannot remove columns." >&2
+    bq --project_id="${PROJECT}" show --schema --format=json "${DATASET}.${TABLE}" > "${TMP_LIVE}"
+    if REMAINING=$(python3 "${SCRIPT_DIR}/schema-diff.py" "${TMP_LIVE}" "${SCHEMA_FILE}"); then
+      echo "Schema reconciled; live table now matches schema.json."
+    else
+      echo "ERROR: schema still differs after update:" >&2
+      printf '%s\n' "${REMAINING}" >&2
+      echo "       bq update is additive — it cannot drop or retype a column." >&2
       exit 1
     fi
   fi
