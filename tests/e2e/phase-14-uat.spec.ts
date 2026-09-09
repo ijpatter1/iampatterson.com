@@ -135,7 +135,10 @@ test.describe('Phase 14 [14.1] — the consent gate actually gates', () => {
     for (const signal of ['analytics', 'marketing', 'preferences']) {
       await expect(page.getByTestId(`consent-row-${signal}`)).toContainText('DENIED');
     }
-    await expect(page.getByTestId('coverage-readout')).toContainText('0/');
+    // Anchored, not a substring: toContainText('0/') also passes on "10/27" and
+    // "20/27", so a regression would have been caught at every fired-count
+    // except 10-19. Found by the reviewer inside this very fix.
+    await expect(page.getByTestId('coverage-readout')).toHaveText(/^>?\s*0\/\d+/);
   });
 });
 
