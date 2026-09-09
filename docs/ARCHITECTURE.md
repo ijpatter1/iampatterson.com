@@ -949,7 +949,7 @@ Every in-scope resource already serves production, so the first pass on any of t
 
 ### CI
 
-`.github/workflows/infra-terraform.yml` runs `terraform fmt` and `terraform validate` on pull requests touching `infrastructure/terraform/**`, with no credentials. Its `plan` and `apply` jobs are gated on `vars.GCP_WIF_PROVIDER != ''`, which is unset, so neither runs today; 14.3 sets that variable and lights them up. Apply sits behind an `infra-production` environment with manual approval.
+`.github/workflows/infra-terraform.yml` runs `terraform fmt` and `terraform validate` on pull requests touching `infrastructure/terraform/**`, with no credentials. Its `plan` and `apply` jobs are gated on `vars.GCP_WIF_PROVIDER != ''`. [14.3] set that variable on 2026-09-09 and **both jobs are live**: a push to `main` touching `infrastructure/terraform/**` now runs `terraform apply -auto-approve` over the whole root, behind the `infra-production` environment's required-reviewer gate. The apply job's first step independently verifies that a required-reviewer rule exists and exits 1 if it does not, because an environment's protection is an external fact a comment cannot check. First observed applying on 2026-09-09 (run `34362729377`, `Apply complete! Resources: 0 added, 0 changed, 0 destroyed.`).
 
 ### Phase 14 — Declarative infrastructure
 

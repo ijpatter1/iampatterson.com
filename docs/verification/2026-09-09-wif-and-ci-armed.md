@@ -30,7 +30,7 @@ the phase delivers. Narrowing this set is a legitimate follow-up.
 
 | Role | Why it is needed |
 | --- | --- |
-| `roles/run.admin` | the five Cloud Run services in `cloud-run.tf` |
+| `roles/run.admin` | the six Cloud Run services in `cloud-run.tf` |
 | `roles/compute.networkAdmin` | the LB: forwarding rule, URL map, proxy, backends, NEG, address |
 | `roles/compute.loadBalancerAdmin` | managed certificate and the backend service IAP block |
 | `roles/cloudsql.admin` | `metabase-app-db` instance, database and user |
@@ -140,7 +140,9 @@ when the session ended — the same lag the `gtm-reconciler` grant showed earlie
 which cleared after a few minutes. The membership Ian granted is what matters
 and is not in doubt; only my shortcut for confirming it early is missing.
 
-**The real verification is [14.3]'s own acceptance** and it has not run: one
+**The real verification was [14.3]'s own acceptance, and it has since run**
+(see "Verified on the first run" above; this paragraph is superseded as of
+2026-09-09). At the time of writing it had not run: one
 pull request showing the dry-run comment, one merge showing the approval gate
 and a successful apply. Both need the branch pushed, which `bash-guard` reserves
 to a person. Until that happens this deliverable is armed but unproven.

@@ -145,6 +145,73 @@ describe('every job that applies to production refuses an unprotected environmen
     }
   });
 
+  it.each(guarded.map(([f]) => f))('%s checks for a REQUIRED REVIEWER, not any rule', (file) => {
+    const y = readFileSync(path.join(WORKFLOWS, file), 'utf8');
+    // `.protection_rules | length` counts wait timers and branch policies too.
+    // An environment carrying only a wait timer reports 1, the guard prints a
+    // reassuring count, and the apply proceeds unreviewed — the exact state
+    // [14.3] exists to prevent, passing the check written to prevent it.
+    expect(y).toMatch(/select\(\.type\s*==\s*"required_reviewers"\)/);
+    expect(y).not.toMatch(/--jq '\.protection_rules \| length'/);
+  });
+
+  it.each(guarded.map(([f]) => f))('%s runs the guard as the FIRST step', (file) => {
+    const y = readFileSync(path.join(WORKFLOWS, file), 'utf8');
+    for (const [, body] of Object.entries(jobBlocks(y)).filter(([, b]) =>
+      /environment:\s*infra-production/.test(b),
+    )) {
+      // The guard needs no working tree, so nothing — not even a checkout —
+      // should happen before the environment is confirmed to require a human.
+      const firstStep = /^\s+- (?:name|uses):\s*(.+)$/m.exec(body.slice(body.indexOf('steps:')));
+      expect(firstStep?.[1]).toContain('refuse an unprotected environment');
+    }
+  });
+
+  it('the guard is byte-identical across every workflow that carries it', () => {
+    // Two hand-maintained copies diverged one commit after being unified: one
+    // gained a 404-vs-unreadable distinction and the other kept collapsing them.
+    // Presence and position checks cannot see that; equality can.
+    const blocks = guarded.map(([, y]) => {
+      const i = y.indexOf('- name: refuse an unprotected environment');
+      const j = y.indexOf('\n      - ', i + 1);
+      return y.slice(i, j === -1 ? undefined : j).trim();
+    });
+    expect(blocks.length).toBeGreaterThanOrEqual(2);
+    for (const b of blocks.slice(1)) expect(b).toEqual(blocks[0]);
+  });
+
+  it('no run: block compiles an untrusted expression into shell', () => {
+    // A `run:` block interpolates ${{ }} into shell exactly as `script:`
+    // interpolates it into JS. The original check looked only at script bodies,
+    // so this category was open. github.repository and github.token are not
+    // attacker-controlled; anything else reaching shell must come via env:.
+    const TRUSTED = /^(github\.(repository|token|sha|ref|run_id)|env\.[A-Z_]+|vars\.[A-Z_]+|secrets\.[A-Z_]+|steps\.[a-z_]+\.outputs\.[a-z_]+)$/;
+    for (const file of files) {
+      const y = readFileSync(path.join(WORKFLOWS, file), 'utf8');
+      const lines = y.split('\n');
+      let inRun = false;
+      let indent = 0;
+      for (const line of lines) {
+        const open = /^(\s*)run:\s*\|/.exec(line);
+        if (open) {
+          inRun = true;
+          indent = open[1].length;
+          continue;
+        }
+        if (inRun) {
+          if (line.trim() !== '' && line.length - line.trimStart().length <= indent) inRun = false;
+          else {
+            for (const m of line.matchAll(/\$\{\{\s*([^}]+?)\s*\}\}/g)) {
+              expect(`${file}: \${{ ${m[1]} }}`).toMatch(
+                new RegExp(`\\$\\{\\{ (?:${TRUSTED.source.slice(1, -1)}) \\}\\}`),
+              );
+            }
+          }
+        }
+      }
+    }
+  });
+
   it('no apply job asserts approval in a comment instead of checking it', () => {
     // A comment cannot verify an external fact. This exact comment sat on
     // infra-terraform.yml's apply job while no such environment existed.

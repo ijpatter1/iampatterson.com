@@ -283,6 +283,31 @@ confirm "Does at least one dashboard distinguish synthetic from real traffic?" \
   "is_synthetic is usable as a dimension downstream"
 
 # ─────────────────────────────────────────────────────────────────────────────
+hdr "Scenario 11 — EDGE: the string that stops any repo minting a token  [14.3]"
+note "The WIF provider's attribute condition is the single control preventing"
+note "any GitHub repository on earth from assuming infra-deployer — an identity"
+note "the record itself calls close to roles/editor. It is declared in no .tf and"
+note "no script, so until this check it was compared to live by nothing."
+
+EXPECTED_CONDITION="assertion.repository == 'ijpatter1/iampatterson.com'"
+
+verify "the live attribute condition still scopes the pool to this repository" \
+  bash -c "gcloud iam workload-identity-pools providers describe github \
+      --project=$PROJECT --location=global --workload-identity-pool=github \
+      --format='value(attributeCondition)' 2>/dev/null \
+    | grep -qF \"$EXPECTED_CONDITION\""
+
+verify "the deployer is bound to that pool and no other principal set" \
+  bash -c "gcloud iam service-accounts get-iam-policy \
+      infra-deployer@$PROJECT.iam.gserviceaccount.com --project=$PROJECT \
+      --format=json 2>/dev/null \
+    | python3 -c \"
+import json,sys
+p=json.load(sys.stdin)
+ms=[m for b in p.get('bindings',[]) if b['role']=='roles/iam.workloadIdentityUser' for m in b.get('members',[])]
+sys.exit(0 if ms and all('attribute.repository/ijpatter1/iampatterson.com' in m for m in ms) else 1)\""
+
+# ─────────────────────────────────────────────────────────────────────────────
 hdr "Results"
 TOTAL=$((PASS+FAIL+SKIP))
 echo ""

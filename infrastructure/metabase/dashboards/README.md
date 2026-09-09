@@ -57,7 +57,7 @@ terraform -chdir=infrastructure/terraform plan   # read this before the next lin
 terraform -chdir=infrastructure/terraform apply  # IAP: docs/runbook/metabase-access.md
 ```
 
-**Read the plan.** This is a flat root that owns the whole project — five
+**Read the plan.** This is a flat root that owns the whole project — six
 Cloud Run services, Cloud SQL, Pub/Sub, the datasets — not just the load
 balancer, so the plan covers far more than the URL-map split you came here
 for. `infrastructure/terraform/README.md` is explicit that a destructive
