@@ -31,10 +31,23 @@ exists live.
 Plan: 1 to import, 0 to add, 0 to change, 0 to destroy.
 ```
 
-**Not yet applied.** The apply was blocked as an unattended production write and
-is waiting on a person. Until it runs the binding is declared but unmanaged —
-which is the state it was in before, so nothing is worse; the plan above is the
-evidence the import is a no-op when it does run.
+**Applied 2026-09-08** by Ian, from his own shell after the classifier blocked
+an unattended production apply:
+
+```
+Apply complete! Resources: 1 imported, 0 added, 0 changed, 0 destroyed.
+```
+
+A following `terraform plan` reports no differences, and the live surfaces are
+unaffected: `bi.iampatterson.com` 302 (the IAP sign-in redirect, which is the
+healthy response), the site 200, sGTM 200.
+
+**The apply refreshed the entire root, not just the load balancer** — all five
+Cloud Run services, the SQL instance and database, the Pub/Sub topic and push
+subscription, four BigQuery datasets, ten service accounts and twenty-one
+project services. Every one came back with no drift. That is a stronger
+statement than this deliverable's acceptance asked for: the whole declarative
+layer matches live, not only the topology under review.
 
 The resource type carries the safety property: `_iam_member` is additive and
 leaves members this configuration does not name alone. `_iam_binding` or
