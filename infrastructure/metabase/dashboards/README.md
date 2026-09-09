@@ -50,15 +50,20 @@ The split is declared in `infrastructure/terraform/metabase-lb.tf`: a non-IAP ba
 ### 1. Apply the URL-map split with Terraform
 
 ```bash
-# From the repository root. `-chdir` is relative to where you invoke it, so
-# this path assumes the root — the earlier `cd` into infrastructure/metabase
-# made ../../terraform resolve one level too high, to a directory that does
-# not exist.
-GOOGLE_OAUTH_ACCESS_TOKEN=$(gcloud auth print-access-token) \
-  terraform -chdir=infrastructure/terraform apply   # IAP: docs/runbook/metabase-access.md
+# From the repository root — `-chdir` is relative to where you invoke it.
+export GOOGLE_OAUTH_ACCESS_TOKEN=$(gcloud auth print-access-token)
+terraform -chdir=infrastructure/terraform init   # state is remote, in GCS
+terraform -chdir=infrastructure/terraform plan   # read this before the next line
+terraform -chdir=infrastructure/terraform apply  # IAP: docs/runbook/metabase-access.md
 ```
 
-Idempotent — existing LB components are skipped, the new non-IAP backend + path matcher are added.
+**Read the plan.** This is a flat root that owns the whole project — five
+Cloud Run services, Cloud SQL, Pub/Sub, the datasets — not just the load
+balancer, so the plan covers far more than the URL-map split you came here
+for. `infrastructure/terraform/README.md` is explicit that a destructive
+plan against the load balancer, IAP, the managed certificate or Cloud SQL is
+a release blocker, not a convergence step. Against a converged root the
+apply is a no-op.
 
 Verify:
 

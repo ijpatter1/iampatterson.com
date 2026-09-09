@@ -329,13 +329,18 @@ reconciled by `terraform apply` (the script that once created them is retired):
 6. **Target HTTPS proxy** `metabase-https-proxy` — binds URL map to cert
 7. **Global forwarding rule** `metabase-forwarding-rule` — static IP:443 → proxy
 
-**The manual step:** after components 1–7 are up, the script prints the
-static IP and an exact DNS A record. Create that record at your domain
-registrar. Google-managed certs will not provision until DNS resolves.
+**The manual step:** the static IP is `metabase-lb-ip`; read it with
+`gcloud compute addresses describe metabase-lb-ip --global --project=iampatterson
+--format='value(address)'` and create an A record for `bi.iampatterson.com`
+pointing at it. Google-managed certs will not provision until DNS resolves.
 
-The script then polls cert status every 30 seconds for up to 60 minutes.
-Cert provisioning typically takes 15–60 minutes once DNS is live. If the
-script is interrupted, re-run it — steps 1–7 skip and polling resumes.
+Nothing polls for you any more — the script that did was retired in [14.2].
+Cert provisioning typically takes 15–60 minutes once DNS is live. Watch it with:
+
+```bash
+gcloud compute ssl-certificates describe metabase-cert --global \
+  --project=iampatterson --format='value(managed.status)'
+```
 
 **Verify once cert is ACTIVE:**
 
@@ -353,10 +358,10 @@ curl -sI "${URL}/api/health" | head -1
 **Failure modes:**
 
 - Cert stuck `PROVISIONING` >60 min: check DNS resolution
-  (`dig bi.iampatterson.com +short` should return the static IP), give
-  it more time, or re-run to keep polling.
+  (`dig bi.iampatterson.com +short` should return the static IP) and
+  give it more time; re-check with the command above.
 - Cert `FAILED_NOT_VISIBLE`: Google couldn't reach the domain. DNS not
-  set or propagating. Verify the A record and re-run.
+  set or propagating. Verify the A record, then re-check.
 - Backend service shows no healthy endpoints: the serverless NEG isn't
   routable — confirm the Cloud Run service is reachable from the LB
   project (normally automatic when both are in the same project).
@@ -388,7 +393,7 @@ somehow exposed or misconfigured.
 > APIs (`gcloud compute backend-services`, `gcloud iap web`,
 > `gcloud secrets`, `gcloud beta services identity create`).
 
-### One-time manual step (before running the script)
+### One-time manual step (console only)
 
 Configure the OAuth consent screen in the GCP Console. `gcloud` cannot
 do this for Internal-user-type brands:
@@ -476,7 +481,8 @@ should be able to follow it end to end.
 
 Navigate to <https://bi.iampatterson.com/> in a browser. You'll be
 redirected to `accounts.google.com` for the IAP gate. Log in with an
-account on the `ALLOWLIST` from Task 6. You should land on Metabase's
+account on the IAP allowlist (`docs/runbook/metabase-access.md` lists
+who has access and how to add someone). You should land on Metabase's
 first-run wizard.
 
 If you get "You don't have access": the Google account isn't in the
@@ -784,11 +790,10 @@ consequence statement.
 
 ### Add or remove an IAP allowlist member
 
-Adding: run the grant command in `docs/runbook/metabase-access.md` and
-re-run the script. See the Task 6 "Editing the allowlist" section.
-
-Removing: manual, via `gcloud iap web remove-iam-policy-binding`. See
-Task 6 for the command.
+Both directions live in `docs/runbook/metabase-access.md` — **Grant
+access** and **Revoke access**, each with its verification step. They are
+not repeated here: an access change is a procedure with a check, and two
+copies of it drift.
 
 ## Operational summary (quick reference)
 

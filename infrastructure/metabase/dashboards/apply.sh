@@ -23,8 +23,9 @@
 #
 # Prerequisites:
 #   - The URL-map split is applied. It is declared in
-#     infrastructure/terraform/metabase-lb.tf; run `terraform apply` from the
-#     repository root. /api/* bypasses IAP on bi.iampatterson.com. (Phase
+#     infrastructure/terraform/metabase-lb.tf; run `terraform init`, then
+#     `plan`, then `apply` from the repository root — read the plan first,
+#     that root owns the whole project. /api/* bypasses IAP on bi.iampatterson.com. (Phase
 #     9B-infra Task 5 originally provisioned this with setup-domain.sh, which
 #     was retired in [14.2] after it lost the /app/* path added post-9F.)
 #   - Secret metabase-api-key exists in Secret Manager — admin-scoped

@@ -81,6 +81,13 @@ jobs:
       - name: reconcile dry run
         id: dryrun
         continue-on-error: true
+        # `shell: bash` is not cosmetic. GitHub's default for `run:` on Linux
+        # is `bash -e {0}` — no pipefail — so `node reconcile.js | tee` would
+        # exit with tee's status, always 0. A reconciler that crashed would
+        # report success, dropping the warning banner from the PR comment and
+        # skipping the failure gate below. Naming the shell gets
+        # `bash --noprofile --norc -eo pipefail {0}`.
+        shell: bash
         env:
           GTM_TOKEN: ${{ steps.auth.outputs.access_token }}
         run: |

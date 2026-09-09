@@ -61,11 +61,17 @@ describe('workflows do not compile untrusted values into script bodies', () => {
     }
   });
 
-  it('the reconciler workflow reads its diff from env and a file, not from an expression', () => {
+  it('the reconciler workflow reads its diff from a file and its outcome from env', () => {
     const yaml = readFileSync(path.join(WORKFLOWS, 'infra-reconcile.yml'), 'utf8');
     expect(yaml).toMatch(/DIFF_OUTCOME:\s*\$\{\{\s*steps\.dryrun\.outcome\s*\}\}/);
     const [body] = scriptBodies(yaml);
     expect(body).toContain('process.env.DIFF_OUTCOME');
+    // The diff itself is the large, fully attacker-controlled half, and it
+    // travels by file. Asserting only DIFF_OUTCOME let a reintroduced
+    // `DIFF_STDOUT` env pass this test — which is how it read until the
+    // alignment review pointed out the title promised more than the body.
+    expect(body).toContain("readFileSync('/tmp/diff.txt'");
+    expect(yaml).toMatch(/tee -a \/tmp\/diff\.txt/);
   });
 });
 
@@ -94,6 +100,22 @@ describe('the reconcile workflow refuses an unprotected environment', () => {
     // from applying the server spec.
     expect(yaml).toMatch(/reconcile\.js --container=web --apply/);
     expect(yaml).not.toMatch(/reconcile\.js --apply/);
+  });
+
+  it('pipes the dry run through a shell with pipefail, so tee cannot mask a crash', () => {
+    // `node reconcile.js | tee -a /tmp/diff.txt` exits with tee's status,
+    // which is always 0. Without pipefail a reconciler that throws leaves
+    // steps.dryrun.outcome at "success": the PR comment drops its warning
+    // banner and the "Fail if the dry run errored" gate never fires — the
+    // two mechanisms that exist to catch exactly that.
+    //
+    // GitHub's default for `run:` on Linux is `bash -e {0}`, no pipefail.
+    // Naming `shell: bash` switches it to `bash --noprofile --norc -eo
+    // pipefail {0}`. The difference is invisible in the diff, which is why
+    // it is pinned here rather than left to a comment.
+    const dryRun = yaml.slice(yaml.indexOf('id: dryrun'), yaml.indexOf('name: post the diff'));
+    expect(dryRun).toMatch(/tee -a/);
+    expect(dryRun).toMatch(/shell: bash/);
   });
 
   it('publishes as a step after the apply, not folded into it', () => {
