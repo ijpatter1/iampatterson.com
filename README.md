@@ -2,7 +2,7 @@
 
 <!-- STATUS:START -->
 
-**Phase 14** · 16/18 deliverables · 2 human-gated
+**Phase 14** · 17/18 deliverables · 1 human-gated
 
 <!-- STATUS:END -->
 
