@@ -2,7 +2,7 @@
 
 <!-- STATUS:START -->
 
-**Phase 14** · 16/18 deliverables · 2 todo
+**Phase 14** · 16/18 deliverables · 2 human-gated
 
 <!-- STATUS:END -->
 
