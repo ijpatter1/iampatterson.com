@@ -196,12 +196,31 @@ describe('buildLanes', () => {
     expect(mockVertex.constructions).toBe(0);
   });
 
-  it('constructs the client on first stream, and reuses it after', async () => {
-    // The mirror: deferring construction must not mean never constructing it.
-    // The mock rejects in create(), so pulling the iterator is how we observe
-    // that the factory ran at all — and that it ran exactly once across two.
-    const config = loadConfig({ LANES: 'vertex-global,vertex-regional' });
-    const lane = buildLanes(config, {})[0];
+  it('constructs inside next(), where the ladder can catch the failure', async () => {
+    // The placement is the whole point, not just the laziness. `stream` is an
+    // async generator, so calling it runs no body and `translate.ts` obtains the
+    // iterator OUTSIDE its try. Construct there and a credential failure throws
+    // past the failover into a 500; construct on `next()` — inside the try — and
+    // it becomes a silent advance to the next lane. Asserting between the two
+    // calls is what distinguishes them.
+    const lane = buildLanes(loadConfig({ LANES: 'vertex-global' }), {})[0];
+    mockVertex.constructions = 0;
+
+    const iterator = lane
+      .stream({ text: 'hi', direction: 'en2cl' }, new AbortController().signal)
+      [Symbol.asyncIterator]();
+    expect(mockVertex.constructions).toBe(0);
+
+    await expect(iterator.next()).rejects.toThrow('stream not exercised by this suite');
+    expect(mockVertex.constructions).toBe(1);
+  });
+
+  it('does not reuse a client whose request failed', async () => {
+    // The SDK settles its auth promise once in the constructor and re-awaits that
+    // same rejection forever, so memoising a client whose credentials failed
+    // strands the lane for the life of the instance. A second request must build
+    // a second client rather than re-await a settled rejection.
+    const lane = buildLanes(loadConfig({ LANES: 'vertex-global' }), {})[0];
     mockVertex.constructions = 0;
 
     for (let i = 0; i < 2; i += 1) {
@@ -210,6 +229,24 @@ describe('buildLanes', () => {
           .stream({ text: 'hi', direction: 'en2cl' }, new AbortController().signal)
           [Symbol.asyncIterator]()
           .next()
+      ).rejects.toThrow('stream not exercised by this suite');
+    }
+
+    expect(mockVertex.constructions).toBe(2);
+  });
+
+  it('keeps the client when the caller aborts, so typing does not refetch credentials', async () => {
+    // The counterweight: an abort is the caller leaving, not a broken client.
+    // The frontend debounces keystrokes and aborts constantly, so discarding on
+    // abort would rebuild the client — and its credentials — mid-typing.
+    const lane = buildLanes(loadConfig({ LANES: 'vertex-global' }), {})[0];
+    mockVertex.constructions = 0;
+
+    for (let i = 0; i < 2; i += 1) {
+      const ac = new AbortController();
+      ac.abort();
+      await expect(
+        lane.stream({ text: 'hi', direction: 'en2cl' }, ac.signal)[Symbol.asyncIterator]().next()
       ).rejects.toThrow('stream not exercised by this suite');
     }
 

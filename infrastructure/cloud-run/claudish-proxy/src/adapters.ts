@@ -167,11 +167,28 @@ function laneFromClient(
     name,
     modelId,
     async *stream(req: LaneRequest, signal: AbortSignal): AsyncIterable<UpstreamEvent> {
-      client ??= createClient();
-      const stream = await client.messages.create(
-        buildMessageParams(req.direction, req.text, modelId),
-        { signal }
-      );
+      const active = (client ??= createClient());
+      let stream;
+      try {
+        stream = await active.messages.create(
+          buildMessageParams(req.direction, req.text, modelId),
+          { signal }
+        );
+      } catch (err) {
+        // Never keep a client whose credentials failed. The SDK settles its auth
+        // promise once in the constructor and re-awaits that same rejection on
+        // every later request, so a memoised broken client stays broken for the
+        // life of the instance — and with min-instances=1 that is the life of the
+        // revision. Dropping it lets the next request build a fresh one; the
+        // per-lane circuit breaker bounds the cost of retrying a dead lane.
+        // `geminiAccessToken` caches on success only, for the same reason.
+        //
+        // Not on abort: there the client is fine and the caller simply left. The
+        // frontend debounces keystrokes and aborts constantly, so discarding here
+        // would refetch credentials during ordinary typing.
+        if (!signal.aborted && client === active) client = undefined;
+        throw err;
+      }
       yield* adaptAnthropicStream(stream);
     },
   };

@@ -108,12 +108,14 @@ jobs:
         # Env-gated suites inside these services (golden, latency) skip on their
         # own when the flag is absent; nothing here sets one.
         #
-        # --maxWorkers=2 because jest sizes its pool from the host CPU count and
-        # a runner is much smaller than a dev machine. claudish-proxy's
-        # adapters.ts imports both Anthropic SDKs at top level, so ts-jest
-        # compiles that type surface once per worker; on the first real CI run
-        # the workers were killed ("4 child process exceptions"), which local
-        # runs on 14 cores never reproduce.
+        # The first real CI run killed claudish-proxy's workers ("4 child process
+        # exceptions"). That was NOT pool sizing — --maxWorkers=2 was tried and
+        # changed nothing. The cause was an unhandled rejection: a lane client
+        # constructed at import time started a credential fetch and never handled
+        # its failure, which no developer machine reproduces because gcloud auth
+        # supplies ADC and a runner has none. Fixed in adapters.ts; reproduce that
+        # condition locally with
+        #   env -u GOOGLE_APPLICATION_CREDENTIALS CLOUDSDK_CONFIG=$(mktemp -d) npm test
         run: npm test
       - name: build
         # ts-jest only typechecks what a test imports, so a file no test touches

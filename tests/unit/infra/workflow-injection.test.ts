@@ -132,12 +132,18 @@ describe('every job that applies to production refuses an unprotected environmen
     expect(deploying.length).toBeGreaterThan(0);
 
     for (const [jobName, body] of deploying) {
-      // The guard must be IN this job, not merely somewhere in the file.
-      expect(`${file}:${jobName} → ${body}`).toMatch(/protection_rules \| length/);
+      // The guard must be IN this job, not merely somewhere in the file — and
+      // must be the jq that RUNS, not the comment that explains it. The literal
+      // `protection_rules | length` now appears only in that comment (the check
+      // counts required_reviewers specifically), so matching it asserted prose:
+      // deleting the whole `gh api` lookup and keeping the comment passed.
+      expect(`${file}:${jobName} → ${body}`).toMatch(/select\(\.type\s*==\s*"required_reviewers"\)/);
       expect(body).toContain('environments/infra-production');
 
-      // …and before the step it guards.
-      const guard = body.indexOf('protection_rules');
+      // …and before the step it guards. Anchored on required_reviewers for the
+      // same reason: `indexOf('protection_rules')` found the comment, so the
+      // ordering check measured where the prose sat, not where the guard ran.
+      const guard = body.indexOf('required_reviewers');
       const applyStep = body.search(/^\s+- name: (terraform apply|reconcile apply)/m);
       expect(applyStep).toBeGreaterThan(-1);
       expect(guard).toBeGreaterThan(-1);
@@ -230,7 +236,9 @@ describe('the reconcile workflow refuses an unprotected environment', () => {
     // existed, and GitHub creates a referenced-but-missing environment
     // implicitly and unprotected. A comment cannot verify an external fact.
     expect(yaml).toContain('environments/infra-production');
-    expect(yaml).toMatch(/protection_rules \| length/);
+    // The executable jq, not the comment that describes it — nothing else in
+    // this block pinned the check, so prose plus a stray `exit 1` satisfied it.
+    expect(yaml).toMatch(/select\(\.type\s*==\s*"required_reviewers"\)/);
     expect(yaml).toMatch(/exit 1/);
   });
 

@@ -233,7 +233,9 @@ describe('Question specs discriminate real traffic from the generator', () => {
     // from ecommerce_executive.yaml left the whole suite green — the existing
     // reference test only walks dashboard -> question, never the reverse.
     const placed = new Set<string>();
-    for (const f of fs.readdirSync(path.join(SPECS_ROOT, 'dashboards')).filter((x) => x.endsWith('.yaml'))) {
+    for (const f of fs
+      .readdirSync(path.join(SPECS_ROOT, 'dashboards'))
+      .filter((x) => x.endsWith('.yaml'))) {
       for (const c of loadDashboard(f).cards) placed.add(c.card);
     }
     const onADashboard = discriminating.filter((q) => placed.has(q.name));
