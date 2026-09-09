@@ -301,6 +301,44 @@
         "consent_preferences": "{{dlv - consent_preferences}}"
       },
       "note": "Google Tag Event Settings variable. Supplies the parameters every GA4 event tag sends, so each tag's own parameter list holds only what is event-specific. Referenced by 17 tags via eventSettingsVariable; adopted into this spec on 2026-09-08 after the reconciler census found live had moved to it and the spec had not."
+    },
+    {
+      "name": "dlv - metric_name",
+      "type": "dataLayer",
+      "dataLayerVariable": "metric_name"
+    },
+    {
+      "name": "dlv - metric_value",
+      "type": "dataLayer",
+      "dataLayerVariable": "metric_value",
+      "note": "Numeric. GA4 stores it as a string; the BigQuery column is FLOAT and the sGTM write casts."
+    },
+    {
+      "name": "dlv - metric_rating",
+      "type": "dataLayer",
+      "dataLayerVariable": "metric_rating"
+    },
+    {
+      "name": "dlv - metric_id",
+      "type": "dataLayer",
+      "dataLayerVariable": "metric_id"
+    },
+    {
+      "name": "dlv - navigation_type",
+      "type": "dataLayer",
+      "dataLayerVariable": "navigation_type"
+    },
+    {
+      "name": "dlv - engagement_seconds",
+      "type": "dataLayer",
+      "dataLayerVariable": "engagement_seconds",
+      "note": "Threshold crossed: 15, 60 or 180. Not elapsed time."
+    },
+    {
+      "name": "dlv - max_scroll_pct",
+      "type": "dataLayer",
+      "dataLayerVariable": "max_scroll_pct",
+      "note": "High-water mark 0-100, unbucketed, at the moment of firing."
     }
   ],
   "triggers": [
@@ -413,6 +451,18 @@
       "type": "customEvent",
       "eventName": "claudish_rate",
       "note": "Fires when the /claudish app pushes { event: 'claudish_rate' } to the data layer (feat/claudish). Params are counts/durations/enums only — no text by design."
+    },
+    {
+      "name": "ce - web_vital",
+      "type": "customEvent",
+      "eventName": "web_vital",
+      "note": "Fires when app code pushes { event: 'web_vital' } to the data layer."
+    },
+    {
+      "name": "ce - page_engagement",
+      "type": "customEvent",
+      "eventName": "page_engagement",
+      "note": "Fires when app code pushes { event: 'page_engagement' } to the data layer."
     }
   ],
   "tags": [
@@ -777,6 +827,41 @@
       },
       "measurementId": "{{const - ga4_measurement_id}}",
       "sharedEventSettings": "{{ga4 - shared_event_settings}}"
+    },
+    {
+      "name": "GA4 - web_vital",
+      "type": "GA4 Event (gaawe)",
+      "eventName": "web_vital",
+      "parameters": {
+        "metric_name": "{{dlv - metric_name}}",
+        "metric_value": "{{dlv - metric_value}}",
+        "metric_rating": "{{dlv - metric_rating}}",
+        "metric_id": "{{dlv - metric_id}}",
+        "navigation_type": "{{dlv - navigation_type}}"
+      },
+      "measurementId": "{{const - ga4_measurement_id}}",
+      "sharedEventSettings": "{{ga4 - shared_event_settings}}",
+      "firingTrigger": "ce - web_vital",
+      "consentSettings": {
+        "analytics_storage": "required"
+      },
+      "note": "Core Web Vitals from the browser's own PerformanceObserver (LCP, CLS, INP, FCP, TTFB), reported once per metric per page. Rendered as a coverage chip on the Overview tab, so until this tag existed the overlay showed visitors a chip for an event the pipeline did not carry. Common parameters come from {{ga4 - shared_event_settings}}; only event-specific ones are listed here."
+    },
+    {
+      "name": "GA4 - page_engagement",
+      "type": "GA4 Event (gaawe)",
+      "eventName": "page_engagement",
+      "parameters": {
+        "engagement_seconds": "{{dlv - engagement_seconds}}",
+        "max_scroll_pct": "{{dlv - max_scroll_pct}}"
+      },
+      "measurementId": "{{const - ga4_measurement_id}}",
+      "sharedEventSettings": "{{ga4 - shared_event_settings}}",
+      "firingTrigger": "ce - page_engagement",
+      "consentSettings": {
+        "analytics_storage": "required"
+      },
+      "note": "Engaged-time thresholds (15/60/180s) with the unbucketed high-water-mark scroll percentage. Closes the gap scroll_depth's milestone buckets leave: they lose the real maximum and say nothing about time spent. Common parameters come from {{ga4 - shared_event_settings}}; only event-specific ones are listed here."
     }
   ]
 }
