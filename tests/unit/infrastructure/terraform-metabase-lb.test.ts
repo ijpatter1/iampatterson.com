@@ -7,7 +7,7 @@
  * Phase 9F production incident (an asset path silently falling under IAP).
  */
 import { parse } from '@cdktf/hcl2json';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 
 const TF_DIR = path.join(process.cwd(), 'infrastructure', 'terraform');
@@ -105,5 +105,55 @@ describe('Phase 11 D9 — Metabase LB/IAP', () => {
       expect(text).toMatch(/oauth2_client_secret\s*=\s*data\.google_secret_manager_secret_version/);
       expect(text).not.toMatch(/oauth2_client_secret\s*=\s*"[^"$]/);
     });
+  });
+});
+
+/**
+ * The IAP service agent, declared by [14.2] when `setup-iap.sh` was retired.
+ *
+ * Without this binding IAP authenticates a browser request and then cannot
+ * forward it: every request through the load balancer returns 403 while the
+ * Cloud Run service is healthy, and neither the LB nor the service logs name
+ * the cause. It was created by a one-shot script that no longer exists.
+ */
+describe('IAP service agent binding', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let member: any;
+
+  beforeAll(async () => {
+    const json = await parse('metabase-lb.tf', read('metabase-lb.tf'));
+    member = json.resource.google_cloud_run_v2_service_iam_member?.metabase_iap_agent?.[0];
+  });
+
+  it('grants run.invoker to the IAP service agent on the metabase service', () => {
+    expect(member).toBeDefined();
+    expect(member.role).toBe('roles/run.invoker');
+    expect(member.member).toContain('gcp-sa-iap.iam.gserviceaccount.com');
+  });
+
+  it('uses the additive per-member resource, not an authoritative one — anywhere in the root', () => {
+    // _iam_binding or _iam_policy is authoritative: on first apply it revokes
+    // every member this configuration does not name, including the `allUsers`
+    // binding deliberately left alone and the IAP service agent binding this
+    // deliverable just imported. The resource TYPE is the safety property.
+    //
+    // Scoped to the whole root, not this file. [14.5] is queued to add the
+    // first IAM resources here; an authoritative binding dropped into iam.tf
+    // or cloud-run.tf would pass a file-scoped check and still revoke them.
+    const dir = path.join(TF_DIR);
+    const offenders: string[] = [];
+    for (const file of readdirSync(dir).filter((f) => f.endsWith('.tf'))) {
+      const body = readFileSync(path.join(dir, file), 'utf8');
+      if (/resource\s+"google_cloud_run_v2_service_iam_(binding|policy)"/.test(body)) {
+        offenders.push(file);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it('is imported rather than created, since it already exists live', () => {
+    expect(read('imports-lb.tf')).toContain(
+      'google_cloud_run_v2_service_iam_member.metabase_iap_agent',
+    );
   });
 });

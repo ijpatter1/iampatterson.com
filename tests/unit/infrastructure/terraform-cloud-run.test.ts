@@ -9,14 +9,14 @@
  * the ignore_changes contract that keeps Terraform from fighting deploys.
  */
 import { parse } from '@cdktf/hcl2json';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 
 const TF_DIR = path.join(process.cwd(), 'infrastructure', 'terraform');
 const read = (file: string): string => readFileSync(path.join(TF_DIR, file), 'utf8');
 
-const SERVICES = ['event_stream', 'data_generator', 'sgtm', 'sgtm_preview', 'metabase'];
-const SOURCE_DEPLOY = ['event_stream', 'data_generator'];
+const SERVICES = ['event_stream', 'data_generator', 'sgtm', 'sgtm_preview', 'metabase', 'claudish_proxy'];
+const SOURCE_DEPLOY = ['event_stream', 'data_generator', 'claudish_proxy'];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let svc: Record<string, any>;
@@ -88,5 +88,68 @@ describe('Phase 11 D9 — Cloud Run services', () => {
         expect(image).not.toMatch(/:latest$/);
       }
     });
+  });
+});
+
+/**
+ * Every source-deployed service is declared (Phase 14, deliverable 14.5).
+ *
+ * `claudish-proxy` was absent from `cloud-run.tf` for three months and nothing
+ * noticed. `terraform plan` could not: a resource in neither the configuration
+ * nor the state produces no plan output at all — the plan only ever describes
+ * the gap between those two, so it is structurally silent about a resource in
+ * neither. 13.4's record said "the proxy adoption imported", which was true of
+ * six other resources and not of the service.
+ *
+ * The census that would have caught it has to come from something current by
+ * construction. `IMPORT_INVENTORY.md` is not: it is dated 2026-06-03 and
+ * claudish-proxy entered the repo on 2026-09-03, so a pin against the inventory
+ * would have been green throughout the miss. A source-deployed service cannot
+ * exist without its directory, so the directory listing is the honest census.
+ */
+describe('14.5 — every source-deployed service is in the declarative layer', () => {
+  const serviceDirs = readdirSync(path.join(TF_DIR, '..', 'cloud-run'), { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .map((e) => e.name)
+    .sort();
+
+  it('finds the service directories, so an empty read is not a silent pass', () => {
+    expect(serviceDirs).toEqual(['claudish-proxy', 'data-generator', 'event-stream']);
+  });
+
+  it.each(serviceDirs)('%s has a google_cloud_run_v2_service declaration', (dir) => {
+    // Would have failed on 2026-09-03, the day claudish-proxy entered the repo.
+    const resourceName = dir.replace(/-/g, '_');
+    expect(Object.keys(svc)).toContain(resourceName);
+  });
+});
+
+describe('14.5 — the claudish proxy carries the kill-switch treatment', () => {
+  it('is declared as a source-deploy service like its siblings', () => {
+    expect(svc.claudish_proxy).toBeDefined();
+    expect(svc.claudish_proxy[0].deletion_protection).toBe(true);
+  });
+
+  it('excludes the env block from ignore_changes, which the kill switch depends on', () => {
+    // IMPORT_PLAN.md calls this "the class of thing this plan exists to catch":
+    // KILL_SWITCH lives in the service env, so if Terraform owns that block an
+    // emergency `gcloud run services update --update-env-vars KILL_SWITCH=on`
+    // is silently reverted by the next apply — mid-incident.
+    const ignored = svc.claudish_proxy[0].lifecycle[0].ignore_changes;
+    expect(ignored).toEqual(
+      expect.arrayContaining([
+        '${client}',
+        '${client_version}',
+        '${build_config}',
+        '${template[0].containers[0].image}',
+        '${template[0].containers[0].env}',
+      ]),
+    );
+  });
+
+  it('runs as its own runtime identity, not the default compute account', () => {
+    expect(svc.claudish_proxy[0].template[0].service_account).toBe(
+      'claudish-proxy@iampatterson.iam.gserviceaccount.com',
+    );
   });
 });

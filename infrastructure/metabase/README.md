@@ -8,6 +8,16 @@ naming conventions, evaluator checks, cost expectations — lives at
 Scripts are sequenced and land task-by-task: do not jump ahead. Each task
 is idempotent and safe to re-run.
 
+
+> **The two one-shot setup scripts were retired on 2026-09-08 ([14.2]).**
+> `setup-domain.sh` and `setup-iap.sh` provisioned the load balancer and IAP
+> before Terraform covered them. `infrastructure/terraform/metabase-lb.tf` now
+> declares the whole topology and `terraform plan` reports no changes against
+> live, so the scripts could only have drifted from it — `setup-domain.sh` had
+> already lost the `/app/*` carve-out added after the 9F incident. Granting and
+> revoking access, and rebuilding IAP from nothing, are procedures in
+> `docs/runbook/metabase-access.md`.
+
 ## Traffic path
 
 ```
@@ -307,13 +317,9 @@ Google-managed SSL cert for `bi.iampatterson.com`. The LB is a hard
 prerequisite for Task 6 — IAP on Cloud Run works only through a
 load-balancer-fronted backend service, not the direct `.run.app` URL.
 
-```bash
-./setup-domain.sh              # provision + print DNS + poll cert
-./setup-domain.sh --dry-run    # preview
-./setup-domain.sh --no-wait    # provision + print DNS; skip cert poll
-```
 
-Seven components created, each name-pinned for idempotent re-runs:
+Seven components, each declared in `infrastructure/terraform/metabase-lb.tf` and
+reconciled by `terraform apply` (the script that once created them is retired):
 
 1. **Static IP** `metabase-lb-ip` (global)
 2. **SSL cert** `metabase-cert` — Google-managed, for `bi.iampatterson.com`
@@ -323,13 +329,18 @@ Seven components created, each name-pinned for idempotent re-runs:
 6. **Target HTTPS proxy** `metabase-https-proxy` — binds URL map to cert
 7. **Global forwarding rule** `metabase-forwarding-rule` — static IP:443 → proxy
 
-**The manual step:** after components 1–7 are up, the script prints the
-static IP and an exact DNS A record. Create that record at your domain
-registrar. Google-managed certs will not provision until DNS resolves.
+**The manual step:** the static IP is `metabase-lb-ip`; read it with
+`gcloud compute addresses describe metabase-lb-ip --global --project=iampatterson
+--format='value(address)'` and create an A record for `bi.iampatterson.com`
+pointing at it. Google-managed certs will not provision until DNS resolves.
 
-The script then polls cert status every 30 seconds for up to 60 minutes.
-Cert provisioning typically takes 15–60 minutes once DNS is live. If the
-script is interrupted, re-run it — steps 1–7 skip and polling resumes.
+Nothing polls for you any more — the script that did was retired in [14.2].
+Cert provisioning typically takes 15–60 minutes once DNS is live. Watch it with:
+
+```bash
+gcloud compute ssl-certificates describe metabase-cert --global \
+  --project=iampatterson --format='value(managed.status)'
+```
 
 **Verify once cert is ACTIVE:**
 
@@ -347,10 +358,10 @@ curl -sI "${URL}/api/health" | head -1
 **Failure modes:**
 
 - Cert stuck `PROVISIONING` >60 min: check DNS resolution
-  (`dig bi.iampatterson.com +short` should return the static IP), give
-  it more time, or re-run to keep polling.
+  (`dig bi.iampatterson.com +short` should return the static IP) and
+  give it more time; re-check with the command above.
 - Cert `FAILED_NOT_VISIBLE`: Google couldn't reach the domain. DNS not
-  set or propagating. Verify the A record and re-run.
+  set or propagating. Verify the A record, then re-check.
 - Backend service shows no healthy endpoints: the serverless NEG isn't
   routable — confirm the Cloud Run service is reachable from the LB
   project (normally automatic when both are in the same project).
@@ -375,14 +386,14 @@ somehow exposed or misconfigured.
 > - Console-only path: manage brand + clients via the Cloud Console UI
 >   at APIs & Services → Credentials → OAuth 2.0 Client IDs
 >
-> When the shutdown forces a rewrite, the changes in `setup-iap.sh`
+> When the shutdown forces a rewrite, the IAP changes
 > are localized to Step 1 (OAuth client create) — everything after
 > (secret storage, IAP enable, allowlist reconciliation, IAP service
 > agent provisioning) stays the same because those use non-deprecated
 > APIs (`gcloud compute backend-services`, `gcloud iap web`,
 > `gcloud secrets`, `gcloud beta services identity create`).
 
-### One-time manual step (before running the script)
+### One-time manual step (console only)
 
 Configure the OAuth consent screen in the GCP Console. `gcloud` cannot
 do this for Internal-user-type brands:
@@ -396,66 +407,48 @@ do this for Internal-user-type brands:
 6. Save
 
 After the consent screen is saved, the project has an OAuth brand that
-`setup-iap.sh` can use.
+the IAP configuration can use.
 
-### Then run the script
+### What IAP consists of
 
-```bash
-./setup-iap.sh              # configure IAP + reconcile allowlist
-./setup-iap.sh --dry-run    # preview
-```
+Not a script any more — `setup-iap.sh` was retired in [14.2]. These are the
+pieces, so the section below is still useful when something is missing:
 
-What it does:
+1. An OAuth 2.0 client named `metabase-iap-client`, created once against a
+   console-configured consent screen. The brand cannot be automated for an
+   Internal user type.
+2. Its id and secret in Secret Manager as `metabase-iap-client-id` and
+   `metabase-iap-client-secret`. `metabase-lb.tf` reads the *secret* from there;
+   the *id* is a literal in that file, which is why storing a new id is not
+   enough on its own.
+3. IAP enabled on the `metabase-backend` backend service, wired to that client —
+   the `iap {}` block in `metabase-lb.tf`.
+4. The IAP service agent
+   (`service-<PROJECT_NUMBER>@gcp-sa-iap.iam.gserviceaccount.com`) holding
+   `roles/run.invoker` on the Cloud Run service. Without it IAP enforces at the
+   load balancer and then cannot invoke Cloud Run: every browser gets a 403
+   while the service is healthy and nothing names the cause. Declared as
+   `google_cloud_run_v2_service_iam_member.metabase_iap_agent` in
+   `metabase-lb.tf` since [14.2].
+5. `roles/iap.httpsResourceAccessor` granted per member. This one is
+   deliberately **not** in Terraform — see below.
 
-1. Creates an OAuth 2.0 client named `metabase-iap-client` (idempotent
-   via displayName match — re-runs find the existing one).
-2. Stores the OAuth client ID and secret in Secret Manager as
-   `metabase-iap-client-id` and `metabase-iap-client-secret`. Neither
-   value appears on the command line or in logs.
-3. Enables IAP on the `metabase-backend` backend service, wired to the
-   OAuth client.
-4. Provisions the IAP service agent
-   (`service-<PROJECT_NUMBER>@gcp-sa-iap.iam.gserviceaccount.com`) on the
-   project and grants it `roles/run.invoker` on the Cloud Run service.
-   Without this, IAP enforces successfully at the LB but fails to
-   invoke Cloud Run — the browser sees "The IAP service account is
-   not provisioned." The `allUsers run.invoker` binding `deploy.sh`
-   set is for the pre-IAP path; once IAP is enforcing, requests reach
-   Cloud Run as the IAP agent, not anonymously.
-5. Grants `roles/iap.httpsResourceAccessor` to each member of the
-   `ALLOWLIST` array at the top of the script.
+### Granting and revoking access
 
-### Editing the allowlist
+**The procedure lives in `docs/runbook/metabase-access.md`.** There is no
+allowlist array to edit: the retired script kept one, and access is now granted
+one member at a time.
 
-Open `setup-iap.sh`. The `ALLOWLIST` array is at the top, near line 50:
+Removal is deliberately manual, and deliberately outside Terraform. A config
+that removed on drift would mean deleting a line from a file revokes someone's
+access on the next merge — and with `infra-terraform.yml` applying on merge to
+`main` since [14.3], that is not hypothetical. Access to the BI tool should not
+be one push away from vanishing.
 
-```bash
-ALLOWLIST=(
-  "user:ian@tunameltsmyheart.com"
-  "user:newperson@example.com"   # add a line like this
-)
-```
-
-Re-run the script. Additions land; existing members are left alone.
-
-**Removal is deliberately manual.** If a member is removed from the
-array and the script re-runs, they stay granted. This is by design —
-a config that removes on drift would silently lock people out if a
-line gets commented or removed accidentally. To revoke:
-
-```bash
-gcloud iap web remove-iam-policy-binding \
-  --resource-type=backend-services --service=metabase-backend \
-  --member="user:someone@example.com" \
-  --role="roles/iap.httpsResourceAccessor" \
-  --project=iampatterson
-```
-
-> **Plan fidelity:** the deployment plan contains two allowlist rules
-> that look contradictory ("exactly those specified" vs "adds new
-> members, does not remove"). Additive-only is the safer failure mode
-> — accidental removal of an array line can't silently lock someone
-> out. The two rules are equivalent under the intended usage pattern.
+> **Plan fidelity:** the deployment plan contains two allowlist rules that look
+> contradictory ("exactly those specified" vs "adds new members, does not
+> remove"). Additive-only is the safer failure mode, and the two are equivalent
+> under the intended usage pattern.
 
 ### Verify
 
@@ -470,7 +463,7 @@ gcloud compute backend-services describe metabase-backend \
 gcloud iap web get-iam-policy \
   --resource-type=backend-services --service=metabase-backend \
   --project=iampatterson --format='value(bindings.members)'
-# expect: all ALLOWLIST members
+# expect: every member granted per docs/runbook/metabase-access.md
 ```
 
 Open `https://bi.iampatterson.com/` in a browser:
@@ -488,11 +481,12 @@ should be able to follow it end to end.
 
 Navigate to <https://bi.iampatterson.com/> in a browser. You'll be
 redirected to `accounts.google.com` for the IAP gate. Log in with an
-account on the `ALLOWLIST` from Task 6. You should land on Metabase's
+account on the IAP allowlist (`docs/runbook/metabase-access.md` lists
+who has access and how to add someone). You should land on Metabase's
 first-run wizard.
 
 If you get "You don't have access": the Google account isn't in the
-IAP allowlist. Add it to `setup-iap.sh` and re-run, or grant ad-hoc
+IAP allowlist. Grant it with the command in `docs/runbook/metabase-access.md`, or ad-hoc
 via the manual `gcloud iap web add-iam-policy-binding` command.
 
 ### 2. Create the admin account
@@ -796,11 +790,10 @@ consequence statement.
 
 ### Add or remove an IAP allowlist member
 
-Adding: edit the `ALLOWLIST` array at the top of `setup-iap.sh` and
-re-run the script. See the Task 6 "Editing the allowlist" section.
-
-Removing: manual, via `gcloud iap web remove-iam-policy-binding`. See
-Task 6 for the command.
+Both directions live in `docs/runbook/metabase-access.md` — **Grant
+access** and **Revoke access**, each with its verification step. They are
+not repeated here: an access change is a procedure with a check, and two
+copies of it drift.
 
 ## Operational summary (quick reference)
 
@@ -811,6 +804,6 @@ Task 6 for the command.
 | Restore | Bad upgrade, instance issue | `gcloud sql backups restore <ID> ...` |
 | Rollback (image only) | Bad upgrade, no schema drift | `METABASE_IMAGE=<prior> ./deploy.sh` |
 | Rotate BQ key | Annually | See "Rotate the BigQuery SA key" |
-| Add allowlist member | Granting IAP access | Edit `setup-iap.sh` → re-run |
+| Add allowlist member | Granting IAP access | `docs/runbook/metabase-access.md` → **Grant access** |
 | Remove allowlist member | Revoking IAP access | `gcloud iap web remove-iam-policy-binding ...` |
 | View daily backup | Check automated snapshots | `gcloud sql backups list --instance=metabase-app-db` |

@@ -64,6 +64,8 @@ Things that go wrong without anything watching for them.
 | An automated check cannot read a Vercel preview | [preview protection](preview-protection.md) |
 | Scheduled maintenance: the sGTM container image | [updating the sGTM image](sgtm-image-update.md) |
 | Scheduled maintenance: dependencies | [dependency cadence](dependency-cadence.md) |
+| Someone needs access to Metabase, or everyone is getting 403 | [Metabase access](metabase-access.md) |
+| An infrastructure apply broke something visible | [an apply damaged production](infra-apply-damaged-production.md) |
 
 ## Things to know before you start
 

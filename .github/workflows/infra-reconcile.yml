@@ -1,0 +1,201 @@
+name: infra-reconcile
+
+# Phase 14 deliverable 14.3 — CI for the GTM container reconciler.
+#
+# - PRs touching infrastructure/gtm/**: a dry run against the live Default
+#   Workspace, posted back as a PR comment.
+# - Push to main: the live apply, behind the `infra-production` environment,
+#   which repo settings configure to require manual approval.
+#
+# The Metabase path this deliverable originally carried is gone: [14.2] retired
+# those one-shots onto Terraform, so `infrastructure/metabase/**` changes are
+# covered by infra-terraform.yml's existing `infrastructure/terraform/**`
+# trigger. Adding a second workflow for them would have meant two writers on one
+# URL map.
+#
+# PREREQUISITES, and the order matters (see docs/manual/task-2026-09-09-001.md):
+#
+#   1. The `infra-production` environment must exist WITH A REQUIRED REVIEWER
+#      before `vars.GCP_WIF_PROVIDER` is set. GitHub creates a
+#      referenced-but-missing environment implicitly, UNPROTECTED — so setting
+#      the variable first arms an unreviewed apply. The preflight step below
+#      refuses to proceed if the environment carries no protection rules, but
+#      the ordering is the real guard.
+#   2. That same variable also arms infra-terraform.yml's
+#      `terraform apply -auto-approve` on every push to main. Setting it is one
+#      action with two consequences.
+#   3. It must be set only after every in-flight Terraform import has landed and
+#      `terraform plan` is a captured no-op — otherwise merging an import block
+#      means an unattended apply performing the import of a live service.
+#   4. The deploy service account must be a member of GTM account 6346433751.
+#      The Tag Manager API authorises on GTM account membership, not GCP IAM:
+#      WIF gets you an identity, not access. Granting it is a browser step —
+#      docs/manual/task-2026-09-08-001.md records the same grant for the
+#      interactive identity.
+
+on:
+  pull_request:
+    paths:
+      - 'infrastructure/gtm/**'
+      - '.github/workflows/infra-reconcile.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'infrastructure/gtm/**'
+      - '.github/workflows/infra-reconcile.yml'
+
+permissions:
+  contents: read
+  id-token: write # Workload Identity Federation
+  pull-requests: write # post the diff as a PR comment
+
+env:
+  NODE_VERSION: '24'
+  # The four tagmanager scopes the reconciler needs. GCP's cloud-platform scope
+  # does not cover the Tag Manager API; google-github-actions/auth mints
+  # cloud-platform by default, so these must be named.
+  GTM_SCOPES: >-
+    https://www.googleapis.com/auth/tagmanager.edit.containers,
+    https://www.googleapis.com/auth/tagmanager.edit.containerversions,
+    https://www.googleapis.com/auth/tagmanager.publish,
+    https://www.googleapis.com/auth/tagmanager.readonly
+
+jobs:
+  dry-run:
+    name: dry run (PR)
+    if: github.event_name == 'pull_request' && vars.GCP_WIF_PROVIDER != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: google-github-actions/auth@v2
+        id: auth
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SA }}
+          token_format: access_token
+          access_token_scopes: ${{ env.GTM_SCOPES }}
+
+      - name: reconcile dry run
+        id: dryrun
+        continue-on-error: true
+        # `shell: bash` is not cosmetic. GitHub's default for `run:` on Linux
+        # is `bash -e {0}` — no pipefail — so `node reconcile.js | tee` would
+        # exit with tee's status, always 0. A reconciler that crashed would
+        # report success, dropping the warning banner from the PR comment and
+        # skipping the failure gate below. Naming the shell gets
+        # `bash --noprofile --norc -eo pipefail {0}`.
+        shell: bash
+        env:
+          GTM_TOKEN: ${{ steps.auth.outputs.access_token }}
+        run: |
+          node infrastructure/gtm/reconcile.js --container=web   | tee -a /tmp/diff.txt
+          node infrastructure/gtm/reconcile.js --container=server | tee -a /tmp/diff.txt
+
+      - name: post the diff
+        uses: actions/github-script@v7
+        env:
+          # Reconciler output reaches the script through env, NEVER through
+          # ${{ }} interpolation into the script body. A pull request controls
+          # the container specs, therefore controls this text, therefore would
+          # control the JavaScript compiled here — an expression-injection sink
+          # holding a pull-requests:write token. infra-terraform.yml carried
+          # exactly that sink until 004f7a3 removed it; a check over
+          # .github/workflows/*.yml pins the shape for both.
+          # Only the outcome comes through an expression, and it is a fixed
+          # enum ("success"/"failure") that no pull request can influence. The
+          # diff itself is read from the file the step wrote — a `run:` step
+          # emits no `outputs.stdout`, so routing it through an expression
+          # would be both dead and misleading.
+          DIFF_OUTCOME: ${{ steps.dryrun.outcome }}
+        with:
+          script: |
+            const fs = require('fs');
+            const diff = fs.existsSync('/tmp/diff.txt')
+              ? fs.readFileSync('/tmp/diff.txt', 'utf8')
+              : '(no output)';
+            const outcome = process.env.DIFF_OUTCOME;
+            const body = [
+              '## GTM reconciler — dry run',
+              '',
+              outcome === 'failure'
+                ? '⚠️ The dry run exited non-zero. It refuses when a planned write cannot be built.'
+                : '',
+              '```',
+              diff.slice(0, 60000),
+              '```',
+              '',
+              '_Nothing was written. A merge to `main` applies this behind the `infra-production` approval gate._',
+            ].join('\n');
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body,
+            });
+
+      - name: Fail if the dry run errored
+        if: steps.dryrun.outcome == 'failure'
+        run: exit 1
+
+  apply:
+    name: apply (main)
+    # Skipped until WIF is configured. Until then the reconciler runs from a
+    # workstation, which is how versions 9 and 10 were published.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.GCP_WIF_PROVIDER != ''
+    runs-on: ubuntu-latest
+    environment: infra-production
+    steps:
+      - uses: actions/checkout@v4
+
+      # The comment on infra-terraform.yml's apply job asserted that repo
+      # settings require manual approval. It was not true: measured 2026-09-08,
+      # no `infra-production` environment existed and the two that did carried
+      # no protection rules. A comment cannot check an external fact; this can.
+      - name: refuse an unprotected environment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          rules=$(gh api "repos/${{ github.repository }}/environments/infra-production" \
+                    --jq '.protection_rules | length' 2>/dev/null || echo "missing")
+          if [ "$rules" = "missing" ]; then
+            echo "::error::the infra-production environment does not exist — GitHub created it implicitly and unprotected"
+            exit 1
+          fi
+          if [ "$rules" -eq 0 ]; then
+            echo "::error::infra-production has no protection rules; an apply here would be unreviewed"
+            exit 1
+          fi
+          echo "infra-production carries $rules protection rule(s)."
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: google-github-actions/auth@v2
+        id: auth
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SA }}
+          token_format: access_token
+          access_token_scopes: ${{ env.GTM_SCOPES }}
+
+      # --container is explicit and web-only. The 2026-09-08 census found
+      # server-container.json described a container that was never built;
+      # [14.1] regenerated it from live, but a bare `--apply` defaulting to both
+      # is the shape that made that dangerous, and reconcile.js refuses it.
+      - name: reconcile apply (web)
+        env:
+          GTM_TOKEN: ${{ steps.auth.outputs.access_token }}
+        run: node infrastructure/gtm/reconcile.js --container=web --apply
+
+      # Publishing is a third step, deliberately not folded into the apply. A
+      # workspace change is invisible to visitors until a version is published,
+      # so an apply that stops here is inspectable in the GTM UI.
+      - name: publish
+        env:
+          GTM_TOKEN: ${{ steps.auth.outputs.access_token }}
+        run: |
+          node infrastructure/gtm/reconcile.js --container=web --apply --publish \
+            --version-name="ci: ${GITHUB_SHA:0:7} on $(date -u +%Y-%m-%d)"

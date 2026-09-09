@@ -145,3 +145,67 @@ describe('every ecommerce event the schema declares is wired in the container', 
     }
   });
 });
+
+/**
+ * `web_vital` and `page_engagement` wiring (Phase 14, deliverable 14.4).
+ *
+ * Both events have been in `DATA_LAYER_EVENT_NAMES` since Phases 10b and 10d,
+ * `schema.test.ts` has asserted them for as long, and `schema.json` carries all
+ * seven of their columns. The container had no trigger and no tag for either,
+ * so they fired into the data layer and stopped there.
+ *
+ * Measured 2026-09-09, after the version 9 publish: a production session fired
+ * six `web_vital` and two `page_engagement` events with analytics consent
+ * granted, and `events_raw` received none of them. `web_vital` is deliberately
+ * rendered as a coverage chip on the Overview tab (`schema.ts:415` — "Hiding
+ * `web_vital` would contradict the 'making the invisible visible' thesis"), so
+ * until this lands the overlay shows visitors a chip for an event the pipeline
+ * does not carry.
+ */
+describe('14.4 — web_vital and page_engagement reach the container', () => {
+  const WIRED = {
+    web_vital: ['metric_name', 'metric_value', 'metric_rating', 'metric_id', 'navigation_type'],
+    page_engagement: ['engagement_seconds', 'max_scroll_pct'],
+  } as const;
+
+  const variableNames = new Set(webContainer.variables.map((v: { name: string }) => v.name));
+
+  it.each(Object.keys(WIRED))('%s has a customEvent trigger', (eventName) => {
+    expect(findTrigger(eventName)).toBeDefined();
+  });
+
+  it.each(Object.keys(WIRED))('%s has a GA4 tag bound to that trigger', (eventName) => {
+    const tag = findGA4Tag(eventName);
+    expect(tag).toBeDefined();
+    expect(tag?.firingTrigger).toBe(`ce - ${eventName}`);
+  });
+
+  it.each(Object.entries(WIRED))(
+    '%s declares a data layer variable for every parameter it sends',
+    (_eventName, params) => {
+      for (const param of params) {
+        expect(variableNames).toContain(`dlv - ${param}`);
+      }
+    },
+  );
+
+  it.each(Object.entries(WIRED))('%s binds each parameter to its variable', (eventName, params) => {
+    // The failure this catches: the dlv exists, the tag never references it,
+    // the BigQuery column lands null, and the overlay claims a field that was
+    // never sent. Asserting the binding rather than the variable's existence
+    // is the difference.
+    const tag = findGA4Tag(eventName);
+    for (const param of params) {
+      expect(tag?.parameters?.[param]).toBe(`{{dlv - ${param}}}`);
+    }
+  });
+
+  it('gates both on analytics consent, like every other GA4 event tag', () => {
+    // Published version 9 requires analytics_storage on 21 of 22 tags. A new
+    // tag that forgot it would collect from declining visitors — the exact
+    // posture Ian chose against.
+    for (const eventName of Object.keys(WIRED)) {
+      expect(findGA4Tag(eventName)?.consentSettings?.analytics_storage).toBe('required');
+    }
+  });
+});

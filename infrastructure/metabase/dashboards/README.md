@@ -41,20 +41,29 @@ infrastructure/metabase/dashboards/
 
 **The `/api/*` path on `bi.iampatterson.com` bypasses IAP.** This is intentional — an admin API key is the auth credential for the API path, not Google SSO. The UI path (`/*`) remains IAP-gated; only allowlisted accounts can browse the Metabase frontend.
 
-The split is provisioned by `infrastructure/metabase/setup-domain.sh` (step 8: non-IAP backend service + URL-map path matcher for `/api/*` and `/embed/*`). Re-run `setup-domain.sh` once to apply it if this is a fresh deployment from before the split landed.
+The split is declared in `infrastructure/terraform/metabase-lb.tf`: a non-IAP backend service (`metabase-backend-direct`) and a URL-map path matcher carving `/api/*`, `/app/*` and `/embed/*` out to it. `terraform apply` reconciles it. The one-shot `setup-domain.sh` that originally provisioned this was retired in [14.2]; it had already lost the `/app/*` path added after the 9F incident, so it could no longer reproduce production.
 
 ---
 
 ## One-time setup
 
-### 1. Re-run `setup-domain.sh` for the URL-map split
+### 1. Apply the URL-map split with Terraform
 
 ```bash
-cd /workspace/infrastructure/metabase
-./setup-domain.sh --no-wait
+# From the repository root — `-chdir` is relative to where you invoke it.
+export GOOGLE_OAUTH_ACCESS_TOKEN=$(gcloud auth print-access-token)
+terraform -chdir=infrastructure/terraform init   # state is remote, in GCS
+terraform -chdir=infrastructure/terraform plan   # read this before the next line
+terraform -chdir=infrastructure/terraform apply  # IAP: docs/runbook/metabase-access.md
 ```
 
-Idempotent — existing LB components are skipped, the new non-IAP backend + path matcher are added.
+**Read the plan.** This is a flat root that owns the whole project — five
+Cloud Run services, Cloud SQL, Pub/Sub, the datasets — not just the load
+balancer, so the plan covers far more than the URL-map split you came here
+for. `infrastructure/terraform/README.md` is explicit that a destructive
+plan against the load balancer, IAP, the managed certificate or Cloud SQL is
+a release blocker, not a convergence step. Against a converged root the
+apply is a no-op.
 
 Verify:
 

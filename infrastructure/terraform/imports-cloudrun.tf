@@ -26,3 +26,9 @@ import {
   to = google_cloud_run_v2_service.sgtm_preview
   id = "projects/iampatterson/locations/us-central1/services/sgtm-preview"
 }
+
+# [14.5] — the service [13.4] imported everything around but not itself.
+import {
+  to = google_cloud_run_v2_service.claudish_proxy
+  id = "projects/iampatterson/locations/us-central1/services/claudish-proxy"
+}
