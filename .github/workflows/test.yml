@@ -5,7 +5,7 @@ name: test
 # Until 2026-09-09 no workflow ran any test. `jest.config.js` roots are `tests/`
 # and `src/`; the three Cloud Run services carry their own `jest.config.json`;
 # and the three existing workflows are path-scoped to Terraform, the GTM
-# reconciler and the dataform mirror. So 2,749 tests existed and none of them
+# reconciler and the dataform mirror. So 2,758 tests existed and none of them
 # gated anything.
 #
 # What that cost was visible in the Dependabot backlog: of eleven open PRs the
@@ -50,7 +50,11 @@ on:
 # many PRs at once and each rerun is otherwise queued behind the last.
 concurrency:
   group: test-${{ github.ref }}
-  cancel-in-progress: true
+  # PRs only. Applied to pushes as well, two merges close together cancel the
+  # first — leaving the commit that actually landed on main with a cancelled
+  # check and no run that ever tested it. The reason for cancelling at all
+  # (Dependabot opening PRs in bursts) concerns PR refs and nothing else.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -104,3 +108,10 @@ jobs:
         # Env-gated suites inside these services (golden, latency) skip on their
         # own when the flag is absent; nothing here sets one.
         run: npm test
+      - name: build
+        # ts-jest only typechecks what a test imports, so a file no test touches
+        # — quality-capture.ts in claudish-proxy, index.ts in data-generator —
+        # can break on an express 5 or Node typings bump and still pass jest.
+        # Each service's build script is tsc, so this is the compile check the
+        # root job gets from `next build`.
+        run: npm run build
