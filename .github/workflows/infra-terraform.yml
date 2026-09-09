@@ -137,10 +137,21 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          rules=$(gh api "repos/${{ github.repository }}/environments/infra-production" \
-                    --jq '.protection_rules | length' 2>/dev/null || echo "missing")
-          if [ "$rules" = "missing" ]; then
+          # A 404 and "could not read" are different diagnoses. Collapsing them
+          # tells an operator the environment does not exist when the real cause
+          # may be a changed token scope or a transient API failure — a
+          # confidently wrong message on a blocked production apply. Both still
+          # fail closed; only the message differs.
+          status=$(gh api "repos/${{ github.repository }}/environments/infra-production" \
+                     --silent -i 2>/dev/null | head -1 | awk '{print $2}')
+          if [ "$status" = "404" ]; then
             echo "::error::the infra-production environment does not exist — GitHub created it implicitly and unprotected"
+            exit 1
+          fi
+          rules=$(gh api "repos/${{ github.repository }}/environments/infra-production" \
+                    --jq '.protection_rules | length' 2>/dev/null || echo "unreadable")
+          if [ "$rules" = "unreadable" ]; then
+            echo "::error::could not read infra-production (HTTP ${status:-unknown}) — refusing to apply without confirming it is protected"
             exit 1
           fi
           if [ "$rules" -eq 0 ]; then

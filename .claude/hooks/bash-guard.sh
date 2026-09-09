@@ -35,6 +35,13 @@ BLOCKED_PATTERNS=(
 
   # Git push — all forms blocked. Push from host terminal after review.
   'git\s+push'                      # any git push (including safe ones)
+  # `gh` reaches the same two operations by another road, and Bash(gh:*) now
+  # lives in the committed settings.json — so it applies to every agent, not
+  # only Ian's session. CLAUDE.md: pushes and merges are Ian's, regardless of
+  # chat permission. The Git Data API form is a real push; it has been used once.
+  'gh\s+pr\s+merge'                 # merging a PR is a merge
+  'gh\s+api.*git/refs'              # writing a ref through the Git Data API
+  'gh\s+release\s+create'           # publishing a release
   'git\s+reset\s+--hard\s+origin'   # hard reset to remote
 
   # Package publishing

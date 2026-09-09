@@ -4,8 +4,10 @@ name: infra-reconcile
 #
 # - PRs touching infrastructure/gtm/**: a dry run against the live Default
 #   Workspace, posted back as a PR comment.
-# - Push to main: the live apply, behind the `infra-production` environment,
-#   which repo settings configure to require manual approval.
+# - Push to main: the live apply, behind the `infra-production` environment.
+#   The apply job's first step VERIFIES that environment carries protection
+#   rules and exits 1 if it does not. This header used to assert the safeguard
+#   instead — the same unverifiable claim measured false on 2026-09-08.
 #
 # The Metabase path this deliverable originally carried is gone: [14.2] retired
 # those one-shots onto Terraform, so `infrastructure/metabase/**` changes are
@@ -90,9 +92,15 @@ jobs:
         shell: bash
         env:
           GTM_TOKEN: ${{ steps.auth.outputs.access_token }}
+        # Both containers are diffed even when the first fails. Bare `-e` would
+        # abort the step at the web reconcile, and the PR comment would then show
+        # a truncated diff with no signal that the server half is missing rather
+        # than empty. Statuses are collected; the step fails at the end.
         run: |
-          node infrastructure/gtm/reconcile.js --container=web   | tee -a /tmp/diff.txt
-          node infrastructure/gtm/reconcile.js --container=server | tee -a /tmp/diff.txt
+          rc=0
+          node infrastructure/gtm/reconcile.js --container=web    | tee -a /tmp/diff.txt || rc=1
+          node infrastructure/gtm/reconcile.js --container=server | tee -a /tmp/diff.txt || rc=1
+          exit $rc
 
       - name: post the diff
         uses: actions/github-script@v7
