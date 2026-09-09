@@ -81,7 +81,26 @@ this arms has nothing outstanding to perform.
 
 ## Open
 
-**The deployer's GTM access is not independently verified.** The intended check
+**Verified on the first run.** PR #75 fired `infra-reconcile` and it posted:
+
+```
+## GTM reconciler — dry run
+── web container ──── no drift
+── server container ──── no drift
+```
+
+That single comment exercises the whole chain at once: WIF minted a token from a
+GitHub OIDC assertion, the attribute condition admitted it, the deployer's GTM
+membership let it read both containers, the reconciler diffed the committed
+specs against live, and the comment step posted the result — read from `env:`,
+not compiled into the script body. `no drift` is the correct answer: the web
+container is at version 10 and the server spec was captured from live.
+
+It also settles the open question below. Had the GTM membership been missing,
+this would have failed with a Tag Manager permission error rather than a diff.
+
+**Superseded — the deployer's GTM access was not independently verified before
+the run.** The intended check
 was to impersonate `infra-deployer` and call the accounts endpoint, but the
 `serviceAccountTokenCreator` binding created for that test was still propagating
 when the session ended — the same lag the `gtm-reconciler` grant showed earlier,
