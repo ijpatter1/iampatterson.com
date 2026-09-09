@@ -107,7 +107,14 @@ jobs:
       - name: jest
         # Env-gated suites inside these services (golden, latency) skip on their
         # own when the flag is absent; nothing here sets one.
-        run: npm test
+        #
+        # --maxWorkers=2 because jest sizes its pool from the host CPU count and
+        # a runner is much smaller than a dev machine. claudish-proxy's
+        # adapters.ts imports both Anthropic SDKs at top level, so ts-jest
+        # compiles that type surface once per worker; on the first real CI run
+        # the workers were killed ("4 child process exceptions"), which local
+        # runs on 14 cores never reproduce.
+        run: npm test -- --maxWorkers=2
       - name: build
         # ts-jest only typechecks what a test imports, so a file no test touches
         # — quality-capture.ts in claudish-proxy, index.ts in data-generator —
