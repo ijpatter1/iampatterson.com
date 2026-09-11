@@ -465,6 +465,14 @@ resource "google_cloud_run_v2_service" "metabase" {
         name  = "JAVA_TOOL_OPTIONS"
         value = "-Xmx1800m"
       }
+      # db-f1-micro caps max_connections near 25 and the pool defaults to 15,
+      # so a rollout's two overlapping revisions exhaust it — that is what
+      # failed revision metabase-00006-zzk on 2026-09-11. Keep it in step with
+      # cloudrun.yaml, which deploy.sh applies whole.
+      env {
+        name  = "MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE"
+        value = "8"
+      }
       env {
         name  = "MB_DB_DBNAME"
         value = "metabase"

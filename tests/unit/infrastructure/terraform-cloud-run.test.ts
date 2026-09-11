@@ -85,6 +85,23 @@ describe('Phase 11 D9 — Cloud Run services', () => {
       }
     });
 
+    it('caps the app-DB pool in both writers, so two revisions can overlap', () => {
+      // metabase-00006-zzk failed its startup probe on 2026-09-11 with
+      // "remaining connection slots are reserved for non-replication superuser
+      // connections". The app DB is db-f1-micro (max_connections ~25) and
+      // MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE defaults to 15, so a rollout
+      // — where the old and new revisions each hold a pool — cannot fit. That
+      // blocks every config change, including the next security patch.
+      const envs = svc.metabase[0].template[0].containers[0].env;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const pool = envs.find((e: any) => e.name === 'MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE');
+      expect(pool).toBeDefined();
+      expect(Number(pool.value)).toBeLessThanOrEqual(10);
+      expect(Number(pool.value)).toBeGreaterThan(0);
+      expect(yaml).toContain('MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE');
+      expect(yaml).toContain(`value: '${pool.value}'`);
+    });
+
     it('keeps Terraform owning the metabase env block, so a stripped secret is restored', () => {
       // The inverse of the claudish-proxy kill-switch case below: that env is a
       // value a human sets mid-incident, this one is a reference to a secret.
