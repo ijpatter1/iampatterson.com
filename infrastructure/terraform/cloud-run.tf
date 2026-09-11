@@ -456,9 +456,11 @@ resource "google_cloud_run_v2_service" "metabase" {
       base_image_uri = null
       command        = []
       depends_on     = []
-      image          = "metabase/metabase:v0.59.6"
-      name           = null
-      working_dir    = null
+      # Terraform ignores this (lifecycle.ignore_changes above); image changes go
+      # through deploy.sh or upgrade.sh. It records what production should run.
+      image       = "metabase/metabase:v0.59.31"
+      name        = null
+      working_dir = null
       env {
         name  = "JAVA_TOOL_OPTIONS"
         value = "-Xmx1800m"

@@ -106,8 +106,9 @@ describe('docs/runbook/dependency-cadence.md', () => {
     }
   });
 
-  it('keeps the Metabase baseline the spec named, and points at the existing release-notes gate', () => {
-    expect(cadence).toContain('v0.59.6');
+  it('keeps the Metabase baseline at the live version, and points at the existing release-notes gate', () => {
+    // v0.59.6 was exploited through CVE-2026-72898; production moved to v0.59.31 on 2026-09-11.
+    expect(cadence).toContain('Baseline **v0.59.31**');
     expect(cadence).toContain('infrastructure/metabase/upgrade.sh');
   });
 

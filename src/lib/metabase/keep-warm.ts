@@ -20,7 +20,7 @@ import { METABASE_BASE_URL, mintConfirmationDashboardUrl } from './embed';
  *      GET `/api/embed/dashboard/:jwt/dashcard/:dashcard-id/card/:card-id`
  *      (executes the card's BigQuery query, populating Metabase's card
  *       cache and BigQuery's 24h result cache for subsequent real visitors).
- *      The fallback is defensive; the project runs Metabase v0.59.6 which
+ *      The fallback is defensive; the project runs Metabase v0.59.31 which
  *      emits `dashcards`, and `infrastructure/metabase/dashboards/apply.sh`
  *      writes dashboards using the same modern field.
  *
