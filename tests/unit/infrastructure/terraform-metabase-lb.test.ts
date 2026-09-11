@@ -71,6 +71,49 @@ describe('Phase 11 D9 — Metabase LB/IAP', () => {
     });
   });
 
+  describe('url_map IAP invariants across every rule (CVE-2026-72898)', () => {
+    const EMBED_SURFACE = ['/api/embed/*', '/app/*', '/embed/*'];
+
+    it('sends nothing outside the embed surface to the non-IAP backend, on any matcher or rule', () => {
+      // The pins above read only the first path_rule. A second rule or matcher
+      // sending /api/session/* to the direct backend would reopen the exploited
+      // surface without failing them, so every rule is checked here.
+      const urlMap = tf.resource.google_compute_url_map.metabase[0];
+      expect(urlMap.path_matcher.every((m: { route_rules?: unknown }) => m.route_rules === undefined)).toBe(true);
+      for (const m of urlMap.path_matcher) {
+        for (const r of m.path_rule ?? []) {
+          if (r.service === DIRECT_BACKEND) {
+            for (const p of r.paths) expect(EMBED_SURFACE).toContain(p);
+          }
+        }
+      }
+    });
+
+    it('keeps the non-IAP url-map default unreachable by matching every host', () => {
+      // default_service is the direct backend; it is only unreachable while a
+      // host rule matches "*". If that ever narrows, any other Host header would
+      // reach every Metabase path without IAP.
+      const urlMap = tf.resource.google_compute_url_map.metabase[0];
+      if (urlMap.default_service === DIRECT_BACKEND) {
+        const hosts = urlMap.host_rule.flatMap((h: { hosts: string[] }) => h.hosts);
+        expect(hosts).toContain('*');
+      }
+    });
+
+    it('leaves /api/session/properties behind IAP (embeds render without it)', () => {
+      // The embed frontend requests /api/session/properties, which returns
+      // admin-only settings to an admin session. Anonymous embeds render without
+      // it (checked in a private window on 2026-09-11), so it stays IAP-gated.
+      const urlMap = tf.resource.google_compute_url_map.metabase[0];
+      const direct = urlMap.path_matcher
+        .flatMap((m: { path_rule?: { service: string; paths: string[] }[] }) => m.path_rule ?? [])
+        .filter((r: { service: string }) => r.service === DIRECT_BACKEND)
+        .flatMap((r: { paths: string[] }) => r.paths);
+      expect(direct).not.toContain('/api/session/properties');
+      expect(direct).not.toContain('/api/session/*');
+    });
+  });
+
   describe('backend services', () => {
     it('enables IAP on the default backend with the secret pulled from Secret Manager', () => {
       const iap = tf.resource.google_compute_backend_service.metabase_backend[0].iap[0];

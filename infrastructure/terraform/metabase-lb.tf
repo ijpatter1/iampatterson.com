@@ -11,6 +11,8 @@
 # reachable without IAP. CVE-2026-72898, an unauthenticated SQL injection in
 # /api/session/reset_password, was exploited through it on 2026-09-03, 09-04 and
 # 09-10. Only the embed API may bypass IAP now; admin API calls go through IAP.
+# The embed surface is only as safe as the embedding secret, which that admin
+# access exposed: it stays exposed until the secret is rotated (docs/BACKLOG.md).
 
 # Serverless NEG fronting the Cloud Run `metabase` service.
 resource "google_compute_region_network_endpoint_group" "metabase_neg" {
@@ -56,8 +58,8 @@ resource "google_compute_backend_service" "metabase_backend" {
   }
 }
 
-# Non-IAP backend — reached only via the /api·/app·/embed carve-out. Protected by
-# Metabase's own auth (session/API key) and signed-JWT embed validation.
+# Non-IAP backend — reached only via the /api/embed·/app·/embed carve-out. Protected
+# only by Metabase's signed-JWT embed validation, i.e. by the embedding secret.
 resource "google_compute_backend_service" "metabase_backend_direct" {
   project               = var.project_id
   name                  = "metabase-backend-direct"
@@ -86,8 +88,9 @@ resource "google_compute_url_map" "metabase" {
   project = var.project_id
   name    = "metabase-url-map"
 
-  # Fallback when no host rule matches; host "*" below routes everything through
-  # the direct-paths matcher, so this is effectively a safety default.
+  # Fallback when no host rule matches. This is the NON-IAP backend: it is
+  # unreachable only because the host rule below matches every host ("*"), which
+  # the test pins. Narrowing the host rule would expose every path without IAP.
   default_service = google_compute_backend_service.metabase_backend_direct.id
 
   host_rule {
