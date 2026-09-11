@@ -18,12 +18,13 @@
 #   - METABASE_IMAGE pinned to an exact tag (the script refuses to deploy
 #     the ':...x' placeholder). Check
 #     https://github.com/metabase/metabase/releases for the current
-#     stable patch of v0.59.6.
+#     stable v0.59 patch. Production runs v0.59.31; anything below
+#     v0.59.21 is open to CVE-2026-72898.
 #
 # Usage:
 #   ./deploy.sh
 #   ./deploy.sh --dry-run
-#   METABASE_IMAGE=metabase/metabase:v0.59.6 ./deploy.sh
+#   METABASE_IMAGE=metabase/metabase:v0.59.31 ./deploy.sh
 
 set -euo pipefail
 export CLOUDSDK_CORE_DISABLE_PROMPTS=1
@@ -31,9 +32,9 @@ export CLOUDSDK_CORE_DISABLE_PROMPTS=1
 PROJECT="${PROJECT:-iampatterson}"
 REGION="${REGION:-us-central1}"
 SERVICE_NAME="${SERVICE_NAME:-metabase}"
-# The plan pins the Metabase image to v0.59.6.x — resolve the trailing
-# '.x' to the current stable patch before running.
-METABASE_IMAGE="${METABASE_IMAGE:-metabase/metabase:v0.59.6.x}"
+# Resolve the trailing '.x' to the current stable v0.59 patch before
+# running (production runs v0.59.31).
+METABASE_IMAGE="${METABASE_IMAGE:-metabase/metabase:v0.59.x}"
 RUNTIME_SA_EMAIL="metabase-runtime@${PROJECT}.iam.gserviceaccount.com"
 CLOUDSQL_INSTANCE="${CLOUDSQL_INSTANCE:-metabase-app-db}"
 DOMAIN="${DOMAIN:-bi.iampatterson.com}"
@@ -71,9 +72,9 @@ ERROR: METABASE_IMAGE must be pinned to an exact version tag. Got:
 Expected shape: metabase/metabase:vMAJOR.MINOR.PATCH[.BUILD]
 
 Check https://github.com/metabase/metabase/releases for the current
-stable patch of v0.59.6, then re-run with:
+stable v0.59 patch (production runs v0.59.31), then re-run with:
 
-  METABASE_IMAGE=metabase/metabase:v0.59.6 ./deploy.sh
+  METABASE_IMAGE=metabase/metabase:v0.59.31 ./deploy.sh
 EOF
   exit 1
 fi

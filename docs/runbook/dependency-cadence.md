@@ -45,7 +45,7 @@ interrupt.
 | Cloud Run base images | Dependabot (docker, ungrouped) | Monthly | A base image bump is a runtime change, which is why these are never grouped with anything. Redeploy through `scripts/deploy-cloud-run.sh`. |
 | GitHub Actions | Dependabot (github-actions) | Monthly | Low. |
 | `gtm-cloud-image` (sGTM) | **Nobody. Check it by hand.** | Monthly, step 4 | See `docs/runbook/sgtm-image-update.md`. Dependabot does not watch a tag consumed by a Cloud Run service, and this one is worse than unwatched: the tag looks like it auto-updates and does not. Run `bash infrastructure/sgtm/update-image.sh status`. |
-| Metabase | **Nobody. Check it by hand.** | Monthly, step 4 | Baseline **v0.59.6**, which is what is live. Updates go through `infrastructure/metabase/upgrade.sh`, which already refuses to proceed until you confirm you have read the release notes. Keep that gate; Metabase minors have migrated the app database before. |
+| Metabase | **Nobody. Check it by hand.** | Monthly, step 4 | Baseline **v0.59.31**, which is what is live (upgraded from v0.59.6 on 2026-09-11 for CVE-2026-72898). Updates go through `infrastructure/metabase/upgrade.sh`, which already refuses to proceed until you confirm you have read the release notes. Keep that gate; Metabase minors have migrated the app database before. |
 | Security advisories | GitHub security updates | Whenever they land | Judged case by case against the table below. |
 
 ## Advisories are not all the same

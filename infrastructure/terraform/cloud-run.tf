@@ -456,7 +456,7 @@ resource "google_cloud_run_v2_service" "metabase" {
       base_image_uri = null
       command        = []
       depends_on     = []
-      image          = "metabase/metabase:v0.59.6"
+      image          = "metabase/metabase:v0.59.31"
       name           = null
       working_dir    = null
       env {

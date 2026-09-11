@@ -22,7 +22,7 @@ const SAMPLE_URL =
   'https://bi.iampatterson.com/embed/dashboard/SAMPLE.JWT.TOKEN#bordered=true&titled=false';
 const SAMPLE_TOKEN = 'SAMPLE.JWT.TOKEN';
 
-// Modern Metabase (v0.47+, the project runs v0.59.6) emits `dashcards`.
+// Modern Metabase (v0.47+, the project runs v0.59.31) emits `dashcards`.
 // Legacy `ordered_cards` is covered by a dedicated pin below.
 const sampleMetadata = {
   dashcards: [

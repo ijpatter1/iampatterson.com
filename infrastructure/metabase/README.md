@@ -200,10 +200,10 @@ Deploys Metabase to Cloud Run gen2, reachable only via the Task 5 load
 balancer (ingress locked to `internal-and-cloud-load-balancing`).
 
 ```bash
-# The plan pins to metabase/metabase:v0.59.6.x — resolve the patch
-# (check https://github.com/metabase/metabase/releases) and export before
-# running. The script refuses to deploy the '.x' placeholder.
-export METABASE_IMAGE=metabase/metabase:v0.59.6
+# Production runs metabase/metabase:v0.59.31 (2026-09-11). Pin the current
+# stable v0.59 patch (check https://github.com/metabase/metabase/releases)
+# and export before running. The script refuses to deploy the '.x' placeholder.
+export METABASE_IMAGE=metabase/metabase:v0.59.31
 
 ./deploy.sh              # render cloudrun.yaml + apply
 ./deploy.sh --dry-run    # render + cat the spec; do not apply
@@ -551,7 +551,7 @@ accidentally leaks data.
 ### 6. (Pro/Enterprise only) Turn on 2FA for the admin account
 
 **Not available on Metabase OSS.** MFA is a Pro/Enterprise feature —
-`metabase/metabase:v0.59.6` (the pinned image) is OSS, so the option
+`metabase/metabase:v0.59.31` (the pinned image) is OSS, so the option
 doesn't appear under Admin → Authentication. Skip this step.
 
 Defense in depth is still strong without it:
@@ -728,8 +728,12 @@ The previous image is still on Cloud Run's revision history, so
 redeploying by tag brings it back:
 
 ```bash
-METABASE_IMAGE='metabase/metabase:v0.59.6' ./deploy.sh   # or whichever tag was prior
+METABASE_IMAGE='metabase/metabase:v0.59.31' ./deploy.sh   # or whichever tag was prior
 ```
+
+Never roll back below v0.59.21: CVE-2026-72898 is unpatched there, and it
+was exploited against this instance on v0.59.6. If the only prior tag is
+older than that, restore the backup instead.
 
 If the app DB schema migrated past the prior image's supported range
 (Metabase runs migrations on startup automatically), rolling back the
