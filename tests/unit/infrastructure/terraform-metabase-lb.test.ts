@@ -89,15 +89,12 @@ describe('Phase 11 D9 — Metabase LB/IAP', () => {
       }
     });
 
-    it('keeps the non-IAP url-map default unreachable by matching every host', () => {
-      // default_service is the direct backend; it is only unreachable while a
-      // host rule matches "*". If that ever narrows, any other Host header would
-      // reach every Metabase path without IAP.
+    it('fails closed: the url-map default is the IAP backend', () => {
+      // Until 2026-09-11 this defaulted to the direct backend, unreachable only
+      // while a host rule matched "*". Any Host header not matching a rule would
+      // otherwise reach every Metabase path without IAP.
       const urlMap = tf.resource.google_compute_url_map.metabase[0];
-      if (urlMap.default_service === DIRECT_BACKEND) {
-        const hosts = urlMap.host_rule.flatMap((h: { hosts: string[] }) => h.hosts);
-        expect(hosts).toContain('*');
-      }
+      expect(urlMap.default_service).toBe(IAP_BACKEND);
     });
 
     it('routes every matcher default to the IAP backend, not just the first', () => {

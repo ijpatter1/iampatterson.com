@@ -88,10 +88,11 @@ resource "google_compute_url_map" "metabase" {
   project = var.project_id
   name    = "metabase-url-map"
 
-  # Fallback when no host rule matches. This is the NON-IAP backend: it is
-  # unreachable only because the host rule below matches every host ("*"), which
-  # the test pins. Narrowing the host rule would expose every path without IAP.
-  default_service = google_compute_backend_service.metabase_backend_direct.id
+  # Fallback when no host rule matches. Fails closed on the IAP-gated backend, so
+  # adding or narrowing a host rule cannot expose Metabase. Until 2026-09-11 this
+  # was the non-IAP backend, safe only while the host rule below matched every
+  # host ("*") — a fail-open default on the surface CVE-2026-72898 was exploited through.
+  default_service = google_compute_backend_service.metabase_backend.id
 
   host_rule {
     hosts        = ["*"]
