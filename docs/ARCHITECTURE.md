@@ -461,7 +461,7 @@ All six use native SQL (not MBQL), hand-written in the YAML specs so they're rea
 **Secrets used across 6a and 6b:**
 
 - `metabase-api-key`, admin API key used by `apply.sh`. Generated in Metabase UI, stored in Secret Manager.
-- `metabase-embedding-secret-key`, shared secret for signing embed JWTs. Secret Manager is the source of truth since 2026-09-11: Cloud Run passes it to Metabase as `MB_EMBEDDING_SECRET_KEY`, which overrides the value stored in the app database and makes the admin field read-only. Mirrored to Vercel env under the same name for the signer. Rotate by adding a secret version, then redeploying both sides — the admin UI is no longer part of it.
+- `metabase-embedding-secret-key`, shared secret for signing embed JWTs. Secret Manager is the source of truth since 2026-09-11: Cloud Run passes it to Metabase as `MB_EMBEDDING_SECRET_KEY`, which overrides the value stored in the app database and makes the admin field read-only. Mirrored to Vercel env under the same name for the signer. Rotate by adding a secret version, then redeploying both sides — the admin UI is no longer part of it. Write the version with `printf '%s'` or `tr -d '\n'`: Cloud Run injects the payload byte for byte, so a trailing newline desynchronises Metabase from the Vercel copy and every embed signature fails. `infrastructure/metabase/README.md` carries the sequence, including how to force the new revision on a warm instance.
 - `metabase-embed-config`, JSON `{dashboardId, cardIds: {funnel, aov, dailyRevenue}}` produced by `apply.sh --publish-embed-config`, mirrored to Vercel env as `METABASE_EMBED_CONFIG` for 6b's signer.
 
 ### Phase 9B, Confirmation-page signed embeds (deliverable 6b)

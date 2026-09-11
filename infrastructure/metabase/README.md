@@ -244,8 +244,9 @@ Resources and behavior:
   Prerequisites section above.
 - Env: `MB_DB_TYPE=postgres` set explicitly (prevents fallback to embedded
   H2). `MB_JETTY_PORT=8080` aligns Metabase's listener with Cloud Run's
-  injected `PORT` (Metabase does NOT auto-read `PORT`). `MB_DB_PASS` and
-  `MB_ENCRYPTION_SECRET_KEY` sourced via Secret Manager
+  injected `PORT` (Metabase does NOT auto-read `PORT`). `MB_DB_PASS`,
+  `MB_ENCRYPTION_SECRET_KEY` and `MB_EMBEDDING_SECRET_KEY` sourced via
+  Secret Manager
   `valueFrom.secretKeyRef` (no secrets in the yaml).
 - Health: `startupProbe` on `/api/health`, 30s initial delay, 10s period,
   12 failures (~120s) before Cloud Run gives up.
