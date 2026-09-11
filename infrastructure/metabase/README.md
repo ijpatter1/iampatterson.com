@@ -702,9 +702,9 @@ gcloud sql backups restore <BACKUP_ID> \
 ### Upgrade
 
 ```bash
-./upgrade.sh v0.59.7               # back up, prompt, deploy, poll Ready
-./upgrade.sh v0.59.7 --dry-run     # preview (prints each step but doesn't run)
-./upgrade.sh v0.59.7 --skip-backup # dangerous — only if you just ran backup.sh
+./upgrade.sh v0.59.31               # back up, prompt, deploy, poll Ready
+./upgrade.sh v0.59.31 --dry-run     # preview (prints each step but doesn't run)
+./upgrade.sh v0.59.31 --skip-backup # dangerous — only if you just ran backup.sh
 ```
 
 Flow:
@@ -804,7 +804,7 @@ copies of it drift.
 | Task | When | Command |
 |---|---|---|
 | Backup | Before any risky change | `./backup.sh` |
-| Upgrade | New Metabase stable released | `./upgrade.sh v0.59.7` |
+| Upgrade | New Metabase stable released | `./upgrade.sh v0.59.31` |
 | Restore | Bad upgrade, instance issue | `gcloud sql backups restore <ID> ...` |
 | Rollback (image only) | Bad upgrade, no schema drift | `METABASE_IMAGE=<prior> ./deploy.sh` |
 | Rotate BQ key | Annually | See "Rotate the BigQuery SA key" |

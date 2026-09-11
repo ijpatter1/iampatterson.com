@@ -17,9 +17,9 @@
 #     (v MAJOR.MINOR.PATCH[.BUILD]).
 #
 # Usage:
-#   ./upgrade.sh v0.59.7
-#   ./upgrade.sh v0.59.7 --dry-run
-#   ./upgrade.sh v0.59.7 --skip-backup    # DANGEROUS — only if you just ran backup.sh
+#   ./upgrade.sh v0.59.31
+#   ./upgrade.sh v0.59.31 --dry-run
+#   ./upgrade.sh v0.59.31 --skip-backup    # DANGEROUS — only if you just ran backup.sh
 
 set -euo pipefail
 
@@ -27,7 +27,7 @@ if [[ $# -lt 1 || "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
   cat <<EOF
 Usage: $0 <new-version-tag> [--dry-run] [--skip-backup]
 
-Example: $0 v0.59.7
+Example: $0 v0.59.31
 EOF
   exit 1
 fi
@@ -55,7 +55,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TARGET_IMAGE="metabase/metabase:${TARGET_VERSION}"
 if [[ ! "${TARGET_IMAGE}" =~ ^metabase/metabase:v[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
   echo "ERROR: Target version '${TARGET_VERSION}' doesn't match the pinned-semver"
-  echo "       pattern vMAJOR.MINOR.PATCH[.BUILD] (e.g. v0.59.7 or v0.59.7.1)."
+  echo "       pattern vMAJOR.MINOR.PATCH[.BUILD] (e.g. v0.59.31 or v0.59.31.1)."
   exit 1
 fi
 
