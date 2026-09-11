@@ -44,13 +44,18 @@ describe('Phase 11 D9 — Cloud Run services', () => {
       );
     });
 
-    it('wires DB password + encryption key from Secret Manager (never inlined)', () => {
+    it('wires every Metabase secret from Secret Manager (never inlined)', () => {
       const envs = svc.metabase[0].template[0].containers[0].env;
       const secretOf = (name: string) =>
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         envs.find((e: any) => e.name === name)?.value_source?.[0]?.secret_key_ref?.[0]?.secret;
       expect(secretOf('MB_DB_PASS')).toBe('metabase-db-password');
       expect(secretOf('MB_ENCRYPTION_SECRET_KEY')).toBe('metabase-encryption-key');
+      // The embedding secret signs every static-embed JWT the public site mints.
+      // It came from the app database until 2026-09-11, where the CVE-2026-72898
+      // admin reads exposed it; sourcing it here is what made rotation possible
+      // without the IAP-gated admin UI, and the env value wins over the stored one.
+      expect(secretOf('MB_EMBEDDING_SECRET_KEY')).toBe('metabase-embedding-secret-key');
     });
   });
 
