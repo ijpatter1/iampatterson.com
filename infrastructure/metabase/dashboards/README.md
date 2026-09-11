@@ -39,9 +39,9 @@ infrastructure/metabase/dashboards/
 
 `apply.sh` authenticates to Metabase using an admin API key stored in Secret Manager.
 
-**The `/api/*` path on `bi.iampatterson.com` bypasses IAP.** This is intentional — an admin API key is the auth credential for the API path, not Google SSO. The UI path (`/*`) remains IAP-gated; only allowlisted accounts can browse the Metabase frontend.
+**Only the embed surface on `bi.iampatterson.com` bypasses IAP.** Since 2026-09-11 the carve-out is `/api/embed/*`, `/app/*` and `/embed/*`; the rest of `/api/*`, including everything `apply.sh` calls, is IAP-gated. The old `/api/*` carve-out was exploited through CVE-2026-72898 on 2026-09-03, 09-04 and 09-10. `apply.sh` needs an IAP-authorised request in addition to its admin API key, and fails against the public host until that is added. The UI path (`/*`) remains IAP-gated; only allowlisted accounts can browse the Metabase frontend.
 
-The split is declared in `infrastructure/terraform/metabase-lb.tf`: a non-IAP backend service (`metabase-backend-direct`) and a URL-map path matcher carving `/api/*`, `/app/*` and `/embed/*` out to it. `terraform apply` reconciles it. The one-shot `setup-domain.sh` that originally provisioned this was retired in [14.2]; it had already lost the `/app/*` path added after the 9F incident, so it could no longer reproduce production.
+The split is declared in `infrastructure/terraform/metabase-lb.tf`: a non-IAP backend service (`metabase-backend-direct`) and a URL-map path matcher carving `/api/embed/*`, `/app/*` and `/embed/*` out to it. `terraform apply` reconciles it. The one-shot `setup-domain.sh` that originally provisioned this was retired in [14.2]; it had already lost the `/app/*` path added after the 9F incident, so it could no longer reproduce production.
 
 ---
 
@@ -68,8 +68,11 @@ apply is a no-op.
 Verify:
 
 ```bash
+curl -sI https://bi.iampatterson.com/api/embed/dashboard/not-a-token | head -3
+# expect: an error status from Metabase itself, not 302  (the embed API bypasses IAP)
+
 curl -sI https://bi.iampatterson.com/api/health | head -3
-# expect: HTTP/2 200  (direct from Metabase; IAP bypassed)
+# expect: HTTP/2 302  (the rest of the API is IAP-gated)
 
 curl -sI https://bi.iampatterson.com/ | head -3
 # expect: HTTP/2 302  (IAP redirects to Google SSO)

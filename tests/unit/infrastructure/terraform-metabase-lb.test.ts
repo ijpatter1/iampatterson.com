@@ -40,19 +40,33 @@ describe('Phase 11 D9 — Metabase LB/IAP', () => {
       expect(matcher.default_service).toBe(IAP_BACKEND);
     });
 
-    it('carves /api, /app, /embed out to the non-IAP backend', () => {
+    it('carves only the signed-embed surface out to the non-IAP backend', () => {
       expect(rule.service).toBe(DIRECT_BACKEND);
       // Exact set, not arrayContaining: a NEW path silently added to the non-IAP
       // carve-out (e.g. /admin/* leaking out from behind IAP — the inverse of the
       // 9F incident) must fail this pin, not slip through.
-      expect([...rule.paths].sort()).toEqual(['/api/*', '/app/*', '/embed/*']);
+      expect([...rule.paths].sort()).toEqual(['/api/embed/*', '/app/*', '/embed/*']);
     });
 
     it('never routes a carve-out path to the IAP backend', () => {
       // The whole point: these must hit the direct (non-IAP) backend.
       expect(rule.service).not.toBe(IAP_BACKEND);
-      for (const p of ['/api/*', '/app/*', '/embed/*']) {
+      for (const p of ['/api/embed/*', '/app/*', '/embed/*']) {
         expect(rule.paths).toContain(p);
+      }
+    });
+
+    it('keeps every Metabase API path except the embed API behind IAP', () => {
+      // CVE-2026-72898 is an unauthenticated SQL injection in
+      // /api/session/reset_password. It was exploited through the old /api/*
+      // carve-out on 2026-09-03, 09-04 and 09-10 to take over the admin account
+      // and read every setting, including a stored API key. The public site only
+      // needs the signed-JWT embed API, so any broader /api path here must fail.
+      for (const p of rule.paths) {
+        expect(p).not.toBe('/api/*');
+        if (p.startsWith('/api/')) {
+          expect(p.startsWith('/api/embed/')).toBe(true);
+        }
       }
     });
   });

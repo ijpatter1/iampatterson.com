@@ -29,7 +29,8 @@
 #       terraform -chdir=infrastructure/terraform plan    # read this before applying
 #       terraform -chdir=infrastructure/terraform apply
 #     That root owns the whole project, so the plan covers far more than the
-#     URL-map split. /api/* bypasses IAP on bi.iampatterson.com. (Phase
+#     URL-map split. Since 2026-09-11 only /api/embed/*, /app/* and /embed/*
+#     bypass IAP, so this script's admin API calls need an IAP token. (Phase
 #     9B-infra Task 5 originally provisioned this with setup-domain.sh, which
 #     was retired in [14.2] after it lost the /app/* path added post-9F.)
 #   - Secret metabase-api-key exists in Secret Manager — admin-scoped
