@@ -495,6 +495,21 @@ resource "google_cloud_run_v2_service" "metabase" {
         name  = "MB_DB_USER"
         value = "metabase"
       }
+      # Signs every static-embed JWT the public site mints. Sourced here rather
+      # than from the app database so it can be rotated without the IAP-gated
+      # admin UI; the env value overrides the stored one. Removing this block
+      # does not clear that stored value — Metabase would fall back to the
+      # secret CVE-2026-72898 exposed on 2026-09-10.
+      env {
+        name  = "MB_EMBEDDING_SECRET_KEY"
+        value = null
+        value_source {
+          secret_key_ref {
+            secret  = "metabase-embedding-secret-key"
+            version = "latest"
+          }
+        }
+      }
       env {
         name  = "MB_ENCRYPTION_SECRET_KEY"
         value = null

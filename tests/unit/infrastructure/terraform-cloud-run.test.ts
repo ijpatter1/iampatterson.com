@@ -44,13 +44,53 @@ describe('Phase 11 D9 — Cloud Run services', () => {
       );
     });
 
-    it('wires DB password + encryption key from Secret Manager (never inlined)', () => {
+    it('wires every Metabase secret from Secret Manager (never inlined)', () => {
       const envs = svc.metabase[0].template[0].containers[0].env;
       const secretOf = (name: string) =>
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         envs.find((e: any) => e.name === name)?.value_source?.[0]?.secret_key_ref?.[0]?.secret;
       expect(secretOf('MB_DB_PASS')).toBe('metabase-db-password');
       expect(secretOf('MB_ENCRYPTION_SECRET_KEY')).toBe('metabase-encryption-key');
+      // The embedding secret signs every static-embed JWT the public site mints.
+      // It came from the app database until 2026-09-11, where the CVE-2026-72898
+      // admin reads exposed it; sourcing it here is what made rotation possible
+      // without the IAP-gated admin UI, and the env value wins over the stored one.
+      expect(secretOf('MB_EMBEDDING_SECRET_KEY')).toBe('metabase-embedding-secret-key');
+    });
+  });
+
+  describe('the two writers on the metabase service agree', () => {
+    // deploy.sh applies infrastructure/metabase/cloudrun.yaml whole, via
+    // `gcloud run services replace`. A secret Terraform sets and that file
+    // omits is therefore removed by the next deploy or upgrade — which for
+    // MB_EMBEDDING_SECRET_KEY means falling back to the value the
+    // CVE-2026-72898 admin reads exposed, silently.
+    const yaml = readFileSync(
+      path.join(process.cwd(), 'infrastructure', 'metabase', 'cloudrun.yaml'),
+      'utf8',
+    );
+
+    it('declares every secret-backed metabase env in cloudrun.yaml too', () => {
+      const envs = svc.metabase[0].template[0].containers[0].env;
+      const secretEnvs: [string, string][] = envs
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .filter((e: any) => e.value_source?.[0]?.secret_key_ref?.[0]?.secret)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((e: any) => [e.name, e.value_source[0].secret_key_ref[0].secret]);
+
+      expect(secretEnvs.length).toBeGreaterThanOrEqual(3);
+      for (const [name, secret] of secretEnvs) {
+        expect(yaml).toContain(`- name: ${name}`);
+        expect(yaml).toContain(`name: ${secret}`);
+      }
+    });
+
+    it('keeps Terraform owning the metabase env block, so a stripped secret is restored', () => {
+      // The inverse of the claudish-proxy kill-switch case below: that env is a
+      // value a human sets mid-incident, this one is a reference to a secret.
+      // If env joined ignore_changes, a deploy.sh removal would never be undone.
+      const ignored = svc.metabase[0].lifecycle[0].ignore_changes;
+      expect(ignored).not.toContain('${template[0].containers[0].env}');
     });
   });
 

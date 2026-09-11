@@ -35,6 +35,7 @@ BQ_SA_EMAIL="${BQ_SA}@${PROJECT}.iam.gserviceaccount.com"
 DB_PW_SECRET="metabase-db-password"
 ENC_KEY_SECRET="metabase-encryption-key"
 BQ_KEY_SECRET="metabase-bq-sa-key"
+EMBED_SECRET="metabase-embedding-secret-key"
 
 DRY_RUN=false
 if [[ "${1:-}" == "--dry-run" ]]; then
@@ -160,7 +161,7 @@ run gcloud projects add-iam-policy-binding "${PROJECT}" \
   --condition=None >/dev/null
 
 echo "==> IAM: ${RUNTIME_SA_EMAIL} → roles/secretmanager.secretAccessor on metabase secrets..."
-for SECRET in "${DB_PW_SECRET}" "${ENC_KEY_SECRET}" "${BQ_KEY_SECRET}"; do
+for SECRET in "${DB_PW_SECRET}" "${ENC_KEY_SECRET}" "${BQ_KEY_SECRET}" "${EMBED_SECRET}"; do
   run gcloud secrets add-iam-policy-binding "${SECRET}" \
     --project="${PROJECT}" \
     --member="serviceAccount:${RUNTIME_SA_EMAIL}" \

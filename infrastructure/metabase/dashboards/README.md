@@ -168,7 +168,7 @@ The friendly-key mapping is hard-coded in `apply.sh`'s `--publish-embed-config` 
 
 1. Open `https://bi.iampatterson.com/admin/settings/embedding-in-other-applications`.
 2. Under **Static embedding**, click **Enable**.
-3. Copy the auto-generated **Embedding secret key** (`MB_EMBEDDING_SECRET_KEY`) — deliverable 6b's Next.js signer will use this to mint JWTs.
+3. The **Embedding secret key** shown here is read-only: since 2026-09-11 Cloud Run supplies it as `MB_EMBEDDING_SECRET_KEY` from Secret Manager (`metabase-embedding-secret-key`), and the env value wins over anything stored in the app database. The same value is mirrored to Vercel for deliverable 6b's Next.js signer, so both sides must move together when it is rotated.
 
 Until this toggle is flipped, the signed-embed URLs deliverable 6b produces will return 404 from `/embed/*` even though `apply.sh` happily sets `enable_embedding: true` on individual cards.
 
