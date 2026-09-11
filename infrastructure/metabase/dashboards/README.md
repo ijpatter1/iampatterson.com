@@ -39,9 +39,11 @@ infrastructure/metabase/dashboards/
 
 `apply.sh` authenticates to Metabase using an admin API key stored in Secret Manager.
 
-**The `/api/*` path on `bi.iampatterson.com` bypasses IAP.** This is intentional — an admin API key is the auth credential for the API path, not Google SSO. The UI path (`/*`) remains IAP-gated; only allowlisted accounts can browse the Metabase frontend.
+**Only the embed surface on `bi.iampatterson.com` bypasses IAP.** Since 2026-09-11 the carve-out is `/api/embed/*`, `/app/*` and `/embed/*`; the rest of `/api/*`, including everything `apply.sh` calls, is IAP-gated. The old `/api/*` carve-out was exploited through CVE-2026-72898 on 2026-09-03, 09-04 and 09-10. `apply.sh` needs an IAP-authorised request in addition to its admin API key, and fails against the public host until that is added. The UI path (`/*`) remains IAP-gated; only allowlisted accounts can browse the Metabase frontend.
 
-The split is declared in `infrastructure/terraform/metabase-lb.tf`: a non-IAP backend service (`metabase-backend-direct`) and a URL-map path matcher carving `/api/*`, `/app/*` and `/embed/*` out to it. `terraform apply` reconciles it. The one-shot `setup-domain.sh` that originally provisioned this was retired in [14.2]; it had already lost the `/app/*` path added after the 9F incident, so it could no longer reproduce production.
+**`apply.sh` does not work until it authenticates through IAP.** Its requests now get IAP's 302 or 401, and `lib/metabase_client.sh` treats a 302 as success, so a run fails with a jq parse error or an empty "Authenticated to Metabase as" line rather than an IAP message. A 401 here is not a bad API key; do not regenerate the key in response. Tracked in `docs/BACKLOG.md`.
+
+The split is declared in `infrastructure/terraform/metabase-lb.tf`: a non-IAP backend service (`metabase-backend-direct`) and a URL-map path matcher carving `/api/embed/*`, `/app/*` and `/embed/*` out to it. `terraform apply` reconciles it. The one-shot `setup-domain.sh` that originally provisioned this was retired in [14.2]; it had already lost the `/app/*` path added after the 9F incident, so it could no longer reproduce production.
 
 ---
 
@@ -68,12 +70,17 @@ apply is a no-op.
 Verify:
 
 ```bash
+curl -sI https://bi.iampatterson.com/api/embed/dashboard/not-a-token | head -3
+# expect: an error status from Metabase itself, not 302  (the embed API bypasses IAP)
+
 curl -sI https://bi.iampatterson.com/api/health | head -3
-# expect: HTTP/2 200  (direct from Metabase; IAP bypassed)
+# expect: HTTP/2 302  (the rest of the API is IAP-gated)
 
 curl -sI https://bi.iampatterson.com/ | head -3
 # expect: HTTP/2 302  (IAP redirects to Google SSO)
 ```
+
+Then open `https://www.iampatterson.com/demo/ecommerce/confirmation` in a private window and confirm the dashboard renders. Use a private window: a signed-in IAP cookie from your own browser authorises requests the anonymous visitor cannot make, and hides failures. The embed's own `/api/session/properties` request gets IAP's 302 and fails; the dashboard renders without it (checked 2026-09-11).
 
 ### 2. Generate a Metabase admin API key
 
@@ -122,6 +129,8 @@ cd /workspace/infrastructure/metabase/dashboards
 ./apply.sh --dry-run        # preview actions; no API writes
 ./apply.sh                  # apply
 ```
+
+**Both of these fail today.** `apply.sh` authenticates with `GET /api/user/current` before it does anything else, and that path is IAP-gated since 2026-09-11. `--dry-run` is no exception: it skips writes, not the authentication.
 
 On success, `.ids.json` is written with the resolved IDs:
 
@@ -203,7 +212,7 @@ Position with `row` (0-indexed top-to-bottom) and `col` (0-23).
 
 ## Troubleshooting
 
-**`ERROR: GET /api/user/current returned HTTP 401`** — the API key is wrong, expired, or the secret has the wrong value. Regenerate in Metabase and re-upload to Secret Manager.
+**`ERROR: GET /api/user/current returned HTTP 401`** — since 2026-09-11 this is IAP, not the API key. `/api/user/current` is IAP-gated and `apply.sh` does not authenticate through IAP; see the warning at the top of this file. Do not regenerate the key. Only once the request reaches Metabase at all is the key worth suspecting, in which case regenerate it in Metabase and re-upload to Secret Manager.
 
 **`ERROR: database 'iampatterson marts' not found`** — the BigQuery data source wasn't added in Metabase UI. See `infrastructure/metabase/README.md` Task 7, step 5.
 

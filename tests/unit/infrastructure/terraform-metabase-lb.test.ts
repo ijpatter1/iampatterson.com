@@ -40,20 +40,84 @@ describe('Phase 11 D9 — Metabase LB/IAP', () => {
       expect(matcher.default_service).toBe(IAP_BACKEND);
     });
 
-    it('carves /api, /app, /embed out to the non-IAP backend', () => {
+    it('carves only the signed-embed surface out to the non-IAP backend', () => {
       expect(rule.service).toBe(DIRECT_BACKEND);
       // Exact set, not arrayContaining: a NEW path silently added to the non-IAP
       // carve-out (e.g. /admin/* leaking out from behind IAP — the inverse of the
       // 9F incident) must fail this pin, not slip through.
-      expect([...rule.paths].sort()).toEqual(['/api/*', '/app/*', '/embed/*']);
+      expect([...rule.paths].sort()).toEqual(['/api/embed/*', '/app/*', '/embed/*']);
     });
 
     it('never routes a carve-out path to the IAP backend', () => {
       // The whole point: these must hit the direct (non-IAP) backend.
       expect(rule.service).not.toBe(IAP_BACKEND);
-      for (const p of ['/api/*', '/app/*', '/embed/*']) {
+      for (const p of ['/api/embed/*', '/app/*', '/embed/*']) {
         expect(rule.paths).toContain(p);
       }
+    });
+
+    it('keeps every Metabase API path except the embed API behind IAP', () => {
+      // CVE-2026-72898 is an unauthenticated SQL injection in
+      // /api/session/reset_password. It was exploited through the old /api/*
+      // carve-out on 2026-09-03, 09-04 and 09-10 to take over the admin account
+      // and read every setting, including a stored API key. The public site only
+      // needs the signed-JWT embed API, so any broader /api path here must fail.
+      for (const p of rule.paths) {
+        expect(p).not.toBe('/api/*');
+        if (p.startsWith('/api/')) {
+          expect(p.startsWith('/api/embed/')).toBe(true);
+        }
+      }
+    });
+  });
+
+  describe('url_map IAP invariants across every rule (CVE-2026-72898)', () => {
+    const EMBED_SURFACE = ['/api/embed/*', '/app/*', '/embed/*'];
+
+    it('sends nothing outside the embed surface to the non-IAP backend, on any matcher or rule', () => {
+      // The pins above read only the first path_rule. A second rule or matcher
+      // sending /api/session/* to the direct backend would reopen the exploited
+      // surface without failing them, so every rule is checked here.
+      const urlMap = tf.resource.google_compute_url_map.metabase[0];
+      expect(urlMap.path_matcher.every((m: { route_rules?: unknown }) => m.route_rules === undefined)).toBe(true);
+      for (const m of urlMap.path_matcher) {
+        for (const r of m.path_rule ?? []) {
+          if (r.service === DIRECT_BACKEND) {
+            for (const p of r.paths) expect(EMBED_SURFACE).toContain(p);
+          }
+        }
+      }
+    });
+
+    it('fails closed: the url-map default is the IAP backend', () => {
+      // Until 2026-09-11 this defaulted to the direct backend, unreachable only
+      // while a host rule matched "*". Any Host header not matching a rule would
+      // otherwise reach every Metabase path without IAP.
+      const urlMap = tf.resource.google_compute_url_map.metabase[0];
+      expect(urlMap.default_service).toBe(IAP_BACKEND);
+    });
+
+    it('routes every matcher default to the IAP backend, not just the first', () => {
+      // A second host rule for bi.iampatterson.com pointing at a matcher whose
+      // default_service is the direct backend would send the whole host around
+      // IAP with no path rule to inspect, so every pin above would still pass.
+      const urlMap = tf.resource.google_compute_url_map.metabase[0];
+      for (const m of urlMap.path_matcher as { default_service: string }[]) {
+        expect(m.default_service).toBe(IAP_BACKEND);
+      }
+    });
+
+    it('leaves /api/session/properties behind IAP (embeds render without it)', () => {
+      // The embed frontend requests /api/session/properties, which returns
+      // admin-only settings to an admin session. Anonymous embeds render without
+      // it (checked in a private window on 2026-09-11), so it stays IAP-gated.
+      const urlMap = tf.resource.google_compute_url_map.metabase[0];
+      const direct = urlMap.path_matcher
+        .flatMap((m: { path_rule?: { service: string; paths: string[] }[] }) => m.path_rule ?? [])
+        .filter((r: { service: string }) => r.service === DIRECT_BACKEND)
+        .flatMap((r: { paths: string[] }) => r.paths);
+      expect(direct).not.toContain('/api/session/properties');
+      expect(direct).not.toContain('/api/session/*');
     });
   });
 

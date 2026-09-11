@@ -3,9 +3,16 @@
 # Traffic shape (the surface behind the Phase 9F /app/* incident):
 #   host "*" -> path matcher "direct-paths"
 #     default            -> metabase-backend         (IAP-gated: UI requires Google SSO)
-#     /api/*,/app/*,/embed/* -> metabase-backend-direct (non-IAP: API key + signed-JWT embeds)
+#     /api/embed/*,/app/*,/embed/* -> metabase-backend-direct (non-IAP: signed-JWT embeds only)
 # A path missing from that carve-out becomes IAP-gated and breaks. The url_map
 # below is the single source of truth for that split.
+#
+# Until 2026-09-11 the carve-out was /api/*, which left every Metabase API endpoint
+# reachable without IAP. CVE-2026-72898, an unauthenticated SQL injection in
+# /api/session/reset_password, was exploited through it on 2026-09-03, 09-04 and
+# 09-10. Only the embed API may bypass IAP now; admin API calls go through IAP.
+# The embed surface is only as safe as the embedding secret, which that admin
+# access exposed: it stays exposed until the secret is rotated (docs/BACKLOG.md).
 
 # Serverless NEG fronting the Cloud Run `metabase` service.
 resource "google_compute_region_network_endpoint_group" "metabase_neg" {
@@ -51,8 +58,8 @@ resource "google_compute_backend_service" "metabase_backend" {
   }
 }
 
-# Non-IAP backend — reached only via the /api·/app·/embed carve-out. Protected by
-# Metabase's own auth (session/API key) and signed-JWT embed validation.
+# Non-IAP backend — reached only via the /api/embed·/app·/embed carve-out. Protected
+# only by Metabase's signed-JWT embed validation, i.e. by the embedding secret.
 resource "google_compute_backend_service" "metabase_backend_direct" {
   project               = var.project_id
   name                  = "metabase-backend-direct"
@@ -81,9 +88,11 @@ resource "google_compute_url_map" "metabase" {
   project = var.project_id
   name    = "metabase-url-map"
 
-  # Fallback when no host rule matches; host "*" below routes everything through
-  # the direct-paths matcher, so this is effectively a safety default.
-  default_service = google_compute_backend_service.metabase_backend_direct.id
+  # Fallback when no host rule matches. Fails closed on the IAP-gated backend, so
+  # adding or narrowing a host rule cannot expose Metabase. Until 2026-09-11 this
+  # was the non-IAP backend, safe only while the host rule below matched every
+  # host ("*") — a fail-open default on the surface CVE-2026-72898 was exploited through.
+  default_service = google_compute_backend_service.metabase_backend.id
 
   host_rule {
     hosts        = ["*"]
@@ -96,7 +105,8 @@ resource "google_compute_url_map" "metabase" {
     default_service = google_compute_backend_service.metabase_backend.id
 
     path_rule {
-      paths   = ["/api/*", "/app/*", "/embed/*"]
+      # Signed-JWT embeds only: the embed page, its static assets and the embed API.
+      paths   = ["/api/embed/*", "/app/*", "/embed/*"]
       service = google_compute_backend_service.metabase_backend_direct.id
     }
   }

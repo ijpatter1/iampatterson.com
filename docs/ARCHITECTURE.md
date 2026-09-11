@@ -383,11 +383,11 @@ Browser → bi.iampatterson.com
 
 **Three-layer security model:**
 
-1. **IAP (Google SSO)**, only allowlisted Google accounts reach the Metabase login page. Blocks "exposed Metabase on the internet" attack classes (auth bypass CVEs, credential stuffing, enumeration).
-2. **Metabase auth**, admin password + 2FA. Second layer if IAP is misconfigured.
+1. **IAP (Google SSO)**, only allowlisted Google accounts reach the Metabase login page. Blocks "exposed Metabase on the internet" attack classes (auth bypass CVEs, credential stuffing, enumeration) for the UI and every API path except the embed surface. The 2026-09 compromise (CVE-2026-72898) went through the then-public `/api/*` carve-out; see "IAP and the API path".
+2. **Metabase auth**, admin password (OSS Metabase has no 2FA). Second layer if IAP is misconfigured.
 3. **BigQuery IAM**, `metabase-bigquery` service account is dataset-scoped read-only. Even full Metabase compromise cannot write to BigQuery or reach other datasets.
 
-The only long-lived credential material is the `metabase-bigquery` JSON key. Rotated annually per the runbook.
+Long-lived credential material: the `metabase-bigquery` JSON key (rotated annually per the runbook), the embedding secret, `metabase-db-password` and the Metabase admin password. The 2026-09 compromise exposed the embedding secret, and rotation of all of them is tracked in `docs/BACKLOG.md`.
 
 **GCP resources provisioned:**
 
@@ -431,9 +431,9 @@ infrastructure/metabase/dashboards/
 
 **Auth model:** `apply.sh` authenticates to `https://bi.iampatterson.com/api/*` with a Metabase admin API key stored in Secret Manager as `metabase-api-key`. The key is generated once via Metabase's Admin → Authentication → API Keys UI and scoped to the Admin group. Script fetches the key at run time via `gcloud secrets versions access`; never written to disk.
 
-**IAP and the API path:** `/api/*` requests carrying the `x-api-key` header must bypass IAP. This is provisioned as a URL-map path-matcher addendum to Phase 9B-infra Task 5: IAP gates the UI path (`/*` → SSO) but not the API path (`/api/*` → Metabase direct). Without this split, `apply.sh` cannot reach the API from an unauthenticated shell. The split also serves deliverable 6b's `/embed/*` path (see "Open decisions" below).
+**IAP and the API path:** Until 2026-09-11, `/api/*` bypassed IAP so `apply.sh` could reach the API with its key from an unauthenticated shell. That carve-out was exploited: CVE-2026-72898, an unauthenticated SQL injection in `/api/session/reset_password`, gave attackers the admin account on 2026-09-03, 09-04 and 09-10. The carve-out is now only `/api/embed/*`, `/embed/*` and `/app/*`, which deliverable 6b's signed-JWT embeds need; every other API path is IAP-gated. `apply.sh` therefore needs an IAP-authorised request as well as its key, and fails against the public host until that is added.
 
-**Security tradeoffs of the path split:** Pre-split, IAP's Google-SSO-backed challenge was the first gate on every request, including brute-force and enumeration attempts on `/api/session`, `/api/user`, and `/api/setup/*`. Post-split, those endpoints are directly reachable from the public internet, Metabase's own auth layer (session cookies, admin API key) is the only remaining protection on `/api/*`, and Metabase's signed-JWT validation is the only protection on `/embed/*`. Neither path has Cloud Armor, rate limiting, or a WAF in front of it. For a solo-user portfolio site this is acceptable risk: the attack surface is Metabase's well-maintained OSS auth code, plus a single admin credential rotated annually, plus the `metabase-encryption-key` that encrypts credentials in the app DB. For a multi-user production deployment, a Cloud Armor security policy with per-IP rate limits on `/api/session` and a WAF rule on `/api/setup/*` would be appropriate. Deferred to Phase 11 (Operational Readiness) if the threat model changes.
+**Security tradeoffs of the path split:** The original split left `/api/session`, `/api/user` and `/api/setup/*` reachable from the internet with Metabase's own auth as the only gate, on the reasoning that its OSS auth code was well maintained. That reasoning failed in practice: CVE-2026-72898 was published on 2026-08-06 and exploited against this instance within a month. The narrowed carve-out leaves only the embed API, the embed page and static assets public, behind Metabase's signed-JWT validation. That validation is only as strong as the embedding secret, and the attackers' admin access exposed it, so this containment is incomplete until the secret is rotated and embedding-enabled cards and dashboards are audited (tracked in `docs/BACKLOG.md`). None of these paths has Cloud Armor, rate limiting or a WAF in front of it, so the instance must track Metabase security releases, which `docs/runbook/dependency-cadence.md` currently leaves to a monthly manual check.
 
 **Apply flow (idempotent):**
 
@@ -466,7 +466,7 @@ All six use native SQL (not MBQL), hand-written in the YAML specs so they're rea
 
 ### Phase 9B, Confirmation-page signed embeds (deliverable 6b)
 
-The IAP-bypass decision landed on the URL-map path split (deliverable 6a's `/api/*` addendum, extended to `/embed/*`): `metabase-backend-direct` wraps the same serverless NEG as the IAP-gated backend but has IAP never attached, so anonymous visitors load iframes directly. Static-image embeds and server-side proxy embeds were rejected, the first loses drill-down interactivity, the second adds latency and a new trust boundary for no architectural gain.
+The IAP-bypass decision landed on the URL-map path split (deliverable 6a's addendum, narrowed on 2026-09-11 to `/api/embed/*`, `/embed/*` and `/app/*`): `metabase-backend-direct` wraps the same serverless NEG as the IAP-gated backend but has IAP never attached, so anonymous visitors load iframes directly. Static-image embeds and server-side proxy embeds were rejected, the first loses drill-down interactivity, the second adds latency and a new trust boundary for no architectural gain.
 
 **Placement: inline, not in the overlay.** The confirmation page is the *Tier 3 payoff* surface in the ecommerce narrative, the visitor has completed a purchase and the inline embeds frame their specific order against the aggregate. The overlay stays the *Tier 2 plumbing* surface (in use at each funnel step). Dropping BI embeds into the overlay on the confirmation route would duplicate them with the inline copy and hide the most direct connection the demo makes between one visitor's action and a dashboard metric. The overlay on `/demo/ecommerce/confirmation` instead houses the three non-embeddable questions (ROAS, Revenue share, LTV) as summary cards with deep-links into the IAP-gated `/dashboard/2`.
 

@@ -391,7 +391,8 @@ describe('apply.sh behavioral invariants', () => {
 //
 // The assertions were not dropped, they were already better covered.
 // tests/unit/infrastructure/terraform-metabase-lb.test.ts pins the same split
-// against `metabase-lb.tf` as an EXACT set — ['/api/*', '/app/*', '/embed/*'] —
+// against `metabase-lb.tf` as an EXACT set — ['/api/embed/*', '/app/*', '/embed/*'] since the
+// 2026-09-11 CVE-2026-72898 containment narrowed it from /api/* —
 // which is stronger than the substring checks here were, and which catches the
 // case the script could not: /app/* was added after the 9F incident and
 // setup-domain.sh never learned about it, so the script had been unable to
