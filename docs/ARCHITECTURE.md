@@ -387,7 +387,7 @@ Browser → bi.iampatterson.com
 2. **Metabase auth**, admin password (OSS Metabase has no 2FA). Second layer if IAP is misconfigured.
 3. **BigQuery IAM**, `metabase-bigquery` service account is dataset-scoped read-only. Even full Metabase compromise cannot write to BigQuery or reach other datasets.
 
-The only long-lived credential material is the `metabase-bigquery` JSON key. Rotated annually per the runbook.
+Long-lived credential material: the `metabase-bigquery` JSON key (rotated annually per the runbook), the embedding secret, `metabase-db-password` and the Metabase admin password. The 2026-09 compromise exposed the embedding secret, and rotation of all of them is tracked in `docs/BACKLOG.md`.
 
 **GCP resources provisioned:**
 

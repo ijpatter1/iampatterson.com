@@ -130,6 +130,8 @@ cd /workspace/infrastructure/metabase/dashboards
 ./apply.sh                  # apply
 ```
 
+**Both of these fail today.** `apply.sh` authenticates with `GET /api/user/current` before it does anything else, and that path is IAP-gated since 2026-09-11. `--dry-run` is no exception: it skips writes, not the authentication.
+
 On success, `.ids.json` is written with the resolved IDs:
 
 ```json
@@ -210,7 +212,7 @@ Position with `row` (0-indexed top-to-bottom) and `col` (0-23).
 
 ## Troubleshooting
 
-**`ERROR: GET /api/user/current returned HTTP 401`** — the API key is wrong, expired, or the secret has the wrong value. Regenerate in Metabase and re-upload to Secret Manager.
+**`ERROR: GET /api/user/current returned HTTP 401`** — since 2026-09-11 this is IAP, not the API key. `/api/user/current` is IAP-gated and `apply.sh` does not authenticate through IAP; see the warning at the top of this file. Do not regenerate the key. Only once the request reaches Metabase at all is the key worth suspecting, in which case regenerate it in Metabase and re-upload to Secret Manager.
 
 **`ERROR: database 'iampatterson marts' not found`** — the BigQuery data source wasn't added in Metabase UI. See `infrastructure/metabase/README.md` Task 7, step 5.
 

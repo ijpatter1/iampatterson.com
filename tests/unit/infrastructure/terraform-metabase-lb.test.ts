@@ -100,6 +100,16 @@ describe('Phase 11 D9 — Metabase LB/IAP', () => {
       }
     });
 
+    it('routes every matcher default to the IAP backend, not just the first', () => {
+      // A second host rule for bi.iampatterson.com pointing at a matcher whose
+      // default_service is the direct backend would send the whole host around
+      // IAP with no path rule to inspect, so every pin above would still pass.
+      const urlMap = tf.resource.google_compute_url_map.metabase[0];
+      for (const m of urlMap.path_matcher as { default_service: string }[]) {
+        expect(m.default_service).toBe(IAP_BACKEND);
+      }
+    });
+
     it('leaves /api/session/properties behind IAP (embeds render without it)', () => {
       // The embed frontend requests /api/session/properties, which returns
       // admin-only settings to an admin session. Anonymous embeds render without
