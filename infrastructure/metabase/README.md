@@ -757,6 +757,42 @@ gcloud sql backups restore <BACKUP_ID> \
   --restore-instance=metabase-app-db --project=iampatterson
 ```
 
+### Rotate the embedding secret
+
+The secret signs every static-embed JWT the site mints. Cloud Run supplies
+it as `MB_EMBEDDING_SECRET_KEY` from Secret Manager, and that value
+overrides whatever is stored in the app database.
+
+`version: latest` resolves when a container **starts**, and this service
+holds a warm instance (`min_instance_count = 1`, `cpu_idle = false`), so
+adding a secret version on its own rotates nothing. A new revision has to
+be forced.
+
+1. Add the new version (64-character hex, which Metabase requires):
+
+   ```bash
+   SEC_TMP=$(mktemp); openssl rand -hex 32 | tr -d '\n' > "${SEC_TMP}"
+   gcloud secrets versions add metabase-embedding-secret-key \
+     --project=iampatterson --data-file="${SEC_TMP}"
+   ```
+
+2. Put the same value in Vercel (`MB_EMBEDDING_SECRET_KEY`, all three
+   environments) and stage a production build **without** promoting it:
+   `vercel deploy --prebuilt --prod --skip-domain`.
+3. Force a new Metabase revision so it reads the new version:
+   `gcloud run services update metabase --project=iampatterson \
+   --region=us-central1 --update-secrets=MB_EMBEDDING_SECRET_KEY=metabase-embedding-secret-key:latest`.
+   Then `shred -u "${SEC_TMP}"`.
+4. Promote the staged deployment immediately: `vercel promote <url>`.
+
+Between 3 and 4 the site signs with the old key and Metabase expects the
+new one, so the dashboard iframe on `/demo/ecommerce/confirmation` shows a
+Metabase error — not the signer's fallback, which only fires when the env
+is missing entirely. Staging the build first keeps that to seconds.
+Verify with a fresh page load: `/api/embed/dashboard/<token>` returns 200,
+and a token minted by the old key returns 400 "Message seems corrupt or
+manipulated".
+
 ### Rotate the BigQuery SA key
 
 Annual rotation keeps the long-lived JSON key from being the longest

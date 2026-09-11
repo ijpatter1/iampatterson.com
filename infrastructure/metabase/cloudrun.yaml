@@ -104,3 +104,11 @@ spec:
                 secretKeyRef:
                   name: metabase-encryption-key
                   key: latest
+            # Signs static-embed JWTs. Must stay in step with cloud-run.tf:
+            # this file is applied whole by deploy.sh, so dropping it here
+            # reverts Metabase to the stored value CVE-2026-72898 exposed.
+            - name: MB_EMBEDDING_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: metabase-embedding-secret-key
+                  key: latest
