@@ -10,7 +10,37 @@
 # raises those as security updates regardless of the schedule below, and they are
 # meant to interrupt.
 #
-# `open-pull-requests-limit` is deliberately low for the same reason.
+# `open-pull-requests-limit` is a review budget, and it is also the second way
+# this file can hide an update: past the cap Dependabot opens nothing, with no
+# pull request and no red. So the service caps below are set from their own group
+# arithmetic rather than kept as low as possible, and the runbook's monthly pass
+# reads `npm outdated` to catch anything the cap still swallowed. The root cap of
+# 3 is unchanged and is already binding — recorded in the runbook, not solved here.
+#
+# Majors do not travel in a wildcard group. A grouped major fails twice over: it
+# hides a migration among patch bumps, and one unresolvable member takes the whole
+# pull request down with it. #68 was both — the event-stream group carried express
+# 5, jest 30 and typescript 7 together, and typescript 7 cannot be installed there
+# at all, so `npm ci` failed on ERESOLVE before a single test ran and the express
+# and jest bumps could not be judged either. Run 34483981686, 2026-09-10.
+#
+# What a major must NOT be split from is its own `@types` companion. `express` 5
+# without `@types/express` 5 is a half-migration; `@types/express` 5 against
+# express-4 handlers is a build error. Neither pull request can pass alone, which
+# is the same reason next-react exists. Hence a small named group per pair,
+# declared before the wildcard group, because a package joins the first group it
+# matches.
+#
+# Nothing is ignored anywhere in this file. A major that cannot be taken yet still
+# opens and still goes red; where it stays red, the reason and the release
+# condition are recorded under "Blocked" in the runbook.
+#
+# `@types/node` has no runtime companion here: its major follows the base-image
+# decision on the docker entries below, not the npm calendar.
+#
+# Scope, 2026-09-10: the three service entries only. The root and dataform entries
+# are unchanged — root is already at its cap and its dev-tooling group is a
+# separate migration (#81), and dataform's group holds one package.
 #
 # No `day:` key: it applies only to weekly intervals. A monthly schedule runs on
 # the first of the month, and carrying a `day: monday` that Dependabot ignores
@@ -39,30 +69,49 @@ updates:
     directory: /infrastructure/cloud-run/claudish-proxy
     schedule:
       interval: monthly
-    open-pull-requests-limit: 2
+    open-pull-requests-limit: 6
     groups:
+      express:
+        patterns: ['express', '@types/express']
+      jest:
+        patterns: ['jest', '@types/jest', 'ts-jest']
       all:
         patterns: ['*']
+        update-types: ['minor', 'patch']
     labels: ['dependencies', 'claudish-proxy']
 
   - package-ecosystem: npm
     directory: /infrastructure/cloud-run/event-stream
     schedule:
       interval: monthly
-    open-pull-requests-limit: 2
+    open-pull-requests-limit: 6
     groups:
+      express:
+        patterns: ['express', '@types/express']
+      jest:
+        patterns: ['jest', '@types/jest', 'ts-jest']
       all:
         patterns: ['*']
+        update-types: ['minor', 'patch']
     labels: ['dependencies', 'event-stream']
 
   - package-ecosystem: npm
     directory: /infrastructure/cloud-run/data-generator
     schedule:
       interval: monthly
-    open-pull-requests-limit: 2
+    open-pull-requests-limit: 8
     groups:
+      express:
+        patterns: ['express', '@types/express']
+      jest:
+        patterns: ['jest', '@types/jest', 'ts-jest']
+      uuid:
+        patterns: ['uuid', '@types/uuid']
+      supertest:
+        patterns: ['supertest', '@types/supertest']
       all:
         patterns: ['*']
+        update-types: ['minor', 'patch']
     labels: ['dependencies', 'data-generator']
 
   # The deliverable names "the root and the three services". This is a fourth
