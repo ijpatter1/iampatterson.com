@@ -1,0 +1,16 @@
+{
+  // Editors resolve an open file to the nearest config literally named
+  // tsconfig.json. The root one excludes tests/**, so without this file every
+  // test would land in an inferred project — losing `paths` and `jsx`, and
+  // lighting up ~140 files that import via `@/` plus ~92 .tsx files with errors
+  // that do not exist. This is that config, under that name, so the editor finds
+  // it. It mirrors tsconfig.test.json, which is what `npm run typecheck:tests`
+  // uses from the repo root.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["jest", "node", "@testing-library/jest-dom"]
+  },
+  "include": ["../next-env.d.ts", "./**/*.ts", "./**/*.tsx", "../src/**/*.ts", "../src/**/*.tsx"],
+  // Must not inherit the parent's "tests" exclusion — see tsconfig.test.json.
+  "exclude": ["../node_modules", "../infrastructure", "../scripts/claudish"]
+}

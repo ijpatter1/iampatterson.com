@@ -36,8 +36,15 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules",
     "infrastructure",
-    "scripts/claudish"
+    "node_modules",
+    "scripts/claudish",
+    // Next 16.3 typechecks every file in this program; 16.2 did not. tests/**
+    // carries 54 pre-existing type errors, so leaving it in fails the build and
+    // holds two critical Next RCEs. Excluding it restores the behaviour that
+    // held until 16.3 rather than losing coverage. The errors stay countable via
+    // tsconfig.test.json / `npm run typecheck:tests`; fixing them means typing
+    // infrastructure/gtm/lib/*.js, tracked in the private control plane backlog.
+    "tests"
   ]
 }

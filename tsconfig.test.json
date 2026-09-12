@@ -1,0 +1,16 @@
+{
+  // Keeps tests/** checkable after tsconfig.json excluded them from the build
+  // program. `npm run typecheck:tests` prints the count; it is the debt ledger.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // The parent sets no `types`; tests need the jest and jest-dom ambients.
+    "types": ["jest", "node", "@testing-library/jest-dom"]
+  },
+  "include": ["next-env.d.ts", "tests/**/*.ts", "tests/**/*.tsx", "src/**/*.ts", "src/**/*.tsx"],
+  // LOAD-BEARING, and it looks redundant next to `extends`. It is not: the parent
+  // excludes "tests", and exclude filters the include set, so inheriting it makes
+  // this program EMPTY — tsc exits 0 and the ledger reads zero debt while nothing
+  // is checked. tests/unit/infra/typecheck-tests-config.test.ts fails if this is
+  // removed. Do not "simplify" it away.
+  "exclude": ["node_modules", "infrastructure", "scripts/claudish"]
+}
