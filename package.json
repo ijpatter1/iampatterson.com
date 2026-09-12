@@ -18,7 +18,7 @@
     "typecheck:tests": "tsc --noEmit -p tsconfig.test.json"
   },
   "dependencies": {
-    "framer-motion": "^12.38.0",
+    "framer-motion": "^13.2.0",
     "jsonwebtoken": "^9.0.3",
     "lz-string": "^1.5.0",
     "next": "^16.3.5",
