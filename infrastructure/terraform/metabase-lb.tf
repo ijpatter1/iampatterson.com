@@ -12,7 +12,8 @@
 # /api/session/reset_password, was exploited through it on 2026-09-03, 09-04 and
 # 09-10. Only the embed API may bypass IAP now; admin API calls go through IAP.
 # The embed surface is only as safe as the embedding secret, which that admin
-# access exposed: it stays exposed until the secret is rotated (docs/BACKLOG.md).
+# access exposed. Rotated 2026-09-11: Cloud Run supplies it from Secret Manager
+# (see cloud-run.tf), and the exposed value is disabled.
 
 # Serverless NEG fronting the Cloud Run `metabase` service.
 resource "google_compute_region_network_endpoint_group" "metabase_neg" {
