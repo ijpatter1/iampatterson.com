@@ -91,7 +91,7 @@ describe('Phase 11 D9 — Cloud Run services', () => {
       // superuser_reserved_connections (3), so ~22 is usable — which is exactly
       // where num_backends peaked when metabase-00006-zzk failed on 2026-09-11.
       // Raising the ceiling is not an option at this tier: each connection costs
-      // several MB against 0.6 GB of RAM. See docs/BACKLOG.md.
+      // several MB against 0.6 GB of RAM. See the control plane's backlog.
       const USABLE_CONNECTIONS = 22;
       // metabase-00006-zzk failed its startup probe on 2026-09-11 with
       // "remaining connection slots are reserved for non-replication superuser

@@ -9,7 +9,7 @@
 ### Starting a Session
 
 1. **Run the tests:** `npm test`, establish baseline
-2. **Load context:** Read `docs/BACKLOG.md` and the latest file in `docs/sessions/`. (Amended 2026-09-09: `docs/PHASE_STATUS.md` is archived — the project is in `task` mode and BACKLOG is the only tracker.)
+2. **Load context:** Read the control plane's `docs/BACKLOG.md` and the latest file in the control plane's `docs/sessions/`. (Amended 2026-09-09: `docs/PHASE_STATUS.md` is archived — the project is in `task` mode and BACKLOG is the only tracker.)
 3. **Review recent changes:** `git log --oneline -10` to orient on recent work
 4. **Plan:** Identify the next feature to implement within the current phase. State what you'll build and how you'll test it before writing code
 
@@ -36,7 +36,7 @@
   - **Evaluator Results:** summary of the evaluator's scores and any unresolved issues
   - **Test State:** number of tests, all passing/any failing
   - **Next Steps:** the logical next feature(s) to tackle
-- Update `docs/BACKLOG.md` — delete what landed, add what was found. Don't let an entry rot to "probably done" 
+- Update the control plane's `docs/BACKLOG.md` — delete what landed, add what was found. Don't let an entry rot to "probably done" 
 
 ### Session Artifact Conventions
 

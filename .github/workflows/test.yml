@@ -27,7 +27,7 @@ name: test
 #     predate this workflow — verified 2026-09-09 against the commit before the
 #     overlay changes. A gate that is red for reasons unrelated to the change
 #     trains people to ignore it, which is worse than no gate. Fixing those two
-#     specs and adding a browser job is recorded in docs/BACKLOG.md.
+#     specs and adding a browser job is recorded in the control plane's backlog.
 #   - Docker image *builds*. Nothing here builds them. Note this does NOT mean
 #     the Node 24→26 Dockerfile bumps sail through: tests/unit/infra/
 #     runtime-currency.test.ts asserts every FROM line is node:24-slim, and the
