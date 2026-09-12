@@ -36,8 +36,9 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules",
     "infrastructure",
-    "scripts/claudish"
+    "node_modules",
+    "scripts/claudish",
+    "tests"
   ]
 }
