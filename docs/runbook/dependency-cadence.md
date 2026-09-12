@@ -33,6 +33,49 @@ interrupt.
    move on rather than force-fixing.
 4. **Check the two pinned images** that no bot watches: `gtm-cloud-image` and
    Metabase. Both are below.
+5. **Check the blocked list** below. Each row names what an update is waiting on
+   and the command that answers whether it still is.
+6. **Run `npm outdated`** at the root and in each service. This is the only step
+   that sees an update `open-pull-requests-limit` suppressed: past the cap
+   Dependabot opens no pull request at all, so nothing else in this pass would
+   show it.
+
+## Blocked
+
+An update that cannot be taken yet stays open and red. It is never `ignore`d in
+`.github/dependabot.yml` — nothing in that file suppresses an update by name,
+deliberately. A block you can see is a decision; a block configured away is a
+surprise a year later with nothing left to raise it. The cost of that choice is
+this table: a red pull request nobody records becomes wallpaper, so step 5 reads it.
+
+`open-pull-requests-limit` is the other way an update can vanish, and it is not
+solved by the table. Past the cap Dependabot opens nothing at all — no pull
+request, no red. The service caps are set from their group arithmetic; **the root
+cap of 3 is already binding** and step 6 is what catches what it swallowed.
+
+| Update | Blocked by | Release condition | Last checked |
+| --- | --- | --- | --- |
+| `typescript` → 6.x — root, event-stream, data-generator | `ts-jest` 29.4.6 is what those three have installed, and it declares `>=4.3 <6`. This half is **our** lag, not upstream's: 29.4.12 is published and widens to `<7`. claudish-proxy is already on 29.4.12 and is not blocked at 6. | Bump `ts-jest` to 29.4.12 — the pending group pull requests already do it. The block then moves to the row below. | 2026-09-10 |
+| `typescript` → 7.x — all four npm surfaces | `ts-jest@29.4.12` declares `>=4.3 <7`, and that is the newest published release, so this half is upstream lag. At **root only**, a second and independent cap: eight `@typescript-eslint/*` packages declaring `>=4.8.4 <6.1.0`, which arrive transitively through `eslint-config-next` — the repo declares no direct dependency on them. No service carries eslint at all. | `npm view ts-jest@latest peerDependencies.typescript` widening past 7. For root that is necessary but not sufficient: the `@typescript-eslint` cap lifts only when `eslint-config-next` pulls a newer parser, so check `npm ls @typescript-eslint/parser` at root rather than the standalone package — `npm view typescript-eslint@latest` would report a release this repo has not received. | 2026-09-10 |
+
+Neither row is a security exposure as it stands: `typescript` is a devDependency
+and compiles away. A blocked **runtime** or **framework** major is the case that
+would matter, because those carry external end dates — which is what step 1 exists
+to catch.
+
+`ts-jest` is the removable half of this block. Node 24 strips types natively and
+this project runs Node 24 on every surface, so dropping ts-jest would take one of
+the two constraints off permanently and close a second incident already recorded
+against it in `docs/BACKLOG.md`. That is its own task, not a line in this table.
+
+**A 0.x minor is a major.** Semver level is what `.github/dependabot.yml` uses to
+decide whether an update travels in a group, and it misreads pre-1.0 packages: a
+`0.122 → 0.123` bump is semver-*minor* and rides in the grouped pull request.
+`claudish-proxy` depends on `@anthropic-ai/sdk` and `@anthropic-ai/vertex-sdk`,
+both 0.x and both the riskiest runtime dependencies in the repo. Their gate is not
+the grouped suite — it is `scripts/run-claudish-golden.sh`, run before and after.
+`f1a889e` is the worked example of a vertex-sdk change that only that gate would
+have caught.
 
 ## Per surface
 
@@ -40,8 +83,8 @@ interrupt.
 | --- | --- | --- | --- |
 | Node runtime | Dependabot (docker) + the notices step | Monthly, and whenever a deprecation date is announced | Real. It touches `engines.node`, three Dockerfiles, the Vercel project setting and three redeploys. Phase 12 deliverable 12.1 is the worked example. |
 | Next.js and React | Dependabot (npm, grouped `next-react`) | Monthly | Moderate to high. They move together — a pull request that bumps one without the other cannot pass. A major is its own deliverable, as Phase 10a was for 14→16 and React 18→19. |
-| npm dependencies, site | Dependabot (npm, grouped) | Monthly | Low, usually. The suite is the gate. |
-| npm dependencies, services | Dependabot (npm, per service) | Monthly | Low, but each service has its own suite and its own deploy; a merged bump is not live until the service is redeployed. |
+| npm dependencies, site | Dependabot (npm, grouped for minors and patches; majors arrive one per pull request) | Monthly | Low, usually. The suite is the gate. A major is judged on its own — see Blocked above when one cannot be taken. |
+| npm dependencies, services | Dependabot (npm, per service; grouped for minors and patches, majors individually) | Monthly | Low, but each service has its own suite and its own deploy; a merged bump is not live until the service is redeployed. |
 | Cloud Run base images | Dependabot (docker, ungrouped) | Monthly | A base image bump is a runtime change, which is why these are never grouped with anything. Redeploy through `scripts/deploy-cloud-run.sh`. |
 | GitHub Actions | Dependabot (github-actions) | Monthly | Low. |
 | `gtm-cloud-image` (sGTM) | **Nobody. Check it by hand.** | Monthly, step 4 | See `docs/runbook/sgtm-image-update.md`. Dependabot does not watch a tag consumed by a Cloud Run service, and this one is worse than unwatched: the tag looks like it auto-updates and does not. Run `bash infrastructure/sgtm/update-image.sh status`. |
