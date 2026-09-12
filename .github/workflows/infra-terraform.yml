@@ -40,8 +40,8 @@ jobs:
     name: fmt + validate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: ${{ env.TF_VERSION }}
       - name: terraform fmt
@@ -59,13 +59,13 @@ jobs:
     needs: validate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - id: auth
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
           service_account: ${{ vars.GCP_DEPLOYER_SA }}
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: ${{ env.TF_VERSION }}
       - name: terraform init
@@ -75,7 +75,7 @@ jobs:
         run: terraform -chdir=$TF_WORKING_DIR plan -input=false -no-color
         continue-on-error: true
       - name: Post plan to PR
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         # Plan output and outcome reach the script through env, never through
         # ${{ }} interpolation into the source. A pull request controls the .tf
         # files, therefore controls the plan text, therefore controlled the
@@ -157,12 +157,12 @@ jobs:
           fi
           echo "infra-production carries $reviewers required-reviewer rule(s)."
 
-      - uses: actions/checkout@v4
-      - uses: google-github-actions/auth@v2
+      - uses: actions/checkout@v7
+      - uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
           service_account: ${{ vars.GCP_DEPLOYER_SA }}
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: ${{ env.TF_VERSION }}
       - name: terraform init
