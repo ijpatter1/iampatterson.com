@@ -85,6 +85,39 @@ describe('Phase 11 D9 — Cloud Run services', () => {
       }
     });
 
+    it('caps the app-DB pool in both writers, so two revisions can overlap', () => {
+      // Budget, measured rather than assumed. db-f1-micro's max_connections is
+      // the memory-derived default (~25) and Postgres holds back
+      // superuser_reserved_connections (3), so ~22 is usable — which is exactly
+      // where num_backends peaked when metabase-00006-zzk failed on 2026-09-11.
+      // Raising the ceiling is not an option at this tier: each connection costs
+      // several MB against 0.6 GB of RAM. See docs/BACKLOG.md.
+      const USABLE_CONNECTIONS = 22;
+      // metabase-00006-zzk failed its startup probe on 2026-09-11 with
+      // "remaining connection slots are reserved for non-replication superuser
+      // connections". The app DB is db-f1-micro (max_connections ~25) and
+      // MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE defaults to 15, so a rollout
+      // — where the old and new revisions each hold a pool — cannot fit. That
+      // blocks every config change, including the next security patch.
+      const envs = svc.metabase[0].template[0].containers[0].env;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const pool = envs.find((e: any) => e.name === 'MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE');
+      expect(pool).toBeDefined();
+      expect(Number(pool.value)).toBeGreaterThan(0);
+      // A rollout runs the old and new revisions at once, so two capped pools
+      // must fit. This is the arithmetic, not a taste for small numbers.
+      expect(2 * Number(pool.value)).toBeLessThanOrEqual(USABLE_CONNECTIONS);
+
+      // Match the name and value as one entry, and only outside comments: a
+      // commented-out pair satisfies two independent substring checks while
+      // `gcloud run services replace` ships a spec with no cap at all.
+      const entry = yaml.match(
+        /^(?!\s*#)\s*- name: MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE\n(?!\s*#)\s*value: '(\d+)'$/m,
+      );
+      expect(entry).not.toBeNull();
+      expect(entry?.[1]).toBe(String(pool.value));
+    });
+
     it('keeps Terraform owning the metabase env block, so a stripped secret is restored', () => {
       // The inverse of the claudish-proxy kill-switch case below: that env is a
       // value a human sets mid-incident, this one is a reference to a secret.

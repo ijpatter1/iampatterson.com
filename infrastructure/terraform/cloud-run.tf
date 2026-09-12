@@ -465,6 +465,21 @@ resource "google_cloud_run_v2_service" "metabase" {
         name  = "JAVA_TOOL_OPTIONS"
         value = "-Xmx1800m"
       }
+      # Governs the APPLICATION database pool only — Metabase's own metadata,
+      # sessions and task state. Warehouse queries use a separate per-database
+      # pool, so dashboard cards do not draw on this one.
+      #
+      # db-f1-micro leaves about 22 connections usable once Postgres reserves
+      # its superuser slots, and the default pool is 15. A rollout runs two
+      # revisions at once, which is what exhausted the instance and failed
+      # revision metabase-00006-zzk on 2026-09-11 — num_backends peaked at 22.
+      # Idle sits near 11, so 5 leaves room for the overlap. Raising the ceiling
+      # is not the alternative: connections cost memory this tier does not have.
+      # Keep in step with cloudrun.yaml, which deploy.sh applies whole.
+      env {
+        name  = "MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE"
+        value = "5"
+      }
       env {
         name  = "MB_DB_DBNAME"
         value = "metabase"
