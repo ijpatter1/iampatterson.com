@@ -12,12 +12,14 @@ Visitors browse a normal consulting site. At any point they can open the "Under 
 
 ## Tech stack
 
-- Next.js 14 (App Router), TypeScript (strict), Tailwind CSS
+- Next.js 16 (App Router), React 19, TypeScript (strict), Tailwind CSS, on Node 24
 - Cookiebot CMP with Consent Mode v2
 - Client-side GTM forwarding to server-side GTM (self-hosted on Cloud Run)
 - GA4 via sGTM, BigQuery event sink, Pub/Sub for real-time streaming
 - Dataform for warehouse transformations (medallion architecture)
 - Jest + React Testing Library for unit/component tests, Playwright for E2E
+- Metabase for the BI layer, embedded into the site with signed JWTs
+- Terraform for the GCP infrastructure, applied from CI behind an approval gate
 - Deployed on Vercel (frontend), GCP Cloud Run (backend services)
 
 ## Local development
@@ -34,11 +36,11 @@ The site runs without any environment variables configured. GTM, Cookiebot, and 
 
 ```bash
 npm test              # run all Jest tests
-npm test -- --watch   # watch mode
-npm test -- --coverage
+npm run test:watch    # watch mode
+npm run test:coverage # coverage report
 npm run build         # production build
 npm run lint          # ESLint
-npm run format        # Prettier
+npm run format        # Prettier (format:check to verify without writing)
 ```
 
 ## Project structure
@@ -55,27 +57,28 @@ tests/
   integration/  Pipeline integration tests
   e2e/          Playwright E2E tests
 infrastructure/
+  cloud-run/    Deployed services: event-stream (SSE relay), data-generator, claudish-proxy
   gtm/          GTM container specs (web + server)
-  sse-service/  Cloud Run SSE relay service
+  sgtm/         Server-side GTM image and deploy tooling
   dataform/     BigQuery transformation models
   bigquery/     Schema definitions, AI access layer scripts
+  metabase/     Metabase deployment, dashboards and embed config
+  terraform/    GCP infrastructure as code
+  monitoring/   Uptime checks and alert policies
+  pubsub/       Real-time event pipeline topics
+  retention/    Log and data retention config
 docs/
   ARCHITECTURE.md    Technical architecture
   runbook/           Operational procedures
   verification/      Dated records of production checks
+  uat/               Executable UAT scripts the e2e suite runs
 ```
 
 ## Demo environments
 
-The site includes three instrumented demo storefronts, all built around the Tuna Melts My Heart brand (a real pet influencer brand with 2M+ followers):
+**The Tuna Shop** is the instrumented demo storefront, built around the Tuna Melts My Heart brand (a real pet influencer brand with 2M+ followers). Product listing, cart, checkout and a post-purchase analytics view. Each page's "under the hood" view shows a different tier of the measurement stack: campaign taxonomy, staging transformations, data quality assertions, warehouse writes, and an embedded Metabase dashboard on the confirmation page.
 
-**The Tuna Shop** (e-commerce): Product listing, cart, checkout. Each page's "under the hood" view shows a different tier of the measurement stack: campaign taxonomy, staging transformations, data quality assertions, warehouse writes.
-
-**The Tuna Box** (subscription): Plan selection, trial signup. Demonstrates subscription event lifecycle tracking.
-
-**Tuna Partnerships** (lead gen): Partnership inquiry form. Demonstrates consent-gated routing and form interaction tracking.
-
-All three share the same event pipeline and BigQuery destination. An automated data generator (Cloud Run) produces 18 months of realistic historical data for dashboard demos.
+Two earlier demos — a subscription flow and a lead-gen form — were removed in the 9E redesign and their routes now permanently redirect. An automated data generator (Cloud Run) produces 18 months of realistic historical data for the dashboards.
 
 ## Measurement pipeline
 
@@ -84,7 +87,7 @@ Browser data layer
   -> Client-side GTM (consent check)
   -> Server-side GTM (event processing, same-origin domain)
   -> GA4, BigQuery (events_raw), Pub/Sub
-  -> Cloud Run SSE service
+  -> Cloud Run event-stream service (SSE)
   -> Browser overlay (real-time event stream)
 ```
 
@@ -96,7 +99,7 @@ All features are built with red/green TDD: test written first, then implementati
 
 ## Development phases
 
-The project was built in phases. Phases 1 through 10 are complete: foundation, real-time event pipeline, the flip-the-card overlay, the background data generator, the data infrastructure, the demo front-ends, the BI/dashboards layer, the frontend redesign, the 9A/9B/9E/9F homepage and ecommerce rebuilds, and Phase 10 (polish, performance, and launch prep — framework currency, Core Web Vitals, voice/data honesty, and the full launch-prep punch list across three UAT rounds). Initiatives 001 and 002 are complete; the plans and session records live in a private control plane.
+The project was built in phases across two initiatives, both complete. Phases 1 through 10: foundation, real-time event pipeline, the flip-the-card overlay, the background data generator, the data infrastructure, the demo front-ends, the BI/dashboards layer, the frontend redesign, the 9A/9B/9E/9F homepage and ecommerce rebuilds, and Phase 10 (polish, performance, and launch prep — framework currency, Core Web Vitals, voice/data honesty, and the full launch-prep punch list across three UAT rounds). Initiatives 001 and 002 are complete; the plans and session records live in a private control plane.
 
 ## License
 
