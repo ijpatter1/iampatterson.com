@@ -239,6 +239,9 @@ describe('docs/runbook/dependency-cadence.md', () => {
       'gtm-cloud-image',
       'Metabase',
       'Security advisories',
+      // Added 2026-09-12 with the compile job. Before it, this surface had no
+      // check that could fail and no row saying who watched it.
+      'Dataform',
       'GitHub Actions',
     ]) {
       expect(cadence).toContain(surface);
