@@ -11,6 +11,16 @@ you a deploy failed, not necessarily that anything is down.
 
 Check which it is before doing anything else.
 
+**Unless the deploy is one half of a two-sided change.** Then a failed revision
+*is* an outage, because the other half already moved. On 2026-09-11 the
+embedding secret was rotated: the Vercel build signing with the new key was
+promoted before Metabase was confirmed serving it, `metabase-00006-zzk` then
+failed its startup probe, and every embed returned 400 for about eleven minutes
+even though Cloud Run behaved exactly as described above. The rule that follows:
+move the side you can roll back last, and never promote the second half until
+the first is verified serving. `infrastructure/metabase/README.md` carries the
+rotation sequence in that order.
+
 ## Diagnose
 
 Is the service still serving, and from what?

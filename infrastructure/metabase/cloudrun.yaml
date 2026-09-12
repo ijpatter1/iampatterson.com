@@ -83,10 +83,11 @@ spec:
               value: ${CLOUDSQL_PRIVATE_IP}
             - name: MB_DB_PORT
               value: '5432'
-            # Two revisions overlap during a rollout and db-f1-micro cannot
-            # fit two default 15-connection pools; see cloud-run.tf.
+            # Two revisions overlap during a rollout and db-f1-micro leaves
+            # only ~22 connections usable, which failed metabase-00006-zzk on
+            # 2026-09-11. Application DB only; see cloud-run.tf.
             - name: MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE
-              value: '8'
+              value: '5'
             - name: MB_DB_DBNAME
               value: metabase
             - name: MB_DB_USER
