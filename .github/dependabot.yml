@@ -105,8 +105,6 @@ updates:
         patterns: ['express', '@types/express']
       jest:
         patterns: ['jest', '@types/jest', 'ts-jest']
-      uuid:
-        patterns: ['uuid', '@types/uuid']
       supertest:
         patterns: ['supertest', '@types/supertest']
       all:

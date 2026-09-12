@@ -166,8 +166,13 @@ describe('.github/dependabot.yml', () => {
       }
     }
     // Guards the loop itself: a manifest rename must not turn this green by
-    // finding nothing to check.
-    expect(pairs).toBeGreaterThanOrEqual(8);
+    // finding nothing to check. Lowered 8 -> 7 when data-generator dropped
+    // `@types/uuid` to take uuid 11 (GHSA-w5hq-g745-h8pq): from v10 uuid ships
+    // its own types and the DefinitelyTyped package is a published stub whose
+    // deprecation notice says so, so the pair stopped existing rather than
+    // stopping being checked. The floor is a tripwire on the loop, not a pin on
+    // the count — move it only alongside the manifest change that justifies it.
+    expect(pairs).toBeGreaterThanOrEqual(7);
   });
 
   it('carries no `ignore` anywhere, so a blocked update opens red instead of vanishing', () => {

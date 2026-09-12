@@ -48,6 +48,11 @@ deliberately. A block you can see is a decision; a block configured away is a
 surprise a year later with nothing left to raise it. The cost of that choice is
 this table: a red pull request nobody records becomes wallpaper, so step 5 reads it.
 
+Two kinds of row live here. Most are updates that **cannot be taken yet**. A few
+are updates that **were** taken by forcing a resolution — an `overrides` pin — and
+are filed for the opposite reason: so the pin carries a recorded exit and does not
+outlive its cause. Triage item 4 below is what mandates the second kind.
+
 `open-pull-requests-limit` is the other way an update can vanish, and it is not
 solved by the table. Past the cap Dependabot opens nothing at all — no pull
 request, no red. The service caps are set from their group arithmetic; **the root
@@ -57,12 +62,17 @@ cap of 3 is already binding** and step 6 is what catches what it swallowed.
 | --- | --- | --- | --- |
 | `typescript` → 6.x — root, event-stream, data-generator | `ts-jest` 29.4.6 is what those three have installed, and it declares `>=4.3 <6`. This half is **our** lag, not upstream's: 29.4.12 is published and widens to `<7`. claudish-proxy is already on 29.4.12 and is not blocked at 6. | Bump `ts-jest` to 29.4.12 — the pending group pull requests already do it. The block then moves to the row below. | 2026-09-10 |
 | `typescript` → 7.x — all four npm surfaces | `ts-jest@29.4.12` declares `>=4.3 <7`, and that is the newest published release, so this half is upstream lag. At **root only**, a second and independent cap: eight `@typescript-eslint/*` packages declaring `>=4.8.4 <6.1.0`, which arrive transitively through `eslint-config-next` — the repo declares no direct dependency on them. No service carries eslint at all. | `npm view ts-jest@latest peerDependencies.typescript` widening past 7. For root that is necessary but not sufficient: the `@typescript-eslint` cap lifts only when `eslint-config-next` pulls a newer parser, so check `npm ls @typescript-eslint/parser` at root rather than the standalone package — `npm view typescript-eslint@latest` would report a release this repo has not received. | 2026-09-10 |
-
+| `qs` → 6.16.0 without an override — all three services | **`express` is the blocker, on all three.** 4.22.2 is the newest express 4 and declares `qs: ~6.15.1`; 4.22.1 declares `~6.14.0`. Neither admits 6.16.0, so no express 4 release reaches the fix. claudish-proxy was the proof: already on 4.22.2 with qs 6.15.3 and still carrying both advisories. `body-parser` was a co-blocker and is no longer one — 1.20.8 declares `~6.16.0`, and this change ships it in event-stream and data-generator; claudish-proxy still has 1.20.6 at `~6.15.1`. **All eight qs alerts are runtime-scope**, from three advisories (GHSA-4mjr-xmp4-gh2g, GHSA-x5fp-wj9c-mxmx, GHSA-q8mj-m7cp-5q26), and express installs its query parser into the default router stack — so qs parses every request whether or not the app reads `req.query`. claudish-proxy is world-invokable, so waiting on express was not the call. **Taken as an `overrides` pin of `qs` to 6.16.0 in all three service manifests.** | An express 4.22.3 whose `qs` range admits 6.16.0, or express 5 adoption. Then delete the three `overrides` blocks: an override that outlives its cause is a silent pin on a package the parent has already moved past. Check with `npm view express@4 dependencies.qs`. | 2026-09-11 |
+| `extract-zip` — root, dev-only via `lighthouse` | **No fixed version exists.** Both advisories (GHSA-7pqw-9j4j-h8q3, GHSA-jmr9-qjv8-65gv) cap at `<= 2.0.1`, and 2.0.1 is the newest release ever published. It arrives through `lighthouse@12.8.2 → puppeteer-core@24 → @puppeteer/browsers@2.13.0`. The fix is upstream of the vulnerable package rather than in it: `@puppeteer/browsers@3.x` dropped `extract-zip` altogether — its dependencies are now `yargs` and `modern-tar`. | `lighthouse` 13, which declares `puppeteer-core ^25.3.0`. It is a dev-only major that **nothing in CI exercises** — `scripts/capture-cwv-baseline.sh` is run by hand from `docs/uat/phase-10b-uat.sh` — so adopting it means re-capturing the Core Web Vitals baseline and confirming the report shape that script reads (`categories.performance.score`, `audits['largest-contentful-paint'].numericValue`) survives the major. That is a task, not a bump. | 2026-09-11 |
 | `node` → 26 — the three service Dockerfiles | Nothing upstream. `engines.node` is `24.x` and `tests/unit/infra/runtime-currency.test.ts` asserts every Docker stage is `node:24-slim`, so the bump is red on arrival by design — and green-looking in CI, because nothing in the root suite rebuilds the images. Node 26 is Current, not LTS. | Node 26 reaches LTS **2026-10-28**; Node 24 is supported to 2028-04-30 and enters maintenance 2026-10-20. After the LTS date, take it as one migration: three Dockerfiles, `engines.node`, the currency test, and a check of Vercel's supported runtimes. Closed three times so far (#63, #64, #65). | 2026-09-12 |
 
-Neither row is a security exposure as it stands: `typescript` is a devDependency
-and compiles away. A blocked **runtime** or **framework** major is the case that
-would matter, because those carry external end dates — which is what step 1 exists
+The two `typescript` rows and the `node` row are not security exposures:
+`typescript` is a devDependency and compiles away, and the Node bump is a currency
+move with an LTS date rather than an advisory. **The other two are.** `extract-zip`
+is two high-severity advisories with no fix in existence, and `qs` was three
+runtime advisories, pinned around rather than waited out. A blocked **runtime** or
+**framework** row is the case that matters, because those carry external end dates
+— which is what step 1 exists
 to catch.
 
 `ts-jest` is the removable half of this block. Node 24 strips types natively and
@@ -103,6 +113,13 @@ should not pretend otherwise. Triage in this order:
 2. **Direct, dev-only.** Fix on the monthly pass.
 3. **Transitive, dev-only.** Fix when the parent updates. Forcing a resolution
    here usually breaks the tool and fixes nothing real.
+4. **Transitive, runtime-reachable, and the parent's range cannot admit the fix.**
+   This is the one case where forcing a resolution is right, and rule 3 does not
+   cover it — the parent updating will never help, because the parent's own
+   declared range is what excludes the fixed version. Pin it in `overrides`, prove
+   it with the service suite, and put a row in the table above carrying the
+   condition for **removing** the pin. An override with no recorded exit is how a
+   dependency quietly stops tracking upstream. `qs` is the worked example.
 
 ## Baseline, measured 2026-09-05
 
