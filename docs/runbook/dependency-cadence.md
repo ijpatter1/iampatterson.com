@@ -52,6 +52,11 @@ Two kinds of row live here. Most are updates that **cannot be taken yet**. A few
 are updates that **were** taken by forcing a resolution — an `overrides` pin — and
 are filed for the opposite reason: so the pin carries a recorded exit and does not
 outlive its cause. Triage item 4 below is what mandates the second kind.
+There are none of that kind in the table today. `qs` was the only one and it ran
+its arc — pinned 2026-09-11 because no express 4 release could reach the fixed
+version, removed 2026-09-12 when express 5 made it redundant. An empty category
+here is the mechanism working rather than an omission: the row existed to carry
+an exit condition, the condition was met, and the row went with it.
 
 `open-pull-requests-limit` is the other way an update can vanish, and it is not
 solved by the table. Past the cap Dependabot opens nothing at all — no pull
@@ -62,18 +67,16 @@ cap of 3 is already binding** and step 6 is what catches what it swallowed.
 | --- | --- | --- | --- |
 | `typescript` → 7.x — all four npm surfaces | **Two independent caps, binding on different surfaces — lifting one does not lift the other.** At **root**: 7 `@typescript-eslint/*` packages plus the un-namespaced `typescript-eslint` umbrella (8 carrying the cap, out of a family of 10) arrive transitively through `eslint-config-next`, each declaring `typescript >=4.8.4 <6.1.0`, none of them optional; the newest release (8.70.0) and its prereleases all carry it. The reason is specific rather than ordinary lag — `typescript-eslint` needs a programmatic compiler API the TypeScript team has said will not ship until **7.1**. At the **three services**: `ts-jest` is the cap and still binds. 29.4.12 is the newest published release and declares `typescript >=4.3 <7`, non-optional, so 7 is excluded there whatever eslint does. No service carries eslint; root no longer carries ts-jest. | **Both, separately.** Root: TypeScript 7.1, then a `typescript-eslint` release admitting it — check with `npm ls @typescript-eslint/parser` at root rather than `npm view typescript-eslint@latest`, which reports a release this repo may not have received. Services: `npm view ts-jest@latest peerDependencies.typescript` widening past 7. **Taking 7 into the services once only the root cap has lifted reproduces #68** — `npm ci` dies on ERESOLVE before a test runs, which is why `.github/dependabot.yml` stopped letting majors travel in wildcard groups. | 2026-09-12 |
 | `typescript` → 6.1.x and beyond — root only | The same eight `@typescript-eslint/*` packages cap at `<6.1.0`, so root cannot pass 6.0.x. `package.json` therefore pins `~6.0.3`, not `^6.0.3`: a caret permits 6.1.x, which the peer forbids, and the failure would surface on the first resolution that is **not** `npm ci` — `npm update`, a lockfile-less install, or a Dependabot bump — on a machine where nothing in the diff appears to have changed. 6.1.0 is unpublished today, which is why CI is green. | The same `typescript-eslint` release that lifts the root half of the 7.x row above. Widen the pin then, and not before. | 2026-09-12 |
-| `qs` → 6.16.0 without an override — all three services | **`express` is the blocker, on all three.** 4.22.2 is the newest express 4 and declares `qs: ~6.15.1`; 4.22.1 declares `~6.14.0`. Neither admits 6.16.0, so no express 4 release reaches the fix. claudish-proxy was the proof: already on 4.22.2 with qs 6.15.3 and still carrying both advisories. `body-parser` was a co-blocker and is no longer one — 1.20.8 declares `~6.16.0`, and this change ships it in event-stream and data-generator; claudish-proxy still has 1.20.6 at `~6.15.1`. **All eight qs alerts are runtime-scope**, from three advisories (GHSA-4mjr-xmp4-gh2g, GHSA-x5fp-wj9c-mxmx, GHSA-q8mj-m7cp-5q26), and express installs its query parser into the default router stack — so qs parses every request whether or not the app reads `req.query`. claudish-proxy is world-invokable, so waiting on express was not the call. **Taken as an `overrides` pin of `qs` to 6.16.0 in all three service manifests.** | An express 4.22.3 whose `qs` range admits 6.16.0, or express 5 adoption. Then delete the three `overrides` blocks: an override that outlives its cause is a silent pin on a package the parent has already moved past. Check with `npm view express@4 dependencies.qs`. | 2026-09-11 |
-| `extract-zip` — root, dev-only via `lighthouse` | **No fixed version exists.** Both advisories (GHSA-7pqw-9j4j-h8q3, GHSA-jmr9-qjv8-65gv) cap at `<= 2.0.1`, and 2.0.1 is the newest release ever published. It arrives through `lighthouse@12.8.2 → puppeteer-core@24 → @puppeteer/browsers@2.13.0`. The fix is upstream of the vulnerable package rather than in it: `@puppeteer/browsers@3.x` dropped `extract-zip` altogether — its dependencies are now `yargs` and `modern-tar`. | `lighthouse` 13, which declares `puppeteer-core ^25.3.0`. It is a dev-only major that **nothing in CI exercises** — `scripts/capture-cwv-baseline.sh` is run by hand from `docs/uat/phase-10b-uat.sh` — so adopting it means re-capturing the Core Web Vitals baseline and confirming the report shape that script reads (`categories.performance.score`, `audits['largest-contentful-paint'].numericValue`) survives the major. That is a task, not a bump. | 2026-09-11 |
+| `extract-zip` — root, dev-only via `lighthouse` | **No fixed version exists.** Both advisories (GHSA-7pqw-9j4j-h8q3, GHSA-jmr9-qjv8-65gv) cap at `<= 2.0.1`, and 2.0.1 is the newest release ever published. It arrives through `lighthouse@12.8.2 → puppeteer-core@24 → @puppeteer/browsers@2.13.0`. The fix is upstream of the vulnerable package rather than in it: `@puppeteer/browsers@3.x` dropped `extract-zip` altogether — its dependencies are now `yargs` and `modern-tar`. | `lighthouse` 13, which declares `puppeteer-core ^25.3.0`. It is a dev-only major that **nothing in CI exercises** — `scripts/capture-cwv-baseline.sh` is run by hand from `docs/uat/phase-10b-uat.sh` — so adopting it means re-capturing the Core Web Vitals baseline and confirming the report shape that script reads (`categories.performance.score`, `audits['largest-contentful-paint'].numericValue`) survives the major. That is a task, not a bump. | 2026-09-12 |
 | `node` → 26 — the three service Dockerfiles | Nothing upstream. `engines.node` is `24.x` and `tests/unit/infra/runtime-currency.test.ts` asserts every Docker stage is `node:24-slim`, so the bump is red on arrival by design — and green-looking in CI, because nothing in the root suite rebuilds the images. Node 26 is Current, not LTS. | Node 26 reaches LTS **2026-10-28**; Node 24 is supported to 2028-04-30 and enters maintenance 2026-10-20. After the LTS date, take it as one migration: three Dockerfiles, `engines.node`, the currency test, and a check of Vercel's supported runtimes. Closed three times so far (#63, #64, #65). | 2026-09-12 |
 
 The two `typescript` rows and the `node` row are not security exposures:
 `typescript` is a devDependency and compiles away, and the Node bump is a currency
-move with an LTS date rather than an advisory. **The other two are.** `extract-zip`
-is two high-severity advisories with no fix in existence, and `qs` was three
-runtime advisories, pinned around rather than waited out. A blocked **runtime** or
-**framework** row is the case that matters, because those carry external end dates
-— which is what step 1 exists
-to catch.
+move with an LTS date rather than an advisory. **The remaining row is.**
+`extract-zip` is two high-severity advisories with no fix in existence. (`qs` was
+the other until 2026-09-12, when express 5 made the pin redundant and it was
+removed.) A blocked **runtime** or **framework** row is the case that matters,
+because those carry external end dates — which is what step 1 exists to catch.
 
 `ts-jest` **was** the removable half of this block, and it is now removed at root: Node 24 strips types natively, the root suite never used ts-jest (its transform comes from `next/jest`, which is SWC), and deleting it lifted the `<6` cap that stopped TypeScript 6 there. The three services genuinely use it — their jest configs set `preset: ts-jest` — so they moved to 29.4.12, which declares `>=4.3 <7`. That widened them from 5.x to 6.x and **does not clear them for 7**: `<7` excludes it, so `ts-jest` remains the services' cap. The 7.x row above carries that as a separate condition, because lifting the root cap does not lift theirs.
 
@@ -117,7 +120,11 @@ should not pretend otherwise. Triage in this order:
    declared range is what excludes the fixed version. Pin it in `overrides`, prove
    it with the service suite, and put a row in the table above carrying the
    condition for **removing** the pin. An override with no recorded exit is how a
-   dependency quietly stops tracking upstream. `qs` is the worked example.
+   dependency quietly stops tracking upstream. `qs` is the worked example, and it
+   ran its full arc: pinned 2026-09-11 because no express 4 release could reach
+   6.16.0, then removed 2026-09-12 when express 5 — whose `qs: ^6.14.0` admits it —
+   landed on all three services. The row named that event as its exit condition,
+   which is what made the removal obvious rather than archaeological.
 
 ## Baseline, measured 2026-09-05
 
