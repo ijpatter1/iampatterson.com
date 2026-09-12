@@ -33,10 +33,34 @@ describe('Dataform project structure', () => {
     expect(config.assertionSchema).toBe('iampatterson_assertions');
   });
 
-  test('package.json has @dataform/core dependency', () => {
+  // Until 2026-09-12 this asserted only that `@dataform/core` was *defined*,
+  // which every version satisfies. #66 (core 2→3) therefore sat green for four
+  // days on a check that could not fail, while nothing ever compiled the
+  // project. The `dataform` job in .github/workflows/test.yml compiles it now.
+  //
+  // That job derives the CLI version from this exact string
+  // (`npx @dataform/cli@<core version>`), because the CLI and core ship in
+  // lockstep and a separately pinned CLI is a second thing to keep in sync.
+  // A range would be substituted literally and resolve to something npx cannot
+  // fetch, so the exact form is load-bearing for the gate, not cosmetic.
+  test('@dataform/core is pinned exactly, because the CI gate derives the CLI version from it', () => {
     const raw = fs.readFileSync(path.join(DATAFORM_ROOT, 'package.json'), 'utf-8');
     const pkg = JSON.parse(raw);
-    expect(pkg.dependencies['@dataform/core']).toBeDefined();
+    const core = pkg.dependencies?.['@dataform/core'];
+    expect(core).toBeDefined();
+    expect(core).toMatch(/^\d+\.\d+\.\d+$/);
+  });
+
+  // package.json here is a PRODUCTION artifact: .github/workflows/sync-dataform.yml
+  // copies it to the root of the `dataform` branch, which is what GCP Dataform
+  // compiles from. A devDependency added for CI would ship a 193-package tree
+  // into the production project and pull two high advisories into a
+  // Dependabot-watched directory, so the CLI is deliberately absent.
+  test('no CI-only dependencies leak into the manifest GCP compiles from', () => {
+    const raw = fs.readFileSync(path.join(DATAFORM_ROOT, 'package.json'), 'utf-8');
+    const pkg = JSON.parse(raw);
+    expect(pkg.devDependencies).toBeUndefined();
+    expect(Object.keys(pkg.dependencies ?? {})).toEqual(['@dataform/core']);
   });
 
   test('includes/url_decode.js decodes with correct nesting order', () => {

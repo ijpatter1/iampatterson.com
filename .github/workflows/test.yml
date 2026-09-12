@@ -33,13 +33,11 @@ name: test
 #     runtime-currency.test.ts asserts every FROM line is node:24-slim, and the
 #     root suite now runs on every PR, so those three PRs go RED. The pin
 #     catches the bump; nothing builds the image. Two different facts.
-#   - infrastructure/dataform. `.github/dependabot.yml` watches it as a fifth
-#     npm surface, and its package.json has no scripts and no test — covering
-#     @dataform/core 2→3 means compiling the project, which needs @dataform/cli
-#     (not a dependency; GCP compiles from the `dataform` branch). So that PR
-#     still passes with nothing having exercised it, which is why the backlog
-#     says to take it last. Stated here rather than left to be discovered,
-#     because this block claims to have no silent omissions.
+#
+# infrastructure/dataform WAS on this list until 2026-09-12 and no longer is:
+# the `dataform` job below compiles it, which is the first check on that surface
+# capable of failing. See that job's comment for why the two packages are
+# pinned to one exact version.
 
 on:
   pull_request:
@@ -124,3 +122,54 @@ jobs:
         # Each service's build script is tsc, so this is the compile check the
         # root job gets from `next build`.
         run: npm run build
+
+  dataform:
+    name: dataform compile
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infrastructure/dataform
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: infrastructure/dataform/package-lock.json
+      - run: npm ci
+      - name: compile
+        # Until this job existed the surface had no check capable of failing:
+        # the only assertion on it checked that @dataform/core was *defined*,
+        # which any version satisfies, and nothing ever compiled the project.
+        # #66 sat green for four days on exactly that.
+        #
+        # The CLI is deliberately NOT a dependency. infrastructure/dataform/
+        # package.json is a PRODUCTION artifact - sync-dataform.yml copies it to
+        # the root of the `dataform` branch, which is what GCP Dataform compiles
+        # from - so a devDependency added for CI would ship a 193-package tree
+        # (vm2, protobufjs) into the production project and pull two high
+        # advisories into a Dependabot-watched directory. package-lock.json is
+        # NOT copied by that sync, so it is kept here for reproducibility.
+        #
+        # The CLI version is DERIVED from the declared core version rather than
+        # pinned separately, so the pair cannot drift and a core bump needs no
+        # second edit. Matching matters because a newer CLI rejects an older
+        # core; note the reverse is NOT true - an older CLI compiles a newer
+        # core without complaint - so the pairing is enforced by construction
+        # here rather than by the compile failing.
+        run: |
+          CORE=$(node -p "require('./package.json').dependencies['@dataform/core']")
+          npx -y "@dataform/cli@${CORE}" compile --json > /tmp/dataform-graph.json || {
+            echo "compile failed - re-running for readable output:"
+            npx -y "@dataform/cli@${CORE}" compile
+            exit 1
+          }
+      - name: graph shape
+        # `compile` exits 0 whenever the graph RESOLVES, whatever the SQL says,
+        # so it catches a broken ref() and little else. The failure this project
+        # actually names for a core major is the silent one - the marts stop
+        # rebuilding with no error. Asserting the compiled object counts is the
+        # cheap half of catching that, and it is what makes this job judge a
+        # bump rather than merely run alongside one.
+        run: |
+          node "${GITHUB_WORKSPACE}/scripts/dataform-graph-check.mjs" /tmp/dataform-graph.json

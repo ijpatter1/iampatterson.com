@@ -217,6 +217,49 @@ describe('CI runs the tests', () => {
     expect(covered).toBe(true);
   });
 
+  it('a reachable job compiles the Dataform project, so a core bump can go red', () => {
+    // The dataform job was added 2026-09-12 and nothing pinned it: deleting it
+    // outright left this suite green, which is the identical hole this file
+    // already closes for the root and service jobs. Before that job existed the
+    // surface had no check capable of failing at all, and #66 sat green for
+    // four days on an assertion that @dataform/core was merely *defined*.
+    //
+    // Matched on the CLI invocation rather than an npm script, because the
+    // manifest deliberately carries no scripts — it is mirrored to the branch
+    // GCP compiles from. Anchored to the start of a line, per this file's own
+    // convention (RUNS_JEST): an unanchored match is satisfied by a step that
+    // merely mentions the command, and the docstring above records
+    // `run: echo skipping npm test` defeating exactly that.
+    const found = gating.some((w) =>
+      reachableJobs(w).some(
+        ([, job]) =>
+          (job.defaults?.run?.['working-directory'] ?? '').includes('infrastructure/dataform') &&
+          commands(job).some((c) => /^\s*npx\b.*@dataform\/cli/m.test(c)),
+      ),
+    );
+    expect(found).toBe(true);
+  });
+
+  it('that job also runs the graph-shape check, which is the half that catches a silent change', () => {
+    // The assertion above matches any step containing `@dataform/cli` and
+    // `compile`, which the plain compile step satisfies on its own — so it
+    // pinned half the job. Mutation-proven: deleting the `graph shape` step
+    // left the suite green while removing the whole job went red.
+    //
+    // That is the half worth pinning. `dataform compile` exits 0 whenever the
+    // graph RESOLVES, so a vanished mart compiles clean; only the checker
+    // notices. Pinning the compile step and not this one guards the cheap half
+    // and leaves the load-bearing one deletable.
+    const found = gating.some((w) =>
+      reachableJobs(w).some(
+        ([, job]) =>
+          (job.defaults?.run?.['working-directory'] ?? '').includes('infrastructure/dataform') &&
+          commands(job).some((c) => /^\s*node\b.*dataform-graph-check/m.test(c)),
+      ),
+    );
+    expect(found).toBe(true);
+  });
+
   it('the workflow also runs on pushes to main', () => {
     // `gating` keys on pull_request alone, so deleting the push trigger left
     // every check green — including the one below asserting a property of "a
