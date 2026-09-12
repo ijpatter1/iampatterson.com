@@ -68,11 +68,11 @@ jobs:
     if: github.event_name == 'pull_request' && vars.GCP_WIF_PROVIDER != ''
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - uses: google-github-actions/auth@v2
+      - uses: google-github-actions/auth@v3
         id: auth
         with:
           workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
@@ -103,7 +103,7 @@ jobs:
           exit $rc
 
       - name: post the diff
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           # Reconciler output reaches the script through env, NEVER through
           # ${{ }} interpolation into the script body. A pull request controls
@@ -194,11 +194,11 @@ jobs:
           fi
           echo "infra-production carries $reviewers required-reviewer rule(s)."
 
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - uses: google-github-actions/auth@v2
+      - uses: google-github-actions/auth@v3
         id: auth
         with:
           workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
