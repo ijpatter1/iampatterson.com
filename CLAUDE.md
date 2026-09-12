@@ -23,6 +23,7 @@ Read `roots` from `.claude/project.json`:
 - **Control plane** (your working directory): `roots.control`. Docs, session artifacts, and `.claude/` config live here.
 - **Code**: `roots.code` — may be a _sibling repo_. All git operations against the product (`git -C roots.code log/diff/status`) target the code root; doc and session commits target the control root.
 - **Single-repo projects** set both roots to `"."`, so the two collapse into one tree and nothing special happens.
+- **This repo is the code half of a split** (2026-09-11): the tracker, session records, initiative archives and manual cards live in the private sibling `iampatterson.com-guv`. Sessions normally open there. This repo keeps `docs/ARCHITECTURE.md`, `docs/runbook/`, `docs/verification/`, `docs/uat/` and its own `.claude/` — worktree-isolated subagents check out tracked files only, so those stay here.
 
 **Naming convention (split topology):** the code repo keeps the plain product name; the control plane is its sibling named per the `<project>-guv` convention (here `<product>-guv`) — a possessive suffix (the product's guv), human-facing only: no script ever discovers a control plane by name; the manifest's `roots` is the sole machine pointer. The manifest's `name` stays the _product_ name (it feeds image/container labels), not the directory name.
 

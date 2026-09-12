@@ -208,12 +208,3 @@ describe('13.5 — every entry is usable by someone who has never seen the stack
   });
 });
 
-describe('13.5 — the manual task card', () => {
-  it('exists for the Vercel automation bypass secret', () => {
-    const card = read('docs/manual/task-2026-09-05-001.md');
-    expect(card).toMatch(/\*\*Status:\*\*/);
-    expect(card).toContain('VERCEL_AUTOMATION_BYPASS_SECRET');
-    // The card must say why it cannot be scripted, or it is not a manual task.
-    expect(card).toMatch(/browser action/i);
-  });
-});

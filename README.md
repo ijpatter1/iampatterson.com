@@ -2,7 +2,7 @@
 
 <!-- STATUS:START -->
 
-**Maintenance mode** · initiatives 001 and 002 complete, 18/18 deliverables · open work in [docs/BACKLOG.md](docs/BACKLOG.md)
+**Maintenance mode** · initiatives 001 and 002 complete, 18/18 deliverables
 
 <!-- STATUS:END -->
 
@@ -60,9 +60,9 @@ infrastructure/
   dataform/     BigQuery transformation models
   bigquery/     Schema definitions, AI access layer scripts
 docs/
-  REQUIREMENTS.md    Development plan
   ARCHITECTURE.md    Technical architecture
-  PHASE_STATUS.md    Phase completion tracker
+  runbook/           Operational procedures
+  verification/      Dated records of production checks
 ```
 
 ## Demo environments
@@ -96,7 +96,7 @@ All features are built with red/green TDD: test written first, then implementati
 
 ## Development phases
 
-The project is built in phases, tracked in `docs/PHASE_STATUS.md`. Phases 1 through 10 are complete: foundation, real-time event pipeline, the flip-the-card overlay, the background data generator, the data infrastructure, the demo front-ends, the BI/dashboards layer, the frontend redesign, the 9A/9B/9E/9F homepage and ecommerce rebuilds, and Phase 10 (polish, performance, and launch prep — framework currency, Core Web Vitals, voice/data honesty, and the full launch-prep punch list across three UAT rounds). Phase 11 (operational readiness) is the remaining work. See `docs/REQUIREMENTS.md` for the full plan.
+The project was built in phases. Phases 1 through 10 are complete: foundation, real-time event pipeline, the flip-the-card overlay, the background data generator, the data infrastructure, the demo front-ends, the BI/dashboards layer, the frontend redesign, the 9A/9B/9E/9F homepage and ecommerce rebuilds, and Phase 10 (polish, performance, and launch prep — framework currency, Core Web Vitals, voice/data honesty, and the full launch-prep punch list across three UAT rounds). Initiatives 001 and 002 are complete; the plans and session records live in a private control plane.
 
 ## License
 
