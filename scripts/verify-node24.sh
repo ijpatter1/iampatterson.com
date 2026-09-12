@@ -1,6 +1,7 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════════════
-# Verify the Node.js 24 runtime on every surface and write the record.
+# Verify the Node runtime on every surface and write the record. The expected
+# major is derived from the service Dockerfiles, not hardcoded here.
 #
 # Phase 12, deliverable 12.1. Every check here is one the acceptance names
 # and one a machine can make: the repo pins, the local toolchain, the
@@ -14,12 +15,35 @@
 #        DEPLOY_DIFFS ("svc:revA:revB ..." to record redeploy diffs), PREVIEW_PROVENANCE (free text)
 # ═══════════════════════════════════════════════════════════════════════
 set -uo pipefail
-export PATH=/opt/homebrew/opt/node@24/bin:/opt/homebrew/bin:$PATH
+# The expected Node major is DERIVED from the service Dockerfiles — they are what
+# build the shipped artifact. It is resolved before anything else because the
+# toolchain PATH below depends on it: pinning node@24 here while the Dockerfiles
+# say 26 would fail the `node -v` check with no Dockerfile edit able to fix it.
+#
+# Failure is FATAL rather than a recorded ✗. An empty NMAJ would compare equal to
+# any other absent value ([ "" = "" ] succeeds), turning three checks into false
+# greens exactly when the derivation is broken.
+. "$(dirname "$0")/lib/node-major.sh" || {
+  echo "verify-node24: cannot source lib/node-major.sh — refusing to run" >&2; exit 1
+}
+NMAJ=""
+for _s in event-stream data-generator claudish-proxy; do
+  _m=$(node_major_from_dockerfile "infrastructure/cloud-run/$_s/Dockerfile")
+  if [ -z "$_m" ]; then
+    echo "verify-node24: could not derive a Node major from $_s/Dockerfile" >&2; exit 1
+  fi
+  if [ -n "$NMAJ" ] && [ "$_m" != "$NMAJ" ]; then
+    echo "verify-node24: service Dockerfiles disagree ($NMAJ vs $_m in $_s) — fix that first" >&2; exit 1
+  fi
+  NMAJ="$_m"
+done
+
+export PATH=/opt/homebrew/opt/node@${NMAJ}/bin:/opt/homebrew/bin:$PATH
 
 PROJECT="${PROJECT:-iampatterson}"
 REGION="${REGION:-us-central1}"
 STAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-OUT="${OUT:-docs/verification/$(date -u +%Y-%m-%d)-node24-runtime.md}"
+OUT="${OUT:-docs/verification/$(date -u +%Y-%m-%d)-node${NMAJ}-runtime.md}"
 mkdir -p "$(dirname "$OUT")"
 
 PASS=0; FAIL=0; ROWS=()
@@ -28,22 +52,26 @@ check() { # check <name> <ok:0|1> <detail>
 }
 
 # 1. Repo pins
+check "expected Node major derived from the Dockerfiles" 0 "\`$NMAJ\`, and all three services agree"
 ENG=$(python3 -c 'import json; print(json.load(open("package.json")).get("engines",{}).get("node",""))')
-[ "$ENG" = "24.x" ]; check "package.json engines.node" $? "\`$ENG\`"
+[ -n "$ENG" ] && [ "$(major_of_range "$ENG")" = "$NMAJ" ]; check "package.json engines.node matches the Dockerfiles" $? "\`$ENG\` against major $NMAJ"
 for s in event-stream data-generator claudish-proxy; do
-  n=$(grep -c '^FROM node:24-slim' "infrastructure/cloud-run/$s/Dockerfile"); [ "$n" = "2" ]; check "$s Dockerfile stages on node:24-slim" $? "$n of 2 FROM lines"
+  DF="infrastructure/cloud-run/$s/Dockerfile"
+  n=$(grep -cE "^[[:space:]]*[Ff][Rr][Oo][Mm][[:space:]]+node:${NMAJ}-slim" "$DF")
+  # Counting MATCHES alone passes a drifted THIRD stage: two good lines still
+  # total 2. The stage count must equal the matching count, not merely reach it.
+  t=$(grep -cE "^[[:space:]]*[Ff][Rr][Oo][Mm][[:space:]]+" "$DF")
+  [ "$n" = "2" ] && [ "$t" = "2" ]; check "$s Dockerfile stages on node:${NMAJ}-slim" $? "$n of $t FROM lines on node:${NMAJ}-slim"
 done
 
 # 2. Local toolchain
-NV=$(node -v 2>/dev/null); [[ "$NV" == v24.* ]]; check "local node on the test PATH" $? "$NV"
+NV=$(node -v 2>/dev/null); [ -n "$NV" ] && [ "$(major_of_range "$NV")" = "$NMAJ" ]; check "local node on the test PATH matches major $NMAJ" $? "$NV"
 WF=.github/workflows/sync-dataform.yml
 [ -f "$WF" ] && ! grep -qE "setup-node|node-version" "$WF"; check "sync-dataform workflow pins no Node" $? "$( [ -f "$WF" ] && echo "no setup-node / node-version in the workflow" || echo "workflow file missing")"
 for s in event-stream data-generator claudish-proxy; do
   TN=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("devDependencies",{}).get("@types/node",""))' "infrastructure/cloud-run/$s/package.json")
-  # Compare the major number, not a glob. A [[ ]] equality test against a
-  # caret-prefixed pattern is a literal-prefix match, not a regex, so it passed
-  # "^24.13.3" and rejected "~24.13.3" or ">=24.0.0" (review finding).
-  TMAJ=$(printf '%s' "$TN" | sed -E 's/^[^0-9]*//' | cut -d. -f1); [ "$TMAJ" = "24" ]; check "$s @types/node on major 24" $? "\`${TN:-absent}\`"
+  # major_of_range lives in lib/node-major.sh, with its cases pinned by test.
+  TMAJ=$(major_of_range "$TN"); [ -n "$TMAJ" ] && [ "$TMAJ" = "$NMAJ" ]; check "$s @types/node on major $NMAJ" $? "\`${TN:-absent}\`"
 done
 
 # 2b. Suites under this Node (the acceptance's first clause; slow, but the record must carry it)
@@ -84,9 +112,9 @@ for s in event-stream data-generator claudish-proxy; do
     BID=$(gcloud builds list --project="$PROJECT" --region="$REGION" --limit=30 --format='value(id,results.images[].digest)' 2>/dev/null | grep -F "$DIGEST" | head -1 | awk '{print $1}')
   fi
   if [ -n "$BID" ]; then
-    n=$(gcloud builds log "$BID" --project="$PROJECT" --region="$REGION" 2>/dev/null | grep -c 'node:24-slim'); [ "$n" -ge 1 ]; check "$s serving revision built from node:24-slim" $? "$REV, build $BID (matched by image digest), $n log line(s)"
+    n=$(gcloud builds log "$BID" --project="$PROJECT" --region="$REGION" 2>/dev/null | grep -c "node:${NMAJ}-slim"); [ "$n" -ge 1 ]; check "$s serving revision built from node:${NMAJ}-slim" $? "$REV, build $BID (matched by image digest), $n log line(s)"
   else
-    check "$s serving revision built from node:24-slim" 1 "${REV:-<no serving revision resolved>}: no Cloud Build matched the image digest"
+    check "$s serving revision built from node:${NMAJ}-slim" 1 "${REV:-<no serving revision resolved>}: no Cloud Build matched the image digest"
   fi
 done
 
@@ -132,7 +160,7 @@ done
 
 # 7. Record
 {
-  echo "# Node.js 24 runtime verification"
+  echo "# Node.js $NMAJ runtime verification"
   echo
   echo "Deliverable 12.1. Generated by \`scripts/verify-node24.sh\` at $STAMP. Every row is a machine check; rerun the script to refresh."
   echo

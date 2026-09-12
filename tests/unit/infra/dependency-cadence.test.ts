@@ -227,6 +227,29 @@ describe('docs/runbook/dependency-cadence.md', () => {
     expect(cadence).not.toMatch(/the first Monday of each month, Dependabot opens/);
   });
 
+  it('counts its own Blocked rows correctly, which prose has failed to do four times', () => {
+    // Graduated from review to a test (recurring mechanical patterns become
+    // tests). The sentence under ## Blocked was rewritten in four commits in six
+    // days as rows came and went — b620f6f, a034d67, 2108bef, and this one — and
+    // was wrong in between each time. Nothing pinned it.
+    const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight'];
+    const blocked = cadence.slice(cadence.indexOf('## Blocked'));
+    const section = blocked.slice(0, blocked.indexOf('\n## ', 1));
+    const rows = section.split('\n').filter((l) => /^\| `/.test(l));
+    expect(rows.length).toBeGreaterThan(0);
+
+    const claim = section.match(/(\w+) of the (\w+) rows are not security exposures/i);
+    expect(claim).not.toBeNull();
+    const [, notSecurity, total] = claim as RegExpMatchArray;
+    expect(WORDS.indexOf(total.toLowerCase())).toBe(rows.length);
+
+    // The complement is stated separately, so a row moving between the two
+    // categories cannot leave the sentence half-right.
+    const security = rows.length - WORDS.indexOf(notSecurity.toLowerCase());
+    expect(security).toBeGreaterThan(0);
+    expect(section.toLowerCase()).toContain(`**${WORDS[security]} row`);
+  });
+
   it('carries no `day:` key, which Dependabot ignores on a monthly interval', () => {
     expect(config).not.toMatch(/^\s*day:/m);
   });

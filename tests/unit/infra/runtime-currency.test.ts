@@ -23,9 +23,16 @@ describe('Node.js 24 runtime pins', () => {
 
   it.each(SERVICES)('%s builds both Docker stages from node:24-slim', (service) => {
     const dockerfile = read(`infrastructure/cloud-run/${service}/Dockerfile`);
-    const froms = dockerfile.split('\n').filter((l) => l.startsWith('FROM '));
-    expect(froms.length).toBeGreaterThanOrEqual(2);
-    for (const from of froms) expect(from).toMatch(/^FROM node:24-slim\b/);
+    // Docker accepts a lowercase `from`, leading whitespace and flag args, so a
+    // matcher anchored on the literal 'FROM ' does not reject such a stage — it
+    // makes it INVISIBLE. With a >= floor, a third stage written `from
+    // node:20-slim` left the two uppercase lines matching and the count passing,
+    // while the final stage — the one that ships — was Node 20.
+    const froms = dockerfile.split('\n').filter((l) => /^\s*FROM\s+/i.test(l));
+    expect(froms).toHaveLength(2);
+    for (const from of froms) {
+      expect(from).toMatch(/^\s*FROM\s+(--\S+\s+)*node:24(-slim)?\b/i);
+    }
   });
 
   it('no project rule or architecture line still names Node 20 as the floor', () => {
