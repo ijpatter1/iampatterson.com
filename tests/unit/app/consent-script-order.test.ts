@@ -24,4 +24,13 @@ describe('consent script order in the root layout', () => {
     expect(gtm.indexOf('id="consent-defaults"')).toBeLessThan(gtm.indexOf('id="gtm-script"'));
     expect(gtm).toMatch(/id="consent-defaults" strategy="beforeInteractive"/);
   });
+
+  // The loader must stay out of the beforeInteractive sequence. Moved into it,
+  // GTM would load as part of the same chain as the defaults and the Cookiebot
+  // request, and "defaults first" would depend on render order inside one
+  // component instead of on the loading strategy.
+  it('loads GTM itself after the page is interactive', () => {
+    const gtm = readFileSync(join(process.cwd(), 'src/components/scripts/gtm.tsx'), 'utf8');
+    expect(gtm).toMatch(/id="gtm-script" strategy="afterInteractive"/);
+  });
 });

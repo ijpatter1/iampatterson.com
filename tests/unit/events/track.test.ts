@@ -269,8 +269,8 @@ describe('initConsentState', () => {
   });
 });
 
-// Phase 15, deliverable 15.5: the homepage says Global Privacy Control is
-// honored on this site. The signal is a standing opt-out of sale, sharing and
+// Phase 15, deliverable 15.5: Global Privacy Control is honored on this
+// site. The signal is a standing opt-out of sale, sharing and
 // targeted advertising, so it wins over the banner for the three advertising
 // signals: "Accept all" must not grant them. Analytics and preferences are not
 // what the signal speaks to, so they keep following the visitor's banner choice.

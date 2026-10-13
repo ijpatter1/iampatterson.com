@@ -61,6 +61,43 @@ describe('CookiebotScript', () => {
     expect(container.querySelector('script')?.getAttribute('data-consentmode')).toBe('disabled');
   });
 
+  // The loader signals the raw banner choice in two more ways that
+  // data-consentmode does not cover: a Microsoft consent update, and plain
+  // data-layer events named cookie_consent_marketing, _statistics and
+  // _preferences. A visitor sending Global Privacy Control who accepts in the
+  // banner would get cookie_consent_marketing in the GTM data layer. Neither
+  // has a consumer here, so both are turned away at the tag.
+  it("turns off the loader's Microsoft consent signal", () => {
+    process.env.NEXT_PUBLIC_COOKIEBOT_ID = 'test-cbid-123';
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { CookiebotScript } = require('@/components/scripts/cookiebot');
+    const { container } = render(<CookiebotScript />);
+    expect(container.querySelector('script')?.getAttribute('data-ms-consent-mode')).toBe(
+      'disabled',
+    );
+  });
+
+  it("keeps the loader's own events out of the data layer GTM reads", () => {
+    process.env.NEXT_PUBLIC_COOKIEBOT_ID = 'test-cbid-123';
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { CookiebotScript } = require('@/components/scripts/cookiebot');
+    const { container } = render(<CookiebotScript />);
+    const name = container.querySelector('script')?.getAttribute('data-layer-name');
+    expect(name).toBeTruthy();
+    expect(name).not.toBe('dataLayer');
+  });
+
+  it('has no GTM trigger, tag or variable that reads a Cookiebot data-layer event', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { readFileSync } = require('fs');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { join } = require('path');
+    for (const file of ['web-container.json', 'server-container.json']) {
+      const spec = readFileSync(join(process.cwd(), 'infrastructure/gtm', file), 'utf8');
+      expect(spec).not.toMatch(/cookie_consent_/);
+    }
+  });
+
   it('renders nothing when NEXT_PUBLIC_COOKIEBOT_ID is not set', () => {
     delete process.env.NEXT_PUBLIC_COOKIEBOT_ID;
     // eslint-disable-next-line @typescript-eslint/no-require-imports

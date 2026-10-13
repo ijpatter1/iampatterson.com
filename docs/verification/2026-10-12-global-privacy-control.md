@@ -12,9 +12,20 @@ the visitor's banner choice. The LiveStrip and the overlay's Consent tab both
 say the signal was honored, and only while advertising consent reads denied.
 
 For that to hold, the site's bridge in `src/lib/events/track.ts` has to be the
-only thing writing Consent Mode. The Cookiebot loader writes it too unless its
-script tag carries `data-consentmode="disabled"`, so the tag now carries it.
-The Consent Mode defaults are also rendered ahead of the Cookiebot loader.
+only thing writing Google Consent Mode. The Cookiebot loader writes it too
+unless its script tag carries `data-consentmode="disabled"`, so the tag now
+carries it. The Consent Mode defaults are also rendered ahead of the Cookiebot
+loader.
+
+The loader signals the raw banner choice in two more ways that attribute does
+not cover, and both are turned away at the tag as well:
+
+- A Microsoft consent update, off with `data-ms-consent-mode="disabled"`.
+- Plain data-layer events named `cookie_consent_marketing`,
+  `cookie_consent_statistics` and `cookie_consent_preferences`. These still
+  fire, but `data-layer-name="cookiebotDataLayer"` sends them to an array of
+  their own, so they never enter the `dataLayer` GTM reads. No trigger in
+  either container listens for them, and a test pins that.
 
 ## What was run
 
@@ -46,21 +57,24 @@ Returning visitor whose stored choice grants marketing:
 | | Signal on | Signal off |
 | --- | --- | --- |
 | First data layer entry | `consent default`, all denied | `consent default`, all denied |
-| Loader's own Consent Mode writes | off (`consentModeDisabled` true), none seen | off, none seen |
+| Loader's own Google Consent Mode writes | off (`consentModeDisabled` true), none seen | off, none seen |
+| Loader's `cookie_consent_*` events in `dataLayer` | none (three in `cookiebotDataLayer`) | none (three in `cookiebotDataLayer`) |
+| Loader's Microsoft consent queue (`window.uetq`) | not created | not created |
 | Every `consent update` in the data layer: advertising signals | denied | granted |
 | Every `consent update`: `analytics_storage` | granted | granted |
 | `ads_data_redaction` | stays true | set false |
 | `consent_marketing` on site events | false | true |
 | LiveStrip consent item | `analytics:granted ad:denied · Global Privacy Control honored` | `analytics:granted ad:granted` |
+| Consent tab notice | "Global Privacy Control honored" | absent |
+| Consent tab, three advertising rows | denied, each with "Stays denied while your browser sends Global Privacy Control" | granted, no caption |
+| Consent tab, analytics and functionality rows | granted, no caption | granted, no caption |
 
 Visitor with the signal on and no stored choice: one `consent default` and one
 `consent update`, all denied; the LiveStrip reads
-`analytics:denied ad:denied · Global Privacy Control honored`.
+`analytics:denied ad:denied · Global Privacy Control honored`; the Consent tab
+shows the notice and the caption on the three advertising rows.
 
-The overlay's Consent tab was checked in the earlier, discarded run and by unit
-test: the notice appears with the signal on, the three advertising rows carry
-"Stays denied while your browser sends Global Privacy Control", and neither
-appears without the signal.
+The Consent tab was opened and read in this same run, in all three cases.
 
 Unit tests for the same behavior:
 `tests/unit/events/global-privacy-control.test.ts`,

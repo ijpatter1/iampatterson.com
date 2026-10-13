@@ -29,6 +29,7 @@ describe('CookiebotConsentListener', () => {
     render(<CookiebotConsentListener />);
     expect(addSpy).toHaveBeenCalledWith('CookiebotOnAccept', expect.any(Function));
     expect(addSpy).toHaveBeenCalledWith('CookiebotOnDecline', expect.any(Function));
+    expect(addSpy).toHaveBeenCalledWith('CookiebotOnConsentReady', expect.any(Function));
     addSpy.mockRestore();
   });
 
@@ -103,6 +104,7 @@ describe('CookiebotConsentListener', () => {
     unmount();
     expect(removeSpy).toHaveBeenCalledWith('CookiebotOnAccept', expect.any(Function));
     expect(removeSpy).toHaveBeenCalledWith('CookiebotOnDecline', expect.any(Function));
+    expect(removeSpy).toHaveBeenCalledWith('CookiebotOnConsentReady', expect.any(Function));
     removeSpy.mockRestore();
   });
 });

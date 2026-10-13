@@ -12,7 +12,7 @@ afterEach(() => {
 });
 
 // Global Privacy Control is a standing opt-out the visitor set in their
-// browser. The homepage says this site honors it, so detection has to be
+// browser. This site honors it, so detection has to be
 // exact: only the boolean `true` the specification defines counts. A browser
 // that does not implement the signal leaves the property undefined, and that
 // must never read as an opt-out or as an opt-in.
