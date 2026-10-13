@@ -46,13 +46,19 @@ What the setup does and does not prove:
   categories was supplied as a `CookieConsent` cookie, which is the returning
   visitor's case. The loader read it and reported statistics, marketing and
   preferences all true.
+- **The banner was not seen.** The run did not check that Cookiebot's banner
+  rendered for the visitor with no stored choice. The loader reported consent
+  normally with `data-layer-name` set, and nothing in the loader reads that
+  array, but the banner's own dialog script was not inspected.
 - **No tag fired.** Requests to every other host were aborted, so GTM never
   loaded and nothing reached the server container. What is observed is the
   data layer, not GTM's resolved consent state or an outgoing hit.
 
 ## Result
 
-Returning visitor whose stored choice grants marketing:
+Returning visitor whose stored choice grants marketing. The loader fired its
+accept event on page load for the stored choice, which is how the site's
+bridge received it:
 
 | | Signal on | Signal off |
 | --- | --- | --- |
@@ -90,7 +96,7 @@ Unit tests for the same behavior:
 On a preview deployment, in a browser that sends the signal natively (Firefox
 with "Tell websites not to sell or share my data" on, or Brave):
 
-1. Click "Allow all" in the real Cookiebot banner.
+1. Confirm the Cookiebot banner appears, then click "Allow all".
 2. In the console, read `dataLayer` and confirm no `consent update` grants an
    advertising signal.
 3. In GTM preview, confirm the consent state on the next hit shows the three

@@ -23,26 +23,41 @@ const GPC_HELD_SIGNALS: ReadonlySet<keyof ConsentState> = new Set([
   'ad_personalization',
 ]);
 
+type GpcNoticeState = 'honored' | 'detected' | 'waiting';
+
+const GPC_NOTICE_COPY: Record<GpcNoticeState, { heading: string; body: string }> = {
+  honored: {
+    heading: 'Global Privacy Control honored',
+    body: 'Your browser sent a Global Privacy Control signal, so this site keeps advertising consent denied, whatever you choose in the banner. Analytics and preferences still follow your banner choice.',
+  },
+  detected: {
+    heading: 'Global Privacy Control detected',
+    body: 'Your browser sent a Global Privacy Control signal. The rows below show the consent state recorded for your latest event.',
+  },
+  waiting: {
+    heading: 'Global Privacy Control detected',
+    body: 'Your browser sent a Global Privacy Control signal. This site keeps advertising consent denied for browsers that send it. Your consent state will show here after your first event.',
+  },
+};
+
 /**
  * Shown only to a visitor whose browser sends Global Privacy Control.
  * "Honored" is a claim about the consent actually applied, so it is made only
- * when no advertising signal shows as granted. Otherwise the notice says the
- * signal was detected and leaves the rows to speak for themselves.
+ * when there is a consent state to read and no advertising signal in it shows
+ * as granted. With no event yet there is nothing to read, and the notice says
+ * what the site does without claiming it has done it.
  */
-function GpcNotice({ honored }: { honored: boolean }) {
+function GpcNotice({ state }: { state: GpcNoticeState }) {
+  const copy = GPC_NOTICE_COPY[state];
   return (
     <div
       data-testid="gpc-notice"
       className="mt-6 border-l-2 border-u-accept bg-u-paper-alt px-4 py-3"
     >
       <div className="font-mono text-[10px] uppercase tracking-widest text-u-accept">
-        {honored ? 'Global Privacy Control honored' : 'Global Privacy Control detected'}
+        {copy.heading}
       </div>
-      <p className="mt-1 max-w-[62ch] text-xs leading-relaxed text-u-ink-2">
-        {honored
-          ? 'Your browser sent a Global Privacy Control signal, so this site keeps advertising consent denied, whatever you choose in the banner. Analytics and preferences still follow your banner choice.'
-          : 'Your browser sent a Global Privacy Control signal. The rows below show the consent state recorded for your latest event.'}
-      </p>
+      <p className="mt-1 max-w-[62ch] text-xs leading-relaxed text-u-ink-2">{copy.body}</p>
     </div>
   );
 }
@@ -69,7 +84,7 @@ export function ConsentView({ events, storage = EMPTY_STORAGE }: ConsentViewProp
           populate the timeline, we&apos;ll show your live consent decisions here. To change
           consent, click the Cookiebot badge in the bottom-right corner of the page.
         </p>
-        {gpcEnabled && <GpcNotice honored />}
+        {gpcEnabled && <GpcNotice state="waiting" />}
         <StorageInspector snapshot={storage} />
       </div>
     );
@@ -99,7 +114,7 @@ export function ConsentView({ events, storage = EMPTY_STORAGE }: ConsentViewProp
         bottom-right corner of the page.
       </p>
 
-      {gpcEnabled && <GpcNotice honored={advertisingDenied} />}
+      {gpcEnabled && <GpcNotice state={advertisingDenied ? 'honored' : 'detected'} />}
 
       {/* Phase 10d D8.j: red/green accents replace the persimmon + muted
           grey binary. Granted rows pick up `u-accept` (green) on the left

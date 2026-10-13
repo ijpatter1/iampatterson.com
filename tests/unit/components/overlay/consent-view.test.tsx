@@ -188,17 +188,21 @@ describe('ConsentView, Global Privacy Control', () => {
     delete (navigator as unknown as { globalPrivacyControl?: unknown }).globalPrivacyControl;
   });
 
-  it('tells a visitor who sent the signal that it is being honored, before any event has landed', () => {
+  // Before any event there is no consent state to read, so the tab says what
+  // the site does for this signal without claiming it has already done it.
+  it('names the signal before any event has landed, without claiming it was honored', () => {
     setSignal(true);
     render(<ConsentView events={[]} />);
     const notice = screen.getByTestId('gpc-notice');
-    expect(notice).toHaveTextContent(/global privacy control/i);
-    expect(notice).toHaveTextContent(/honored/i);
+    expect(notice).toHaveTextContent(/global privacy control detected/i);
+    expect(notice).toHaveTextContent(/keeps advertising consent denied/i);
+    expect(notice).not.toHaveTextContent(/honored/i);
   });
 
-  it('tells them again beside the live consent rows, and names what it changed', () => {
+  it('says the signal is honored beside live consent rows that show advertising denied', () => {
     setSignal(true);
     render(<ConsentView events={[makeEvent()]} />);
+    expect(screen.getByTestId('gpc-notice')).toHaveTextContent(/honored/i);
     expect(screen.getByTestId('gpc-notice')).toHaveTextContent(/advertising/i);
   });
 

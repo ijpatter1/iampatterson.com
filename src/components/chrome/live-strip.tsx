@@ -6,10 +6,12 @@ import { useGlobalPrivacyControl } from '@/hooks/useGlobalPrivacyControl';
 import { useSessionId } from '@/hooks/useSessionId';
 import type { SessionState } from '@/lib/session-state/types';
 
-function consentLabel(
+type ConsentReading = { label: string; ad: 'granted' | 'denied' | 'pending' };
+
+function readConsent(
   sessionState: SessionState | null,
   liveEvents: ReturnType<typeof useDataLayerEvents>['events'],
-): string {
+): ConsentReading {
   // Prefer the persisted SessionState consent_snapshot so the indicator
   // survives a page refresh (user-reported regression: live dataLayer
   // is empty post-reload, so reading `events[0].consent` would always
@@ -19,13 +21,13 @@ function consentLabel(
   if (sessionState) {
     const analytics = sessionState.consent_snapshot.analytics;
     const ad = sessionState.consent_snapshot.marketing;
-    return `analytics:${analytics} ad:${ad}`;
+    return { label: `analytics:${analytics} ad:${ad}`, ad };
   }
-  if (liveEvents.length === 0) return 'analytics:pending ad:pending';
+  if (liveEvents.length === 0) return { label: 'analytics:pending ad:pending', ad: 'pending' };
   const latest = liveEvents[0];
   const analytics = latest.consent.analytics_storage === 'granted' ? 'granted' : 'denied';
   const ad = latest.consent.ad_storage === 'granted' ? 'granted' : 'denied';
-  return `analytics:${analytics} ad:${ad}`;
+  return { label: `analytics:${analytics} ad:${ad}`, ad };
 }
 
 /**
@@ -46,7 +48,7 @@ export function LiveStrip() {
   const effectiveSid = persistedSid || sessionId;
   const shortId = effectiveSid ? effectiveSid.slice(-6) : '······';
 
-  const consent = consentLabel(sessionState, events);
+  const consent = readConsent(sessionState, events);
 
   const items = [
     { label: 'SESSION', value: shortId },
@@ -58,9 +60,9 @@ export function LiveStrip() {
     {
       label: 'CONSENT',
       value:
-        gpcEnabled && consent.includes('ad:denied')
-          ? `${consent} · Global Privacy Control honored`
-          : consent,
+        gpcEnabled && consent.ad === 'denied'
+          ? `${consent.label} · Global Privacy Control honored`
+          : consent.label,
     },
     { label: 'PIPELINE', value: 'live' },
     { label: 'DASHBOARDS', value: 'Metabase' },

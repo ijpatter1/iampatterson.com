@@ -43,6 +43,24 @@ function honorGlobalPrivacyControl(marketing: boolean): boolean {
 }
 
 /**
+ * The one place a banner choice becomes the site's consent state. Both entry
+ * points go through it, so the Global Privacy Control override cannot be
+ * skipped by a path that sets consent some other way.
+ */
+function recordConsent(
+  analytics: boolean,
+  marketing: boolean,
+  preferences: boolean,
+): typeof currentConsent {
+  currentConsent = {
+    consent_analytics: analytics,
+    consent_marketing: honorGlobalPrivacyControl(marketing),
+    consent_preferences: preferences,
+  };
+  return currentConsent;
+}
+
+/**
  * Bridge Cookiebot's three booleans to GTM Consent Mode v2's six gtag signals
  * and call `gtag('consent', 'update', {...})`. This is the explicit
  * replacement for what `data-blockingmode="auto"` used to do implicitly —
@@ -66,6 +84,11 @@ function bridgeToGtagConsent(analytics: boolean, marketing: boolean, preferences
   const gtag = (window as unknown as { gtag?: GtagFn }).gtag;
   if (typeof gtag !== 'function') return;
   const yn = (b: boolean): 'granted' | 'denied' => (b ? 'granted' : 'denied');
+  // Cookiebot's loader used to set this from the marketing choice. With its
+  // Consent Mode writes off, the bridge owns it: ad click identifiers are
+  // redacted unless marketing consent is granted. Set before the update, so a
+  // withdrawal is never processed with redaction still off.
+  gtag('set', 'ads_data_redaction', !marketing);
   gtag('consent', 'update', {
     analytics_storage: yn(analytics),
     ad_storage: yn(marketing),
@@ -74,10 +97,6 @@ function bridgeToGtagConsent(analytics: boolean, marketing: boolean, preferences
     functionality_storage: yn(preferences),
     personalization_storage: yn(preferences),
   });
-  // Cookiebot's loader used to set this from the marketing choice. With its
-  // Consent Mode writes off, the bridge owns it: ad click identifiers are
-  // redacted unless marketing consent is granted.
-  gtag('set', 'ads_data_redaction', !marketing);
 }
 
 /**
@@ -96,13 +115,12 @@ export function initConsentState(
   marketing: boolean,
   preferences: boolean,
 ): void {
-  const marketingHonored = honorGlobalPrivacyControl(marketing);
-  currentConsent = {
-    consent_analytics: analytics,
-    consent_marketing: marketingHonored,
-    consent_preferences: preferences,
-  };
-  bridgeToGtagConsent(analytics, marketingHonored, preferences);
+  const honored = recordConsent(analytics, marketing, preferences);
+  bridgeToGtagConsent(
+    honored.consent_analytics,
+    honored.consent_marketing,
+    honored.consent_preferences,
+  );
 }
 
 /**
@@ -185,17 +203,16 @@ export function trackConsentUpdate(
   marketing: boolean,
   preferences: boolean,
 ): void {
-  const marketingHonored = honorGlobalPrivacyControl(marketing);
-  currentConsent = {
-    consent_analytics: analytics,
-    consent_marketing: marketingHonored,
-    consent_preferences: preferences,
-  };
+  const honored = recordConsent(analytics, marketing, preferences);
   pushEvent({
     ...baseFields(),
     event: 'consent_update',
   });
-  bridgeToGtagConsent(analytics, marketingHonored, preferences);
+  bridgeToGtagConsent(
+    honored.consent_analytics,
+    honored.consent_marketing,
+    honored.consent_preferences,
+  );
 }
 
 // --- E-commerce demo tracking (Phase 6) ---

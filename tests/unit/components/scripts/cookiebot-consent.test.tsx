@@ -8,10 +8,9 @@ jest.mock('@/lib/events/track', () => ({
   initConsentState: jest.fn(),
 }));
 
-import { initConsentState, trackConsentUpdate } from '@/lib/events/track';
+import { trackConsentUpdate } from '@/lib/events/track';
 
 const mockTrackConsentUpdate = trackConsentUpdate as jest.Mock;
-const mockInitConsentState = initConsentState as jest.Mock;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -29,7 +28,6 @@ describe('CookiebotConsentListener', () => {
     render(<CookiebotConsentListener />);
     expect(addSpy).toHaveBeenCalledWith('CookiebotOnAccept', expect.any(Function));
     expect(addSpy).toHaveBeenCalledWith('CookiebotOnDecline', expect.any(Function));
-    expect(addSpy).toHaveBeenCalledWith('CookiebotOnConsentReady', expect.any(Function));
     addSpy.mockRestore();
   });
 
@@ -78,25 +76,6 @@ describe('CookiebotConsentListener', () => {
     expect(mockTrackConsentUpdate).not.toHaveBeenCalled();
   });
 
-  // Phase 15, deliverable 15.5. The site bridge is now the only writer of
-  // Consent Mode, so a returning visitor's stored choice has to reach it even
-  // when Cookiebot finishes reading its cookie after this component mounts.
-  // Cookiebot fires CookiebotOnConsentReady for exactly that.
-  it('applies a stored choice that Cookiebot resolves after mount, without a consent_update event', () => {
-    const CookiebotConsentListener = getComponent();
-    delete (window as unknown as Record<string, unknown>).Cookiebot;
-    render(<CookiebotConsentListener />);
-    expect(mockInitConsentState).not.toHaveBeenCalled();
-    (window as unknown as Record<string, unknown>).Cookiebot = {
-      consent: { statistics: true, marketing: true, preferences: false },
-    };
-    act(() => {
-      window.dispatchEvent(new Event('CookiebotOnConsentReady'));
-    });
-    expect(mockInitConsentState).toHaveBeenCalledWith(true, true, false);
-    expect(mockTrackConsentUpdate).not.toHaveBeenCalled();
-  });
-
   it('removes event listeners on unmount', () => {
     const removeSpy = jest.spyOn(window, 'removeEventListener');
     const CookiebotConsentListener = getComponent();
@@ -104,7 +83,6 @@ describe('CookiebotConsentListener', () => {
     unmount();
     expect(removeSpy).toHaveBeenCalledWith('CookiebotOnAccept', expect.any(Function));
     expect(removeSpy).toHaveBeenCalledWith('CookiebotOnDecline', expect.any(Function));
-    expect(removeSpy).toHaveBeenCalledWith('CookiebotOnConsentReady', expect.any(Function));
     removeSpy.mockRestore();
   });
 });

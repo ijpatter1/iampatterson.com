@@ -186,17 +186,9 @@ describe('guardrail: no text in any claudish payload', () => {
     // Structural version of the same pin: every claudish-specific param is
     // a number, boolean, or short enum token (no free text of any kind).
     const BASE_KEYS = new Set([
-      'event',
-      'iap_source',
-      'timestamp',
-      'session_id',
-      'iap_session_id',
-      'anonymous_id',
-      'page_path',
-      'page_title',
-      'consent_analytics',
-      'consent_marketing',
-      'consent_preferences',
+      'event', 'iap_source', 'timestamp', 'session_id', 'iap_session_id',
+      'anonymous_id', 'page_path', 'page_title',
+      'consent_analytics', 'consent_marketing', 'consent_preferences',
     ]);
     for (const evt of window.dataLayer as Array<Record<string, unknown>>) {
       for (const [key, value] of Object.entries(evt)) {

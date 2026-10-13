@@ -11,8 +11,11 @@ describe('consent script order in the root layout', () => {
   const layout = readFileSync(join(process.cwd(), 'src/app/layout.tsx'), 'utf8');
 
   it('renders the consent defaults ahead of the Cookiebot loader', () => {
-    const defaults = layout.indexOf('<GtmScript />');
-    const cookiebot = layout.indexOf('<CookiebotScript />');
+    // Only the rendered <head>, so a mention in a comment above the JSX or an
+    // import line cannot satisfy or break the order.
+    const head = layout.slice(layout.indexOf('<head>'), layout.indexOf('</head>'));
+    const defaults = head.search(/<GtmScript\b[^>]*\/>/);
+    const cookiebot = head.search(/<CookiebotScript\b[^>]*\/>/);
     expect(defaults).toBeGreaterThan(-1);
     expect(cookiebot).toBeGreaterThan(-1);
     expect(defaults).toBeLessThan(cookiebot);

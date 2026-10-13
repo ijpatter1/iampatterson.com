@@ -291,6 +291,7 @@ describe('Global Privacy Control', () => {
   afterEach(() => {
     delete (navigator as unknown as { globalPrivacyControl?: unknown }).globalPrivacyControl;
     initConsentState(false, false, false);
+    delete (window as unknown as { gtag?: unknown }).gtag;
   });
 
   it('keeps the three advertising signals denied when the visitor accepts everything in the banner', () => {
@@ -379,7 +380,10 @@ describe('ads data redaction follows marketing consent', () => {
     };
     return calls;
   }
-  afterEach(() => initConsentState(false, false, false));
+  afterEach(() => {
+    initConsentState(false, false, false);
+    delete (window as unknown as { gtag?: unknown }).gtag;
+  });
 
   it('turns redaction off when marketing is granted', () => {
     const calls = captureGtag();
@@ -391,6 +395,18 @@ describe('ads data redaction follows marketing consent', () => {
     const calls = captureGtag();
     trackConsentUpdate(true, false, true);
     expect(calls).toContainEqual(['set', 'ads_data_redaction', true]);
+  });
+
+  // A withdrawal must never be processed with redaction still off: that is
+  // the one combination, advertising storage denied and redaction false, in
+  // which redaction matters.
+  it('sets redaction before the consent update it belongs to', () => {
+    const calls = captureGtag();
+    trackConsentUpdate(true, false, true);
+    const redaction = calls.findIndex((c) => c[0] === 'set' && c[1] === 'ads_data_redaction');
+    const update = calls.findIndex((c) => c[0] === 'consent' && c[1] === 'update');
+    expect(redaction).toBeGreaterThan(-1);
+    expect(redaction).toBeLessThan(update);
   });
 
   it('applies the same rule to a returning visitor', () => {
