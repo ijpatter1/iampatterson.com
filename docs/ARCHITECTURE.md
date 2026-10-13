@@ -123,7 +123,7 @@ export function pushEvent(event: BaseEvent & Record<string, unknown>): void {
 **Cookiebot** is the Consent Management Platform (CMP). It handles:
 - Displaying the consent banner to visitors
 - Collecting and storing consent preferences
-- Communicating consent state to GTM via Google Consent Mode v2
+- Reporting the visitor's choice to the site, which writes Google Consent Mode v2 itself (since 2026-10-12 Cookiebot's own Consent Mode writes are off; see the integration sequence below)
 
 **Cookiebot blocking mode: `manual`, with explicit gtag bridge.** Cookiebot is loaded with `data-blockingmode="manual"` (not `"auto"`). Auto mode rewrites `<script>` tags in `<head>` to gate execution; this is the older belt-and-suspenders pattern from before Consent Mode v2 was widely supported. With manual mode, Cookiebot does not modify the DOM — gating is delegated entirely to the GTM container's per-tag `consentSettings` (every analytics tag carries `analytics_storage: required`). **This describes the container as of Phase 14, [14.1]; it was not true before then** — see "Where the gate actually was" below. The CookiebotConsentListener (`src/components/scripts/cookiebot-consent.tsx`) listens for `CookiebotOnAccept`/`CookiebotOnDecline` events and calls `trackConsentUpdate`/`initConsentState` in `src/lib/events/track.ts`, which both (a) push a `consent_update` event to the data layer for the under-the-hood visualization, and (b) explicitly call `window.gtag('consent', 'update', { ... })` with the Cookiebot-to-gtag signal mapping below. The explicit bridge is what auto-mode used to do implicitly. Manual mode also resolves a React-19/Next-16 hydration mismatch in dev: auto mode's DOM rewrite during script execution runs before React can hydrate, leaving the head DOM out of sync with React's tree (commit `b2147da` attempted to suppress at the React layer; suppression at the head element is one DOM-element deep and doesn't catch the mismatches on the rewritten script tags below).
 
@@ -210,8 +210,8 @@ What that costs, recorded rather than discovered later:
 
 **Integration sequence:**
 
-1. Cookiebot script loads in `layout.tsx` `<head>` (before GTM) via `next/script` with `strategy="beforeInteractive"` and `data-blockingmode="manual"`
-2. The inline `consent-defaults` script (also `beforeInteractive`) runs first, setting all Consent Mode v2 signals to `denied` defaults via `gtag('consent', 'default', {...})`
+1. The inline `consent-defaults` script runs first (`beforeInteractive`, rendered ahead of the Cookiebot loader in `layout.tsx`), setting all Consent Mode v2 signals to `denied` via `gtag('consent', 'default', {...})`. Next.js runs `beforeInteractive` scripts in render order and abandons the sequence if one fails to load, so the inline script that cannot fail goes before the third-party loader that can. `tests/unit/app/consent-script-order.test.ts` pins the order.
+2. The Cookiebot script loads (`beforeInteractive`) with `data-blockingmode="manual"` and `data-consentmode="disabled"`. The second attribute turns off the loader's own Google Consent Mode writes. Blocking mode does not affect those: without the attribute the loader pushes its own `consent update` from the raw banner choice, and the site's bridge is then one of two writers. Two further attributes keep the loader's other signals of the raw choice away from GTM: `data-ms-consent-mode="disabled"` turns off its Microsoft consent update, and `data-layer-name="cookiebotDataLayer"` sends its plain `cookie_consent_*` events to an array of their own. Nothing on the site or in either GTM container consumes those.
 3. GTM loads (`afterInteractive`) and reads the denied defaults; per-tag `consentSettings` keep all analytics/marketing tags gated
 4. Cookiebot's banner renders; the visitor accepts or declines categories
 5. CookiebotConsentListener catches `CookiebotOnAccept`/`CookiebotOnDecline`, calls `trackConsentUpdate` which:
@@ -230,7 +230,9 @@ What that costs, recorded rather than discovered later:
 | Preferences | `functionality_storage`, `personalization_storage` | Personalization features |
 | (no Cookiebot mapping) | `security_storage` | Always granted; covers fraud-prevention / security-essential storage that doesn't carry tracking |
 
-The mapping is implemented in `src/lib/events/track.ts` as a pure helper called from both `initConsentState` (for returning visitors who already have Cookiebot consent set when the page loads) and `trackConsentUpdate` (for new accept/decline events).
+The mapping is implemented in `src/lib/events/track.ts` as a pure helper called from both `initConsentState` (for returning visitors whose Cookiebot consent is already set when the listener mounts; a stored choice Cookiebot resolves later arrives through `CookiebotOnAccept` or `CookiebotOnDecline`, which its loader also fires on page load) and `trackConsentUpdate` (for new accept/decline events). The same helper sets `ads_data_redaction` to the opposite of marketing consent, ahead of the update, which the Cookiebot loader used to do. It is the only writer of Google Consent Mode on the site.
+
+**Global Privacy Control (2026-10-12).** When the browser sends the signal (`navigator.globalPrivacyControl === true`), marketing consent is treated as declined before the mapping above is applied, whatever the banner reported. The three advertising signals stay denied and `consent_marketing` is false on every event. Statistics and preferences follow the banner. The LiveStrip and the overlay's Consent tab say so, and only while the advertising signals read denied. Two limits: the Cookiebot banner still offers its marketing option to these visitors, and enforcement is in the browser (the server container does not read `Sec-GPC`). Record: `docs/verification/2026-10-12-global-privacy-control.md`.
 
 ### GTM Configuration
 

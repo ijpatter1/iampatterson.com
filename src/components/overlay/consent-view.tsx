@@ -1,6 +1,7 @@
 'use client';
 
 import { StorageInspector } from '@/components/overlay/consent/storage-inspector';
+import { useGlobalPrivacyControl } from '@/hooks/useGlobalPrivacyControl';
 import { destinationLabel } from '@/lib/events/destination-labels';
 import type { PipelineEvent, ConsentState } from '@/lib/events/pipeline-schema';
 import type { StorageSnapshot } from '@/lib/identity/storage-inspector';
@@ -15,12 +16,60 @@ const CONSENT_DESCRIPTIONS: Record<keyof ConsentState, string> = {
   functionality_storage: 'Preference and functionality cookies',
 };
 
+/** The signals this site keeps denied for a visitor who sends Global Privacy Control. */
+const GPC_HELD_SIGNALS: ReadonlySet<keyof ConsentState> = new Set([
+  'ad_storage',
+  'ad_user_data',
+  'ad_personalization',
+]);
+
+type GpcNoticeState = 'honored' | 'detected' | 'waiting';
+
+const GPC_NOTICE_COPY: Record<GpcNoticeState, { heading: string; body: string }> = {
+  honored: {
+    heading: 'Global Privacy Control honored',
+    body: 'Your browser sent a Global Privacy Control signal, so this site keeps advertising consent denied, whatever you choose in the banner. Analytics and preferences still follow your banner choice.',
+  },
+  detected: {
+    heading: 'Global Privacy Control detected',
+    body: 'Your browser sent a Global Privacy Control signal. The rows below show the consent state recorded for your latest event.',
+  },
+  waiting: {
+    heading: 'Global Privacy Control detected',
+    body: 'Your browser sent a Global Privacy Control signal. This site keeps advertising consent denied for browsers that send it. Your consent state will show here after your first event.',
+  },
+};
+
+/**
+ * Shown only to a visitor whose browser sends Global Privacy Control.
+ * "Honored" is a claim about the consent actually applied, so it is made only
+ * when there is a consent state to read and no advertising signal in it shows
+ * as granted. With no event yet there is nothing to read, and the notice says
+ * what the site does without claiming it has done it.
+ */
+function GpcNotice({ state }: { state: GpcNoticeState }) {
+  const copy = GPC_NOTICE_COPY[state];
+  return (
+    <div
+      data-testid="gpc-notice"
+      className="mt-6 border-l-2 border-u-accept bg-u-paper-alt px-4 py-3"
+    >
+      <div className="font-mono text-[10px] uppercase tracking-widest text-u-accept">
+        {copy.heading}
+      </div>
+      <p className="mt-1 max-w-[62ch] text-xs leading-relaxed text-u-ink-2">{copy.body}</p>
+    </div>
+  );
+}
+
 interface ConsentViewProps {
   events: PipelineEvent[];
   storage?: StorageSnapshot;
 }
 
 export function ConsentView({ events, storage = EMPTY_STORAGE }: ConsentViewProps) {
+  const gpcEnabled = useGlobalPrivacyControl();
+
   if (events.length === 0) {
     return (
       <div className="space-y-4">
@@ -35,6 +84,7 @@ export function ConsentView({ events, storage = EMPTY_STORAGE }: ConsentViewProp
           populate the timeline, we&apos;ll show your live consent decisions here. To change
           consent, click the Cookiebot badge in the bottom-right corner of the page.
         </p>
+        {gpcEnabled && <GpcNotice state="waiting" />}
         <StorageInspector snapshot={storage} />
       </div>
     );
@@ -43,6 +93,9 @@ export function ConsentView({ events, storage = EMPTY_STORAGE }: ConsentViewProp
   const latestEvent = events[0];
   const consent = latestEvent.consent;
   const consentEntries = Object.entries(consent) as [keyof ConsentState, string][];
+  const advertisingDenied = consentEntries.every(
+    ([signal, value]) => !GPC_HELD_SIGNALS.has(signal) || value !== 'granted',
+  );
 
   const activeRoutes = latestEvent.routing.filter((r) => r.status === 'sent');
   const suppressedRoutes = latestEvent.routing.filter((r) => r.status === 'blocked_consent');
@@ -61,6 +114,8 @@ export function ConsentView({ events, storage = EMPTY_STORAGE }: ConsentViewProp
         bottom-right corner of the page.
       </p>
 
+      {gpcEnabled && <GpcNotice state={advertisingDenied ? 'honored' : 'detected'} />}
+
       {/* Phase 10d D8.j: red/green accents replace the persimmon + muted
           grey binary. Granted rows pick up `u-accept` (green) on the left
           border + status tag; denied rows pick up `u-deny` (red). Each
@@ -69,11 +124,14 @@ export function ConsentView({ events, storage = EMPTY_STORAGE }: ConsentViewProp
       <div className="mt-8 space-y-3">
         {consentEntries.map(([signal, value]) => {
           const granted = value === 'granted';
+          const heldByGpc = gpcEnabled && !granted && GPC_HELD_SIGNALS.has(signal);
           return (
             <div
               key={signal}
               data-consent-row
+              data-consent-signal={signal}
               data-consent-state={granted ? 'granted' : 'denied'}
+              data-gpc-held={heldByGpc ? '' : undefined}
               className={`flex items-start justify-between gap-4 border-l-2 px-4 py-3 ${
                 granted ? 'border-u-accept bg-u-paper-alt' : 'border-u-deny bg-u-paper-deep'
               }`}
@@ -81,6 +139,11 @@ export function ConsentView({ events, storage = EMPTY_STORAGE }: ConsentViewProp
               <div className="flex-1">
                 <div className="font-mono text-[11px] text-u-ink">{signal}</div>
                 <p className="mt-1 text-xs text-u-ink-3">{CONSENT_DESCRIPTIONS[signal]}</p>
+                {heldByGpc && (
+                  <p className="mt-1 font-mono text-[10px] text-u-ink-3">
+                    Stays denied while your browser sends Global Privacy Control
+                  </p>
+                )}
               </div>
               <span
                 className={`flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest ${

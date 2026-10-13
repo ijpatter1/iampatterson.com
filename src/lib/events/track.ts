@@ -1,4 +1,5 @@
 import { getAnonymousId } from '@/lib/identity/anonymous-id';
+import { isGlobalPrivacyControlEnabled } from './global-privacy-control';
 import { pushEvent } from './push';
 import type {
   CoverageMilestoneEvent,
@@ -21,11 +22,43 @@ let currentConsent = {
   consent_preferences: false,
 };
 
-type GtagFn = (
-  command: 'consent',
-  action: 'update',
-  payload: Record<string, 'granted' | 'denied'>,
-) => void;
+type GtagFn = {
+  (command: 'consent', action: 'update', payload: Record<string, 'granted' | 'denied'>): void;
+  (command: 'set', key: 'ads_data_redaction', value: boolean): void;
+};
+
+/**
+ * Global Privacy Control wins over the banner for marketing consent. A visitor
+ * who sent the signal and then clicked "Allow all" still has marketing
+ * declined: the three advertising signals stay denied and `consent_marketing`
+ * is false on every event. Analytics and preferences are not what the signal
+ * speaks to and keep following the banner.
+ *
+ * This holds only because the bridge below is the single writer of Consent
+ * Mode: Cookiebot's own writes are switched off on its script tag
+ * (`data-consentmode="disabled"` in `cookiebot.tsx`).
+ */
+function honorGlobalPrivacyControl(marketing: boolean): boolean {
+  return marketing && !isGlobalPrivacyControlEnabled();
+}
+
+/**
+ * The one place a banner choice becomes the site's consent state. Both entry
+ * points go through it, so the Global Privacy Control override cannot be
+ * skipped by a path that sets consent some other way.
+ */
+function recordConsent(
+  analytics: boolean,
+  marketing: boolean,
+  preferences: boolean,
+): typeof currentConsent {
+  currentConsent = {
+    consent_analytics: analytics,
+    consent_marketing: honorGlobalPrivacyControl(marketing),
+    consent_preferences: preferences,
+  };
+  return currentConsent;
+}
 
 /**
  * Bridge Cookiebot's three booleans to GTM Consent Mode v2's six gtag signals
@@ -51,6 +84,11 @@ function bridgeToGtagConsent(analytics: boolean, marketing: boolean, preferences
   const gtag = (window as unknown as { gtag?: GtagFn }).gtag;
   if (typeof gtag !== 'function') return;
   const yn = (b: boolean): 'granted' | 'denied' => (b ? 'granted' : 'denied');
+  // Cookiebot's loader used to set this from the marketing choice. With its
+  // Consent Mode writes off, the bridge owns it: ad click identifiers are
+  // redacted unless marketing consent is granted. Set before the update, so a
+  // withdrawal is never processed with redaction still off.
+  gtag('set', 'ads_data_redaction', !marketing);
   gtag('consent', 'update', {
     analytics_storage: yn(analytics),
     ad_storage: yn(marketing),
@@ -77,12 +115,12 @@ export function initConsentState(
   marketing: boolean,
   preferences: boolean,
 ): void {
-  currentConsent = {
-    consent_analytics: analytics,
-    consent_marketing: marketing,
-    consent_preferences: preferences,
-  };
-  bridgeToGtagConsent(analytics, marketing, preferences);
+  const honored = recordConsent(analytics, marketing, preferences);
+  bridgeToGtagConsent(
+    honored.consent_analytics,
+    honored.consent_marketing,
+    honored.consent_preferences,
+  );
 }
 
 /**
@@ -165,16 +203,16 @@ export function trackConsentUpdate(
   marketing: boolean,
   preferences: boolean,
 ): void {
-  currentConsent = {
-    consent_analytics: analytics,
-    consent_marketing: marketing,
-    consent_preferences: preferences,
-  };
+  const honored = recordConsent(analytics, marketing, preferences);
   pushEvent({
     ...baseFields(),
     event: 'consent_update',
   });
-  bridgeToGtagConsent(analytics, marketing, preferences);
+  bridgeToGtagConsent(
+    honored.consent_analytics,
+    honored.consent_marketing,
+    honored.consent_preferences,
+  );
 }
 
 // --- E-commerce demo tracking (Phase 6) ---
