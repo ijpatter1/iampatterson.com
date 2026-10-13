@@ -28,6 +28,7 @@ jest.mock('next/navigation', () => ({
 }));
 
 import { trackClickCta } from '@/lib/events/track';
+import { LiveEventsContext } from '@/hooks/useLiveEvents';
 
 const mockTrackClickCta = trackClickCta as jest.Mock;
 
@@ -37,11 +38,14 @@ function OverlayProbe() {
 }
 
 function renderHeader() {
+  // The LiveStrip reads the page's shared live event source.
   return render(
-    <OverlayProvider>
-      <Header />
-      <OverlayProbe />
-    </OverlayProvider>,
+    <LiveEventsContext.Provider value={{ events: [], source: 'dataLayer', stream: 'off' }}>
+      <OverlayProvider>
+        <Header />
+        <OverlayProbe />
+      </OverlayProvider>
+    </LiveEventsContext.Provider>,
   );
 }
 

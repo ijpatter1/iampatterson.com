@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
 import type { PipelineEvent } from '@/lib/events/pipeline-schema';
 
@@ -12,6 +12,12 @@ export interface UseLiveEventsReturn {
   events: PipelineEvent[];
   /** True when the SSE pipeline is the active source. */
   source: 'sse' | 'dataLayer';
+  /**
+   * State of the stream connection itself, whichever source is active. `off`
+   * means no stream is configured. A reader uses this to tell "data-layer
+   * events because the stream is down" from "data-layer events by design".
+   */
+  stream: 'off' | 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
 }
 
 export interface UseLiveEventsOptions {
@@ -48,13 +54,13 @@ export interface UseLiveEventsOptions {
  * Local development has no SSE, so the fallback already applied and it looked
  * correct, which is why no test caught it before `useLiveEvents.test.ts`.
  */
-export function useLiveEvents(options: UseLiveEventsOptions = {}): UseLiveEventsReturn {
+export function useLiveEventsSource(options: UseLiveEventsOptions = {}): UseLiveEventsReturn {
   const { analyticsConsent } = options;
   const baseUrl = process.env.NEXT_PUBLIC_EVENT_STREAM_URL ?? '';
   const eventStreamUrl = baseUrl.endsWith('/events') ? baseUrl : `${baseUrl}/events`;
   const sseEnabled = baseUrl.length > 0;
 
-  const { events: sseEvents } = useEventStream({
+  const { events: sseEvents, status: sseStatus } = useEventStream({
     url: eventStreamUrl,
     enabled: sseEnabled,
   });
@@ -78,8 +84,32 @@ export function useLiveEvents(options: UseLiveEventsOptions = {}): UseLiveEvents
   // latch the source.
   const useSse =
     analyticsConsent !== 'denied' && sseEnabled && (sseEvents.length > 0 || sseEverDelivered);
-  return {
-    events: useSse ? sseEvents : dlEvents,
-    source: useSse ? 'sse' : 'dataLayer',
-  };
+  const events = useSse ? sseEvents : dlEvents;
+  const source = useSse ? 'sse' : 'dataLayer';
+  const stream = sseEnabled ? sseStatus : 'off';
+  // Stable while nothing changed: this object is a context value, and a fresh
+  // one on every render would re-render every reader.
+  return useMemo(() => ({ events, source, stream }), [events, source, stream]);
+}
+
+/**
+ * The page's one live event source, provided by `LiveEventsProvider`.
+ *
+ * It is shared because the stream service keeps a single connection per
+ * session: a second connection for the same session ends the first. Every
+ * component that opened its own stream would take the feed away from the
+ * others, so exactly one place opens it and everything else reads from here.
+ */
+export const LiveEventsContext = createContext<UseLiveEventsReturn | null>(null);
+
+/**
+ * Read the visitor's live events. Takes no options: consent is resolved once,
+ * where the source is opened.
+ */
+export function useLiveEvents(): UseLiveEventsReturn {
+  const value = useContext(LiveEventsContext);
+  if (value === null) {
+    throw new Error('useLiveEvents must be used inside <LiveEventsProvider>');
+  }
+  return value;
 }

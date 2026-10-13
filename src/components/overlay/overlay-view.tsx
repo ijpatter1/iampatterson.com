@@ -135,10 +135,10 @@ export function OverlayView() {
   // Timeline badge from 9 to 1 while the panel faded out.
   const analyticsConsent = useAnalyticsConsent();
 
-  // Consent is resolved BEFORE the event source is chosen: a decliner is pinned
-  // to the data layer, so they see their own events marked blocked rather than
-  // the single consent_update that is all SSE can offer them.
-  const { events } = useLiveEvents({ analyticsConsent });
+  // The shared source, opened once by LiveEventsProvider with consent already
+  // resolved: a decliner is pinned to the data layer, so they see their own
+  // events marked blocked.
+  const { events } = useLiveEvents();
   const { filteredEvents } = useFilteredEvents(events, false);
 
   const [viewMode, setViewMode] = useState<ViewMode>('overview');

@@ -9,6 +9,7 @@ import { render, screen } from '@testing-library/react';
 
 import HomePage from '@/app/page';
 import { OverlayProvider } from '@/components/overlay/overlay-context';
+import { LiveEventsContext } from '@/hooks/useLiveEvents';
 
 jest.mock('@/lib/events/track', () => ({
   trackClickCta: jest.fn(),
@@ -41,9 +42,11 @@ jest.mock('next/server', () => ({
 
 function renderHome() {
   return render(
-    <OverlayProvider>
-      <HomePage />
-    </OverlayProvider>,
+    <LiveEventsContext.Provider value={{ events: [], source: 'dataLayer', stream: 'off' }}>
+      <OverlayProvider>
+        <HomePage />
+      </OverlayProvider>
+    </LiveEventsContext.Provider>,
   );
 }
 
