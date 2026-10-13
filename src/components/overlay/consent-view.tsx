@@ -16,7 +16,7 @@ const CONSENT_DESCRIPTIONS: Record<keyof ConsentState, string> = {
   functionality_storage: 'Preference and functionality cookies',
 };
 
-/** The signals Global Privacy Control holds at denied on this site. */
+/** The signals this site keeps denied for a visitor who sends Global Privacy Control. */
 const GPC_HELD_SIGNALS: ReadonlySet<keyof ConsentState> = new Set([
   'ad_storage',
   'ad_user_data',
@@ -24,23 +24,24 @@ const GPC_HELD_SIGNALS: ReadonlySet<keyof ConsentState> = new Set([
 ]);
 
 /**
- * Shown only to a visitor whose browser sends Global Privacy Control. The
- * homepage says the signal is honored, so the site says so where the visitor
- * can check it, and names what it changed.
+ * Shown only to a visitor whose browser sends Global Privacy Control.
+ * "Honored" is a claim about the consent actually applied, so it is made only
+ * when no advertising signal shows as granted. Otherwise the notice says the
+ * signal was detected and leaves the rows to speak for themselves.
  */
-function GpcNotice() {
+function GpcNotice({ honored }: { honored: boolean }) {
   return (
     <div
       data-testid="gpc-notice"
       className="mt-6 border-l-2 border-u-accept bg-u-paper-alt px-4 py-3"
     >
       <div className="font-mono text-[10px] uppercase tracking-widest text-u-accept">
-        Global Privacy Control honored
+        {honored ? 'Global Privacy Control honored' : 'Global Privacy Control detected'}
       </div>
       <p className="mt-1 max-w-[62ch] text-xs leading-relaxed text-u-ink-2">
-        Your browser sent a Global Privacy Control signal. This site holds the three advertising
-        signals at denied because of it, whatever you choose in the banner. Analytics and
-        preferences still follow your banner choice.
+        {honored
+          ? 'Your browser sent a Global Privacy Control signal, so this site keeps advertising consent denied, whatever you choose in the banner. Analytics and preferences still follow your banner choice.'
+          : 'Your browser sent a Global Privacy Control signal. The rows below show the consent state recorded for your latest event.'}
       </p>
     </div>
   );
@@ -68,7 +69,7 @@ export function ConsentView({ events, storage = EMPTY_STORAGE }: ConsentViewProp
           populate the timeline, we&apos;ll show your live consent decisions here. To change
           consent, click the Cookiebot badge in the bottom-right corner of the page.
         </p>
-        {gpcEnabled && <GpcNotice />}
+        {gpcEnabled && <GpcNotice honored />}
         <StorageInspector snapshot={storage} />
       </div>
     );
@@ -77,6 +78,9 @@ export function ConsentView({ events, storage = EMPTY_STORAGE }: ConsentViewProp
   const latestEvent = events[0];
   const consent = latestEvent.consent;
   const consentEntries = Object.entries(consent) as [keyof ConsentState, string][];
+  const advertisingDenied = consentEntries.every(
+    ([signal, value]) => !GPC_HELD_SIGNALS.has(signal) || value !== 'granted',
+  );
 
   const activeRoutes = latestEvent.routing.filter((r) => r.status === 'sent');
   const suppressedRoutes = latestEvent.routing.filter((r) => r.status === 'blocked_consent');
@@ -95,7 +99,7 @@ export function ConsentView({ events, storage = EMPTY_STORAGE }: ConsentViewProp
         bottom-right corner of the page.
       </p>
 
-      {gpcEnabled && <GpcNotice />}
+      {gpcEnabled && <GpcNotice honored={advertisingDenied} />}
 
       {/* Phase 10d D8.j: red/green accents replace the persimmon + muted
           grey binary. Granted rows pick up `u-accept` (green) on the left
@@ -105,11 +109,12 @@ export function ConsentView({ events, storage = EMPTY_STORAGE }: ConsentViewProp
       <div className="mt-8 space-y-3">
         {consentEntries.map(([signal, value]) => {
           const granted = value === 'granted';
-          const heldByGpc = gpcEnabled && GPC_HELD_SIGNALS.has(signal);
+          const heldByGpc = gpcEnabled && !granted && GPC_HELD_SIGNALS.has(signal);
           return (
             <div
               key={signal}
               data-consent-row
+              data-consent-signal={signal}
               data-consent-state={granted ? 'granted' : 'denied'}
               data-gpc-held={heldByGpc ? '' : undefined}
               className={`flex items-start justify-between gap-4 border-l-2 px-4 py-3 ${
@@ -121,7 +126,7 @@ export function ConsentView({ events, storage = EMPTY_STORAGE }: ConsentViewProp
                 <p className="mt-1 text-xs text-u-ink-3">{CONSENT_DESCRIPTIONS[signal]}</p>
                 {heldByGpc && (
                   <p className="mt-1 font-mono text-[10px] text-u-ink-3">
-                    Held at denied by Global Privacy Control
+                    Stays denied while your browser sends Global Privacy Control
                   </p>
                 )}
               </div>

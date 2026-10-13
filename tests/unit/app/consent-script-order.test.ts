@@ -1,0 +1,27 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
+// Next.js runs `beforeInteractive` scripts one after another in the order the
+// layout renders them, and abandons the rest of the sequence if one fails to
+// load. The Consent Mode defaults are an inline script that cannot fail; the
+// Cookiebot loader is a third-party request that a content blocker will fail.
+// So the defaults have to come first: every visitor gets "denied" before GTM
+// loads, whether or not Cookiebot arrives.
+describe('consent script order in the root layout', () => {
+  const layout = readFileSync(join(process.cwd(), 'src/app/layout.tsx'), 'utf8');
+
+  it('renders the consent defaults ahead of the Cookiebot loader', () => {
+    const defaults = layout.indexOf('<GtmScript />');
+    const cookiebot = layout.indexOf('<CookiebotScript />');
+    expect(defaults).toBeGreaterThan(-1);
+    expect(cookiebot).toBeGreaterThan(-1);
+    expect(defaults).toBeLessThan(cookiebot);
+  });
+
+  it('keeps the defaults in the same component as the GTM loader, ahead of it', () => {
+    const gtm = readFileSync(join(process.cwd(), 'src/components/scripts/gtm.tsx'), 'utf8');
+    expect(gtm.indexOf('id="consent-defaults"')).toBeGreaterThan(-1);
+    expect(gtm.indexOf('id="consent-defaults"')).toBeLessThan(gtm.indexOf('id="gtm-script"'));
+    expect(gtm).toMatch(/id="consent-defaults" strategy="beforeInteractive"/);
+  });
+});

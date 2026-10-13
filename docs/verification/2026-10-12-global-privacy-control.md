@@ -1,4 +1,4 @@
-# Global Privacy Control, checked in a browser
+# Global Privacy Control, checked in a browser with the signal injected
 
 2026-10-12, deliverable [15.5]. Branch `feat/15.5-global-privacy-control`.
 
@@ -9,59 +9,90 @@ treated as declined whatever the banner says. The three advertising signals
 (`ad_storage`, `ad_user_data`, `ad_personalization`) stay denied and
 `consent_marketing` is false on every event. Analytics and preferences follow
 the visitor's banner choice. The LiveStrip and the overlay's Consent tab both
-say the signal was honored.
+say the signal was honored, and only while advertising consent reads denied.
+
+For that to hold, the site's bridge in `src/lib/events/track.ts` has to be the
+only thing writing Consent Mode. The Cookiebot loader writes it too unless its
+script tag carries `data-consentmode="disabled"`, so the tag now carries it.
+The Consent Mode defaults are also rendered ahead of the Cookiebot loader.
 
 ## What was run
 
 A production build of this branch (`npm run build`, `npm run start`) driven by
-Playwright in Chromium 1208, once with the signal and once without.
+Playwright in Chromium 1208.
 
-Three things about the setup limit what this proves:
+What the setup does and does not prove:
 
 - **The signal was injected.** Chromium does not send Global Privacy Control,
   so `navigator.globalPrivacyControl` was defined as `true` by an init script
   before any page script ran. A browser that sends the signal natively was not
   used.
-- **The banner click was simulated.** The page was told that Cookiebot reported
-  all three categories accepted and that its accept event fired, which is what
-  the site listens for. Cookiebot's own banner was not on screen.
-- **Nothing left the machine.** Every request to a host other than `localhost`
-  was aborted, so no tag fired and nothing reached GTM or the server container.
-  The Cookiebot loader was answered with an empty script, so Cookiebot's own
-  code did not run.
+- **The real Cookiebot loader ran.** Requests to `consent.cookiebot.com` and
+  `consentcdn.cookiebot.com` were allowed. The first run of this check answered
+  the loader with an empty script; that hid the loader's own Consent Mode
+  writes and its result was discarded.
+- **The banner was not clicked.** A stored choice granting all three
+  categories was supplied as a `CookieConsent` cookie, which is the returning
+  visitor's case. The loader read it and reported statistics, marketing and
+  preferences all true.
+- **No tag fired.** Requests to every other host were aborted, so GTM never
+  loaded and nothing reached the server container. What is observed is the
+  data layer, not GTM's resolved consent state or an outgoing hit.
 
 ## Result
 
-After the simulated "Accept all":
+Returning visitor whose stored choice grants marketing:
 
 | | Signal on | Signal off |
 | --- | --- | --- |
-| `navigator.globalPrivacyControl` | `true` | undefined |
-| Consent default, before the choice | all denied | all denied |
-| `analytics_storage` | granted | granted |
-| `ad_storage`, `ad_user_data`, `ad_personalization` | denied | granted |
-| `functionality_storage`, `personalization_storage` | granted | granted |
-| `consent_marketing` on the `consent_update` event | false | true |
-| LiveStrip consent item | `analytics:granted ad:denied · GPC honored` | `analytics:granted ad:granted` |
-| Notice in the overlay's Consent tab | shown | absent |
-| Rows marked "Held at denied by Global Privacy Control" | the three advertising rows | none |
+| First data layer entry | `consent default`, all denied | `consent default`, all denied |
+| Loader's own Consent Mode writes | off (`consentModeDisabled` true), none seen | off, none seen |
+| Every `consent update` in the data layer: advertising signals | denied | granted |
+| Every `consent update`: `analytics_storage` | granted | granted |
+| `ads_data_redaction` | stays true | set false |
+| `consent_marketing` on site events | false | true |
+| LiveStrip consent item | `analytics:granted ad:denied · Global Privacy Control honored` | `analytics:granted ad:granted` |
 
-The unit tests cover the same behavior without a browser:
-`tests/unit/events/global-privacy-control.test.ts`, the "Global Privacy
-Control" blocks in `tests/unit/events/track.test.ts`,
+Visitor with the signal on and no stored choice: one `consent default` and one
+`consent update`, all denied; the LiveStrip reads
+`analytics:denied ad:denied · Global Privacy Control honored`.
+
+The overlay's Consent tab was checked in the earlier, discarded run and by unit
+test: the notice appears with the signal on, the three advertising rows carry
+"Stays denied while your browser sends Global Privacy Control", and neither
+appears without the signal.
+
+Unit tests for the same behavior:
+`tests/unit/events/global-privacy-control.test.ts`,
+`tests/unit/events/track.test.ts`,
+`tests/unit/components/scripts/cookiebot.test.tsx`,
+`tests/unit/components/scripts/cookiebot-consent.test.tsx`,
+`tests/unit/app/consent-script-order.test.ts`,
 `tests/unit/components/overlay/consent-view.test.tsx` and
 `tests/unit/components/chrome/live-strip.test.tsx`.
 
 ## Still to check
 
-One pass on a preview deployment in a browser that sends the signal natively
-(Firefox with "Tell websites not to sell or share my data" on, or Brave),
-clicking "Allow all" in the real Cookiebot banner. Two things to look for: the
-Consent tab's notice, and the three advertising rows still denied.
+On a preview deployment, in a browser that sends the signal natively (Firefox
+with "Tell websites not to sell or share my data" on, or Brave):
+
+1. Click "Allow all" in the real Cookiebot banner.
+2. In the console, read `dataLayer` and confirm no `consent update` grants an
+   advertising signal.
+3. In GTM preview, confirm the consent state on the next hit shows the three
+   advertising signals denied.
+4. Open the overlay's Consent tab and confirm the notice and the three rows.
+
+Also on the preview, without the signal: accept in the banner and confirm
+analytics tags still fire. Turning off the loader's own Consent Mode writes
+changes who grants consent for every visitor, not only those sending the
+signal.
 
 ## Limits of the feature
 
 - The Cookiebot banner still offers its marketing option to these visitors.
-  The site ignores a grant made there and the Consent tab says why.
+  The site ignores a grant made there and the Consent tab says why. Whether
+  Cookiebot's settings can hide or pre-decline that option for them has not
+  been checked.
 - Enforcement is in the browser. The server container does not read the
   `Sec-GPC` request header.

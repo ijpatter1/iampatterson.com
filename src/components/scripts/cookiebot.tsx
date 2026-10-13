@@ -21,6 +21,12 @@ import Script from 'next/script';
  * `initConsentState` (returning visitors with stored consent). See
  * `docs/ARCHITECTURE.md` "Cookiebot + GTM Consent Mode" for the full
  * integration sequence and signal mapping.
+ *
+ * `data-consentmode="disabled"` turns off the loader's own Consent Mode
+ * writes. Blocking mode does not affect those: left on, the loader pushes its
+ * own consent update from the raw banner choice, alongside the bridge. The
+ * bridge is where Global Privacy Control is honored, so it has to be the only
+ * writer.
  */
 export function CookiebotScript() {
   const cbid = process.env.NEXT_PUBLIC_COOKIEBOT_ID;
@@ -32,6 +38,7 @@ export function CookiebotScript() {
       src="https://consent.cookiebot.com/uc.js"
       data-cbid={cbid}
       data-blockingmode="manual"
+      data-consentmode="disabled"
       type="text/javascript"
       strategy="beforeInteractive"
     />

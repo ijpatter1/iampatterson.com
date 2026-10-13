@@ -8,9 +8,10 @@ jest.mock('@/lib/events/track', () => ({
   initConsentState: jest.fn(),
 }));
 
-import { trackConsentUpdate } from '@/lib/events/track';
+import { initConsentState, trackConsentUpdate } from '@/lib/events/track';
 
 const mockTrackConsentUpdate = trackConsentUpdate as jest.Mock;
+const mockInitConsentState = initConsentState as jest.Mock;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -73,6 +74,25 @@ describe('CookiebotConsentListener', () => {
     act(() => {
       window.dispatchEvent(new Event('CookiebotOnAccept'));
     });
+    expect(mockTrackConsentUpdate).not.toHaveBeenCalled();
+  });
+
+  // Phase 15, deliverable 15.5. The site bridge is now the only writer of
+  // Consent Mode, so a returning visitor's stored choice has to reach it even
+  // when Cookiebot finishes reading its cookie after this component mounts.
+  // Cookiebot fires CookiebotOnConsentReady for exactly that.
+  it('applies a stored choice that Cookiebot resolves after mount, without a consent_update event', () => {
+    const CookiebotConsentListener = getComponent();
+    delete (window as unknown as Record<string, unknown>).Cookiebot;
+    render(<CookiebotConsentListener />);
+    expect(mockInitConsentState).not.toHaveBeenCalled();
+    (window as unknown as Record<string, unknown>).Cookiebot = {
+      consent: { statistics: true, marketing: true, preferences: false },
+    };
+    act(() => {
+      window.dispatchEvent(new Event('CookiebotOnConsentReady'));
+    });
+    expect(mockInitConsentState).toHaveBeenCalledWith(true, true, false);
     expect(mockTrackConsentUpdate).not.toHaveBeenCalled();
   });
 

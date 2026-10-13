@@ -205,10 +205,48 @@ describe('ConsentView, Global Privacy Control', () => {
   it('marks exactly the three advertising rows as held by the signal', () => {
     setSignal(true);
     const { container } = render(<ConsentView events={[makeEvent()]} />);
-    const held = Array.from(container.querySelectorAll('[data-gpc-held]')).map(
-      (row) => row.querySelector('.font-mono')?.textContent,
+    const held = Array.from(container.querySelectorAll('[data-gpc-held]')).map((row) =>
+      row.getAttribute('data-consent-signal'),
     );
     expect(held).toEqual(['ad_storage', 'ad_user_data', 'ad_personalization']);
+  });
+
+  // The caption is a claim about what the site did. If an advertising signal
+  // shows as granted, the site did not keep it denied, and saying so beside a
+  // green "granted" would be the tab contradicting itself.
+  it('does not claim a row is kept denied when that row shows granted', () => {
+    setSignal(true);
+    const granted = makeEvent({
+      consent: {
+        analytics_storage: 'granted',
+        ad_storage: 'granted',
+        ad_user_data: 'denied',
+        ad_personalization: 'denied',
+        functionality_storage: 'granted',
+      },
+    });
+    const { container } = render(<ConsentView events={[granted]} />);
+    const held = Array.from(container.querySelectorAll('[data-gpc-held]')).map((row) =>
+      row.getAttribute('data-consent-signal'),
+    );
+    expect(held).toEqual(['ad_user_data', 'ad_personalization']);
+  });
+
+  it('says the signal was detected, not honored, when an advertising signal shows granted', () => {
+    setSignal(true);
+    const granted = makeEvent({
+      consent: {
+        analytics_storage: 'granted',
+        ad_storage: 'granted',
+        ad_user_data: 'granted',
+        ad_personalization: 'granted',
+        functionality_storage: 'granted',
+      },
+    });
+    render(<ConsentView events={[granted]} />);
+    const notice = screen.getByTestId('gpc-notice');
+    expect(notice).not.toHaveTextContent(/honored/i);
+    expect(notice).toHaveTextContent(/detected/i);
   });
 
   it('says nothing about the signal when the browser did not send one', () => {

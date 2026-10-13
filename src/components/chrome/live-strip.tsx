@@ -46,14 +46,21 @@ export function LiveStrip() {
   const effectiveSid = persistedSid || sessionId;
   const shortId = effectiveSid ? effectiveSid.slice(-6) : '······';
 
+  const consent = consentLabel(sessionState, events);
+
   const items = [
     { label: 'SESSION', value: shortId },
     { label: 'STACK', value: 'GTM → sGTM → BigQuery' },
     // A visitor who sent Global Privacy Control sees here, on every page and
-    // without opening the overlay, that the site honored it.
+    // without opening the overlay, that the site honored it. "Honored" is a
+    // claim about the consent applied, so it is made only while advertising
+    // consent reads denied.
     {
       label: 'CONSENT',
-      value: `${consentLabel(sessionState, events)}${gpcEnabled ? ' · GPC honored' : ''}`,
+      value:
+        gpcEnabled && consent.includes('ad:denied')
+          ? `${consent} · Global Privacy Control honored`
+          : consent,
     },
     { label: 'PIPELINE', value: 'live' },
     { label: 'DASHBOARDS', value: 'Metabase' },

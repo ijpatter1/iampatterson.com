@@ -348,6 +348,13 @@ describe('Global Privacy Control', () => {
     expect(window.dataLayer[0]).toMatchObject({ consent_marketing: false });
   });
 
+  it('keeps ads data redaction on when the signal overrides an accepted banner', () => {
+    const calls = captureGtag();
+    trackConsentUpdate(true, true, true);
+    expect(calls).toContainEqual(['set', 'ads_data_redaction', true]);
+    expect(calls).not.toContainEqual(['set', 'ads_data_redaction', false]);
+  });
+
   it('grants the advertising signals as before when the browser sends no signal', () => {
     delete (navigator as unknown as { globalPrivacyControl?: unknown }).globalPrivacyControl;
     const calls = captureGtag();
@@ -358,6 +365,38 @@ describe('Global Privacy Control', () => {
       ad_personalization: 'granted',
     });
     expect(window.dataLayer[0]).toMatchObject({ consent_marketing: true });
+  });
+});
+
+// The site bridge is the only writer of Consent Mode (Cookiebot's own writes
+// are switched off on its script tag), so it also owns ads data redaction,
+// which Cookiebot used to set from the marketing choice.
+describe('ads data redaction follows marketing consent', () => {
+  function captureGtag(): unknown[][] {
+    const calls: unknown[][] = [];
+    (window as unknown as { gtag: (...args: unknown[]) => void }).gtag = (...args) => {
+      calls.push(args);
+    };
+    return calls;
+  }
+  afterEach(() => initConsentState(false, false, false));
+
+  it('turns redaction off when marketing is granted', () => {
+    const calls = captureGtag();
+    trackConsentUpdate(true, true, true);
+    expect(calls).toContainEqual(['set', 'ads_data_redaction', false]);
+  });
+
+  it('keeps redaction on when marketing is declined', () => {
+    const calls = captureGtag();
+    trackConsentUpdate(true, false, true);
+    expect(calls).toContainEqual(['set', 'ads_data_redaction', true]);
+  });
+
+  it('applies the same rule to a returning visitor', () => {
+    const calls = captureGtag();
+    initConsentState(true, true, true);
+    expect(calls).toContainEqual(['set', 'ads_data_redaction', false]);
   });
 });
 

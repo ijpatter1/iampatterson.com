@@ -86,8 +86,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${instrumentSerif.variable} ${plusJakarta.variable} ${jetbrainsMono.variable}`}
     >
       <head>
-        <CookiebotScript />
+        {/* Order matters. Next runs beforeInteractive scripts in render order
+            and abandons the sequence if one fails to load. The inline consent
+            defaults in GtmScript cannot fail; the Cookiebot loader is a
+            third-party request a content blocker will fail. Defaults first. */}
         <GtmScript />
+        <CookiebotScript />
         {/* JSON-LD structured data — Organization + Person. Inlined as
             two separate <script type="application/ld+json"> tags so
             Google's rich-results parser sees both schemas independently

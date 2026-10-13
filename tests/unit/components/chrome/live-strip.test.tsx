@@ -115,16 +115,28 @@ describe('LiveStrip, Global Privacy Control', () => {
     delete (navigator as unknown as { globalPrivacyControl?: unknown }).globalPrivacyControl;
   });
 
-  it('adds "GPC honored" to the consent item when the browser sends the signal', () => {
+  it('says the signal is honored when the browser sends it and advertising consent is denied', () => {
     Object.defineProperty(navigator, 'globalPrivacyControl', { value: true, configurable: true });
     mockEvents = [makeEvent('granted', 'denied')];
     render(<LiveStrip />);
-    expect(screen.getAllByText(/ad:denied · GPC honored/).length).toBeGreaterThanOrEqual(2);
+    expect(
+      screen.getAllByText(/ad:denied · Global Privacy Control honored/).length,
+    ).toBeGreaterThanOrEqual(2);
+  });
+
+  // "Honored" is a claim about the consent actually applied. If the strip is
+  // showing advertising consent as granted, it must not also say the signal
+  // was honored.
+  it('does not say honored beside granted advertising consent', () => {
+    Object.defineProperty(navigator, 'globalPrivacyControl', { value: true, configurable: true });
+    mockEvents = [makeEvent('granted', 'granted')];
+    render(<LiveStrip />);
+    expect(screen.queryByText(/honored/)).not.toBeInTheDocument();
   });
 
   it('does not mention the signal when the browser sends none', () => {
     mockEvents = [makeEvent('granted', 'denied')];
     render(<LiveStrip />);
-    expect(screen.queryByText(/GPC/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Global Privacy Control/)).not.toBeInTheDocument();
   });
 });

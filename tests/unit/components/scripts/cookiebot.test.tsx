@@ -48,6 +48,19 @@ describe('CookiebotScript', () => {
     expect(script?.getAttribute('data-blockingmode')).toBe('manual');
   });
 
+  // Phase 15, deliverable 15.5. Cookiebot's loader writes Consent Mode itself
+  // unless told not to: it pushes its own consent update from the raw banner
+  // choice. With that on there are two writers, and the site's bridge, which
+  // is where Global Privacy Control is honored, is only one of them. The
+  // attribute makes the bridge in track.ts the single writer.
+  it("turns off Cookiebot's own Consent Mode writes so the site bridge is the only writer", () => {
+    process.env.NEXT_PUBLIC_COOKIEBOT_ID = 'test-cbid-123';
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { CookiebotScript } = require('@/components/scripts/cookiebot');
+    const { container } = render(<CookiebotScript />);
+    expect(container.querySelector('script')?.getAttribute('data-consentmode')).toBe('disabled');
+  });
+
   it('renders nothing when NEXT_PUBLIC_COOKIEBOT_ID is not set', () => {
     delete process.env.NEXT_PUBLIC_COOKIEBOT_ID;
     // eslint-disable-next-line @typescript-eslint/no-require-imports
