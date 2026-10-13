@@ -2,6 +2,7 @@
 
 import { useSessionState } from '@/components/session-state-provider';
 import { useDataLayerEvents } from '@/hooks/useDataLayerEvents';
+import { useGlobalPrivacyControl } from '@/hooks/useGlobalPrivacyControl';
 import { useSessionId } from '@/hooks/useSessionId';
 import type { SessionState } from '@/lib/session-state/types';
 
@@ -36,6 +37,7 @@ export function LiveStrip() {
   const sessionId = useSessionId();
   const { events } = useDataLayerEvents();
   const sessionState = useSessionState();
+  const gpcEnabled = useGlobalPrivacyControl();
 
   // Match SessionPulse's 6-char suffix so the two components show the same
   // session identity. Prefer the persisted blob's session_id so it stays
@@ -47,7 +49,12 @@ export function LiveStrip() {
   const items = [
     { label: 'SESSION', value: shortId },
     { label: 'STACK', value: 'GTM → sGTM → BigQuery' },
-    { label: 'CONSENT', value: consentLabel(sessionState, events) },
+    // A visitor who sent Global Privacy Control sees here, on every page and
+    // without opening the overlay, that the site honored it.
+    {
+      label: 'CONSENT',
+      value: `${consentLabel(sessionState, events)}${gpcEnabled ? ' · GPC honored' : ''}`,
+    },
     { label: 'PIPELINE', value: 'live' },
     { label: 'DASHBOARDS', value: 'Metabase' },
     { label: 'ATTRIB', value: 'last-click · Shapley planned' },

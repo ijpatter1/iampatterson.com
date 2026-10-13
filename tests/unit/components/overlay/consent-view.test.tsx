@@ -176,3 +176,50 @@ describe('ConsentView', () => {
     expect(analyticsRow!.textContent).toContain('denied');
   });
 });
+
+// Phase 15, deliverable 15.5. The site has to say when it is honoring a
+// Global Privacy Control signal, in both states of the tab, and say nothing
+// when there is no signal: a visitor without one must not be told they sent it.
+describe('ConsentView, Global Privacy Control', () => {
+  function setSignal(value: boolean): void {
+    Object.defineProperty(navigator, 'globalPrivacyControl', { value, configurable: true });
+  }
+  afterEach(() => {
+    delete (navigator as unknown as { globalPrivacyControl?: unknown }).globalPrivacyControl;
+  });
+
+  it('tells a visitor who sent the signal that it is being honored, before any event has landed', () => {
+    setSignal(true);
+    render(<ConsentView events={[]} />);
+    const notice = screen.getByTestId('gpc-notice');
+    expect(notice).toHaveTextContent(/global privacy control/i);
+    expect(notice).toHaveTextContent(/honored/i);
+  });
+
+  it('tells them again beside the live consent rows, and names what it changed', () => {
+    setSignal(true);
+    render(<ConsentView events={[makeEvent()]} />);
+    expect(screen.getByTestId('gpc-notice')).toHaveTextContent(/advertising/i);
+  });
+
+  it('marks exactly the three advertising rows as held by the signal', () => {
+    setSignal(true);
+    const { container } = render(<ConsentView events={[makeEvent()]} />);
+    const held = Array.from(container.querySelectorAll('[data-gpc-held]')).map(
+      (row) => row.querySelector('.font-mono')?.textContent,
+    );
+    expect(held).toEqual(['ad_storage', 'ad_user_data', 'ad_personalization']);
+  });
+
+  it('says nothing about the signal when the browser did not send one', () => {
+    const { container } = render(<ConsentView events={[makeEvent()]} />);
+    expect(screen.queryByTestId('gpc-notice')).not.toBeInTheDocument();
+    expect(container.querySelectorAll('[data-gpc-held]')).toHaveLength(0);
+  });
+
+  it('says nothing when the signal is explicitly off', () => {
+    setSignal(false);
+    render(<ConsentView events={[]} />);
+    expect(screen.queryByTestId('gpc-notice')).not.toBeInTheDocument();
+  });
+});

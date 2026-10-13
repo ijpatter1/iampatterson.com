@@ -1,4 +1,5 @@
 import { getAnonymousId } from '@/lib/identity/anonymous-id';
+import { isGlobalPrivacyControlEnabled } from './global-privacy-control';
 import { pushEvent } from './push';
 import type {
   CoverageMilestoneEvent,
@@ -46,6 +47,17 @@ type GtagFn = (
  * during HTML parse, so by the time CookiebotConsentListener fires this
  * call gtag should always exist; the guard is defence in depth.
  */
+/**
+ * Global Privacy Control wins over the banner for marketing consent. A visitor
+ * who sent the signal and then clicked "Accept all" still has marketing
+ * declined: the three advertising signals stay denied and `consent_marketing`
+ * is false on every event. Analytics and preferences are not what the signal
+ * speaks to and keep following the banner.
+ */
+function honorGlobalPrivacyControl(marketing: boolean): boolean {
+  return marketing && !isGlobalPrivacyControlEnabled();
+}
+
 function bridgeToGtagConsent(analytics: boolean, marketing: boolean, preferences: boolean): void {
   if (typeof window === 'undefined') return;
   const gtag = (window as unknown as { gtag?: GtagFn }).gtag;
@@ -77,12 +89,13 @@ export function initConsentState(
   marketing: boolean,
   preferences: boolean,
 ): void {
+  const marketingHonored = honorGlobalPrivacyControl(marketing);
   currentConsent = {
     consent_analytics: analytics,
-    consent_marketing: marketing,
+    consent_marketing: marketingHonored,
     consent_preferences: preferences,
   };
-  bridgeToGtagConsent(analytics, marketing, preferences);
+  bridgeToGtagConsent(analytics, marketingHonored, preferences);
 }
 
 /**
@@ -165,16 +178,17 @@ export function trackConsentUpdate(
   marketing: boolean,
   preferences: boolean,
 ): void {
+  const marketingHonored = honorGlobalPrivacyControl(marketing);
   currentConsent = {
     consent_analytics: analytics,
-    consent_marketing: marketing,
+    consent_marketing: marketingHonored,
     consent_preferences: preferences,
   };
   pushEvent({
     ...baseFields(),
     event: 'consent_update',
   });
-  bridgeToGtagConsent(analytics, marketing, preferences);
+  bridgeToGtagConsent(analytics, marketingHonored, preferences);
 }
 
 // --- E-commerce demo tracking (Phase 6) ---

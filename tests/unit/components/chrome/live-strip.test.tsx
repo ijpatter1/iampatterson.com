@@ -106,3 +106,25 @@ describe('LiveStrip', () => {
     expect(screen.getAllByText(/last-click · Shapley planned/).length).toBeGreaterThan(0);
   });
 });
+
+// Phase 15, deliverable 15.5. The strip is on every page, so it is where a
+// visitor who sent Global Privacy Control sees, without opening anything, that
+// the site honored it.
+describe('LiveStrip, Global Privacy Control', () => {
+  afterEach(() => {
+    delete (navigator as unknown as { globalPrivacyControl?: unknown }).globalPrivacyControl;
+  });
+
+  it('adds "GPC honored" to the consent item when the browser sends the signal', () => {
+    Object.defineProperty(navigator, 'globalPrivacyControl', { value: true, configurable: true });
+    mockEvents = [makeEvent('granted', 'denied')];
+    render(<LiveStrip />);
+    expect(screen.getAllByText(/ad:denied · GPC honored/).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('does not mention the signal when the browser sends none', () => {
+    mockEvents = [makeEvent('granted', 'denied')];
+    render(<LiveStrip />);
+    expect(screen.queryByText(/GPC/)).not.toBeInTheDocument();
+  });
+});
