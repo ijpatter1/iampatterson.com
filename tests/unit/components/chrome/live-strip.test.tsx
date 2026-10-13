@@ -7,24 +7,32 @@ import type { PipelineEvent } from '@/lib/events/pipeline-schema';
 
 jest.mock('@/lib/events/session', () => ({
   getSessionId: () => 'aaaaaaaa-12345678',
-  // Phase 10a D3: useSessionId reads via readSessionCookie and
-  // subscribes via subscribeSessionCookie. Mocks must supply the
-  // full API surface (passive reader + subscribe/notify channel).
   readSessionCookie: () => 'aaaaaaaa-12345678',
   subscribeSessionCookie: () => () => {},
   notifySessionCookieChange: () => {},
 }));
 
 let mockEvents: PipelineEvent[] = [];
-jest.mock('@/hooks/useDataLayerEvents', () => ({
-  useDataLayerEvents: () => ({ events: mockEvents }),
+let mockSource: 'sse' | 'dataLayer' = 'dataLayer';
+jest.mock('@/hooks/useLiveEvents', () => ({
+  useLiveEvents: () => ({ events: mockEvents, source: mockSource, stream: 'connected' }),
+}));
+
+let mockConsent: 'granted' | 'denied' | undefined = 'granted';
+jest.mock('@/hooks/useAnalyticsConsent', () => ({
+  useAnalyticsConsent: () => mockConsent,
 }));
 
 import { LiveStrip } from '@/components/chrome/live-strip';
+import { LIVE_STRIP } from '@/lib/content/proof';
 
-function makeEvent(analytics: 'granted' | 'denied', ad: 'granted' | 'denied'): PipelineEvent {
+function makeEvent(
+  analytics: 'granted' | 'denied',
+  ad: 'granted' | 'denied',
+  pipelineId = 'pipe-1760000000000-123456',
+): PipelineEvent {
   return {
-    pipeline_id: 'ev-1',
+    pipeline_id: pipelineId,
     received_at: new Date().toISOString(),
     session_id: 'test',
     event_name: 'page_view',
@@ -46,7 +54,14 @@ function makeEvent(analytics: 'granted' | 'denied', ad: 'granted' | 'denied'): P
 
 beforeEach(() => {
   mockEvents = [];
+  mockSource = 'dataLayer';
+  mockConsent = 'granted';
 });
+
+function item(label: string): string {
+  const el = screen.getAllByText(label)[0];
+  return el.parentElement?.textContent?.replace(label, '') ?? '';
+}
 
 describe('LiveStrip', () => {
   it('mounts with the expected data-testid', () => {
@@ -54,56 +69,86 @@ describe('LiveStrip', () => {
     expect(screen.getByTestId('live-strip')).toBeInTheDocument();
   });
 
-  it('renders all six ticker fields', () => {
+  it('shows the five items of the rewritten strip, each twice for the loop', () => {
     render(<LiveStrip />);
-    expect(screen.getAllByText('SESSION').length).toBeGreaterThanOrEqual(2);
-    expect(screen.getAllByText('STACK').length).toBeGreaterThanOrEqual(2);
-    expect(screen.getAllByText('CONSENT').length).toBeGreaterThanOrEqual(2);
-    expect(screen.getAllByText('PIPELINE').length).toBeGreaterThanOrEqual(2);
-    expect(screen.getAllByText('DASHBOARDS').length).toBeGreaterThanOrEqual(2);
-    expect(screen.getAllByText('ATTRIB').length).toBeGreaterThanOrEqual(2);
+    for (const label of ['SESSION', 'STACK', 'CONSENT', 'EVENT_ID', 'WAREHOUSE']) {
+      expect(screen.getAllByText(label)).toHaveLength(2);
+    }
   });
 
-  it('includes the short session ID suffix in the SESSION field', () => {
+  // Metabase is retired and attribution is not what the site is selling.
+  it('no longer shows the pipeline, dashboards or attribution items', () => {
     render(<LiveStrip />);
-    // 6-char suffix to match SessionPulse, test mock returns 'aaaaaaaa-12345678'
-    expect(screen.getAllByText(/345678/).length).toBeGreaterThan(0);
+    for (const gone of ['PIPELINE', 'DASHBOARDS', 'ATTRIB']) {
+      expect(screen.queryByText(gone)).not.toBeInTheDocument();
+    }
+    expect(screen.queryByText(/Metabase|Shapley|Looker/)).not.toBeInTheDocument();
   });
 
-  it('declares the pipeline path in the STACK field', () => {
+  it('shows the same six-character session suffix as the session pulse', () => {
     render(<LiveStrip />);
-    expect(screen.getAllByText(/GTM → sGTM → BigQuery/).length).toBeGreaterThan(0);
+    expect(item('SESSION')).toBe('345678');
   });
 
-  it('shows pending consent state before any event has fired', () => {
-    mockEvents = [];
+  it('declares the pipeline path and the warehouse table', () => {
     render(<LiveStrip />);
-    expect(screen.getAllByText(/analytics:pending ad:pending/).length).toBeGreaterThan(0);
+    expect(item('STACK')).toBe(LIVE_STRIP.stack);
+    expect(item('WAREHOUSE')).toBe(LIVE_STRIP.warehouse);
   });
 
-  it('shows granted/denied consent state from the most recent event', () => {
+  it('shows pending consent before any event has fired', () => {
+    render(<LiveStrip />);
+    expect(item('CONSENT')).toBe('analytics:pending ad:pending');
+  });
+
+  // "Not answered" and "declined" look the same in the stored booleans. A
+  // first-time visitor must not be told they declined.
+  it('shows pending, not denied, until the visitor has answered the banner', () => {
+    mockConsent = undefined;
+    mockEvents = [makeEvent('denied', 'denied')];
+    render(<LiveStrip />);
+    expect(item('CONSENT')).toBe('analytics:pending ad:pending');
+  });
+
+  it('shows consent from the most recent event', () => {
     mockEvents = [makeEvent('granted', 'denied')];
     render(<LiveStrip />);
-    expect(screen.getAllByText(/analytics:granted ad:denied/).length).toBeGreaterThan(0);
+    expect(item('CONSENT')).toBe('analytics:granted ad:denied');
   });
 
-  it('mirrors full-grant consent when both analytics and ad are granted', () => {
-    mockEvents = [makeEvent('granted', 'granted')];
-    render(<LiveStrip />);
-    expect(screen.getAllByText(/analytics:granted ad:granted/).length).toBeGreaterThan(0);
-  });
+  // The ID is the one the server container assigned on receipt. It is shown
+  // only for an event that actually came back over the stream; a data-layer
+  // event's local ID is not a pipeline ID and must not be labelled as one.
+  describe('EVENT_ID', () => {
+    it('shows the newest stream event’s ID suffix, labelled a pipeline id', () => {
+      mockSource = 'sse';
+      mockEvents = [
+        makeEvent('granted', 'denied', 'pipe-1760000000999-654321'),
+        makeEvent('granted', 'denied', 'pipe-1760000000000-111111'),
+      ];
+      render(<LiveStrip />);
+      expect(item('EVENT_ID')).toBe('654321 · pipeline id');
+    });
 
-  it('declares Metabase (and not Looker) as the dashboards surface', () => {
-    render(<LiveStrip />);
-    // Looker was declared out of scope in REQUIREMENTS.md 9B-6a
-    expect(screen.queryAllByText(/Looker/).length).toBe(0);
-    expect(screen.getAllByText(/Metabase/).length).toBeGreaterThan(0);
-  });
+    it('shows the placeholder before any event', () => {
+      mockSource = 'sse';
+      render(<LiveStrip />);
+      expect(item('EVENT_ID')).toBe('······ · pipeline id');
+    });
 
-  it('frames Shapley attribution as planned, not shipped', () => {
-    render(<LiveStrip />);
-    // Should not claim Shapley is live; honest about the 9D roadmap
-    expect(screen.getAllByText(/last-click · Shapley planned/).length).toBeGreaterThan(0);
+    it('shows the placeholder, not a local ID, when the events are data-layer only', () => {
+      mockSource = 'dataLayer';
+      mockEvents = [makeEvent('denied', 'denied', 'dl-1760000000000-7')];
+      render(<LiveStrip />);
+      expect(item('EVENT_ID')).toBe('······ · pipeline id');
+    });
+
+    it('never calls it a deduplication key', () => {
+      mockSource = 'sse';
+      mockEvents = [makeEvent('granted', 'denied')];
+      render(<LiveStrip />);
+      expect(screen.queryByText(/dedup/i)).not.toBeInTheDocument();
+    });
   });
 });
 
@@ -119,9 +164,7 @@ describe('LiveStrip, Global Privacy Control', () => {
     Object.defineProperty(navigator, 'globalPrivacyControl', { value: true, configurable: true });
     mockEvents = [makeEvent('granted', 'denied')];
     render(<LiveStrip />);
-    expect(
-      screen.getAllByText(/ad:denied · Global Privacy Control honored/).length,
-    ).toBeGreaterThanOrEqual(2);
+    expect(item('CONSENT')).toBe('analytics:granted ad:denied · Global Privacy Control honored');
   });
 
   // "Honored" is a claim about the consent actually applied. If the strip is

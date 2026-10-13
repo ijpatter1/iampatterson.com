@@ -111,9 +111,12 @@ describe('the live event source is opened once', () => {
     const readers = sourceFiles().filter((rel) => rel !== HOOK && calls(rel, 'useLiveEvents'));
     expect(readers.sort()).toEqual(
       [
+        'src/components/chrome/live-strip.tsx',
         'src/components/home/pipeline-editorial.tsx',
+        'src/components/home/proof-panel.tsx',
         'src/components/overlay/overlay-view.tsx',
         'src/hooks/useSessionContext.ts',
+        'src/hooks/useSessionReadout.ts',
       ].sort(),
     );
     for (const rel of readers) {

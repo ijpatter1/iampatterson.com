@@ -8,6 +8,7 @@ import { DONE_WHERE } from '@/lib/content/done-where';
 import { HERO, REVIEW_HREF } from '@/lib/content/hero';
 import { NETWORKS, NETWORKS_LABEL } from '@/lib/content/networks';
 import { PROBLEMS, PROBLEMS_EYEBROW, PROBLEM_LABELS } from '@/lib/content/problems';
+import { LIVE_STRIP, PROOF } from '@/lib/content/proof';
 import { REVIEW, REVIEW_PRICE } from '@/lib/content/review';
 import { WHY_IT_MATTERS } from '@/lib/content/stats';
 
@@ -29,6 +30,8 @@ const ALL_COPY = strings([
   NETWORKS_LABEL,
   NETWORKS,
   CERTIFICATIONS,
+  PROOF,
+  LIVE_STRIP,
 ]);
 
 describe('homepage copy rules', () => {
@@ -86,5 +89,23 @@ describe('homepage content shape', () => {
   it('has no completed certification and therefore no badge', () => {
     expect(CERTIFICATIONS.completed).toEqual([]);
     expect(CERTIFICATIONS.upNext).toHaveLength(5);
+  });
+});
+
+describe('what the Proof copy says about the pipeline', () => {
+  // The ID the browser shows is assigned by the server on receipt.
+  it('does not call the event ID a deduplication key', () => {
+    expect(strings([PROOF, LIVE_STRIP]).filter((s) => /dedup/i.test(s))).toEqual([]);
+    expect(LIVE_STRIP.eventIdLabel).toBe('pipeline id');
+  });
+
+  it('does not say every event is going through to BigQuery "right now"', () => {
+    expect(PROOF.body).not.toMatch(/right now/i);
+    expect(PROOF.body).toContain('No tag fires until you choose.');
+    expect(PROOF.body).toContain('Only the record of your choice gets through');
+  });
+
+  it('names the warehouse table the server container writes to', () => {
+    expect(LIVE_STRIP.warehouse).toBe('iampatterson_raw.events_raw');
   });
 });

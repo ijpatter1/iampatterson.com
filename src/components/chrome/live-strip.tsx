@@ -1,58 +1,32 @@
 'use client';
 
-import { useSessionState } from '@/components/session-state-provider';
-import { useDataLayerEvents } from '@/hooks/useDataLayerEvents';
 import { useGlobalPrivacyControl } from '@/hooks/useGlobalPrivacyControl';
-import { useSessionId } from '@/hooks/useSessionId';
-import type { SessionState } from '@/lib/session-state/types';
-
-type ConsentReading = { label: string; ad: 'granted' | 'denied' | 'pending' };
-
-function readConsent(
-  sessionState: SessionState | null,
-  liveEvents: ReturnType<typeof useDataLayerEvents>['events'],
-): ConsentReading {
-  // Prefer the persisted SessionState consent_snapshot so the indicator
-  // survives a page refresh (user-reported regression: live dataLayer
-  // is empty post-reload, so reading `events[0].consent` would always
-  // return 'pending' after a refresh even when the visitor's session
-  // has real consent state). Falls back to the live data-layer buffer
-  // during the brief pre-hydration window.
-  if (sessionState) {
-    const analytics = sessionState.consent_snapshot.analytics;
-    const ad = sessionState.consent_snapshot.marketing;
-    return { label: `analytics:${analytics} ad:${ad}`, ad };
-  }
-  if (liveEvents.length === 0) return { label: 'analytics:pending ad:pending', ad: 'pending' };
-  const latest = liveEvents[0];
-  const analytics = latest.consent.analytics_storage === 'granted' ? 'granted' : 'denied';
-  const ad = latest.consent.ad_storage === 'granted' ? 'granted' : 'denied';
-  return { label: `analytics:${analytics} ad:${ad}`, ad };
-}
+import { useLiveEvents } from '@/hooks/useLiveEvents';
+import { useSessionReadout } from '@/hooks/useSessionReadout';
+import { LIVE_STRIP } from '@/lib/content/proof';
 
 /**
  * Horizontal ticker strip mounted below the site header. Surfaces the stack
- * the visitor is flowing through right now, session ID, pipeline path,
- * consent state, BI layer, attribution approach. Loops via CSS keyframe.
+ * the visitor is flowing through right now: session ID, pipeline path, consent
+ * state, the newest event's pipeline ID and the warehouse table. Loops via CSS
+ * keyframe.
  */
 export function LiveStrip() {
-  const sessionId = useSessionId();
-  const { events } = useDataLayerEvents();
-  const sessionState = useSessionState();
+  const { shortId, consent } = useSessionReadout();
+  const { events, source } = useLiveEvents();
   const gpcEnabled = useGlobalPrivacyControl();
 
-  // Match SessionPulse's 6-char suffix so the two components show the same
-  // session identity. Prefer the persisted blob's session_id so it stays
-  // consistent with the Overview tab + ride-along payload across refresh.
-  const persistedSid = sessionState?.session_id ?? '';
-  const effectiveSid = persistedSid || sessionId;
-  const shortId = effectiveSid ? effectiveSid.slice(-6) : '······';
+  const consentLabel = `analytics:${consent.analytics} ad:${consent.ad}`;
 
-  const consent = readConsent(sessionState, events);
+  // The ID the server container assigned on receipt. Shown only for an event
+  // that came back over the stream: a data-layer event's local ID is not a
+  // pipeline ID, and neither is a deduplication key.
+  const latestStreamId = source === 'sse' && events.length > 0 ? events[0].pipeline_id : '';
+  const eventId = latestStreamId ? latestStreamId.slice(-6) : LIVE_STRIP.eventIdEmpty;
 
   const items = [
     { label: 'SESSION', value: shortId },
-    { label: 'STACK', value: 'GTM → sGTM → BigQuery' },
+    { label: 'STACK', value: LIVE_STRIP.stack },
     // A visitor who sent Global Privacy Control sees here, on every page and
     // without opening the overlay, that the site honored it. "Honored" is a
     // claim about the consent applied, so it is made only while advertising
@@ -61,12 +35,11 @@ export function LiveStrip() {
       label: 'CONSENT',
       value:
         gpcEnabled && consent.ad === 'denied'
-          ? `${consent.label} · Global Privacy Control honored`
-          : consent.label,
+          ? `${consentLabel} · ${LIVE_STRIP.gpcHonored}`
+          : consentLabel,
     },
-    { label: 'PIPELINE', value: 'live' },
-    { label: 'DASHBOARDS', value: 'Metabase' },
-    { label: 'ATTRIB', value: 'last-click · Shapley planned' },
+    { label: 'EVENT_ID', value: `${eventId} · ${LIVE_STRIP.eventIdLabel}` },
+    { label: 'WAREHOUSE', value: LIVE_STRIP.warehouse },
   ];
 
   // Duplicate items so the translate loop wraps seamlessly at 50%.
