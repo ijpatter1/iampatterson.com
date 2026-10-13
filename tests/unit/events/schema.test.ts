@@ -148,6 +148,15 @@ describe('Event schema types', () => {
     expect(Object.keys(editorial)).toHaveLength(9);
   });
 
+  it('CtaLocation covers the homepage rewrite locations', () => {
+    // Phase 15. Each new call to action on the rewritten homepage reports its
+    // own location, so the review offer and the proof panel can be told apart
+    // from the hero in the click data.
+    type Homepage = Extract<CtaLocation, 'review' | 'proof'>;
+    const homepage: Record<Homepage, true> = { review: true, proof: true };
+    expect(Object.keys(homepage)).toHaveLength(2);
+  });
+
   it('defines FormFieldFocusEvent with form and field name', () => {
     const event: FormFieldFocusEvent = {
       ...baseFields,

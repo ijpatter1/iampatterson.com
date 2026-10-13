@@ -6,6 +6,7 @@ import userEvent from '@testing-library/user-event';
 
 import { HeroEditorial } from '@/components/home/hero';
 import { OverlayProvider, useOverlay } from '@/components/overlay/overlay-context';
+import { HERO, REVIEW_HREF } from '@/lib/content/hero';
 
 jest.mock('@/lib/events/track', () => ({
   trackClickCta: jest.fn(),
@@ -31,52 +32,60 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
+// The hero carries the whole positioning in five words and one sentence, and
+// offers the one priced first step. The reader is a paid-media buyer, not an
+// engineer, so the page's only h1 is the claim they recognise.
 describe('HeroEditorial', () => {
-  it('renders the three-line masthead', () => {
+  it('is the page’s single h1 and reads "Platforms bid on your data."', () => {
     renderHero();
-    const h1 = screen.getByRole('heading', { level: 1 });
-    expect(h1.textContent).toMatch(/I build[\s\S]*measurement[\s\S]*infrastructure/);
+    const headings = screen.getAllByRole('heading', { level: 1 });
+    expect(headings).toHaveLength(1);
+    expect(headings[0].textContent?.replace(/\s+/g, ' ').trim()).toBe(
+      `${HERO.headlineFirstLine} ${HERO.headlineSecondLineLead} ${HERO.headlineAccent}`,
+    );
   });
 
-  it('sets the accent-current color on the italic emphasis word', () => {
+  it('keeps "Platforms bid" together on its own line', () => {
     renderHero();
-    const em = screen.getByText(/^measurement$/i);
-    expect(em.tagName).toBe('EM');
-    expect(em.className).toContain('accent-current');
+    const firstLine = screen.getByText(HERO.headlineFirstLine);
+    expect(firstLine.className).toContain('whitespace-nowrap');
   });
 
-  it('renders the editorial lede from the prototype', () => {
+  it('sets "data." in the accent', () => {
     renderHero();
-    expect(screen.getByText(/same stack I sell/i)).toBeInTheDocument();
-    expect(screen.getByText(/Instead of describing it, I built on it/i)).toBeInTheDocument();
+    const accent = screen.getByText(HERO.headlineAccent);
+    expect(accent.tagName).toBe('EM');
+    expect(accent.className).toContain('text-accent-current');
   });
 
-  it('renders the long-form deck body', () => {
+  it('renders the eyebrows, the positioning sentence and the capacity note from the content module', () => {
     renderHero();
-    expect(
-      screen.getByText(
-        /Every scroll, every click in your session is flowing through the stack right now/i,
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/Measurement is usually invisible/i)).toBeInTheDocument();
-    expect(screen.getByText(/Your session is the portfolio/i)).toBeInTheDocument();
+    expect(screen.getByText(HERO.eyebrowLeft)).toBeInTheDocument();
+    expect(screen.getByText(HERO.eyebrowRight)).toBeInTheDocument();
+    expect(screen.getByText(HERO.kicker)).toBeInTheDocument();
+    expect(screen.getByText(HERO.capacityNote)).toBeInTheDocument();
   });
 
-  it('primary CTA opens the overlay and fires click_cta', async () => {
-    const user = userEvent.setup();
+  it('sends the primary call to action to the contact page with the review intent, and tracks it', async () => {
     renderHero();
-    const cta = screen.getByRole('button', { name: /see your session/i });
-    await user.click(cta);
+    const link = screen.getByRole('link', { name: HERO.primaryCta });
+    expect(link).toHaveAttribute('href', REVIEW_HREF);
+    link.addEventListener('click', (e) => e.preventDefault());
+    await userEvent.click(link);
+    expect(trackClickCta).toHaveBeenCalledWith(HERO.primaryCta, 'hero');
+  });
+
+  it('opens the overlay from "See your session" and tracks it', async () => {
+    renderHero();
+    expect(screen.getByTestId('overlay-status')).toHaveTextContent('closed');
+    await userEvent.click(screen.getByRole('button', { name: /see your session/i }));
     expect(screen.getByTestId('overlay-status')).toHaveTextContent('open');
-    expect(trackClickCta).toHaveBeenCalledWith('See your session', 'hero');
+    expect(trackClickCta).toHaveBeenCalledWith(HERO.ghostCta, 'hero');
   });
 
-  it('ghost CTA links to the demos anchor and fires click_cta', async () => {
-    const user = userEvent.setup();
-    renderHero();
-    const link = screen.getByRole('link', { name: /explore the demo$/i });
-    expect(link).toHaveAttribute('href', '/#demos');
-    await user.click(link);
-    expect(trackClickCta).toHaveBeenCalledWith('Explore the demo', 'hero');
+  it('no longer links to the demo or names the old positioning', () => {
+    const { container } = renderHero();
+    expect(container.querySelector('a[href*="demo"]')).toBeNull();
+    expect(container.textContent).not.toMatch(/measurement infrastructure|explore the demo/i);
   });
 });

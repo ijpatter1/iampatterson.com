@@ -68,7 +68,6 @@ export interface PageEngagementEvent extends BaseEvent {
   max_scroll_pct: number;
 }
 
-
 // --- Claudish translator (feat/claudish) ---
 
 /**
@@ -176,7 +175,11 @@ export type CtaLocation =
   // Homepage Demos section, single ecommerce entry after D6's rebuild. Name
   // retained across the card→section refactor so the analytics time series
   // stays continuous (no split series from a rename).
-  | 'demo_card_ecommerce';
+  | 'demo_card_ecommerce'
+  // Homepage rewrite (Phase 15): the review offer's call to action, and the
+  // Proof section's button and panel.
+  | 'review'
+  | 'proof';
 
 /** Fired when a CTA button is clicked. */
 export interface ClickCtaEvent extends BaseEvent {
