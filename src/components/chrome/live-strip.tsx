@@ -48,7 +48,14 @@ export function LiveStrip() {
   const effectiveSid = persistedSid || sessionId;
   const shortId = effectiveSid ? effectiveSid.slice(-6) : '······';
 
-  const consent = readConsent(sessionState, events);
+  const read = readConsent(sessionState, events);
+  // Before the visitor answers the banner, advertising consent is denied by
+  // default, and for a visitor sending Global Privacy Control it can never
+  // become granted. Say so from the first page view rather than "pending".
+  const consent: ConsentReading =
+    gpcEnabled && read.ad === 'pending'
+      ? { label: read.label.replace('ad:pending', 'ad:denied'), ad: 'denied' }
+      : read;
 
   const items = [
     { label: 'SESSION', value: shortId },

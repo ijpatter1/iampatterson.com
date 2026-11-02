@@ -134,6 +134,19 @@ describe('LiveStrip, Global Privacy Control', () => {
     expect(screen.queryByText(/honored/)).not.toBeInTheDocument();
   });
 
+  // A visitor who sent the signal can never have advertising consent granted
+  // here, whatever they later pick, so the strip says so from the first page
+  // view instead of reading "pending" until they answer the banner. Analytics
+  // is still theirs to choose and stays pending.
+  it('shows advertising denied and the signal honored before the visitor has chosen', () => {
+    Object.defineProperty(navigator, 'globalPrivacyControl', { value: true, configurable: true });
+    mockEvents = [];
+    render(<LiveStrip />);
+    expect(
+      screen.getAllByText(/analytics:pending ad:denied · Global Privacy Control honored/).length,
+    ).toBeGreaterThanOrEqual(2);
+  });
+
   it('does not mention the signal when the browser sends none', () => {
     mockEvents = [makeEvent('granted', 'denied')];
     render(<LiveStrip />);

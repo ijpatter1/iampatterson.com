@@ -204,15 +204,17 @@ export function trackConsentUpdate(
   preferences: boolean,
 ): void {
   const honored = recordConsent(analytics, marketing, preferences);
-  pushEvent({
-    ...baseFields(),
-    event: 'consent_update',
-  });
+  // The consent update is queued first: GTM judges the tags on the
+  // consent_update event against the state in force when it reaches it.
   bridgeToGtagConsent(
     honored.consent_analytics,
     honored.consent_marketing,
     honored.consent_preferences,
   );
+  pushEvent({
+    ...baseFields(),
+    event: 'consent_update',
+  });
 }
 
 // --- E-commerce demo tracking (Phase 6) ---

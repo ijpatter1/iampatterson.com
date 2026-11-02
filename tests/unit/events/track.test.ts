@@ -144,6 +144,24 @@ describe('trackConsentUpdate', () => {
   // used to do implicitly. These pins verify the bridge is wired correctly
   // for each Cookiebot category and for the all-granted / all-denied edges.
 
+  // GTM evaluates the tags triggered by an event against the consent state
+  // in force when it reaches that data layer entry. The consent update must
+  // therefore be queued before the consent_update event, or the tags on that
+  // event (GA4 - consent_update among them) are judged against the visitor's
+  // previous choice: blocked after an acceptance, sent after a withdrawal.
+  it('queues the consent update ahead of the consent_update event', () => {
+    (window as unknown as { gtag: (...args: unknown[]) => void }).gtag = function (...args) {
+      window.dataLayer.push(args as unknown as Record<string, unknown>);
+    };
+    trackConsentUpdate(true, true, true);
+    const entries = window.dataLayer as unknown as Array<Record<string | number, unknown>>;
+    const updateAt = entries.findIndex((e) => e[0] === 'consent' && e[1] === 'update');
+    const eventAt = entries.findIndex((e) => e.event === 'consent_update');
+    expect(updateAt).toBeGreaterThanOrEqual(0);
+    expect(eventAt).toBeGreaterThan(updateAt);
+    delete (window as unknown as { gtag?: unknown }).gtag;
+  });
+
   it('bridges to gtag consent update with all-granted Cookiebot signals', () => {
     const gtagCalls: unknown[][] = [];
     (window as unknown as { gtag: (...args: unknown[]) => void }).gtag = (...args) => {
