@@ -23,7 +23,7 @@ export const REVIEW_PAGE = {
   turnaround: 'About a week, once I have all the required platform and data access.',
   cta: 'Book the review',
   includesEyebrow: 'What it includes',
-  /** The areas a real review covered (2026-10), in general terms. */
+  /** What the review covers (Ian, 2026-11-03). */
   includes: [
     'Your conversion definitions and events: what counts as a purchase or a sign-up, and where each one fires.',
     'Tag Manager, web and server, and your analytics with its warehouse export.',

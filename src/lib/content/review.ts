@@ -53,8 +53,8 @@ export interface ReviewColumn {
 
 /**
  * The review page's give, get and then columns (15.10). Signed 2026-10-12;
- * "You give me" and "You get" rewritten on 2026-11-03 from what a real
- * review asked for and delivered. "Then" is unchanged.
+ * "You give me" and "You get" rewritten by Ian on 2026-11-03. "Then" is
+ * unchanged.
  */
 export const REVIEW_COLUMNS = [
   {

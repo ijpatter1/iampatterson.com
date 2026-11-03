@@ -51,7 +51,7 @@ describe('the review page', () => {
     expect(JSON.stringify(REVIEW_PAGE)).not.toMatch(/two-day|\bdays?\b|\bhours?\b/i);
   });
 
-  // What a real review covered (2026-10), in general terms: six areas.
+  // What the review covers, as Ian set it on 2026-11-03: six areas.
   it('lists the six areas a review covers', () => {
     expect(REVIEW_PAGE.includes).toHaveLength(6);
   });
@@ -64,8 +64,8 @@ describe('the review page', () => {
   });
 
   // The give, get and then columns: signed 2026-10-12, with "You give me"
-  // and "You get" rewritten on 2026-11-03 from a real review (Ian signed the
-  // page as rendered). They render from the one content module.
+  // and "You get" rewritten by Ian on 2026-11-03 (he signed the page as
+  // rendered). They render from the one content module.
   it('renders the give, get and then columns', () => {
     render(<ReviewPage />);
     for (const column of REVIEW_COLUMNS) {
