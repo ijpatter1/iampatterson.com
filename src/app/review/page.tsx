@@ -53,7 +53,7 @@ export default function ReviewPage() {
       </Section>
 
       <Section eyebrow={REVIEW_PAGE.columnsEyebrow} eyebrowAs="h2">
-        <div className="grid gap-x-10 gap-y-8 md:grid-cols-3">
+        <div className="grid gap-x-10 gap-y-8 md:grid-cols-2">
           {REVIEW_COLUMNS.map((column) => (
             <div key={column.label} className="border-t border-rule pt-4">
               <h3 className={`${LABEL_CLASSES} font-normal`}>{column.label}</h3>

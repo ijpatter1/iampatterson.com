@@ -52,9 +52,9 @@ export interface ReviewColumn {
 }
 
 /**
- * The review page's give, get and then columns (15.10). Signed 2026-10-12;
- * "You give me" and "You get" rewritten by Ian on 2026-11-03. "Then" is
- * unchanged.
+ * The review page's give and get columns (15.10). Signed 2026-10-12;
+ * "You give me" and "You get" rewritten by Ian on 2026-11-03; "Then" folded
+ * into the page's Build step the same day.
  */
 export const REVIEW_COLUMNS = [
   {
@@ -63,10 +63,6 @@ export const REVIEW_COLUMNS = [
   },
   {
     label: 'You get',
-    text: "A first summary after the kickoff. A recorded walkthrough with your team. The written review, with each platform's claims against your orders and the evidence for each finding. The plan as a working tracker: ranked, with owners and estimated effort. Your data back, deleted on my side.",
-  },
-  {
-    label: 'Then',
-    text: 'Fixes and builds as scoped projects. Every account and asset in your name. A runbook at handoff.',
+    text: "A first summary after the kickoff. A recorded walkthrough with your team. The written review, with each platform's claims against your orders and the evidence for each finding. The plan as a working tracker: ranked, with owners and estimated effort. Your data back, and deleted on my side when the work ends.",
   },
 ] satisfies ReviewColumn[];

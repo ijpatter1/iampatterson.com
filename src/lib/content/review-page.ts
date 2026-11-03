@@ -28,16 +28,16 @@ export const REVIEW_PAGE = {
     'Your conversion definitions and events: what counts as a purchase or a sign-up, and where each one fires.',
     'Tag Manager, web and server, and your analytics with its warehouse export.',
     "Each ad platform's attribution settings, deduplication and click IDs.",
-    "Each platform's claims read against your orders: claimed, matched to an order, sold.",
+    "Each platform's claims read against your orders: what it claimed, how many match a real order, and how many orders you had.",
     'How your weekly reporting is built, and who it depends on.',
-    'Where your data lives and whose name each account is in: the ad accounts, the tag containers and the warehouse.',
+    'What your team can change without developers, and what server-side tagging would take.',
   ],
   columnsEyebrow: 'What you give me, and what you get',
   followsEyebrow: 'What can follow',
   follows: [
     {
       label: 'Build',
-      text: 'A build with a fixed scope: conversions back to the ad platforms with consent, your data in accounts you own, then AI your team can check.',
+      text: "A build with a fixed scope. Before it starts, we agree how we'll measure what it changes. Conversions back to the ad platforms with consent, your data in accounts you own, then AI your team can check. Every account and asset in your name, and a runbook at handoff.",
     },
     {
       label: 'Lead',

@@ -200,6 +200,14 @@ describe('homepage content shape', () => {
 
   // Trust is where the page brings in AI: the AI works from the same
   // reconciled table, so its answers can be checked.
+  // The three numbers, named the same way on the homepage and /review
+  // (Ian, 2026-11-03): the third is all orders, from every source.
+  it('names the three numbers in plain terms', () => {
+    expect(PROBLEMS[1].whatIDo).toContain(
+      'what it claimed, how many match a real order, and how many orders you had.',
+    );
+  });
+
   it('brings the AI into the trust question', () => {
     expect(PROBLEMS[1].whatIDo).toContain(
       'The AI sits on that same table, so when your team asks about spend or sales, they can check the answer against numbers they already trust.',

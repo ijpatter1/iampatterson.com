@@ -27,7 +27,7 @@ export const PROBLEMS: Problem[] = [
     num: '02',
     title: 'Does anybody trust these numbers?',
     whatIDo:
-      "A table of your real orders, and each platform's claims read against it: claimed, verified from its own click IDs, sold. The gap splits into configuration and tracking defects, and I fix both. The AI sits on that same table, so when your team asks about spend or sales, they can check the answer against numbers they already trust.",
+      "A table of your real orders, and each platform's claims read against it: what it claimed, how many match a real order, and how many orders you had. The gap splits into configuration and tracking defects, and I fix both. The AI sits on that same table, so when your team asks about spend or sales, they can check the answer against numbers they already trust.",
     doneBefore:
       'UP Entertainment, a streaming subscription business spending six figures a week on paid media, where the platforms claimed more purchases than the business sold. Subscription data accuracy went from about 30 percent to over 98 percent.',
     evidence: TRUST_FIGURES,
