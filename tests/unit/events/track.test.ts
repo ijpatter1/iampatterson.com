@@ -144,6 +144,24 @@ describe('trackConsentUpdate', () => {
   // used to do implicitly. These pins verify the bridge is wired correctly
   // for each Cookiebot category and for the all-granted / all-denied edges.
 
+  // GTM evaluates the tags triggered by an event against the consent state
+  // in force when it reaches that data layer entry. The consent update must
+  // therefore be queued before the consent_update event, or the tags on that
+  // event (GA4 - consent_update among them) are judged against the visitor's
+  // previous choice: blocked after an acceptance, sent after a withdrawal.
+  it('queues the consent update ahead of the consent_update event', () => {
+    (window as unknown as { gtag: (...args: unknown[]) => void }).gtag = function (...args) {
+      window.dataLayer.push(args as unknown as Record<string, unknown>);
+    };
+    trackConsentUpdate(true, true, true);
+    const entries = window.dataLayer as unknown as Array<Record<string | number, unknown>>;
+    const updateAt = entries.findIndex((e) => e[0] === 'consent' && e[1] === 'update');
+    const eventAt = entries.findIndex((e) => e.event === 'consent_update');
+    expect(updateAt).toBeGreaterThanOrEqual(0);
+    expect(eventAt).toBeGreaterThan(updateAt);
+    delete (window as unknown as { gtag?: unknown }).gtag;
+  });
+
   it('bridges to gtag consent update with all-granted Cookiebot signals', () => {
     const gtagCalls: unknown[][] = [];
     (window as unknown as { gtag: (...args: unknown[]) => void }).gtag = (...args) => {
@@ -266,6 +284,153 @@ describe('initConsentState', () => {
     initConsentState(true, true, true);
     const consentEvents = window.dataLayer.filter((e) => e.event === 'consent_update');
     expect(consentEvents).toHaveLength(0);
+  });
+});
+
+// Phase 15, deliverable 15.5: Global Privacy Control is honored on this
+// site. The signal is a standing opt-out of sale, sharing and
+// targeted advertising, so it wins over the banner for the three advertising
+// signals: "Accept all" must not grant them. Analytics and preferences are not
+// what the signal speaks to, so they keep following the visitor's banner choice.
+describe('Global Privacy Control', () => {
+  function captureGtag(): unknown[][] {
+    const calls: unknown[][] = [];
+    (window as unknown as { gtag: (...args: unknown[]) => void }).gtag = (...args) => {
+      calls.push(args);
+    };
+    return calls;
+  }
+  const consentUpdates = (calls: unknown[][]) =>
+    calls.filter((c) => c[0] === 'consent' && c[1] === 'update').map((c) => c[2]);
+
+  beforeEach(() => {
+    Object.defineProperty(navigator, 'globalPrivacyControl', { value: true, configurable: true });
+  });
+  afterEach(() => {
+    delete (navigator as unknown as { globalPrivacyControl?: unknown }).globalPrivacyControl;
+    initConsentState(false, false, false);
+    delete (window as unknown as { gtag?: unknown }).gtag;
+  });
+
+  it('keeps the three advertising signals denied when the visitor accepts everything in the banner', () => {
+    const calls = captureGtag();
+    trackConsentUpdate(true, true, true);
+    expect(consentUpdates(calls)).toEqual([
+      expect.objectContaining({
+        ad_storage: 'denied',
+        ad_user_data: 'denied',
+        ad_personalization: 'denied',
+      }),
+    ]);
+  });
+
+  it('still grants analytics and preferences when the visitor accepts them', () => {
+    const calls = captureGtag();
+    trackConsentUpdate(true, true, true);
+    expect(consentUpdates(calls)[0]).toMatchObject({
+      analytics_storage: 'granted',
+      functionality_storage: 'granted',
+      personalization_storage: 'granted',
+    });
+  });
+
+  it('records marketing consent as declined on the consent_update event itself', () => {
+    trackConsentUpdate(true, true, true);
+    expect(window.dataLayer[0]).toMatchObject({
+      event: 'consent_update',
+      consent_analytics: true,
+      consent_marketing: false,
+      consent_preferences: true,
+    });
+  });
+
+  it('carries the declined marketing consent on every later event', () => {
+    trackConsentUpdate(true, true, true);
+    trackPageView('');
+    expect(window.dataLayer[1]).toMatchObject({
+      event: 'page_view',
+      consent_analytics: true,
+      consent_marketing: false,
+    });
+  });
+
+  it('holds the advertising signals denied for a returning visitor whose stored choice accepted marketing', () => {
+    const calls = captureGtag();
+    initConsentState(true, true, true);
+    expect(consentUpdates(calls)[0]).toMatchObject({
+      analytics_storage: 'granted',
+      ad_storage: 'denied',
+      ad_user_data: 'denied',
+      ad_personalization: 'denied',
+    });
+    trackPageView('');
+    expect(window.dataLayer[0]).toMatchObject({ consent_marketing: false });
+  });
+
+  it('keeps ads data redaction on when the signal overrides an accepted banner', () => {
+    const calls = captureGtag();
+    trackConsentUpdate(true, true, true);
+    expect(calls).toContainEqual(['set', 'ads_data_redaction', true]);
+    expect(calls).not.toContainEqual(['set', 'ads_data_redaction', false]);
+  });
+
+  it('grants the advertising signals as before when the browser sends no signal', () => {
+    delete (navigator as unknown as { globalPrivacyControl?: unknown }).globalPrivacyControl;
+    const calls = captureGtag();
+    trackConsentUpdate(true, true, true);
+    expect(consentUpdates(calls)[0]).toMatchObject({
+      ad_storage: 'granted',
+      ad_user_data: 'granted',
+      ad_personalization: 'granted',
+    });
+    expect(window.dataLayer[0]).toMatchObject({ consent_marketing: true });
+  });
+});
+
+// The site bridge is the only writer of Consent Mode (Cookiebot's own writes
+// are switched off on its script tag), so it also owns ads data redaction,
+// which Cookiebot used to set from the marketing choice.
+describe('ads data redaction follows marketing consent', () => {
+  function captureGtag(): unknown[][] {
+    const calls: unknown[][] = [];
+    (window as unknown as { gtag: (...args: unknown[]) => void }).gtag = (...args) => {
+      calls.push(args);
+    };
+    return calls;
+  }
+  afterEach(() => {
+    initConsentState(false, false, false);
+    delete (window as unknown as { gtag?: unknown }).gtag;
+  });
+
+  it('turns redaction off when marketing is granted', () => {
+    const calls = captureGtag();
+    trackConsentUpdate(true, true, true);
+    expect(calls).toContainEqual(['set', 'ads_data_redaction', false]);
+  });
+
+  it('keeps redaction on when marketing is declined', () => {
+    const calls = captureGtag();
+    trackConsentUpdate(true, false, true);
+    expect(calls).toContainEqual(['set', 'ads_data_redaction', true]);
+  });
+
+  // A withdrawal must never be processed with redaction still off: that is
+  // the one combination, advertising storage denied and redaction false, in
+  // which redaction matters.
+  it('sets redaction before the consent update it belongs to', () => {
+    const calls = captureGtag();
+    trackConsentUpdate(true, false, true);
+    const redaction = calls.findIndex((c) => c[0] === 'set' && c[1] === 'ads_data_redaction');
+    const update = calls.findIndex((c) => c[0] === 'consent' && c[1] === 'update');
+    expect(redaction).toBeGreaterThan(-1);
+    expect(redaction).toBeLessThan(update);
+  });
+
+  it('applies the same rule to a returning visitor', () => {
+    const calls = captureGtag();
+    initConsentState(true, true, true);
+    expect(calls).toContainEqual(['set', 'ads_data_redaction', false]);
   });
 });
 
