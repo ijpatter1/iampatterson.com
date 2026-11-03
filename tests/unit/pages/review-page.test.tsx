@@ -36,6 +36,24 @@ describe('the review page', () => {
     expect(REVIEW_PAGE.price).toBe(`From ${REVIEW_PRICE}`);
     expect(screen.getByText(REVIEW_PAGE.price)).toBeInTheDocument();
     expect(screen.getByText(REVIEW_PAGE.scope)).toBeInTheDocument();
+    // Ian, 2026-11-03: one brand and up to four ad platforms at the starting price.
+    expect(REVIEW_PAGE.scope).toContain('up to four ad platforms and one order system');
+  });
+
+  // A turnaround, counted from full access, never an effort duration
+  // (Ian, 2026-11-03).
+  it('states the turnaround from full access, and no effort duration', () => {
+    render(<ReviewPage />);
+    expect(REVIEW_PAGE.turnaround).toBe(
+      'About a week, once I have all the required platform and data access.',
+    );
+    expect(screen.getByText(REVIEW_PAGE.turnaround)).toBeInTheDocument();
+    expect(JSON.stringify(REVIEW_PAGE)).not.toMatch(/two-day|\bdays?\b|\bhours?\b/i);
+  });
+
+  // What a real review covered (2026-10), in general terms: six areas.
+  it('lists the six areas a review covers', () => {
+    expect(REVIEW_PAGE.includes).toHaveLength(6);
   });
 
   it('says it changes nothing, and lists what the review looks at', () => {

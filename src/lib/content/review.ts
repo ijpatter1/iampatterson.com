@@ -52,17 +52,18 @@ export interface ReviewColumn {
 }
 
 /**
- * The October review block's columns, signed 2026-10-12. Not on the
- * homepage since 15.9; they move to the review page (15.10).
+ * The review page's give, get and then columns (15.10). Signed 2026-10-12;
+ * "You give me" and "You get" rewritten on 2026-11-03 from what a real
+ * review asked for and delivered. "Then" is unchanged.
  */
 export const REVIEW_COLUMNS = [
   {
     label: 'You give me',
-    text: 'Read access to GTM, GA4 and the ad accounts. An order export from your system of record.',
+    text: 'Read access to Tag Manager, your analytics and its warehouse, and the ad accounts. An order export from your system of record. A kickoff session with your team.',
   },
   {
     label: 'You get',
-    text: 'The findings and fix list. Three numbers per platform: claimed, verified, sold. A quote for the fixes.',
+    text: "A first summary after the kickoff. A recorded walkthrough with your team. The written review, with each platform's claims against your orders and the evidence for each finding. The plan as a working tracker: ranked, with owners and estimated effort. Your data back, deleted on my side.",
   },
   {
     label: 'Then',

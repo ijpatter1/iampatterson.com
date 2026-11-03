@@ -16,15 +16,21 @@ export const REVIEW_PAGE = {
   intro:
     "A paid review, and I make no changes. I look at what your tracking captures and what it misses, check each ad platform's claims against your actual orders, and rank what I find by impact. You decide what to act on.",
   price: `From ${REVIEW_PRICE}`,
-  /** A proposal for Ian, 2026-11-03: what the starting price covers. */
+  /** What the starting price covers (Ian, 2026-11-03). */
   scope:
-    'That covers one website, up to three ad platforms and one order system or CRM. More of any of them widens the scope, and I confirm the price before we start.',
+    'That covers one brand: its website, tag manager and analytics, up to four ad platforms and one order system. More of any of them widens the scope, and I confirm the price before we start.',
+  /** A turnaround counted from full access, never an effort duration (Ian, 2026-11-03). */
+  turnaround: 'About a week, once I have all the required platform and data access.',
   cta: 'Book the review',
   includesEyebrow: 'What it includes',
+  /** The areas a real review covered (2026-10), in general terms. */
   includes: [
-    'What your tracking sends today, from the browser and the server, in both consent states, and what it misses.',
-    "Each ad platform's claims read against your orders: claimed, verified from its own click IDs, sold.",
-    'Where your paid media and sales data lives, and whose name each account is in: the ad accounts, the tag containers and the warehouse.',
+    'Your conversion definitions and events: what counts as a purchase or a sign-up, and where each one fires.',
+    'Tag Manager, web and server, and your analytics with its warehouse export.',
+    "Each ad platform's attribution settings, deduplication and click IDs.",
+    "Each platform's claims read against your orders: claimed, matched to an order, sold.",
+    'How your weekly reporting is built, and who it depends on.',
+    'Where your data lives and whose name each account is in: the ad accounts, the tag containers and the warehouse.',
   ],
   columnsEyebrow: 'What you give me, and what you get',
   followsEyebrow: 'What can follow',

@@ -6,6 +6,7 @@ import {
   Eyebrow,
   ITEM_TITLE_CLASSES,
   LABEL_CLASSES,
+  LABEL_STRONG_CLASSES,
   PAGE_TITLE_CLASSES,
   SECTION_PADDING_BOTTOM,
   SMALL_BODY_CLASSES,
@@ -43,6 +44,9 @@ export default function ReviewPage() {
             <div className="min-w-[260px] flex-1">
               <div className={STAT_FIGURE_CLASSES}>{REVIEW_PAGE.price}</div>
               <p className={`mt-4 max-w-[42ch] ${SMALL_BODY_CLASSES}`}>{REVIEW_PAGE.scope}</p>
+              <p className={`mt-3 max-w-[42ch] ${LABEL_STRONG_CLASSES}`}>
+                {REVIEW_PAGE.turnaround}
+              </p>
               <div className="mt-6">
                 <BookButton />
               </div>
