@@ -1,13 +1,13 @@
-/** Homepage hero copy. Verbatim from the handoff bundle's copy.md. */
+/** Homepage hero copy, from the LinkedIn profile of 2026-11-02 (15.9). */
 export const HERO = {
-  eyebrowLeft: 'Patterson Consulting · Atlanta',
-  eyebrowRight: 'Conversion data for paid media',
-  headlineFirstLine: 'Platforms bid',
-  headlineSecondLineLead: 'on your',
-  headlineAccent: 'data.',
+  eyebrowLeft: 'I am Patterson · Atlanta',
+  eyebrowRight: 'Marketing data, measurement and AI',
+  /** Each line renders unbroken; the accent line follows them. */
+  headlineLines: ['Numbers your', 'marketing team'],
+  headlineAccent: 'can count on.',
   kicker:
-    'I make sure they get all of it, from the browser and from your order system, correctly and with consent, and I build you one set of numbers from your own orders to check their claims against.',
-  primaryCta: 'Start with a two-day review',
+    "For in-house marketing teams that buy media across several ad platforms and don't have much developer time. I find what your tracking misses, fix it in accounts you own, and put AI on top that your team can check.",
+  primaryCta: 'Start with a review',
   ghostCta: 'See your session',
   capacityNote: 'Taking project work now.',
 } as const;

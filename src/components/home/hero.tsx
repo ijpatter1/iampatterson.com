@@ -21,12 +21,15 @@ export function HeroEditorial() {
           <span>{HERO.eyebrowRight}</span>
         </div>
 
-        {/* 60px floor: at 390px the primary CTA still sits inside a 667px
-            viewport and "Platforms bid" stays on one line. */}
-        <h1 className="mt-6 font-display text-[clamp(60px,10vw,156px)] font-normal leading-[0.92] tracking-[-0.035em] text-ink md:mt-10">
-          <span className="block whitespace-nowrap">{HERO.headlineFirstLine}</span>{' '}
-          <span className="block">
-            {HERO.headlineSecondLineLead}{' '}
+        {/* Each line stays unbroken. The size floor keeps "marketing team"
+            inside a 390px screen and the primary CTA inside a 667px viewport. */}
+        <h1 className="mt-6 font-display text-[clamp(64px,9vw,140px)] font-normal leading-[0.92] tracking-[-0.035em] text-ink md:mt-10">
+          {HERO.headlineLines.map((line) => (
+            <span key={line}>
+              <span className="block whitespace-nowrap">{line}</span>{' '}
+            </span>
+          ))}
+          <span className="block whitespace-nowrap">
             <em className="text-accent-current">{HERO.headlineAccent}</em>
           </span>
         </h1>

@@ -132,7 +132,7 @@ describe('Header, post-9E-D1 nav pivot', () => {
 
   it('exposes a screen-reader-only home link for site identity', () => {
     renderHeader();
-    const srLink = screen.getByRole('link', { name: /patterson consulting, home/i });
+    const srLink = screen.getByRole('link', { name: /i am patterson, home/i });
     expect(srLink).toHaveAttribute('href', '/');
     expect(srLink.className).toContain('sr-only');
   });

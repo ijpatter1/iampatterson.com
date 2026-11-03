@@ -11,7 +11,7 @@ import { ImageResponse } from 'next/og';
  * Loads Instrument Serif (regular + italic) from `public/fonts/` so
  * the social-graph rendering carries the actual brand typography
  * rather than the edge runtime's fallback `serif`. The italic accent
- * on "measurement" is a load-bearing visual signature; rendering it
+ * on "can count on." is a load-bearing visual signature; rendering it
  * in fallback Times-italic loses the editorial character that makes
  * the homepage feel intentional.
  *
@@ -22,7 +22,7 @@ import { ImageResponse } from 'next/og';
 export const runtime = 'edge';
 export const contentType = 'image/png';
 export const size = { width: 1200, height: 630 };
-export const alt = 'Patterson Consulting — measurement infrastructure';
+export const alt = 'I am Patterson. Numbers your marketing team can count on.';
 
 export default async function OpengraphImage() {
   const [regular, italic] = await Promise.all([
@@ -56,21 +56,21 @@ export default async function OpengraphImage() {
           textTransform: 'uppercase',
         }}
       >
-        Patterson Consulting
+        I am Patterson
       </div>
       <div
         style={{
           display: 'flex',
           flexDirection: 'column',
-          fontSize: 130,
+          fontSize: 116,
           lineHeight: 1.0,
           color: '#1A1717',
           letterSpacing: '-0.035em',
         }}
       >
-        <span>I build</span>
-        <span style={{ color: '#C4703A', fontStyle: 'italic' }}>measurement</span>
-        <span>infrastructure.</span>
+        <span>Numbers your</span>
+        <span>marketing team</span>
+        <span style={{ color: '#C4703A', fontStyle: 'italic' }}>can count on.</span>
       </div>
       <div
         style={{
@@ -80,7 +80,7 @@ export default async function OpengraphImage() {
           maxWidth: '900px',
         }}
       >
-        The site itself runs on the same stack I sell.
+        Marketing data, measurement and AI
       </div>
     </div>,
     {

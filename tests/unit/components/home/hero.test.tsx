@@ -32,29 +32,37 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-// The hero carries the whole positioning in five words and one sentence, and
-// offers the one priced first step. The reader is a paid-media buyer, not an
-// engineer, so the page's only h1 is the claim they recognise.
+// The hero says what the LinkedIn profile's banner says, so a visitor who
+// arrives from the profile reads the same line. The page's only h1 is that
+// line, and the accent sits on the promise, "can count on."
 describe('HeroEditorial', () => {
-  it('is the page’s single h1 and reads "Platforms bid on your data."', () => {
+  it('is the page’s single h1 and reads "Numbers your marketing team can count on."', () => {
     renderHero();
     const headings = screen.getAllByRole('heading', { level: 1 });
     expect(headings).toHaveLength(1);
     expect(headings[0].textContent?.replace(/\s+/g, ' ').trim()).toBe(
-      `${HERO.headlineFirstLine} ${HERO.headlineSecondLineLead} ${HERO.headlineAccent}`,
+      'Numbers your marketing team can count on.',
+    );
+    expect(headings[0].textContent?.replace(/\s+/g, ' ').trim()).toBe(
+      `${HERO.headlineLines.join(' ')} ${HERO.headlineAccent}`,
     );
   });
 
-  it('keeps "Platforms bid" together on its own line', () => {
+  it('keeps each line of the headline unbroken', () => {
     renderHero();
-    const firstLine = screen.getByText(HERO.headlineFirstLine);
-    expect(firstLine.className).toContain('whitespace-nowrap');
+    for (const line of HERO.headlineLines) {
+      expect(screen.getByText(line).className).toContain('whitespace-nowrap');
+    }
+    expect(screen.getByText(HERO.headlineAccent).closest('span')?.className).toContain(
+      'whitespace-nowrap',
+    );
   });
 
-  it('sets "data." in the accent', () => {
+  it('sets "can count on." in the accent', () => {
     renderHero();
     const accent = screen.getByText(HERO.headlineAccent);
     expect(accent.tagName).toBe('EM');
+    expect(accent.textContent).toBe('can count on.');
     expect(accent.className).toContain('text-accent-current');
   });
 
@@ -87,5 +95,6 @@ describe('HeroEditorial', () => {
     const { container } = renderHero();
     expect(container.querySelector('a[href*="demo"]')).toBeNull();
     expect(container.textContent).not.toMatch(/measurement infrastructure|explore the demo/i);
+    expect(container.textContent).not.toMatch(/Patterson Consulting|two-day/i);
   });
 });

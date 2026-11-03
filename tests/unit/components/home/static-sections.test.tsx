@@ -6,15 +6,15 @@ import userEvent from '@testing-library/user-event';
 
 import { Certifications } from '@/components/home/certifications';
 import { DoneWhere } from '@/components/home/done-where';
+import { HowWeWork } from '@/components/home/how-we-work';
 import { Problems } from '@/components/home/problems';
-import { ReviewOffer } from '@/components/home/review-offer';
 import { WhyItMatters } from '@/components/home/why-it-matters';
 import { CERTIFICATIONS } from '@/lib/content/certifications';
 import { DONE_WHERE } from '@/lib/content/done-where';
 import { REVIEW_HREF } from '@/lib/content/hero';
 import { NETWORKS, NETWORKS_LABEL } from '@/lib/content/networks';
 import { PROBLEMS, PROBLEMS_EYEBROW, PROBLEM_LABELS } from '@/lib/content/problems';
-import { REVIEW, REVIEW_PRICE } from '@/lib/content/review';
+import { HOW_WE_WORK, REVIEW_PAGE_HREF, REVIEW_PRICE } from '@/lib/content/review';
 import { WHY_IT_MATTERS } from '@/lib/content/stats';
 
 jest.mock('@/lib/events/track', () => ({
@@ -68,36 +68,53 @@ describe('Problems', () => {
   });
 });
 
-describe('ReviewOffer', () => {
-  it('is the #review anchor the calls to action point at', () => {
-    const { container } = render(<ReviewOffer />);
+describe('HowWeWork', () => {
+  it('is the #review anchor and titles the section "Start with a review."', () => {
+    const { container } = render(<HowWeWork />);
     expect(container.querySelector('section#review')).not.toBeNull();
+    expect(screen.getByRole('heading', { level: 2, name: HOW_WE_WORK.title })).toBeInTheDocument();
+    expect(screen.getByText(HOW_WE_WORK.eyebrow)).toBeInTheDocument();
   });
 
-  it('renders the offer and its three columns', () => {
-    render(<ReviewOffer />);
-    expect(screen.getByRole('heading', { level: 2, name: REVIEW.title })).toBeInTheDocument();
-    expect(screen.getByText(REVIEW.body)).toBeInTheDocument();
-    for (const column of REVIEW.columns) {
-      expect(screen.getByText(column.label)).toBeInTheDocument();
-      expect(screen.getByText(column.text)).toBeInTheDocument();
+  // The three steps are what a visitor from the profile's banner expects to
+  // find, in the same order.
+  it('renders the three steps in order, each with its line and body', () => {
+    render(<HowWeWork />);
+    const steps = screen.getAllByRole('heading', { level: 3 });
+    expect(steps.map((h) => h.textContent?.replace(/\s+/g, ' ').trim())).toEqual(
+      HOW_WE_WORK.steps.map((s) => `${s.num} ${s.label}`),
+    );
+    for (const step of HOW_WE_WORK.steps) {
+      expect(screen.getByText(step.line)).toBeInTheDocument();
+      expect(screen.getByText(step.body)).toBeInTheDocument();
     }
   });
 
-  // One priced first step is the reason the page exists.
-  it('shows the price from the single constant, and no placeholder', () => {
-    render(<ReviewOffer />);
-    expect(screen.getByText(`Fixed price · ${REVIEW_PRICE}`)).toBeInTheDocument();
-    expect(screen.queryByText(/\[PRICE\]/)).not.toBeInTheDocument();
+  it('shows the starting price once, on the review step, and no placeholder', () => {
+    const { container } = render(<HowWeWork />);
+    expect(screen.getAllByText(`From ${REVIEW_PRICE}`)).toHaveLength(1);
+    const reviewStep = screen.getByText(HOW_WE_WORK.steps[0].body).closest('li');
+    expect(reviewStep).toHaveTextContent(`From ${REVIEW_PRICE}`);
+    expect(container.textContent).not.toMatch(/\[PRICE\]/);
   });
 
-  it('sends "Book the review" to the contact page with the review intent, and tracks it', async () => {
-    render(<ReviewOffer />);
-    const link = screen.getByRole('link', { name: REVIEW.cta });
+  it('links the review step to the review page, and tracks it', async () => {
+    render(<HowWeWork />);
+    const text = HOW_WE_WORK.steps[0].link!.text;
+    const link = screen.getByRole('link', { name: text });
+    expect(link).toHaveAttribute('href', REVIEW_PAGE_HREF);
+    link.addEventListener('click', (e) => e.preventDefault());
+    await userEvent.click(link);
+    expect(trackClickCta).toHaveBeenCalledWith(text, 'review');
+  });
+
+  it('sends "Start with a review" to the contact page with the review intent, and tracks it', async () => {
+    render(<HowWeWork />);
+    const link = screen.getByRole('link', { name: HOW_WE_WORK.cta });
     expect(link).toHaveAttribute('href', REVIEW_HREF);
     link.addEventListener('click', (e) => e.preventDefault());
     await userEvent.click(link);
-    expect(trackClickCta).toHaveBeenCalledWith(REVIEW.cta, 'review');
+    expect(trackClickCta).toHaveBeenCalledWith(HOW_WE_WORK.cta, 'review');
   });
 });
 

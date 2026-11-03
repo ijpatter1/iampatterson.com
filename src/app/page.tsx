@@ -1,10 +1,12 @@
 import { after } from 'next/server';
 
-import { DemosSection } from '@/components/home/demos-section';
-import { FinalCta } from '@/components/home/final-cta';
+import { Certifications } from '@/components/home/certifications';
+import { DoneWhere } from '@/components/home/done-where';
 import { HeroEditorial } from '@/components/home/hero';
-import { PipelineSection } from '@/components/home/pipeline-section';
-import { ServicesTeaser } from '@/components/home/services-teaser';
+import { HowWeWork } from '@/components/home/how-we-work';
+import { Problems } from '@/components/home/problems';
+import { ProofSection } from '@/components/home/proof-section';
+import { WhyItMatters } from '@/components/home/why-it-matters';
 import { warmMetabaseDashboard } from '@/lib/metabase/keep-warm';
 
 // Force dynamic rendering (Phase 9F D9). The homepage was previously
@@ -26,10 +28,12 @@ export default function HomePage() {
   return (
     <main>
       <HeroEditorial />
-      <PipelineSection />
-      <DemosSection />
-      <ServicesTeaser />
-      <FinalCta />
+      <WhyItMatters />
+      <Problems />
+      <HowWeWork />
+      <ProofSection />
+      <DoneWhere />
+      <Certifications />
     </main>
   );
 }

@@ -16,7 +16,7 @@
  */
 
 const SITE_URL = 'https://iampatterson.com';
-const ORG_NAME = 'Patterson Consulting';
+const ORG_NAME = 'I am Patterson';
 const PERSON_NAME = 'Ian Patterson';
 
 export function organizationJsonLd(): Record<string, unknown> {
@@ -26,7 +26,7 @@ export function organizationJsonLd(): Record<string, unknown> {
     name: ORG_NAME,
     url: SITE_URL,
     description:
-      'Measurement infrastructure for marketing teams. The site itself runs on the same stack I sell.',
+      'I lead marketing data, measurement and AI work for in-house marketing teams, from tracking reviews to fractional leadership.',
     founder: {
       '@type': 'Person',
       name: PERSON_NAME,
@@ -47,21 +47,24 @@ export function personJsonLd(): Record<string, unknown> {
     '@type': 'Person',
     name: PERSON_NAME,
     url: SITE_URL,
-    jobTitle: 'Measurement Infrastructure Consultant',
+    jobTitle: 'Founder, I am Patterson',
     worksFor: {
       '@type': 'Organization',
       name: ORG_NAME,
       url: SITE_URL,
     },
+    // The LinkedIn profile's pinned skills, then the stack it names.
     knowsAbout: [
-      'Marketing measurement infrastructure',
+      'Marketing analytics',
+      'Analytics engineering',
+      'AI implementation',
+      'BigQuery',
+      'Marketing measurement',
       'Server-side tagging (sGTM)',
-      'BigQuery data warehouse',
-      'Dataform',
+      'Conversions APIs',
       'Google Analytics 4',
-      'Consent Mode v2 and Cookiebot',
-      'Metabase BI',
-      'Marketing attribution modeling',
+      'Consent Mode v2, Cookiebot and OneTrust',
+      'Dataform',
     ],
   };
 }

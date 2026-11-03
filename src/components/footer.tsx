@@ -98,7 +98,7 @@ export function Footer() {
         </div>
 
         <div className="mt-14 flex flex-col justify-between gap-2 border-t border-rule-soft pt-6 font-mono text-[10px] tracking-wide text-ink-3 md:flex-row">
-          <span>© 2026 Patterson Consulting</span>
+          <span>© 2026 I am Patterson</span>
           <a
             href="mailto:ian@iampatterson.com"
             className="transition-colors hover:text-ink"

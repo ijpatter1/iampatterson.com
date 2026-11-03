@@ -113,7 +113,7 @@ describe('Footer, editorial', () => {
 
   it('renders the copyright and stack credit', () => {
     renderFooter();
-    expect(screen.getByText(/2026 Patterson Consulting/i)).toBeInTheDocument();
+    expect(screen.getByText(/2026 I am Patterson/i)).toBeInTheDocument();
     expect(screen.getByText(/BigQuery · Dataform/i)).toBeInTheDocument();
   });
 });

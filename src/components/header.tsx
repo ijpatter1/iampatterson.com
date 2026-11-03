@@ -54,7 +54,7 @@ export function Header() {
           <span className="relative flex-shrink-0">
             <SessionPulse ref={sessionPulseRef} onClick={handleOpenOverlay} />
             <Link href="/" className="sr-only">
-              Patterson Consulting, home
+              I am Patterson, home
             </Link>
             {isHomepage && <NavHint sessionPulseRef={sessionPulseRef} />}
           </span>

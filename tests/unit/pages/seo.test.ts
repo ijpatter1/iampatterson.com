@@ -21,9 +21,27 @@ describe('Phase 10d D4 — SEO', () => {
       const metadata = (mod as unknown as { metadata: Metadata }).metadata;
       expect(metadata.openGraph).toBeDefined();
       const og = metadata.openGraph as { siteName?: string; locale?: string; type?: string };
-      expect(og.siteName).toBe('Patterson Consulting');
+      expect(og.siteName).toBe('I am Patterson');
       expect(og.locale).toBe('en_US');
       expect(og.type).toBe('website');
+    });
+
+    // The practice is I am Patterson, and the page says what the LinkedIn
+    // headline says, so search results and link previews match the profile.
+    it('names the practice I am Patterson and describes it in the profile headline', async () => {
+      const mod = await import('@/app/layout');
+      const metadata = (mod as unknown as { metadata: Metadata }).metadata;
+      const headline =
+        'I lead marketing data, measurement and AI work for in-house marketing teams, from tracking reviews to fractional leadership.';
+      expect(metadata.title).toEqual({
+        default: 'I am Patterson · Marketing data, measurement and AI',
+        template: '%s | I am Patterson',
+      });
+      expect(metadata.description).toBe(headline);
+      expect((metadata.openGraph as { description?: string }).description).toBe(headline);
+      expect(JSON.stringify(metadata)).not.toMatch(
+        /Patterson Consulting|measurement infrastructure/i,
+      );
     });
 
     it('exports twitter card with summary_large_image', async () => {
@@ -63,7 +81,7 @@ describe('Phase 10d D4 — SEO', () => {
       ).organizationJsonLd();
       expect(org['@context']).toBe('https://schema.org');
       expect(org['@type']).toBe('Organization');
-      expect(org.name).toBe('Patterson Consulting');
+      expect(org.name).toBe('I am Patterson');
       expect(org.url).toBe('https://iampatterson.com');
       // Founder must be a real Person sub-object, not just truthy.
       // A future edit that flips `founder` to a bare string or `{}`
@@ -83,6 +101,9 @@ describe('Phase 10d D4 — SEO', () => {
       expect(person.name).toBe('Ian Patterson');
       expect(person.url).toBe('https://iampatterson.com');
       expect(person.jobTitle).toBeTruthy();
+      expect(JSON.stringify(person)).not.toMatch(
+        /Patterson Consulting|measurement infrastructure/i,
+      );
     });
   });
 

@@ -29,20 +29,22 @@ export const viewport: Viewport = {
 // Organization description in `src/lib/seo/json-ld.ts` so SERP
 // snippet, social cards, and Knowledge Graph all carry the same
 // line.
+// The LinkedIn profile's headline (2026-11-02), so search results and link
+// previews say what the profile says.
 const SITE_DESCRIPTION =
-  'Measurement infrastructure for marketing teams. The site itself runs on the same stack I sell.';
+  'I lead marketing data, measurement and AI work for in-house marketing teams, from tracking reviews to fractional leadership.';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://iampatterson.com'),
   title: {
-    default: 'Patterson Consulting',
-    template: '%s | Patterson Consulting',
+    default: 'I am Patterson · Marketing data, measurement and AI',
+    template: '%s | I am Patterson',
   },
   description: SITE_DESCRIPTION,
-  applicationName: 'Patterson Consulting',
+  applicationName: 'I am Patterson',
   authors: [{ name: 'Ian Patterson', url: 'https://iampatterson.com' }],
   creator: 'Ian Patterson',
-  publisher: 'Patterson Consulting',
+  publisher: 'I am Patterson',
   keywords: [
     'marketing measurement',
     'server-side tagging',
@@ -57,21 +59,21 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     url: 'https://iampatterson.com',
-    siteName: 'Patterson Consulting',
-    title: 'Patterson Consulting',
+    siteName: 'I am Patterson',
+    title: 'I am Patterson · Marketing data, measurement and AI',
     description: SITE_DESCRIPTION,
     images: [
       {
         url: '/opengraph-image',
         width: 1200,
         height: 630,
-        alt: 'Patterson Consulting — measurement infrastructure',
+        alt: 'I am Patterson. Numbers your marketing team can count on.',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Patterson Consulting',
+    title: 'I am Patterson · Marketing data, measurement and AI',
     description: SITE_DESCRIPTION,
     images: ['/opengraph-image'],
   },

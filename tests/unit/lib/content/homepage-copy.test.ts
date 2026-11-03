@@ -9,7 +9,7 @@ import { HERO, REVIEW_HREF } from '@/lib/content/hero';
 import { NETWORKS, NETWORKS_LABEL } from '@/lib/content/networks';
 import { PROBLEMS, PROBLEMS_EYEBROW, PROBLEM_LABELS } from '@/lib/content/problems';
 import { LIVE_STRIP, PROOF } from '@/lib/content/proof';
-import { REVIEW, REVIEW_PRICE } from '@/lib/content/review';
+import { HOW_WE_WORK, REVIEW_COLUMNS, REVIEW_PAGE_HREF, REVIEW_PRICE } from '@/lib/content/review';
 import { WHY_IT_MATTERS } from '@/lib/content/stats';
 
 function strings(value: unknown): string[] {
@@ -25,7 +25,8 @@ const ALL_COPY = strings([
   PROBLEMS_EYEBROW,
   PROBLEM_LABELS,
   PROBLEMS,
-  REVIEW,
+  HOW_WE_WORK,
+  REVIEW_COLUMNS,
   DONE_WHERE,
   NETWORKS_LABEL,
   NETWORKS,
@@ -58,22 +59,76 @@ describe('homepage copy rules', () => {
   });
 });
 
+describe('the practice name', () => {
+  // The practice is I am Patterson everywhere, as on the LinkedIn profile.
+  it('never says "Patterson Consulting"', () => {
+    expect(ALL_COPY.filter((s) => /patterson consulting/i.test(s))).toEqual([]);
+    expect(HERO.eyebrowLeft).toBe('I am Patterson · Atlanta');
+  });
+});
+
 describe('the priced first step', () => {
-  // The page exists to offer one priced first step. An unpriced offer, or a
-  // price that has drifted from the single constant, defeats it.
-  it('states a dollar price on the review', () => {
+  // The review is the one priced entry. Its price is a starting price with
+  // no stated duration, so a scope that grows does not contradict the page.
+  it('states a starting dollar price on the review, from the single constant', () => {
     expect(REVIEW_PRICE).toMatch(/^\$\d{1,3}(,\d{3})*$/);
-    expect(REVIEW.priceLine).toBe(`Fixed price · ${REVIEW_PRICE}`);
+    expect(HOW_WE_WORK.steps[0].price).toBe(`From ${REVIEW_PRICE}`);
   });
 
-  it('sends every review call to action to the contact page with the review intent', () => {
+  it('states no duration for the review anywhere', () => {
+    expect(ALL_COPY.filter((s) => /two-day|\bdays?\b|\bhours?\b|fixed price/i.test(s))).toEqual([]);
+  });
+
+  it('sends the review calls to action to the contact page with the review intent', () => {
     expect(REVIEW_HREF).toBe('/contact?intent=review');
+  });
+
+  it('links the review step to the page that sets the review out', () => {
+    expect(REVIEW_PAGE_HREF).toBe('/review');
+    expect(HOW_WE_WORK.steps[0].link?.href).toBe(REVIEW_PAGE_HREF);
+  });
+});
+
+describe('how teams work with me', () => {
+  // The banner's three steps, in the banner's order and words.
+  it('is the Review, Build, Lead ladder with the banner lines', () => {
+    expect(HOW_WE_WORK.steps.map((s) => [s.num, s.label, s.line])).toEqual([
+      ['01', 'Review', 'What your tracking misses, and what to fix'],
+      ['02', 'Build', 'Data you own, and AI your team can rely on'],
+      ['03', 'Lead', "Senior leadership, where there's a fit"],
+    ]);
+  });
+
+  // Build is where the AI is offered, so it says who controls it.
+  it('says what the AI does and who controls it', () => {
+    expect(HOW_WE_WORK.steps[1].body).toContain('your team asks about spend and sales');
+    expect(HOW_WE_WORK.steps[1].body).toContain('I control what the AI can see and change');
+  });
+
+  it('prices only the review', () => {
+    expect(HOW_WE_WORK.steps.filter((s) => s.price).map((s) => s.label)).toEqual(['Review']);
   });
 });
 
 describe('homepage content shape', () => {
   it('gives three problems, numbered in order', () => {
     expect(PROBLEMS.map((p) => p.num)).toEqual(['01', '02', '03']);
+  });
+
+  // The profile's About asks these three questions; the page answers them.
+  it("titles the problems with the profile's three questions", () => {
+    expect(PROBLEMS_EYEBROW).toBe('What I get called for · Three questions');
+    expect(PROBLEMS.map((p) => p.title)).toEqual([
+      'Is the budget going to the right places?',
+      'Does anybody trust these numbers?',
+      'Who owns this data?',
+    ]);
+  });
+
+  // The 2026 client is not named on the site.
+  it('keeps the 2026 work as "An ad tech startup"', () => {
+    expect(DONE_WHERE.cards.map((c) => c.name)).toContain('An ad tech startup');
+    expect(ALL_COPY.filter((s) => /adzeta/i.test(s))).toEqual([]);
   });
 
   it('shows the source line with the two stat figures', () => {

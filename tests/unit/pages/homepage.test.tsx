@@ -10,6 +10,12 @@ import { render, screen } from '@testing-library/react';
 import HomePage from '@/app/page';
 import { OverlayProvider } from '@/components/overlay/overlay-context';
 import { LiveEventsContext } from '@/hooks/useLiveEvents';
+import { CERTIFICATIONS } from '@/lib/content/certifications';
+import { DONE_WHERE } from '@/lib/content/done-where';
+import { PROBLEMS_EYEBROW } from '@/lib/content/problems';
+import { PROOF } from '@/lib/content/proof';
+import { HOW_WE_WORK } from '@/lib/content/review';
+import { WHY_IT_MATTERS } from '@/lib/content/stats';
 
 jest.mock('@/lib/events/track', () => ({
   trackClickCta: jest.fn(),
@@ -67,8 +73,31 @@ describe('HomePage composition', () => {
   it('renders the editorial hero masthead', () => {
     renderHome();
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-      /Platforms bid[\s\S]*on your[\s\S]*data\./,
+      /Numbers your[\s\S]*marketing team[\s\S]*can count on\./,
     );
+  });
+
+  // The order of the redesign (15.4): the claim, why it matters, the three
+  // questions, how teams work with me, the proof, where I've done it, and
+  // the certifications. The old demo, services and pipeline sections are gone.
+  it('composes the new sections in order, and none of the old ones', () => {
+    const { container } = renderHome();
+    const markers = [
+      'Numbers your',
+      WHY_IT_MATTERS.eyebrow,
+      PROBLEMS_EYEBROW,
+      HOW_WE_WORK.title,
+      PROOF.title,
+      DONE_WHERE.eyebrow,
+      CERTIFICATIONS.eyebrow,
+    ].map((text) => screen.getAllByText(text)[0]);
+    for (let i = 1; i < markers.length; i++) {
+      expect(
+        markers[i - 1].compareDocumentPosition(markers[i]) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    }
+    expect(container.querySelector('#demos')).toBeNull();
+    expect(container.textContent).not.toMatch(/Patterson Consulting|two-day review/i);
   });
 
   // Phase 10a D2 behaviour pin (complementing the source-sniff in
