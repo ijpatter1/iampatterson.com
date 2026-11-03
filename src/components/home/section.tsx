@@ -23,8 +23,10 @@ export const CARD_TITLE_CLASSES = 'font-display text-2xl font-normal leading-tig
 export const BODY_CLASSES = 'text-base leading-[1.7] text-ink-2';
 export const SMALL_BODY_CLASSES = 'text-sm leading-[1.6] text-ink-2';
 
-/** Vertical padding shared by every homepage section, the hero's bottom included. */
-export const SECTION_PADDING_Y = 'py-14 md:py-20';
+/** Vertical padding shared by every homepage section; the hero takes the bottom half. */
+export const SECTION_PADDING_TOP = 'pt-14 md:pt-20';
+export const SECTION_PADDING_BOTTOM = 'pb-14 md:pb-20';
+export const SECTION_PADDING_Y = `${SECTION_PADDING_TOP} ${SECTION_PADDING_BOTTOM}`;
 
 interface EyebrowProps {
   /** `h2` when the section has no display title of its own. */

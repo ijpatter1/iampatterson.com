@@ -17,22 +17,12 @@ import { WebVitalsReporter } from '@/components/scripts/web-vitals-reporter';
 import { instrumentSerif, plusJakarta, jetbrainsMono } from '@/lib/fonts';
 import { organizationJsonLd, personJsonLd } from '@/lib/seo/json-ld';
 import '@/styles/globals.css';
+import { SITE_DESCRIPTION } from '@/lib/seo/site';
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
 };
-
-// Single source of truth for the site's one-line offer + thesis.
-// Used by `metadata.description`, `openGraph.description`, and
-// `twitter.description` — keep this in sync with the JSON-LD
-// Organization description in `src/lib/seo/json-ld.ts` so SERP
-// snippet, social cards, and Knowledge Graph all carry the same
-// line.
-// The LinkedIn profile's headline (2026-11-02), so search results and link
-// previews say what the profile says.
-const SITE_DESCRIPTION =
-  'I lead marketing data, measurement and AI work for in-house marketing teams, from tracking reviews to fractional leadership.';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://iampatterson.com'),

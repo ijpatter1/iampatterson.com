@@ -9,8 +9,8 @@ export interface Evidence {
 }
 
 /**
- * Google's two figures, shown under the first question ("Is the budget going
- * to the right places?") since 2026-11-03, when Ian dropped the "Why it
+ * Google's two figures, shown under the first question ("Do the platforms
+ * know who our best customers are?") since 2026-11-03, when Ian dropped the "Why it
  * matters" section. Both are Google's; the source line stays with them.
  */
 export const BUDGET_FIGURES: Evidence = {

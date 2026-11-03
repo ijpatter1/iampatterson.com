@@ -93,6 +93,20 @@ describe('Phase 10d D4 — SEO', () => {
       expect(founder.name).toBe('Ian Patterson');
     });
 
+    // Search results, link previews and the Knowledge Graph say the same
+    // thing because they read one constant.
+    it('gives the Organization JSON-LD the same description as the page metadata', async () => {
+      const layout = await import('@/app/layout');
+      const metadata = (layout as unknown as { metadata: Metadata }).metadata;
+      const mod = await import('@/lib/seo/json-ld');
+      const org = (
+        mod as { organizationJsonLd: () => Record<string, unknown> }
+      ).organizationJsonLd();
+      expect(org.description).toBe(metadata.description);
+      const site = await import('@/lib/seo/site');
+      expect(metadata.description).toBe(site.SITE_DESCRIPTION);
+    });
+
     it('exposes Person JSON-LD via @/lib/seo/json-ld', async () => {
       const mod = await import('@/lib/seo/json-ld');
       const person = (mod as { personJsonLd: () => Record<string, unknown> }).personJsonLd();

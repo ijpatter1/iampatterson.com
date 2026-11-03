@@ -1,7 +1,7 @@
 'use client';
 
 import { EditorialButton, EditorialLink } from '@/components/chrome/editorial-button';
-import { EYEBROW_CLASSES, LABEL_CLASSES } from '@/components/home/section';
+import { EYEBROW_CLASSES, LABEL_CLASSES, SECTION_PADDING_BOTTOM } from '@/components/home/section';
 import { useOverlay } from '@/components/overlay/overlay-context';
 import { HERO, REVIEW_HREF } from '@/lib/content/hero';
 import { trackClickCta } from '@/lib/events/track';
@@ -15,7 +15,7 @@ export function HeroEditorial() {
   };
 
   return (
-    <section className="bg-paper pb-14 pt-4 md:pb-20 md:pt-12">
+    <section className={`bg-paper pt-4 md:pt-12 ${SECTION_PADDING_BOTTOM}`}>
       <div className="mx-auto max-w-content px-5 md:px-10">
         <div className={`flex flex-wrap justify-between gap-x-6 gap-y-1 ${EYEBROW_CLASSES}`}>
           <span>{HERO.eyebrowLeft}</span>

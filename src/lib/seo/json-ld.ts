@@ -15,6 +15,8 @@
  * relationship cleanly.
  */
 
+import { SITE_DESCRIPTION } from './site';
+
 const SITE_URL = 'https://iampatterson.com';
 const ORG_NAME = 'I am Patterson';
 const PERSON_NAME = 'Ian Patterson';
@@ -25,8 +27,7 @@ export function organizationJsonLd(): Record<string, unknown> {
     '@type': 'Organization',
     name: ORG_NAME,
     url: SITE_URL,
-    description:
-      'I lead marketing data, measurement and AI work for in-house marketing teams, from tracking reviews to fractional leadership.',
+    description: SITE_DESCRIPTION,
     founder: {
       '@type': 'Person',
       name: PERSON_NAME,
