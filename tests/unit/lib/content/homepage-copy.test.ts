@@ -124,7 +124,7 @@ describe('homepage content shape', () => {
   it("titles the problems with the profile's three questions", () => {
     expect(PROBLEMS_EYEBROW).toBe('What I get called for · Three questions');
     expect(PROBLEMS.map((p) => p.title)).toEqual([
-      'Do the platforms know who your best customers are?',
+      'Do the platforms know who our best customers are?',
       'Does anybody trust these numbers?',
       'Who owns this data?',
     ]);
@@ -152,7 +152,11 @@ describe('homepage content shape', () => {
     expect(adzeta.text).toBe(
       'Head of Engineering and Marketing Science. First-party data turned into predicted lifetime value signals that Google, Meta and TikTok bid on.',
     );
-    expect(PROBLEMS[0].doneBefore).toMatch(/^AdZeta's order-to-platform pipeline, 2026\./);
+    // The example answers the first question: the platforms bid on the
+    // customers worth having, in the profile's words.
+    expect(PROBLEMS[0].doneBefore).toMatch(
+      /^AdZeta, 2026: predicted lifetime value sent to Google, Meta and TikTok, so their bidding goes after the customers who stick and repurchase\./,
+    );
     expect(ALL_COPY.filter((s) => /ad tech startup/i.test(s))).toEqual([]);
   });
 

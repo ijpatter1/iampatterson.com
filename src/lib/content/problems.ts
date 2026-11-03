@@ -16,11 +16,11 @@ export const PROBLEM_LABELS = { whatIDo: 'What I do', doneBefore: 'Done before' 
 export const PROBLEMS: Problem[] = [
   {
     num: '01',
-    title: 'Do the platforms know who your best customers are?',
+    title: 'Do the platforms know who our best customers are?',
     whatIDo:
       'Conversions from the server, and the ones the browser never sees: renewals, billing-system orders, deals that close in your CRM, each with its value, flow back to the ad platforms with consent. Meta and Google Conversions APIs, enhanced conversions, offline conversions through Data Manager.',
     doneBefore:
-      "AdZeta's order-to-platform pipeline, 2026. Meta, LinkedIn and Reddit Conversions APIs through server-side GTM at Allied Global Marketing, 2025.",
+      'AdZeta, 2026: predicted lifetime value sent to Google, Meta and TikTok, so their bidding goes after the customers who stick and repurchase. Meta, LinkedIn and Reddit Conversions APIs through server-side GTM at Allied Global Marketing, 2025.',
     evidence: BUDGET_FIGURES,
   },
   {
