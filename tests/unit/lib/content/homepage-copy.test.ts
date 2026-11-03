@@ -10,7 +10,7 @@ import { NETWORKS, NETWORKS_LABEL } from '@/lib/content/networks';
 import { PROBLEMS, PROBLEMS_EYEBROW, PROBLEM_LABELS } from '@/lib/content/problems';
 import { LIVE_STRIP, PROOF } from '@/lib/content/proof';
 import { HOW_WE_WORK, REVIEW_COLUMNS, REVIEW_PAGE_HREF, REVIEW_PRICE } from '@/lib/content/review';
-import { BUDGET_FIGURES } from '@/lib/content/stats';
+import { BUDGET_FIGURES, OWNERSHIP_FIGURES, TRUST_FIGURES } from '@/lib/content/stats';
 
 function strings(value: unknown): string[] {
   if (typeof value === 'string') return [value];
@@ -22,6 +22,8 @@ function strings(value: unknown): string[] {
 const ALL_COPY = strings([
   HERO,
   BUDGET_FIGURES,
+  TRUST_FIGURES,
+  OWNERSHIP_FIGURES,
   PROBLEMS_EYEBROW,
   PROBLEM_LABELS,
   PROBLEMS,
@@ -161,6 +163,33 @@ describe('homepage content shape', () => {
     );
     expect(owns.whatIDo).toContain('The same data feeds your reporting and your audiences');
     expect(owns.doneBefore).toMatch(/^At UP, the paid program moved through 14 ad platforms/);
+  });
+
+  // Trust is where the page brings in AI: the AI works from the same
+  // reconciled table, so its answers can be checked.
+  it('brings the AI into the trust question', () => {
+    expect(PROBLEMS[1].whatIDo).toContain(
+      'The AI sits on that same table, so when your team asks about spend or sales, they can check the answer against numbers they already trust.',
+    );
+    expect(PROBLEMS[1].doneBefore).toMatch(/^UP Entertainment, a streaming subscription business/);
+  });
+
+  // Each question carries sourced figures from 2026, checked against the
+  // reports under docs/reference/sources/ in the control plane.
+  it('backs each question with two sourced figures', () => {
+    expect(PROBLEMS.map((p) => p.evidence)).toEqual([
+      BUDGET_FIGURES,
+      TRUST_FIGURES,
+      OWNERSHIP_FIGURES,
+    ]);
+    for (const evidence of [BUDGET_FIGURES, TRUST_FIGURES, OWNERSHIP_FIGURES]) {
+      expect(evidence.tiles).toHaveLength(2);
+      expect(evidence.source).toMatch(/^Sources?: .*2026/);
+    }
+    expect(TRUST_FIGURES.tiles.map((t) => t.figure)).toEqual(['36%', '49%']);
+    expect(TRUST_FIGURES.source).toBe('Sources: MMA, April 2026; IAB, February 2026');
+    expect(OWNERSHIP_FIGURES.tiles.map((t) => t.figure)).toEqual(['52%', '20%']);
+    expect(OWNERSHIP_FIGURES.source).toBe('Sources: Supermetrics, 2026; MMA, April 2026');
   });
 
   // "4 platforms to 14" is said once, under ownership.

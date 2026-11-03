@@ -26,3 +26,44 @@ export const BUDGET_FIGURES: Evidence = {
   ],
   source: 'Source: Google, September 2026',
 };
+
+/**
+ * Under the second question ("Does anybody trust these numbers?"). MMA, The
+ * State of Marketing Analytics, April 2026 (103 senior marketers): 36% chose
+ * "Data is trustworthy as presented". IAB/BWG, State of Data 2026, February
+ * 2026 (n=430): 49% cite "Concerns about AI accuracy/transparency" as a
+ * significant or critical concern in the next 1-2 years.
+ */
+export const TRUST_FIGURES: Evidence = {
+  tiles: [
+    {
+      figure: '36%',
+      text: 'of senior marketers say their marketing data is trustworthy as presented.',
+    },
+    {
+      figure: '49%',
+      text: 'of measurement decision-makers expect AI accuracy and transparency to be a significant or critical concern within two years.',
+    },
+  ],
+  source: 'Sources: MMA, April 2026; IAB, February 2026',
+};
+
+/**
+ * Under the third question ("Who owns this data?"). Supermetrics, Marketing
+ * Data Report 2026 (435 marketers, fieldwork October to December 2025): 52%
+ * "place data strategy responsibility outside marketing". MMA, April 2026:
+ * 20% say "Customer data is fully unified".
+ */
+export const OWNERSHIP_FIGURES: Evidence = {
+  tiles: [
+    {
+      figure: '52%',
+      text: 'of marketers say responsibility for data strategy sits outside marketing.',
+    },
+    {
+      figure: '20%',
+      text: 'of senior marketers say their customer data is fully unified.',
+    },
+  ],
+  source: 'Sources: Supermetrics, 2026; MMA, April 2026',
+};
