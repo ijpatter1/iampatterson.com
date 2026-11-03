@@ -44,6 +44,22 @@ describe('Problems', () => {
     expect(screen.getAllByText(PROBLEM_LABELS.doneBefore)).toHaveLength(3);
   });
 
+  // Each question's figures sit under the question itself, in its column,
+  // before the answer: the evidence frames the question.
+  it("puts each question's figures in the question's column, before the answer", () => {
+    render(<Problems />);
+    for (const problem of PROBLEMS) {
+      const heading = screen.getByRole('heading', { level: 2, name: problem.title });
+      const column = heading.parentElement!;
+      const figure = within(heading.closest('article')!).getByText(
+        problem.evidence!.tiles[0].figure,
+      );
+      expect(column.contains(figure)).toBe(true);
+      const answer = within(heading.closest('article')!).getByText(problem.whatIDo);
+      expect(column.contains(answer)).toBe(false);
+    }
+  });
+
   // Google's two figures back the first question's answer, and are shown
   // with their source. No other question carries them.
   it('shows the two figures and their source under the first question only', () => {

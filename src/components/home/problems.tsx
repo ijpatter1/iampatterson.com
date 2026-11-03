@@ -1,66 +1,61 @@
+import {
+  BODY_CLASSES,
+  ITEM_TITLE_CLASSES,
+  LABEL_CLASSES,
+  SMALL_BODY_CLASSES,
+  Section,
+} from '@/components/home/section';
 import { PROBLEMS, PROBLEMS_EYEBROW, PROBLEM_LABELS } from '@/lib/content/problems';
 
-const labelClasses = 'font-mono text-[10px] uppercase tracking-[0.14em] text-ink-3';
-
+/**
+ * The three questions, stacked vertically (the three steps below run
+ * horizontally). Each question's figures sit under it, in its own column, so
+ * the evidence frames the question and the answer reads beside both.
+ */
 export function Problems() {
   return (
-    <section className="bg-paper py-16 md:py-24">
-      <div className="mx-auto max-w-content px-5 md:px-10">
-        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-3">
-          {PROBLEMS_EYEBROW}
-        </p>
-        <div className="mt-6 border-t border-ink">
-          {PROBLEMS.map((problem) => (
-            <article
-              key={problem.num}
-              className="flex flex-wrap gap-x-16 gap-y-6 border-b border-rule-soft py-10 md:py-14"
-            >
-              <div className="min-w-[280px] flex-1">
-                <div className="font-mono text-[11px] tracking-[0.14em] text-ink-3">
-                  {problem.num}
-                </div>
-                <h2 className="mt-3 max-w-[18ch] font-display text-[clamp(30px,3.4vw,44px)] font-normal leading-[1.08] tracking-[-0.01em] text-ink">
-                  {problem.title}
-                </h2>
-              </div>
-              <div className="min-w-[280px] flex-[1.3] space-y-6">
-                <div>
-                  <div className={labelClasses}>{PROBLEM_LABELS.whatIDo}</div>
-                  <p className="mt-2 max-w-[60ch] text-base leading-[1.7] text-ink-2">
-                    {problem.whatIDo}
-                  </p>
-                </div>
-                {problem.evidence && (
-                  <div>
-                    <div className="flex flex-wrap gap-x-10 gap-y-6">
-                      {problem.evidence.tiles.map((tile) => (
-                        <div
-                          key={tile.figure}
-                          className="min-w-[200px] flex-1 border-t border-rule pt-4"
-                        >
-                          <div className="font-display text-[56px] leading-none text-ink">
-                            {tile.figure}
-                          </div>
-                          <p className="mt-3 text-sm leading-[1.6] text-ink-2">{tile.text}</p>
+    <Section tone="alt" eyebrow={PROBLEMS_EYEBROW}>
+      <div className="border-t border-ink">
+        {PROBLEMS.map((problem) => (
+          <article
+            key={problem.num}
+            className="flex flex-wrap gap-x-16 gap-y-8 border-b border-rule-soft py-10 md:py-12"
+          >
+            <div className="min-w-[280px] flex-1">
+              <div className={LABEL_CLASSES}>{problem.num}</div>
+              <h2 className={`mt-3 max-w-[18ch] ${ITEM_TITLE_CLASSES}`}>{problem.title}</h2>
+              {problem.evidence && (
+                <div className="mt-8">
+                  <div className="flex flex-wrap gap-x-8 gap-y-6">
+                    {problem.evidence.tiles.map((tile) => (
+                      <div
+                        key={tile.figure}
+                        className="min-w-[150px] flex-1 border-t border-rule pt-4"
+                      >
+                        <div className="font-display text-[48px] leading-none text-ink">
+                          {tile.figure}
                         </div>
-                      ))}
-                    </div>
-                    <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-3">
-                      {problem.evidence.source}
-                    </p>
+                        <p className={`mt-3 ${SMALL_BODY_CLASSES}`}>{tile.text}</p>
+                      </div>
+                    ))}
                   </div>
-                )}
-                <div>
-                  <div className={labelClasses}>{PROBLEM_LABELS.doneBefore}</div>
-                  <p className="mt-2 max-w-[60ch] text-base leading-[1.7] text-ink-2">
-                    {problem.doneBefore}
-                  </p>
+                  <p className={`mt-4 ${LABEL_CLASSES}`}>{problem.evidence.source}</p>
                 </div>
+              )}
+            </div>
+            <div className="min-w-[280px] flex-[1.2] space-y-6">
+              <div>
+                <div className={LABEL_CLASSES}>{PROBLEM_LABELS.whatIDo}</div>
+                <p className={`mt-2 max-w-[60ch] ${BODY_CLASSES}`}>{problem.whatIDo}</p>
               </div>
-            </article>
-          ))}
-        </div>
+              <div>
+                <div className={LABEL_CLASSES}>{PROBLEM_LABELS.doneBefore}</div>
+                <p className={`mt-2 max-w-[60ch] ${BODY_CLASSES}`}>{problem.doneBefore}</p>
+              </div>
+            </div>
+          </article>
+        ))}
       </div>
-    </section>
+    </Section>
   );
 }

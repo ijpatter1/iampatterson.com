@@ -103,6 +103,35 @@ describe('HomePage composition', () => {
     expect(container.textContent).not.toMatch(/Patterson Consulting|two-day review/i);
   });
 
+  // One design system (Ian, 2026-11-03): every section is labelled by the
+  // same eyebrow, styled once, so the sections cannot drift apart again.
+  it('labels every section with one eyebrow in one style', () => {
+    const { container } = renderHome();
+    const sections = [...container.querySelectorAll('main > section')];
+    expect(sections.length).toBeGreaterThanOrEqual(5);
+    for (const section of sections.slice(1)) {
+      expect(section.querySelectorAll('[data-eyebrow]')).toHaveLength(1);
+      // The eyebrow comes first in the section, above its layout.
+      expect(section.querySelector('[data-eyebrow]')).toBe(
+        section.querySelector('div > [data-eyebrow]:first-child'),
+      );
+    }
+    const styles = new Set(
+      [...container.querySelectorAll('main [data-eyebrow]')].map((e) => e.className),
+    );
+    expect(styles.size).toBe(1);
+  });
+
+  // Each section reads as its own room: neighbouring sections never share a
+  // background, so the page needs no oversized gaps to separate them.
+  it('alternates section backgrounds', () => {
+    const { container } = renderHome();
+    const tones = [...container.querySelectorAll('main > section')].map((s) =>
+      s.className.includes('bg-paper-alt') ? 'alt' : 'paper',
+    );
+    for (let i = 1; i < tones.length; i++) expect(tones[i]).not.toBe(tones[i - 1]);
+  });
+
   // Phase 10a D2 behaviour pin (complementing the source-sniff in
   // keep-warm-wiring.test.ts): homepage render must invoke `after()`
   // exactly once with a callback that, when executed, calls the real

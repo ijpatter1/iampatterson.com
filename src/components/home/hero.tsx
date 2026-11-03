@@ -1,6 +1,7 @@
 'use client';
 
 import { EditorialButton, EditorialLink } from '@/components/chrome/editorial-button';
+import { EYEBROW_CLASSES, LABEL_CLASSES } from '@/components/home/section';
 import { useOverlay } from '@/components/overlay/overlay-context';
 import { HERO, REVIEW_HREF } from '@/lib/content/hero';
 import { trackClickCta } from '@/lib/events/track';
@@ -14,9 +15,9 @@ export function HeroEditorial() {
   };
 
   return (
-    <section className="bg-paper pb-16 pt-4 md:pb-28 md:pt-12">
+    <section className="bg-paper pb-14 pt-4 md:pb-20 md:pt-12">
       <div className="mx-auto max-w-content px-5 md:px-10">
-        <div className="flex flex-wrap justify-between gap-x-6 gap-y-1 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-3">
+        <div className={`flex flex-wrap justify-between gap-x-6 gap-y-1 ${EYEBROW_CLASSES}`}>
           <span>{HERO.eyebrowLeft}</span>
           <span>{HERO.eyebrowRight}</span>
         </div>
@@ -54,9 +55,7 @@ export function HeroEditorial() {
                 {HERO.ghostCta} →
               </EditorialButton>
             </div>
-            <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-3">
-              {HERO.capacityNote}
-            </p>
+            <p className={`mt-4 ${LABEL_CLASSES}`}>{HERO.capacityNote}</p>
           </div>
         </div>
       </div>
