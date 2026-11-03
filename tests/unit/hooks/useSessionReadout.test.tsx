@@ -78,12 +78,15 @@ describe('useSessionReadout', () => {
     });
   });
 
-  it('falls back to the cookie and the live buffer before the session has loaded', () => {
+  // Consent is read from the persisted session only. The live buffer's
+  // consent fields describe the defaults at the moment each event fired, so
+  // reading them before the session loads would show a choice as "denied".
+  it('falls back to the cookie and the live buffer for the ID and count, and waits for the session for consent', () => {
     mockEvents = [liveEvent(), liveEvent()];
     const { result } = renderHook(() => useSessionReadout());
     expect(result.current).toEqual({
       shortId: 'aaaaaa',
-      consent: { analytics: 'denied', ad: 'denied' },
+      consent: { analytics: 'pending', ad: 'pending' },
       eventCount: 2,
     });
   });
@@ -96,6 +99,50 @@ describe('useSessionReadout', () => {
     const { result } = renderHook(() => useSessionReadout());
     expect(result.current.consent).toEqual({ analytics: 'pending', ad: 'pending' });
     expect(result.current.eventCount).toBe(7);
+  });
+
+  describe('a browser sending Global Privacy Control', () => {
+    beforeEach(() => {
+      Object.defineProperty(navigator, 'globalPrivacyControl', { value: true, configurable: true });
+    });
+    afterEach(() => {
+      delete (navigator as unknown as { globalPrivacyControl?: unknown }).globalPrivacyControl;
+    });
+
+    // Advertising consent is denied by default and the site never lets it be
+    // granted for this visitor, so there is nothing pending about it. Analytics
+    // is still theirs to choose.
+    it('reads advertising as denied before the banner is answered, analytics as pending', () => {
+      mockConsent = undefined;
+      mockSessionState = persisted();
+      const { result } = renderHook(() => useSessionReadout());
+      expect(result.current.consent).toEqual({ analytics: 'pending', ad: 'denied' });
+    });
+
+    it('shows that in the LiveStrip and the proof panel, with the signal honored in the strip', () => {
+      mockConsent = undefined;
+      mockSessionState = persisted();
+      render(
+        <>
+          <LiveStrip />
+          <ProofPanel onOpen={() => {}} />
+        </>,
+      );
+      expect(screen.getByTestId('live-strip')).toHaveTextContent(
+        'analytics:pending ad:denied · Global Privacy Control honored',
+      );
+      expect(screen.getByTestId('proof-header')).toHaveTextContent('analytics:pending · ad:denied');
+    });
+
+    // The overlay's Consent tab says "honored" only once there is an event's
+    // consent state to read. The strip makes the same claim on the same terms.
+    it('does not say honored in the strip before any event has fired', () => {
+      mockConsent = undefined;
+      render(<LiveStrip />);
+      const strip = screen.getByTestId('live-strip');
+      expect(strip).toHaveTextContent('analytics:pending ad:denied');
+      expect(strip).not.toHaveTextContent('honored');
+    });
   });
 
   // The strip and the panel describe the same visitor, on the same screen.

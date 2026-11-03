@@ -5,6 +5,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import type { PipelineEvent, RoutingResult } from '@/lib/events/pipeline-schema';
+import type { SessionState } from '@/lib/session-state/types';
 
 jest.mock('@/lib/events/session', () => ({
   getSessionId: () => 'aaaaaaaa-12345678',
@@ -23,6 +24,11 @@ jest.mock('@/hooks/useLiveEvents', () => ({
 let mockConsent: 'granted' | 'denied' | undefined = 'granted';
 jest.mock('@/hooks/useAnalyticsConsent', () => ({
   useAnalyticsConsent: () => mockConsent,
+}));
+
+let mockSessionState: SessionState | null = null;
+jest.mock('@/components/session-state-provider', () => ({
+  useSessionState: () => mockSessionState,
 }));
 
 jest.mock('@/lib/events/track', () => ({
@@ -104,6 +110,7 @@ beforeEach(() => {
   mockSource = 'sse';
   mockStream = 'connected';
   mockConsent = 'granted';
+  mockSessionState = null;
 });
 
 // The panel is the page's evidence for its own claim: "this site runs the
@@ -256,7 +263,7 @@ describe('ProofPanel', () => {
       expect(rows()).toHaveLength(1);
     });
 
-    it.each(['disconnected', 'reconnecting', 'connecting'] as const)(
+    it.each(['disconnected', 'reconnecting'] as const)(
       'says so while the connection is %s and the rows are the browser\u2019s own',
       (state) => {
         mockSource = 'dataLayer';
@@ -266,6 +273,37 @@ describe('ProofPanel', () => {
         expect(screen.getByText(PROOF.panel.notConnected)).toBeInTheDocument();
       },
     );
+
+    // The first connection takes a moment on every page load. Saying "not
+    // connected" during it would flash the note at nearly every visitor.
+    it('does not say so while the stream is still connecting', () => {
+      mockSource = 'dataLayer';
+      mockStream = 'connecting';
+      mockEvents = [makeEvent('page_view', [], 'dl-1-1')];
+      renderPanel();
+      expect(screen.queryByText(PROOF.panel.notConnected)).not.toBeInTheDocument();
+    });
+
+    // Once the stream has delivered, the panel keeps showing its rows. If the
+    // stream then drops, those rows stop updating, and the panel says so
+    // rather than passing them off as live.
+    it.each(['disconnected', 'reconnecting'] as const)(
+      'says the stream dropped when it is %s after delivering rows',
+      (state) => {
+        mockSource = 'sse';
+        mockStream = state;
+        mockEvents = [makeEvent('page_view', streamRouting(true))];
+        renderPanel();
+        expect(screen.getByText(PROOF.panel.streamDropped)).toBeInTheDocument();
+        expect(screen.queryByText(PROOF.panel.notConnected)).not.toBeInTheDocument();
+      },
+    );
+
+    it('does not say the stream dropped while it is connected', () => {
+      mockEvents = [makeEvent('page_view', streamRouting(true))];
+      renderPanel();
+      expect(screen.queryByText(PROOF.panel.streamDropped)).not.toBeInTheDocument();
+    });
 
     it('does not say so while the stream is connected', () => {
       mockEvents = [makeEvent('page_view', streamRouting(true))];
@@ -300,6 +338,11 @@ describe('ProofPanel', () => {
     });
 
     it('shows the session suffix, the consent pair and the event count', () => {
+      mockSessionState = {
+        session_id: 'aaaaaaaa-12345678',
+        events_fired: { page_view: 1, scroll_depth: 1 },
+        consent_snapshot: { analytics: 'granted', marketing: 'denied', preferences: 'granted' },
+      } as unknown as SessionState;
       mockEvents = [makeEvent('page_view', streamRouting(true)), makeEvent('scroll_depth', [])];
       renderPanel();
       const header = screen.getByTestId('proof-header');
@@ -307,6 +350,16 @@ describe('ProofPanel', () => {
       expect(header).toHaveTextContent('Consent analytics:granted · ad:denied');
       expect(header).toHaveTextContent('2 events');
     });
+  });
+
+  // The rows can be wider than a phone. A region that scrolls must be
+  // reachable from the keyboard, and it carries the header as its name.
+  it('lets a keyboard user reach and scroll the rows', () => {
+    mockEvents = [makeEvent('page_view', streamRouting(true))];
+    renderPanel();
+    const scroller = screen.getByTestId('proof-rows');
+    expect(scroller).toHaveAttribute('tabindex', '0');
+    expect(scroller).toHaveAccessibleName(/Session 345678/);
   });
 
   it('opens on a click anywhere on it', async () => {

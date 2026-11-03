@@ -12,7 +12,7 @@ import { LIVE_STRIP } from '@/lib/content/proof';
  * keyframe.
  */
 export function LiveStrip() {
-  const { shortId, consent } = useSessionReadout();
+  const { shortId, consent, eventCount } = useSessionReadout();
   const { events, source } = useLiveEvents();
   const gpcEnabled = useGlobalPrivacyControl();
 
@@ -30,11 +30,12 @@ export function LiveStrip() {
     // A visitor who sent Global Privacy Control sees here, on every page and
     // without opening the overlay, that the site honored it. "Honored" is a
     // claim about the consent applied, so it is made only while advertising
-    // consent reads denied.
+    // consent reads denied and, as in the overlay's Consent tab, once an
+    // event has fired under it.
     {
       label: 'CONSENT',
       value:
-        gpcEnabled && consent.ad === 'denied'
+        gpcEnabled && consent.ad === 'denied' && eventCount > 0
           ? `${consentLabel} · ${LIVE_STRIP.gpcHonored}`
           : consentLabel,
     },

@@ -1,5 +1,7 @@
 'use client';
 
+import { useId } from 'react';
+
 import { useAnalyticsConsent } from '@/hooks/useAnalyticsConsent';
 import { useLiveEvents } from '@/hooks/useLiveEvents';
 import { useSessionReadout } from '@/hooks/useSessionReadout';
@@ -108,8 +110,13 @@ export function ProofPanel({ onOpen }: ProofPanelProps) {
 
   // A visitor who declined is shown data-layer events by design. Only a
   // visitor who allowed analytics and has no working stream is "not connected".
-  const notConnected =
-    analyticsConsent === 'granted' && !fromStream && stream !== 'connected' && visible.length > 0;
+  // The first connection is not counted as a failure while it is under way.
+  const streamDown = stream === 'off' || stream === 'reconnecting' || stream === 'disconnected';
+  const granted = analyticsConsent === 'granted' && visible.length > 0;
+  const notConnected = granted && !fromStream && streamDown;
+  // Stream rows stay on screen after the stream drops; they are no longer live.
+  const streamDropped = granted && fromStream && streamDown;
+  const headerId = useId();
 
   let body;
   if (!hasChosen) {
@@ -137,6 +144,7 @@ export function ProofPanel({ onOpen }: ProofPanelProps) {
       className="cursor-pointer rounded-sm bg-u-paper p-5 font-mono text-xs leading-relaxed text-u-ink"
     >
       <div
+        id={headerId}
         data-testid="proof-header"
         className="flex flex-wrap gap-x-4 gap-y-1 border-b border-u-rule pb-3 text-[10px] uppercase tracking-[0.14em] text-u-ink-3"
       >
@@ -153,7 +161,17 @@ export function ProofPanel({ onOpen }: ProofPanelProps) {
       {notConnected && (
         <p className="border-b border-u-rule-soft py-2 text-u-ink-3">{PROOF.panel.notConnected}</p>
       )}
-      <div className="overflow-x-auto pt-2">{body}</div>
+      {streamDropped && (
+        <p className="border-b border-u-rule-soft py-2 text-u-ink-3">{PROOF.panel.streamDropped}</p>
+      )}
+      <div
+        data-testid="proof-rows"
+        tabIndex={0}
+        aria-labelledby={headerId}
+        className="overflow-x-auto pt-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-current"
+      >
+        {body}
+      </div>
     </div>
   );
 }

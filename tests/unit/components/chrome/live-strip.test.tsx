@@ -4,6 +4,7 @@
 import { render, screen } from '@testing-library/react';
 
 import type { PipelineEvent } from '@/lib/events/pipeline-schema';
+import type { SessionState } from '@/lib/session-state/types';
 
 jest.mock('@/lib/events/session', () => ({
   getSessionId: () => 'aaaaaaaa-12345678',
@@ -21,6 +22,11 @@ jest.mock('@/hooks/useLiveEvents', () => ({
 let mockConsent: 'granted' | 'denied' | undefined = 'granted';
 jest.mock('@/hooks/useAnalyticsConsent', () => ({
   useAnalyticsConsent: () => mockConsent,
+}));
+
+let mockSessionState: SessionState | null = null;
+jest.mock('@/components/session-state-provider', () => ({
+  useSessionState: () => mockSessionState,
 }));
 
 import { LiveStrip } from '@/components/chrome/live-strip';
@@ -52,10 +58,20 @@ function makeEvent(
   };
 }
 
+/** The persisted session the strip reads consent from. */
+function session(analytics: 'granted' | 'denied', marketing: 'granted' | 'denied'): SessionState {
+  return {
+    session_id: 'aaaaaaaa-12345678',
+    events_fired: { page_view: 1 },
+    consent_snapshot: { analytics, marketing, preferences: 'granted' },
+  } as unknown as SessionState;
+}
+
 beforeEach(() => {
   mockEvents = [];
   mockSource = 'dataLayer';
   mockConsent = 'granted';
+  mockSessionState = null;
 });
 
 function item(label: string): string {
@@ -110,8 +126,8 @@ describe('LiveStrip', () => {
     expect(item('CONSENT')).toBe('analytics:pending ad:pending');
   });
 
-  it('shows consent from the most recent event', () => {
-    mockEvents = [makeEvent('granted', 'denied')];
+  it("shows consent from the visitor's session", () => {
+    mockSessionState = session('granted', 'denied');
     render(<LiveStrip />);
     expect(item('CONSENT')).toBe('analytics:granted ad:denied');
   });
@@ -162,7 +178,7 @@ describe('LiveStrip, Global Privacy Control', () => {
 
   it('says the signal is honored when the browser sends it and advertising consent is denied', () => {
     Object.defineProperty(navigator, 'globalPrivacyControl', { value: true, configurable: true });
-    mockEvents = [makeEvent('granted', 'denied')];
+    mockSessionState = session('granted', 'denied');
     render(<LiveStrip />);
     expect(item('CONSENT')).toBe('analytics:granted ad:denied · Global Privacy Control honored');
   });
@@ -172,13 +188,13 @@ describe('LiveStrip, Global Privacy Control', () => {
   // was honored.
   it('does not say honored beside granted advertising consent', () => {
     Object.defineProperty(navigator, 'globalPrivacyControl', { value: true, configurable: true });
-    mockEvents = [makeEvent('granted', 'granted')];
+    mockSessionState = session('granted', 'granted');
     render(<LiveStrip />);
     expect(screen.queryByText(/honored/)).not.toBeInTheDocument();
   });
 
   it('does not mention the signal when the browser sends none', () => {
-    mockEvents = [makeEvent('granted', 'denied')];
+    mockSessionState = session('granted', 'denied');
     render(<LiveStrip />);
     expect(screen.queryByText(/Global Privacy Control/)).not.toBeInTheDocument();
   });
