@@ -24,7 +24,7 @@ jest.mock('@/hooks/useDataLayerEvents', () => ({
   }),
 }));
 
-import { useLiveEvents } from '@/hooks/useLiveEvents';
+import { useLiveEventsSource } from '@/hooks/useLiveEvents';
 
 function makeEvent(id: string, name: string): PipelineEvent {
   return {
@@ -57,7 +57,7 @@ describe('useLiveEvents', () => {
 
   it('falls back to dataLayer events when SSE URL is unset', () => {
     mockDlEvents = [makeEvent('dl-1', 'page_view')];
-    const { result } = renderHook(() => useLiveEvents());
+    const { result } = renderHook(() => useLiveEventsSource());
     expect(result.current.source).toBe('dataLayer');
     expect(result.current.events).toHaveLength(1);
     expect(result.current.events[0].pipeline_id).toBe('dl-1');
@@ -67,7 +67,7 @@ describe('useLiveEvents', () => {
     process.env.NEXT_PUBLIC_EVENT_STREAM_URL = 'https://events.example.com';
     mockSseEvents = [];
     mockDlEvents = [makeEvent('dl-1', 'page_view')];
-    const { result } = renderHook(() => useLiveEvents());
+    const { result } = renderHook(() => useLiveEventsSource());
     expect(result.current.source).toBe('dataLayer');
     expect(result.current.events[0].pipeline_id).toBe('dl-1');
   });
@@ -76,7 +76,7 @@ describe('useLiveEvents', () => {
     process.env.NEXT_PUBLIC_EVENT_STREAM_URL = 'https://events.example.com';
     mockSseEvents = [makeEvent('sse-1', 'page_view')];
     mockDlEvents = [makeEvent('dl-1', 'scroll_depth')];
-    const { result } = renderHook(() => useLiveEvents());
+    const { result } = renderHook(() => useLiveEventsSource());
     expect(result.current.source).toBe('sse');
     expect(result.current.events[0].pipeline_id).toBe('sse-1');
   });
@@ -85,7 +85,7 @@ describe('useLiveEvents', () => {
     process.env.NEXT_PUBLIC_EVENT_STREAM_URL = 'https://events.example.com';
     mockSseEvents = [makeEvent('sse-1', 'page_view')];
     mockDlEvents = [makeEvent('dl-1', 'scroll_depth')];
-    const { result, rerender } = renderHook(() => useLiveEvents());
+    const { result, rerender } = renderHook(() => useLiveEventsSource());
     expect(result.current.source).toBe('sse');
     expect(result.current.events[0].pipeline_id).toBe('sse-1');
 
@@ -127,7 +127,7 @@ describe('useLiveEvents', () => {
       makeEvent('dl-4', 'click_cta'),
     ];
 
-    const { result } = renderHook(() => useLiveEvents({ analyticsConsent: 'denied' }));
+    const { result } = renderHook(() => useLiveEventsSource({ analyticsConsent: 'denied' }));
 
     expect(result.current.source).toBe('dataLayer');
     expect(result.current.events.length).toBeGreaterThan(1);
@@ -141,7 +141,7 @@ describe('useLiveEvents', () => {
     mockSseEvents = [makeEvent('sse-1', 'page_view')];
     mockDlEvents = [makeEvent('dl-1', 'scroll_depth')];
 
-    const { result } = renderHook(() => useLiveEvents({ analyticsConsent: 'granted' }));
+    const { result } = renderHook(() => useLiveEventsSource({ analyticsConsent: 'granted' }));
 
     expect(result.current.source).toBe('sse');
     expect(result.current.events[0].pipeline_id).toBe('sse-1');
@@ -166,7 +166,7 @@ describe('useLiveEvents', () => {
     // Mount with consent unknown — the latch flips on the exempt event.
     const { result, rerender } = renderHook(
       ({ consent }: { consent?: 'granted' | 'denied' }) =>
-        useLiveEvents({ analyticsConsent: consent }),
+        useLiveEventsSource({ analyticsConsent: consent }),
       { initialProps: { consent: undefined as 'granted' | 'denied' | undefined } },
     );
     expect(result.current.source).toBe('sse');
@@ -185,7 +185,7 @@ describe('useLiveEvents', () => {
     mockSseEvents = [makeEvent('sse-1', 'page_view')];
     mockDlEvents = [makeEvent('dl-1', 'scroll_depth')];
 
-    const { result } = renderHook(() => useLiveEvents());
+    const { result } = renderHook(() => useLiveEventsSource());
 
     expect(result.current.source).toBe('sse');
   });

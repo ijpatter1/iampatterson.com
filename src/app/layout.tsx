@@ -9,6 +9,7 @@ import { SessionStateProvider } from '@/components/session-state-provider';
 import { PageEngagementTracker } from '@/components/page-engagement-tracker';
 import { RouteTracker } from '@/components/route-tracker';
 import { ScrollDepthTracker } from '@/components/scroll-depth-tracker';
+import { LiveEventsProvider } from '@/components/live-events-provider';
 import { CookiebotScript } from '@/components/scripts/cookiebot';
 import { CookiebotConsentListener } from '@/components/scripts/cookiebot-consent';
 import { GtmScript, GtmNoscript } from '@/components/scripts/gtm';
@@ -110,13 +111,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <PageEngagementTracker />
         <WebVitalsReporter />
         <SessionStateProvider>
-          <OverlayProvider>
-            <Header />
-            <div className="flex-1">{children}</div>
-            <FooterSlot />
-            <AmbientBubblesWrapper />
-            <OverlayView />
-          </OverlayProvider>
+          <LiveEventsProvider>
+            <OverlayProvider>
+              <Header />
+              <div className="flex-1">{children}</div>
+              <FooterSlot />
+              <AmbientBubblesWrapper />
+              <OverlayView />
+            </OverlayProvider>
+          </LiveEventsProvider>
         </SessionStateProvider>
       </body>
     </html>
