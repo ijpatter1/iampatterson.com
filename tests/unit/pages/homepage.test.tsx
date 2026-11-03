@@ -105,8 +105,8 @@ describe('HomePage composition', () => {
 
   // One design system (Ian, 2026-11-03): every section after the hero goes
   // through the shared Section frame, so its eyebrow comes first and is the
-  // shared one. A section that styles its own label fails here.
-  it('labels every section with one eyebrow in one style', () => {
+  // shared one. A section that skips the shared frame fails here.
+  it('frames every section with the shared eyebrow first', () => {
     const { container } = renderHome();
     const sections = [...container.querySelectorAll('main > section')];
     expect(sections.length).toBeGreaterThanOrEqual(5);
