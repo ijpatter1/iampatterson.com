@@ -9,7 +9,14 @@ import { HERO, REVIEW_HREF } from '@/lib/content/hero';
 import { NETWORKS, NETWORKS_LABEL } from '@/lib/content/networks';
 import { PROBLEMS, PROBLEMS_EYEBROW, PROBLEM_LABELS } from '@/lib/content/problems';
 import { LIVE_STRIP, PROOF } from '@/lib/content/proof';
-import { HOW_WE_WORK, REVIEW_COLUMNS, REVIEW_PAGE_HREF, REVIEW_PRICE } from '@/lib/content/review';
+import {
+  BOOK_REVIEW_HREF,
+  HOW_WE_WORK,
+  REVIEW_COLUMNS,
+  REVIEW_PAGE_HREF,
+  REVIEW_PRICE,
+} from '@/lib/content/review';
+import { REVIEW_PAGE } from '@/lib/content/review-page';
 import { CUSTOMER_FIGURES, OWNERSHIP_FIGURES, TRUST_FIGURES } from '@/lib/content/stats';
 
 function strings(value: unknown): string[] {
@@ -29,6 +36,7 @@ const ALL_COPY = strings([
   PROBLEMS,
   HOW_WE_WORK,
   REVIEW_COLUMNS,
+  REVIEW_PAGE,
   DONE_WHERE,
   NETWORKS_LABEL,
   NETWORKS,
@@ -81,8 +89,12 @@ describe('the priced first step', () => {
     expect(ALL_COPY.filter((s) => /two-day|\bdays?\b|\bhours?\b|fixed price/i.test(s))).toEqual([]);
   });
 
-  it('sends the review calls to action to the contact page with the review intent', () => {
-    expect(REVIEW_HREF).toBe('/contact?intent=review');
+  // 15.10: every review link goes to the page that sets the review out; only
+  // the booking buttons go to the contact page, with the review intent.
+  it('sends every review call to action to the review page, and booking to contact', () => {
+    expect(REVIEW_HREF).toBe('/review');
+    expect(REVIEW_HREF).toBe(REVIEW_PAGE_HREF);
+    expect(BOOK_REVIEW_HREF).toBe('/contact?intent=review');
   });
 
   it('links the review step to the page that sets the review out', () => {
@@ -205,7 +217,10 @@ describe('homepage content shape', () => {
     expect(TRUST_FIGURES.tiles.map((t) => t.figure)).toEqual(['36%', '49%']);
     expect(TRUST_FIGURES.source).toBe('Sources: MMA, April 2026; IAB, February 2026');
     expect(OWNERSHIP_FIGURES.tiles.map((t) => t.figure)).toEqual(['52%', '20%']);
-    expect(OWNERSHIP_FIGURES.source).toBe('Sources: Supermetrics, 2026; MMA, April 2026');
+    // Vendor research is labelled on the page (Ian, 2026-11-03).
+    expect(OWNERSHIP_FIGURES.source).toBe(
+      'Sources: Supermetrics (vendor survey), 2026; MMA, April 2026',
+    );
   });
 
   // "4 platforms to 14" is said once, under ownership.
@@ -215,7 +230,7 @@ describe('homepage content shape', () => {
 
   it("puts Google's two figures, with their source, under the first question", () => {
     expect(CUSTOMER_FIGURES.tiles.map((t) => t.figure)).toEqual(['11%', '26%']);
-    expect(CUSTOMER_FIGURES.source).toBe('Source: Google, September 2026');
+    expect(CUSTOMER_FIGURES.source).toBe('Source: Google (vendor data), September 2026');
     expect(PROBLEMS[0].evidence).toBe(CUSTOMER_FIGURES);
   });
 

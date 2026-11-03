@@ -15,6 +15,9 @@ import type { ReactNode } from 'react';
  */
 export const EYEBROW_CLASSES = 'font-mono text-xs uppercase tracking-[0.14em] text-ink-2';
 export const LABEL_CLASSES = 'font-mono text-[11px] uppercase tracking-[0.14em] text-ink-3';
+/** A page's own h1, on pages other than the homepage. */
+export const PAGE_TITLE_CLASSES =
+  'font-display text-[clamp(52px,7vw,104px)] font-normal leading-[0.95] tracking-[-0.03em] text-ink';
 export const SECTION_TITLE_CLASSES =
   'font-display text-[clamp(36px,4.5vw,64px)] font-normal leading-[1.02] tracking-[-0.02em] text-ink';
 export const ITEM_TITLE_CLASSES =

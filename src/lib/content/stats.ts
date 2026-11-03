@@ -24,7 +24,7 @@ export const CUSTOMER_FIGURES: Evidence = {
       text: 'more incremental ROAS on average for advertisers who connect offline and app data through Data Manager.',
     },
   ],
-  source: 'Source: Google, September 2026',
+  source: 'Source: Google (vendor data), September 2026',
 };
 
 /**
@@ -65,5 +65,5 @@ export const OWNERSHIP_FIGURES: Evidence = {
       text: 'of senior marketers say their customer data is fully unified.',
     },
   ],
-  source: 'Sources: Supermetrics, 2026; MMA, April 2026',
+  source: 'Sources: Supermetrics (vendor survey), 2026; MMA, April 2026',
 };

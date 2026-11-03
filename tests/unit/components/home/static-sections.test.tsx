@@ -121,7 +121,7 @@ describe('HowWeWork', () => {
     expect(trackClickCta).toHaveBeenCalledWith(text, 'review');
   });
 
-  it('sends "Start with a review" to the contact page with the review intent, and tracks it', async () => {
+  it('sends "Start with a review" to the review page, and tracks it', async () => {
     render(<HowWeWork />);
     const link = screen.getByRole('link', { name: HOW_WE_WORK.cta });
     expect(link).toHaveAttribute('href', REVIEW_HREF);

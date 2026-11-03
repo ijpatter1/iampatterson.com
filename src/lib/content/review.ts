@@ -1,8 +1,11 @@
 /** The review's starting price. One field, so a change is one line. */
 export const REVIEW_PRICE = '$2,500';
 
-/** The page that sets the review out (15.10). */
+/** The page that sets the review out (15.10). Every review link goes here. */
 export const REVIEW_PAGE_HREF = '/review';
+
+/** Where the booking buttons go: the contact page, with the review intent. */
+export const BOOK_REVIEW_HREF = '/contact?intent=review';
 
 export interface WorkStep {
   num: '01' | '02' | '03';

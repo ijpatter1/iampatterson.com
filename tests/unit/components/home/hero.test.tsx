@@ -74,7 +74,7 @@ describe('HeroEditorial', () => {
     expect(screen.getByText(HERO.capacityNote)).toBeInTheDocument();
   });
 
-  it('sends the primary call to action to the contact page with the review intent, and tracks it', async () => {
+  it('sends the primary call to action to the review page, and tracks it', async () => {
     renderHero();
     const link = screen.getByRole('link', { name: HERO.primaryCta });
     expect(link).toHaveAttribute('href', REVIEW_HREF);

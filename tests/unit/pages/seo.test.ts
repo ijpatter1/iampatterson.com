@@ -58,6 +58,7 @@ describe('Phase 10d D4 — SEO', () => {
       { path: '@/app/services/layout', name: 'services' },
       { path: '@/app/about/layout', name: 'about' },
       { path: '@/app/contact/layout', name: 'contact' },
+      { path: '@/app/review/layout', name: 'review' },
       { path: '@/app/demo/ecommerce/layout', name: 'ecommerce demo' },
     ];
 
@@ -137,6 +138,7 @@ describe('Phase 10d D4 — SEO', () => {
         'https://iampatterson.com/services',
         'https://iampatterson.com/about',
         'https://iampatterson.com/contact',
+        'https://iampatterson.com/review',
         'https://iampatterson.com/demo',
         'https://iampatterson.com/demo/ecommerce',
         'https://iampatterson.com/claudish',
