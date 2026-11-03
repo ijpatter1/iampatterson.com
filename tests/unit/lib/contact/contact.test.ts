@@ -62,6 +62,23 @@ describe('validateInquiry', () => {
     expect(validateInquiry({ ...ok, message: lines }).ok).toBe(true);
   });
 
+  // CodeQL flagged the old pattern as backtracking on input like "!@!." with
+  // many repeats of "!.". The hand check answers in linear time.
+  it('answers at once for an address built to make a regex backtrack', () => {
+    const hostile = '!@!.' + '!.'.repeat(100_000);
+    const start = Date.now();
+    expect(validateInquiry({ ...ok, email: hostile }).ok).toBe(false);
+    expect(Date.now() - start).toBeLessThan(100);
+  });
+
+  it.each(['a@b.co', 'first.last+tag@sub.example.org'])('accepts %s', (email) => {
+    expect(validateInquiry({ ...ok, email }).ok).toBe(true);
+  });
+
+  it.each(['a@b', '@b.co', 'a@@b.co', 'a@b.', 'a b@c.co'])('rejects %s', (email) => {
+    expect(validateInquiry({ ...ok, email }).ok).toBe(false);
+  });
+
   it('rejects a body that is not an object', () => {
     expect(validateInquiry('hello').ok).toBe(false);
   });

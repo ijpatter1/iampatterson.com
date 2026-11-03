@@ -13,9 +13,20 @@ export type ValidationResult =
   | { ok: false; field: string };
 
 const LIMITS = { ...CONTACT_CONFIG.limits, sessionState: 4000, token: 4000 } as const;
-// Deliberately loose: the browser's own type="email" check runs first, and the
-// address only has to be good enough to reply to.
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/**
+ * Deliberately loose: the browser's own type="email" check runs first, and the
+ * address only has to be good enough to reply to. One "@", no whitespace, and a
+ * dot inside the domain. Checked by hand rather than by a regular expression,
+ * so no input can make it backtrack.
+ */
+function looksLikeEmail(email: string): boolean {
+  if (/\s/.test(email)) return false;
+  const at = email.indexOf('@');
+  if (at < 1 || at !== email.lastIndexOf('@')) return false;
+  const domain = email.slice(at + 1);
+  const dot = domain.lastIndexOf('.');
+  return dot > 0 && dot < domain.length - 1;
+}
 const LINE_BREAK = /[\r\n]/;
 
 function text(value: unknown): string {
@@ -38,7 +49,7 @@ export function validateInquiry(input: unknown): ValidationResult {
   // header of the visitor's choosing.
   if (!name || name.length > LIMITS.name || LINE_BREAK.test(name))
     return { ok: false, field: 'name' };
-  if (!EMAIL.test(email) || email.length > LIMITS.email) return { ok: false, field: 'email' };
+  if (email.length > LIMITS.email || !looksLikeEmail(email)) return { ok: false, field: 'email' };
   if (!message || message.length > LIMITS.message) return { ok: false, field: 'message' };
   if (!token || token.length > LIMITS.token) return { ok: false, field: 'token' };
   if (sessionState.length > LIMITS.sessionState) return { ok: false, field: 'session_state' };
