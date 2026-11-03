@@ -1,4 +1,4 @@
-import { BUDGET_FIGURES, OWNERSHIP_FIGURES, TRUST_FIGURES, type Evidence } from './stats';
+import { CUSTOMER_FIGURES, OWNERSHIP_FIGURES, TRUST_FIGURES, type Evidence } from './stats';
 
 export interface Problem {
   num: '01' | '02' | '03';
@@ -21,7 +21,7 @@ export const PROBLEMS: Problem[] = [
       'Conversions from the server, and the ones the browser never sees: renewals, billing-system orders, deals that close in your CRM, each with its value, flow back to the ad platforms with consent. Meta and Google Conversions APIs, enhanced conversions, offline conversions through Data Manager.',
     doneBefore:
       'AdZeta, 2026: predicted lifetime value sent to Google, Meta and TikTok, so their bidding goes after the customers who stick and repurchase. Meta, LinkedIn and Reddit Conversions APIs through server-side GTM at Allied Global Marketing, 2025.',
-    evidence: BUDGET_FIGURES,
+    evidence: CUSTOMER_FIGURES,
   },
   {
     num: '02',
@@ -38,7 +38,7 @@ export const PROBLEMS: Problem[] = [
     whatIDo:
       "Your paid media and sales data in accounts you own: the warehouse, the server container and the reports built on them. Adding an ad platform's Conversions API becomes a change your team makes in a container it controls, not a request in the developer queue; I set it up and show your team how. The same data feeds your reporting and your audiences, and consent is wired in once, so every new destination follows it.",
     doneBefore:
-      "At UP, the paid program moved through 14 ad platforms in three years, each receiving conversions and audiences from systems I owned. OneTrust across the streaming service, as the legal team's contact. This site runs the same setup: open the overlay and watch it enforce your choice.",
+      "At UP, the paid program moved through 14 ad platforms in three years, each receiving conversions and audiences from systems I owned. OneTrust across the streaming service, as the legal team's contact. Cookiebot and consent mode on this site: open the overlay and watch it enforce your choice.",
     evidence: OWNERSHIP_FIGURES,
   },
 ];

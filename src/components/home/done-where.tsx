@@ -1,6 +1,7 @@
 import {
   BODY_CLASSES,
   CARD_TITLE_CLASSES,
+  CHIP_CLASSES,
   LABEL_CLASSES,
   SMALL_BODY_CLASSES,
   Section,
@@ -28,10 +29,7 @@ export function DoneWhere() {
         </span>
         <ul aria-labelledby="networks-label" className="flex flex-wrap gap-2">
           {NETWORKS.map((network) => (
-            <li
-              key={network}
-              className="rounded-sm border border-rule-soft px-3 py-1.5 font-mono text-[11px] text-ink-2"
-            >
+            <li key={network} className={CHIP_CLASSES}>
               {network}
             </li>
           ))}

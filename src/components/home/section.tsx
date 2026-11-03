@@ -22,6 +22,15 @@ export const ITEM_TITLE_CLASSES =
 export const CARD_TITLE_CLASSES = 'font-display text-2xl font-normal leading-tight text-ink';
 export const BODY_CLASSES = 'text-base leading-[1.7] text-ink-2';
 export const SMALL_BODY_CLASSES = 'text-sm leading-[1.6] text-ink-2';
+/** A label that carries a fact the reader needs, like the price: the label recipe in full ink. */
+export const LABEL_STRONG_CLASSES = 'font-mono text-[11px] uppercase tracking-[0.14em] text-ink';
+/** The banner line under each step's title. */
+export const STEP_LINE_CLASSES = 'font-display text-xl italic leading-snug text-ink';
+/** A sourced figure's numeral. */
+export const STAT_FIGURE_CLASSES = 'font-display text-[48px] leading-none text-ink';
+/** A plain-text chip, like a network's name. */
+export const CHIP_CLASSES =
+  'rounded-sm border border-rule-soft px-3 py-1.5 font-mono text-[11px] text-ink-2';
 
 /** Vertical padding shared by every homepage section; the hero takes the bottom half. */
 export const SECTION_PADDING_TOP = 'pt-14 md:pt-20';

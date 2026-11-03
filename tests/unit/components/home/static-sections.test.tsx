@@ -14,7 +14,7 @@ import { REVIEW_HREF } from '@/lib/content/hero';
 import { NETWORKS, NETWORKS_LABEL } from '@/lib/content/networks';
 import { PROBLEMS, PROBLEMS_EYEBROW, PROBLEM_LABELS } from '@/lib/content/problems';
 import { HOW_WE_WORK, REVIEW_PAGE_HREF, REVIEW_PRICE } from '@/lib/content/review';
-import { BUDGET_FIGURES } from '@/lib/content/stats';
+import { CUSTOMER_FIGURES } from '@/lib/content/stats';
 
 jest.mock('@/lib/events/track', () => ({
   trackClickCta: jest.fn(),
@@ -67,12 +67,12 @@ describe('Problems', () => {
     const first = screen
       .getByRole('heading', { level: 2, name: PROBLEMS[0].title })
       .closest('article')!;
-    for (const tile of BUDGET_FIGURES.tiles) {
+    for (const tile of CUSTOMER_FIGURES.tiles) {
       expect(within(first).getByText(tile.figure)).toBeInTheDocument();
       expect(within(first).getByText(tile.text)).toBeInTheDocument();
     }
-    expect(within(first).getByText(BUDGET_FIGURES.source)).toBeInTheDocument();
-    expect(screen.getAllByText(BUDGET_FIGURES.source)).toHaveLength(1);
+    expect(within(first).getByText(CUSTOMER_FIGURES.source)).toBeInTheDocument();
+    expect(screen.getAllByText(CUSTOMER_FIGURES.source)).toHaveLength(1);
   });
 
   it('numbers the rows', () => {

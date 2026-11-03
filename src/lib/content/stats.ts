@@ -13,15 +13,15 @@ export interface Evidence {
  * know who our best customers are?") since 2026-11-03, when Ian dropped the "Why it
  * matters" section. Both are Google's; the source line stays with them.
  */
-export const BUDGET_FIGURES: Evidence = {
+export const CUSTOMER_FIGURES: Evidence = {
   tiles: [
     {
       figure: '11%',
-      text: 'more Search conversions for advertisers using enhanced conversions, against standard imports.',
+      text: 'more Search conversions on average for advertisers using enhanced conversions, against standard conversion imports.',
     },
     {
       figure: '26%',
-      text: 'more incremental ROAS for advertisers who connect offline and app data through Data Manager.',
+      text: 'more incremental ROAS on average for advertisers who connect offline and app data through Data Manager.',
     },
   ],
   source: 'Source: Google, September 2026',
@@ -42,7 +42,7 @@ export const TRUST_FIGURES: Evidence = {
     },
     {
       figure: '49%',
-      text: 'of measurement decision-makers expect AI accuracy and transparency to be a significant or critical concern within two years.',
+      text: 'of senior planning and analytics leads expect AI accuracy and transparency to be a significant or critical measurement concern within two years.',
     },
   ],
   source: 'Sources: MMA, April 2026; IAB, February 2026',

@@ -31,7 +31,7 @@ export const HOW_WE_WORK = {
       num: '02',
       label: 'Build',
       line: 'Data you own, and AI your team can rely on',
-      body: "A build with a fixed scope. Before it starts, we agree how we'll measure what it changes. Conversions flow back to the ad platforms with consent, your paid media and sales data lands in accounts you own, and then the AI: your team asks about spend and sales, and checks the answers in data they trust. I control what the AI can see and change, and who signs off on its changes.",
+      body: "A build with a fixed scope. Before it starts, we agree how we'll measure what it changes. Conversions flow back to the ad platforms with consent, your paid media and sales data lands in accounts you own, and then the AI: your team asks about spend and sales, and checks the answers in data they trust. I set the rules for what the AI can see and change, and who signs off on its changes.",
     },
     {
       num: '03',

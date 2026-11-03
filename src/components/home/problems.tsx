@@ -3,6 +3,7 @@ import {
   ITEM_TITLE_CLASSES,
   LABEL_CLASSES,
   SMALL_BODY_CLASSES,
+  STAT_FIGURE_CLASSES,
   Section,
 } from '@/components/home/section';
 import { PROBLEMS, PROBLEMS_EYEBROW, PROBLEM_LABELS } from '@/lib/content/problems';
@@ -32,9 +33,7 @@ export function Problems() {
                         key={tile.figure}
                         className="min-w-[150px] flex-1 border-t border-rule pt-4"
                       >
-                        <div className="font-display text-[48px] leading-none text-ink">
-                          {tile.figure}
-                        </div>
+                        <div className={STAT_FIGURE_CLASSES}>{tile.figure}</div>
                         <p className={`mt-3 ${SMALL_BODY_CLASSES}`}>{tile.text}</p>
                       </div>
                     ))}

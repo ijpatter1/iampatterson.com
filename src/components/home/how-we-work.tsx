@@ -6,8 +6,10 @@ import { EditorialLink } from '@/components/chrome/editorial-button';
 import {
   ITEM_TITLE_CLASSES,
   LABEL_CLASSES,
+  LABEL_STRONG_CLASSES,
   SECTION_TITLE_CLASSES,
   SMALL_BODY_CLASSES,
+  STEP_LINE_CLASSES,
   Section,
 } from '@/components/home/section';
 import { REVIEW_HREF } from '@/lib/content/hero';
@@ -27,15 +29,11 @@ export function HowWeWork() {
               <span className={`block ${LABEL_CLASSES}`}>{step.num}</span>{' '}
               <span className="mt-3 block">{step.label}</span>
             </h3>
-            <p className="mt-3 font-display text-xl italic leading-snug text-ink">{step.line}</p>
+            <p className={`mt-3 ${STEP_LINE_CLASSES}`}>{step.line}</p>
             <p className={`mt-4 ${SMALL_BODY_CLASSES}`}>{step.body}</p>
             {(step.price || step.link) && (
               <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2">
-                {step.price && (
-                  <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink">
-                    {step.price}
-                  </span>
-                )}
+                {step.price && <span className={LABEL_STRONG_CLASSES}>{step.price}</span>}
                 {step.link && (
                   <Link
                     href={step.link.href}

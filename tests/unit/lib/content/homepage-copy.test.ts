@@ -10,7 +10,7 @@ import { NETWORKS, NETWORKS_LABEL } from '@/lib/content/networks';
 import { PROBLEMS, PROBLEMS_EYEBROW, PROBLEM_LABELS } from '@/lib/content/problems';
 import { LIVE_STRIP, PROOF } from '@/lib/content/proof';
 import { HOW_WE_WORK, REVIEW_COLUMNS, REVIEW_PAGE_HREF, REVIEW_PRICE } from '@/lib/content/review';
-import { BUDGET_FIGURES, OWNERSHIP_FIGURES, TRUST_FIGURES } from '@/lib/content/stats';
+import { CUSTOMER_FIGURES, OWNERSHIP_FIGURES, TRUST_FIGURES } from '@/lib/content/stats';
 
 function strings(value: unknown): string[] {
   if (typeof value === 'string') return [value];
@@ -21,7 +21,7 @@ function strings(value: unknown): string[] {
 
 const ALL_COPY = strings([
   HERO,
-  BUDGET_FIGURES,
+  CUSTOMER_FIGURES,
   TRUST_FIGURES,
   OWNERSHIP_FIGURES,
   PROBLEMS_EYEBROW,
@@ -104,7 +104,10 @@ describe('how teams work with me', () => {
   // Build is where the AI is offered, so it says who controls it.
   it('says what the AI does and who controls it', () => {
     expect(HOW_WE_WORK.steps[1].body).toContain('your team asks about spend and sales');
-    expect(HOW_WE_WORK.steps[1].body).toContain('I control what the AI can see and change');
+    // The profile's wording: governance the client keeps, set by Ian.
+    expect(HOW_WE_WORK.steps[1].body).toContain(
+      'I set the rules for what the AI can see and change',
+    );
   });
 
   it('prices only the review', () => {
@@ -170,6 +173,11 @@ describe('homepage content shape', () => {
     );
     expect(owns.whatIDo).toContain('The same data feeds your reporting and your audiences');
     expect(owns.doneBefore).toMatch(/^At UP, the paid program moved through 14 ad platforms/);
+    // This site runs Cookiebot, not OneTrust: say so, so "this site" cannot be
+    // read as running the setup the sentence before describes.
+    expect(owns.doneBefore).toContain(
+      'Cookiebot and consent mode on this site: open the overlay and watch it enforce your choice.',
+    );
   });
 
   // Trust is where the page brings in AI: the AI works from the same
@@ -181,15 +189,16 @@ describe('homepage content shape', () => {
     expect(PROBLEMS[1].doneBefore).toMatch(/^UP Entertainment, a streaming subscription business/);
   });
 
-  // Each question carries sourced figures from 2026, checked against the
-  // reports under docs/reference/sources/ in the control plane.
+  // Each question carries two sourced figures. Their wording is checked
+  // against the source reports by the private claims check (15.6), not here:
+  // the claims rules stay out of this public repo.
   it('backs each question with two sourced figures', () => {
     expect(PROBLEMS.map((p) => p.evidence)).toEqual([
-      BUDGET_FIGURES,
+      CUSTOMER_FIGURES,
       TRUST_FIGURES,
       OWNERSHIP_FIGURES,
     ]);
-    for (const evidence of [BUDGET_FIGURES, TRUST_FIGURES, OWNERSHIP_FIGURES]) {
+    for (const evidence of [CUSTOMER_FIGURES, TRUST_FIGURES, OWNERSHIP_FIGURES]) {
       expect(evidence.tiles).toHaveLength(2);
       expect(evidence.source).toMatch(/^Sources?: .*2026/);
     }
@@ -205,9 +214,9 @@ describe('homepage content shape', () => {
   });
 
   it("puts Google's two figures, with their source, under the first question", () => {
-    expect(BUDGET_FIGURES.tiles.map((t) => t.figure)).toEqual(['11%', '26%']);
-    expect(BUDGET_FIGURES.source).toBe('Source: Google, September 2026');
-    expect(PROBLEMS[0].evidence).toBe(BUDGET_FIGURES);
+    expect(CUSTOMER_FIGURES.tiles.map((t) => t.figure)).toEqual(['11%', '26%']);
+    expect(CUSTOMER_FIGURES.source).toBe('Source: Google, September 2026');
+    expect(PROBLEMS[0].evidence).toBe(CUSTOMER_FIGURES);
   });
 
   it('lists four places and five networks', () => {
