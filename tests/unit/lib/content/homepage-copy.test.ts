@@ -118,10 +118,13 @@ describe('homepage content shape', () => {
   });
 
   // The profile's About asks these three questions; the page answers them.
+  // The first asks about the customers the platforms bid on, not which
+  // channel gets the budget (Ian, 2026-11-03), so its answer, sending the
+  // platforms your real conversions with their value, replies to it directly.
   it("titles the problems with the profile's three questions", () => {
     expect(PROBLEMS_EYEBROW).toBe('What I get called for · Three questions');
     expect(PROBLEMS.map((p) => p.title)).toEqual([
-      'Is the budget going to the right places?',
+      'Do the platforms know who your best customers are?',
       'Does anybody trust these numbers?',
       'Who owns this data?',
     ]);

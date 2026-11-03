@@ -16,7 +16,7 @@ export const PROBLEM_LABELS = { whatIDo: 'What I do', doneBefore: 'Done before' 
 export const PROBLEMS: Problem[] = [
   {
     num: '01',
-    title: 'Is the budget going to the right places?',
+    title: 'Do the platforms know who your best customers are?',
     whatIDo:
       'Conversions from the server, and the ones the browser never sees: renewals, billing-system orders, deals that close in your CRM, each with its value, flow back to the ad platforms with consent. Meta and Google Conversions APIs, enhanced conversions, offline conversions through Data Manager.',
     doneBefore:
