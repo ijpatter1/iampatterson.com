@@ -37,9 +37,22 @@ export function loadRecaptcha(): Promise<Grecaptcha> {
 }
 
 /** A token for the contact action, for the server to assess. */
-export async function getRecaptchaToken(): Promise<string> {
-  const g = await loadRecaptcha();
-  return g.enterprise.execute(CONTACT_CONFIG.recaptchaSiteKey, {
-    action: CONTACT_CONFIG.recaptchaAction,
+export async function getRecaptchaToken(timeoutMs = 10_000): Promise<string> {
+  // A blocked or stalled script must end in the form's failure message, not
+  // a button stuck on "Sending…".
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error('recaptcha timed out')), timeoutMs);
   });
+  try {
+    const g = await Promise.race([loadRecaptcha(), timeout]);
+    return await Promise.race([
+      g.enterprise.execute(CONTACT_CONFIG.recaptchaSiteKey, {
+        action: CONTACT_CONFIG.recaptchaAction,
+      }),
+      timeout,
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
 }

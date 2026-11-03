@@ -5,7 +5,11 @@ export const RECAPTCHA_MIN_SCORE = 0.5;
 
 export type Assessment =
   | { ok: true; score: number }
-  | { ok: false; score: number | null; reason: 'invalid_token' | 'wrong_action' | 'low_score' };
+  | {
+      ok: false;
+      score: number | null;
+      reason: 'invalid_token' | 'wrong_action' | 'wrong_host' | 'low_score';
+    };
 
 /**
  * Asks reCAPTCHA Enterprise about a token from the browser. A token passes only
@@ -37,13 +41,20 @@ export async function assessToken(
   );
   if (!res.ok) throw new Error(`recaptcha assessment failed with HTTP ${res.status}`);
   const a = (await res.json()) as {
-    tokenProperties?: { valid?: boolean; action?: string };
+    tokenProperties?: { valid?: boolean; action?: string; hostname?: string };
     riskAnalysis?: { score?: number };
   };
   const score = typeof a.riskAnalysis?.score === 'number' ? a.riskAnalysis.score : null;
   if (!a.tokenProperties?.valid) return { ok: false, score, reason: 'invalid_token' };
   if (a.tokenProperties.action !== CONTACT_CONFIG.recaptchaAction) {
     return { ok: false, score, reason: 'wrong_action' };
+  }
+  if (
+    !(CONTACT_CONFIG.allowedHostnames as readonly string[]).includes(
+      a.tokenProperties.hostname ?? '',
+    )
+  ) {
+    return { ok: false, score, reason: 'wrong_host' };
   }
   if (score === null || score < RECAPTCHA_MIN_SCORE)
     return { ok: false, score, reason: 'low_score' };

@@ -1,3 +1,5 @@
+import { CONTACT_CONFIG } from './config';
+
 export interface Inquiry {
   name: string;
   email: string;
@@ -10,7 +12,7 @@ export type ValidationResult =
   | { ok: true; value: Inquiry & { token: string } }
   | { ok: false; field: string };
 
-const LIMITS = { name: 200, email: 254, message: 5000, sessionState: 4000, token: 4000 } as const;
+const LIMITS = { ...CONTACT_CONFIG.limits, sessionState: 4000, token: 4000 } as const;
 // Deliberately loose: the browser's own type="email" check runs first, and the
 // address only has to be good enough to reply to.
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

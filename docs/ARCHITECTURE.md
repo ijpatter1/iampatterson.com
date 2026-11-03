@@ -1013,11 +1013,12 @@ service account contact-form@iampatterson.iam.gserviceaccount.com
 
 **Why the Gmail API and not Workspace's SMTP relay.** The relay authenticates either with a stored password or by fixed sending IP addresses. Vercel functions have no fixed addresses, and the project keeps no stored credentials. The Gmail API path has no key anywhere: Vercel's OIDC token is exchanged for a short-lived service-account token, and the service account signs its own delegation assertion through the IAM Credentials API.
 
-**Scope of the delegation.** Domain-wide delegation lets the service account act as any user in the Workspace. Three things narrow that:
+**Scope of the delegation.** Domain-wide delegation lets the service account send as any user in the Workspace. Two controls narrow that:
 - The grant carries only the `gmail.send` scope.
 - The pool's provider accepts only production tokens from this Vercel team and project, and only the production environment holds `roles/iam.workloadIdentityUser` on the account.
-- The code names `ian@iampatterson.com` as the only subject.
+
+The code always sends as `ian@iampatterson.com`, but that is intent, not a control: code running in the production deployment could name another user.
 
 **What is logged.** One JSON line per submission, with the outcome and, where there is one, the reCAPTCHA score or the step that failed. No name, address or message text is logged.
 
-**Not in Terraform yet.** The `vercel` pool and provider, the service account and its bindings, and the reCAPTCHA key were created with `gcloud` on 2026-11-02, because the Terraform deployer lacks the roles to create a pool or a reCAPTCHA key. Bringing them under Terraform is tracked.
+**Not in Terraform yet.** The `vercel` pool and provider, the service account and its bindings, and the reCAPTCHA key were created with `gcloud` on 2026-11-02, because the Terraform deployer lacks the roles to create a pool or a reCAPTCHA key. Bringing them under Terraform is recorded as follow-up work in the project's private plan.

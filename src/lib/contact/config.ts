@@ -14,4 +14,8 @@ export const CONTACT_CONFIG = {
   recaptchaSiteKey: '6LeUfA0uAAAAAPkqEVgdEaTVVoafiN3P0JGAYMoT',
   /** The action name the browser asks reCAPTCHA for, and the server expects back. */
   recaptchaAction: 'contact_submit',
+  /** Hosts a token may come from. A token minted on any other page is refused. */
+  allowedHostnames: ['www.iampatterson.com', 'iampatterson.com'],
+  /** Field limits, shared by the form and the route so the browser enforces what the server checks. */
+  limits: { name: 200, email: 254, message: 5000 },
 } as const;

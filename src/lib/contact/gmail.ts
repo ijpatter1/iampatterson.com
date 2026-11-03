@@ -1,4 +1,5 @@
 import { CONTACT_CONFIG } from './config';
+
 import type { Inquiry } from './validate';
 
 /** Removes anything that could end a header line. */
@@ -14,8 +15,20 @@ function encodeHeader(value: string): string {
     : `=?UTF-8?B?${Buffer.from(safe, 'utf8').toString('base64')}?=`;
 }
 
+/** A display name for a header: quoted when ASCII, an encoded-word otherwise (RFC 2047 §5 forbids quoting one). */
 function displayName(name: string): string {
-  return encodeHeader(name).replace(/["\\]/g, '');
+  const encoded = encodeHeader(name);
+  return encoded.startsWith('=?') ? encoded : `"${encoded.replace(/["\\]/g, '')}"`;
+}
+
+/** Base64 in 76-character lines, so no line can exceed the 998-octet limit. */
+function base64Body(text: string): string {
+  const crlf = text.replace(/\r?\n/g, '\r\n');
+  return (
+    Buffer.from(crlf, 'utf8')
+      .toString('base64')
+      .match(/.{1,76}/g) ?? []
+  ).join('\r\n');
 }
 
 function sessionSection(sessionState: string | undefined): string {
@@ -35,16 +48,17 @@ export function buildRawMessage(inquiry: Inquiry): string {
   const lines = [
     `From: "iampatterson.com contact form" <${CONTACT_CONFIG.mailbox}>`,
     `To: ${CONTACT_CONFIG.mailbox}`,
-    `Reply-To: "${displayName(inquiry.name)}" <${headerSafe(inquiry.email)}>`,
+    `Reply-To: ${displayName(inquiry.name)} <${headerSafe(inquiry.email)}>`,
     `Subject: ${subject}`,
     'MIME-Version: 1.0',
     'Content-Type: text/plain; charset="UTF-8"',
-    'Content-Transfer-Encoding: 8bit',
+    'Content-Transfer-Encoding: base64',
     '',
-    `Name: ${headerSafe(inquiry.name)}`,
-    `Email: ${headerSafe(inquiry.email)}`,
-    '',
-    inquiry.message + sessionSection(inquiry.sessionState),
+    base64Body(
+      `Name: ${headerSafe(inquiry.name)}\nEmail: ${headerSafe(inquiry.email)}\n\n` +
+        inquiry.message +
+        sessionSection(inquiry.sessionState),
+    ),
   ];
   return Buffer.from(lines.join('\r\n'), 'utf8').toString('base64url');
 }

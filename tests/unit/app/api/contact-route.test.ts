@@ -97,6 +97,14 @@ describe('POST /api/contact', () => {
     expect((await post(inquiry)).status).toBe(502);
   });
 
+  // Preview cannot run this path, so the production log is the only place a
+  // failed first submission can be diagnosed: it names the step and status.
+  it('logs the failing step and its HTTP status', async () => {
+    mockGetServiceAccountToken.mockRejectedValue(new Error('sts failed with HTTP 403'));
+    await post(inquiry);
+    expect(logged.join('\n')).toContain('"step":"sts","status":403');
+  });
+
   it('answers 502 when Google sign-in fails', async () => {
     mockGetServiceAccountToken.mockRejectedValue(new Error('sts 403'));
     expect((await post(inquiry)).status).toBe(502);

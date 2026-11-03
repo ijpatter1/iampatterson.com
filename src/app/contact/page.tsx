@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 
 import { ScrollReveal } from '@/components/scroll-reveal';
 import { SessionStateRideAlong } from '@/components/contact/session-state-ride-along';
+import { CONTACT_CONFIG } from '@/lib/contact/config';
 import { getRecaptchaToken, loadRecaptcha } from '@/lib/contact/recaptcha-client';
 import { trackFormFieldFocus, trackFormStart, trackFormSubmit } from '@/lib/events/track';
 
@@ -33,6 +34,7 @@ export default function ContactPage() {
       const res = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(20_000),
         body: JSON.stringify({
           name: form.get('name'),
           email: form.get('email'),
@@ -114,6 +116,7 @@ export default function ContactPage() {
                     type="text"
                     id="name"
                     name="name"
+                    maxLength={CONTACT_CONFIG.limits.name}
                     required
                     onFocus={() => handleFieldFocus('name')}
                     className="mt-1.5 block w-full rounded-card border border-border bg-surface px-4 py-2.5 text-content placeholder:text-content-disabled focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
@@ -127,6 +130,7 @@ export default function ContactPage() {
                     type="email"
                     id="email"
                     name="email"
+                    maxLength={CONTACT_CONFIG.limits.email}
                     required
                     onFocus={() => handleFieldFocus('email')}
                     className="mt-1.5 block w-full rounded-card border border-border bg-surface px-4 py-2.5 text-content placeholder:text-content-disabled focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
@@ -139,6 +143,7 @@ export default function ContactPage() {
                   <textarea
                     id="message"
                     name="message"
+                    maxLength={CONTACT_CONFIG.limits.message}
                     rows={5}
                     required
                     onFocus={() => handleFieldFocus('message')}

@@ -60,15 +60,22 @@ describe('validateInquiry', () => {
 
 describe('buildRawMessage', () => {
   const decode = (raw: string) => Buffer.from(raw, 'base64url').toString('utf8');
+  /** The headers, and the body decoded from its base64 transfer encoding. */
+  const parts = (raw: string) => {
+    const mime = decode(raw);
+    const [headers, ...rest] = mime.split('\r\n\r\n');
+    const body = Buffer.from(rest.join('').replace(/\r\n/g, ''), 'base64').toString('utf8');
+    return { mime, headers, body };
+  };
 
   it('sends from and to the configured mailbox, with the visitor as Reply-To', () => {
-    const mime = decode(
+    const { headers: mime, body } = parts(
       buildRawMessage({ name: 'Ada Lovelace', email: 'ada@example.com', message: 'Hello there' }),
     );
     expect(mime).toMatch(new RegExp(`^From: .*<${CONTACT_CONFIG.mailbox}>`, 'm'));
     expect(mime).toMatch(new RegExp(`^To: ${CONTACT_CONFIG.mailbox}`, 'm'));
     expect(mime).toMatch(/^Reply-To: .*<ada@example\.com>/m);
-    expect(mime).toContain('Hello there');
+    expect(body).toContain('Hello there');
   });
 
   // The visitor controls the name and the address. Neither can be allowed to
@@ -87,8 +94,26 @@ describe('buildRawMessage', () => {
     expect(mime).toMatch(/^Subject: =\?UTF-8\?B\?/m);
   });
 
+  // RFC 5322 caps a line at 998 octets; a long paragraph sent as 8bit would
+  // break it. Base64 lines stay short whatever the visitor writes.
+  it('keeps every line within the mail line limit for a long message', () => {
+    const { mime, body } = parts(
+      buildRawMessage({ name: 'Ada', email: 'a@example.com', message: 'word '.repeat(1000) }),
+    );
+    expect(Math.max(...mime.split('\r\n').map((l) => l.length))).toBeLessThanOrEqual(998);
+    expect(body).toContain('word word');
+  });
+
+  // An encoded-word inside quotes is shown raw by conforming mail clients.
+  it('writes a non-ASCII Reply-To name as an unquoted encoded-word', () => {
+    const { headers } = parts(
+      buildRawMessage({ name: 'José Müller', email: 'j@example.com', message: 'm' }),
+    );
+    expect(headers).toMatch(/^Reply-To: =\?UTF-8\?B\?[^"\r\n]+\?= <j@example\.com>$/m);
+  });
+
   it('adds the session summary when the visitor chose to send it', () => {
-    const mime = decode(
+    const { body: mime } = parts(
       buildRawMessage({
         name: 'Ada',
         email: 'a@example.com',
@@ -151,7 +176,12 @@ describe('assessToken', () => {
   const assessment = (props: Record<string, unknown>, score: number) => ({
     match: 'recaptchaenterprise.googleapis.com',
     body: {
-      tokenProperties: { valid: true, action: 'contact_submit', ...props },
+      tokenProperties: {
+        valid: true,
+        action: 'contact_submit',
+        hostname: 'www.iampatterson.com',
+        ...props,
+      },
       riskAnalysis: { score },
     },
   });
@@ -172,6 +202,7 @@ describe('assessToken', () => {
     ['a low score', assessment({}, RECAPTCHA_MIN_SCORE - 0.1)],
     ['an invalid token', assessment({ valid: false, invalidReason: 'EXPIRED' }, 0.9)],
     ['a token minted for another action', assessment({ action: 'login' }, 0.9)],
+    ['a token minted on another site', assessment({ hostname: 'attacker.example' }, 0.9)],
   ])('refuses %s', async (_label, response) => {
     const { fn } = fakeFetch([response]);
     await expect(assessToken('tok', 'sa-token', { fetch: fn })).resolves.toMatchObject({

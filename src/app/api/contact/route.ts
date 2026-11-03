@@ -17,9 +17,11 @@ function reply(status: number, error?: string) {
   return Response.json(error ? { ok: false, error } : { ok: true }, { status });
 }
 
-function errorClass(e: unknown): string {
-  // The first words of our own error messages name the step ("sts failed…").
-  return e instanceof Error ? e.message.split(' ')[0].slice(0, 40) : 'unknown';
+/** The failing step and its HTTP status, from our own error text ("sts failed with HTTP 403"). */
+function failure(e: unknown): { step: string; status: number | null } {
+  if (!(e instanceof Error)) return { step: 'unknown', status: null };
+  const status = /HTTP (\d{3})/.exec(e.message);
+  return { step: e.message.split(' ')[0].slice(0, 40), status: status ? Number(status[1]) : null };
 }
 
 export async function POST(request: Request): Promise<Response> {
@@ -32,7 +34,7 @@ export async function POST(request: Request): Promise<Response> {
   let body: unknown;
   try {
     const text = await request.text();
-    if (text.length > MAX_BODY_BYTES) {
+    if (new TextEncoder().encode(text).length > MAX_BODY_BYTES) {
       log('too_large');
       return reply(413, 'too_large');
     }
@@ -53,7 +55,7 @@ export async function POST(request: Request): Promise<Response> {
   try {
     saToken = await getServiceAccountToken();
   } catch (e) {
-    log('auth_failed', { step: errorClass(e) });
+    log('auth_failed', failure(e));
     return reply(502, 'unavailable');
   }
 
@@ -67,7 +69,7 @@ export async function POST(request: Request): Promise<Response> {
     log('sent', { score: assessment.score });
     return reply(200);
   } catch (e) {
-    log('send_failed', { step: errorClass(e) });
+    log('send_failed', failure(e));
     return reply(502, 'unavailable');
   }
 }
