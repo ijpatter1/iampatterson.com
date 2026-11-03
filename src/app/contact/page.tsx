@@ -1,28 +1,55 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { ScrollReveal } from '@/components/scroll-reveal';
 import { SessionStateRideAlong } from '@/components/contact/session-state-ride-along';
+import { CONTACT_CONFIG } from '@/lib/contact/config';
+import { getRecaptchaToken, loadRecaptcha } from '@/lib/contact/recaptcha-client';
 import { trackFormFieldFocus, trackFormStart, trackFormSubmit } from '@/lib/events/track';
 
 export default function ContactPage() {
   const formStartedRef = useRef(false);
   const router = useRouter();
+  const [status, setStatus] = useState<'idle' | 'sending' | 'failed'>('idle');
 
   function handleFieldFocus(fieldName: string) {
     if (!formStartedRef.current) {
       formStartedRef.current = true;
       trackFormStart('contact');
+      // The spam check loads only once someone starts the form.
+      loadRecaptcha().catch(() => {});
     }
     trackFormFieldFocus('contact', fieldName);
   }
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    trackFormSubmit('contact', true);
-    router.push('/contact/thanks');
+    if (status === 'sending') return;
+    setStatus('sending');
+    const form = new FormData(e.currentTarget);
+    try {
+      const token = await getRecaptchaToken();
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(45_000),
+        body: JSON.stringify({
+          name: form.get('name'),
+          email: form.get('email'),
+          message: form.get('message'),
+          session_state: form.get('session_state') ?? undefined,
+          token,
+        }),
+      });
+      if (!res.ok) throw new Error(`contact ${res.status}`);
+      trackFormSubmit('contact', true);
+      router.push('/contact/thanks');
+    } catch {
+      trackFormSubmit('contact', false);
+      setStatus('failed');
+    }
   }
 
   return (
@@ -89,6 +116,7 @@ export default function ContactPage() {
                     type="text"
                     id="name"
                     name="name"
+                    maxLength={CONTACT_CONFIG.limits.name}
                     required
                     onFocus={() => handleFieldFocus('name')}
                     className="mt-1.5 block w-full rounded-card border border-border bg-surface px-4 py-2.5 text-content placeholder:text-content-disabled focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
@@ -102,6 +130,7 @@ export default function ContactPage() {
                     type="email"
                     id="email"
                     name="email"
+                    maxLength={CONTACT_CONFIG.limits.email}
                     required
                     onFocus={() => handleFieldFocus('email')}
                     className="mt-1.5 block w-full rounded-card border border-border bg-surface px-4 py-2.5 text-content placeholder:text-content-disabled focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
@@ -114,6 +143,7 @@ export default function ContactPage() {
                   <textarea
                     id="message"
                     name="message"
+                    maxLength={CONTACT_CONFIG.limits.message}
                     rows={5}
                     required
                     onFocus={() => handleFieldFocus('message')}
@@ -121,11 +151,24 @@ export default function ContactPage() {
                   />
                 </div>
                 <SessionStateRideAlong />
+                {status === 'failed' && (
+                  <p role="alert" className="text-sm text-content">
+                    Your message didn&apos;t send. Please email me at{' '}
+                    <a
+                      href="mailto:ian@iampatterson.com"
+                      className="text-brand-500 underline underline-offset-4"
+                    >
+                      ian@iampatterson.com
+                    </a>
+                    .
+                  </p>
+                )}
                 <button
                   type="submit"
-                  className="w-full rounded-card bg-black px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-neutral-800"
+                  disabled={status === 'sending'}
+                  className="w-full rounded-card bg-black px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-neutral-800 disabled:opacity-60"
                 >
-                  Send message
+                  {status === 'sending' ? 'Sending…' : 'Send message'}
                 </button>
               </div>
             </form>

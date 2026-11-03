@@ -13,16 +13,13 @@ const SUMMARY_ID = 'session-state-ride-along-summary';
  * Renders the visible checkbox + human-readable summary below the contact
  * form fields. When checked, serializes `toRideAlongPayload(state)` into
  * a hidden `name="session_state"` input so the payload transmits with the
- * form on submit. When unchecked, the hidden input is removed entirely, 
+ * form on submit. When unchecked, the hidden input is removed entirely,
  * no silent transmission under any condition per spec §3.6.
  *
- * **Known pre-existing gap (Phase 10 follow-up):** the contact form's
- * current `handleSubmit` fires `trackFormSubmit('contact', true)` and
- * navigates to `/contact/thanks` without sending the form body to any
- * backend. This component's hidden field is therefore serialized and
- * present in the DOM (inspectable, testable, and ready to transmit) but
- * lands nowhere until a real submit endpoint is wired up. Flagged in the
- * D8 handoff; not in scope for 9E.
+ * **Where it goes.** The contact form submits the hidden field to
+ * `/api/contact` (deliverable 16.3, 2026-11-02), which includes it in the
+ * inquiry email to Ian when the box is ticked. When the box is unticked the
+ * hidden input is absent, so nothing about the session is sent.
  *
  * **Checked-state derivation, `userOverride ?? consentDefault`.** The
  * naive `useState(state?.consent_snapshot.marketing === 'granted')`
