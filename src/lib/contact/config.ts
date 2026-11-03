@@ -9,12 +9,6 @@ export const CONTACT_CONFIG = {
   projectId: 'iampatterson',
   /** The address inquiries are sent from and to. */
   mailbox: 'ian@iampatterson.com',
-  /**
-   * The Workspace user the delegation acts as. `ian@iampatterson.com` is an
-   * alias of this account, and domain-wide delegation can only act as a
-   * user's primary address.
-   */
-  delegatedUser: 'ian@tunameltsmyheart.com',
   serviceAccount: 'contact-form@iampatterson.iam.gserviceaccount.com',
   workloadIdentityAudience: `//iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/vercel/providers/vercel-oidc`,
   recaptchaSiteKey: '6LeUfA0uAAAAAPkqEVgdEaTVVoafiN3P0JGAYMoT',
@@ -25,9 +19,10 @@ export const CONTACT_CONFIG = {
   /** Field limits, shared by the form and the route so the browser enforces what the server checks. */
   limits: { name: 200, email: 254, message: 5000 },
   /**
-   * Per-call timeout for the route's Google requests. Six calls at most, so the
-   * route answers well inside the form's 30-second wait: an inquiry the
-   * visitor is told failed cannot arrive later.
+   * Deadline for each Google call before the send (five at most, so 20 s in
+   * all). The send itself has none: cutting off a send Google has already
+   * accepted would report a failure for mail that arrives, and the visitor
+   * would send it again. The form waits 45 s.
    */
   googleTimeoutMs: 4_000,
 } as const;

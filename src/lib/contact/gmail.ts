@@ -1,4 +1,5 @@
 import { CONTACT_CONFIG } from './config';
+import { googleFetch } from './google';
 
 import type { Inquiry } from './validate';
 
@@ -16,7 +17,10 @@ const PRINTABLE_ASCII = /^[\x20-\x7e]*$/;
  */
 function encodeHeader(value: string): string {
   const safe = headerSafe(value);
-  if (PRINTABLE_ASCII.test(safe)) return safe;
+  // Plain ASCII passes as is, unless it contains "=?": mail clients would
+  // decode a visitor-typed encoded-word and show text the line-break check
+  // forbids.
+  if (PRINTABLE_ASCII.test(safe) && !safe.includes('=?')) return safe;
   const words: string[] = [];
   let chunk = '';
   for (const ch of safe) {
@@ -91,11 +95,17 @@ export async function sendMessage(
   deps: { fetch?: typeof fetch } = {},
 ): Promise<void> {
   const doFetch = deps.fetch ?? fetch;
-  const res = await doFetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
-    method: 'POST',
-    signal: AbortSignal.timeout(CONTACT_CONFIG.googleTimeoutMs),
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${gmailToken}` },
-    body: JSON.stringify({ raw: buildRawMessage(inquiry) }),
-  });
+  // No deadline: a send Google has accepted must not be reported as failed.
+  const res = await googleFetch(
+    'gmail',
+    doFetch,
+    'https://gmail.googleapis.com/gmail/v1/users/me/messages/send',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${gmailToken}` },
+      body: JSON.stringify({ raw: buildRawMessage(inquiry) }),
+    },
+    { deadline: false },
+  );
   if (!res.ok) throw new Error(`gmail send failed with HTTP ${res.status}`);
 }

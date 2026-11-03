@@ -1,7 +1,7 @@
 /**
  * @jest-environment node
  */
-import { buildRawMessage } from '@/lib/contact/gmail';
+import { buildRawMessage, sendMessage } from '@/lib/contact/gmail';
 import { assessToken, RECAPTCHA_MIN_SCORE } from '@/lib/contact/recaptcha';
 import { getGmailToken, getServiceAccountToken } from '@/lib/contact/google';
 import { CONTACT_CONFIG } from '@/lib/contact/config';
@@ -113,6 +113,17 @@ describe('buildRawMessage', () => {
     expect(body).toContain('word word');
   });
 
+  // Mail clients decode an encoded-word wherever it appears in Subject. One
+  // typed by the visitor must be encoded again, not passed through.
+  it('encodes a subject whose ASCII name contains an encoded-word', () => {
+    const { headers } = parts(
+      buildRawMessage({ name: '=?UTF-8?B?SGk=?=', email: 'a@example.com', message: 'm' }),
+    );
+    const subject = headers.split('\r\n').find((l) => l.startsWith('Subject:')) ?? '';
+    expect(subject).not.toContain('=?UTF-8?B?SGk=?=');
+    expect(subject).toMatch(/^Subject: =\?UTF-8\?B\?/);
+  });
+
   // A plain-ASCII name that merely looks encoded must still be quoted, or its
   // commas and angle brackets become extra addresses.
   it('quotes an ASCII name that looks like an encoded-word', () => {
@@ -155,6 +166,18 @@ describe('buildRawMessage', () => {
   });
 });
 
+describe('sendMessage', () => {
+  // Cutting off a send Google has already accepted would tell the visitor it
+  // failed while the mail arrives, and they would send it again.
+  it('sends with no deadline of its own', async () => {
+    const { fn, calls } = fakeFetch([{ match: 'gmail.googleapis.com', body: { id: 'm1' } }]);
+    await sendMessage({ name: 'Ada', email: 'a@example.com', message: 'm' }, 'gmail-token', {
+      fetch: fn,
+    });
+    expect(calls[0].init.signal).toBeUndefined();
+  });
+});
+
 describe('the keyless Google token chain', () => {
   const oidc = async () => 'vercel-oidc-jwt';
 
@@ -186,14 +209,40 @@ describe('the keyless Google token chain', () => {
       { match: ':signJwt', body: { signedJwt: 'signed' } },
       { match: 'oauth2.googleapis.com/token', body: { access_token: 'gmail-token' } },
     ]);
-    await expect(getGmailToken('sa-token', { fetch: fn })).resolves.toBe('gmail-token');
+    await expect(
+      getGmailToken('sa-token', { fetch: fn, delegatedUser: 'owner@example.com' }),
+    ).resolves.toBe('gmail-token');
     const claims = JSON.parse(body(calls[0]).payload);
     expect(claims).toMatchObject({
       iss: CONTACT_CONFIG.serviceAccount,
-      sub: CONTACT_CONFIG.delegatedUser,
+      sub: 'owner@example.com',
       scope: 'https://www.googleapis.com/auth/gmail.send',
     });
     expect(body(calls[1]).get('assertion')).toBe('signed');
+  });
+
+  // The log must say which call stalled; a raw timeout's message would name
+  // none ("The operation was aborted…").
+  it('names the step when a call times out', async () => {
+    const timeout = jest.fn(async () => {
+      throw Object.assign(new Error('The operation was aborted due to timeout'), {
+        name: 'TimeoutError',
+      });
+    }) as unknown as typeof fetch;
+    await expect(getServiceAccountToken({ fetch: timeout, getOidcToken: oidc })).rejects.toThrow(
+      /^sts timed out$/,
+    );
+  });
+
+  // The delegated user is deployment configuration, not code.
+  it('refuses to sign without the delegated user configured', async () => {
+    const { fn } = fakeFetch([]);
+    const saved = process.env.CONTACT_DELEGATED_USER;
+    delete process.env.CONTACT_DELEGATED_USER;
+    await expect(getGmailToken('sa-token', { fetch: fn })).rejects.toThrow(
+      /CONTACT_DELEGATED_USER/,
+    );
+    process.env.CONTACT_DELEGATED_USER = saved;
   });
 
   it('fails loudly when a step is refused', async () => {

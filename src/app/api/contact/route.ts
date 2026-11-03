@@ -5,6 +5,9 @@ import { validateInquiry } from '@/lib/contact/validate';
 
 // Room for every field at its limit in a four-byte script, plus the token,
 // the session summary and JSON escaping.
+// Five Google calls with a 4 s deadline each, then the send, which has none.
+export const maxDuration = 60;
+
 const MAX_BODY_BYTES = 64_000;
 
 /**

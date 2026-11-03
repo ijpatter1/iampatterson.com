@@ -34,7 +34,7 @@ export default function ContactPage() {
       const res = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        signal: AbortSignal.timeout(30_000),
+        signal: AbortSignal.timeout(45_000),
         body: JSON.stringify({
           name: form.get('name'),
           email: form.get('email'),

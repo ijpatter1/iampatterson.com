@@ -1,4 +1,5 @@
 import { CONTACT_CONFIG } from './config';
+import { googleFetch } from './google';
 
 /** Google's suggested default for a score-based key: 0 is a bot, 1 a person. */
 export const RECAPTCHA_MIN_SCORE = 0.5;
@@ -22,11 +23,12 @@ export async function assessToken(
   deps: { fetch?: typeof fetch } = {},
 ): Promise<Assessment> {
   const doFetch = deps.fetch ?? fetch;
-  const res = await doFetch(
+  const res = await googleFetch(
+    'recaptcha',
+    doFetch,
     `https://recaptchaenterprise.googleapis.com/v1/projects/${CONTACT_CONFIG.projectId}/assessments`,
     {
       method: 'POST',
-      signal: AbortSignal.timeout(CONTACT_CONFIG.googleTimeoutMs),
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${serviceAccountToken}`,
