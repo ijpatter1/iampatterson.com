@@ -6,7 +6,7 @@ import { HeroEditorial } from '@/components/home/hero';
 import { HowWeWork } from '@/components/home/how-we-work';
 import { Problems } from '@/components/home/problems';
 import { ProofSection } from '@/components/home/proof-section';
-import { WhyItMatters } from '@/components/home/why-it-matters';
+import { CERTIFICATIONS } from '@/lib/content/certifications';
 import { warmMetabaseDashboard } from '@/lib/metabase/keep-warm';
 
 // Force dynamic rendering (Phase 9F D9). The homepage was previously
@@ -28,12 +28,13 @@ export default function HomePage() {
   return (
     <main>
       <HeroEditorial />
-      <WhyItMatters />
       <Problems />
       <HowWeWork />
       <ProofSection />
       <DoneWhere />
-      <Certifications />
+      {/* Hidden, not deleted (Ian, 2026-11-03): the section returns once a
+          certification is completed and added to the content module. */}
+      {CERTIFICATIONS.completed.length > 0 && <Certifications />}
     </main>
   );
 }

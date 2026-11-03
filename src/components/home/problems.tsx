@@ -30,6 +30,26 @@ export function Problems() {
                     {problem.whatIDo}
                   </p>
                 </div>
+                {problem.evidence && (
+                  <div>
+                    <div className="flex flex-wrap gap-x-10 gap-y-6">
+                      {problem.evidence.tiles.map((tile) => (
+                        <div
+                          key={tile.figure}
+                          className="min-w-[200px] flex-1 border-t border-rule pt-4"
+                        >
+                          <div className="font-display text-[56px] leading-none text-ink">
+                            {tile.figure}
+                          </div>
+                          <p className="mt-3 text-sm leading-[1.6] text-ink-2">{tile.text}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-3">
+                      {problem.evidence.source}
+                    </p>
+                  </div>
+                )}
                 <div>
                   <div className={labelClasses}>{PROBLEM_LABELS.doneBefore}</div>
                   <p className="mt-2 max-w-[60ch] text-base leading-[1.7] text-ink-2">

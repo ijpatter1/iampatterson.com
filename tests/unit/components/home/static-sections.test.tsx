@@ -8,14 +8,13 @@ import { Certifications } from '@/components/home/certifications';
 import { DoneWhere } from '@/components/home/done-where';
 import { HowWeWork } from '@/components/home/how-we-work';
 import { Problems } from '@/components/home/problems';
-import { WhyItMatters } from '@/components/home/why-it-matters';
 import { CERTIFICATIONS } from '@/lib/content/certifications';
 import { DONE_WHERE } from '@/lib/content/done-where';
 import { REVIEW_HREF } from '@/lib/content/hero';
 import { NETWORKS, NETWORKS_LABEL } from '@/lib/content/networks';
 import { PROBLEMS, PROBLEMS_EYEBROW, PROBLEM_LABELS } from '@/lib/content/problems';
 import { HOW_WE_WORK, REVIEW_PAGE_HREF, REVIEW_PRICE } from '@/lib/content/review';
-import { WHY_IT_MATTERS } from '@/lib/content/stats';
+import { BUDGET_FIGURES } from '@/lib/content/stats';
 
 jest.mock('@/lib/events/track', () => ({
   trackClickCta: jest.fn(),
@@ -31,23 +30,6 @@ beforeEach(() => {
 // assert the module's values, so a wording change is a one-file edit and a
 // component that drops, retypes or reorders copy fails here.
 
-describe('WhyItMatters', () => {
-  it('renders the paragraph and both stat tiles', () => {
-    render(<WhyItMatters />);
-    expect(screen.getByText(WHY_IT_MATTERS.body)).toBeInTheDocument();
-    for (const tile of WHY_IT_MATTERS.tiles) {
-      expect(screen.getByText(tile.figure)).toBeInTheDocument();
-      expect(screen.getByText(tile.text)).toBeInTheDocument();
-    }
-  });
-
-  // The figures are Google's, so they are shown with their source.
-  it('shows the source line with the figures', () => {
-    render(<WhyItMatters />);
-    expect(screen.getByText(WHY_IT_MATTERS.source)).toBeInTheDocument();
-  });
-});
-
 describe('Problems', () => {
   it('renders the three problems in order, each as a heading with both paragraphs', () => {
     render(<Problems />);
@@ -60,6 +42,21 @@ describe('Problems', () => {
     }
     expect(screen.getAllByText(PROBLEM_LABELS.whatIDo)).toHaveLength(3);
     expect(screen.getAllByText(PROBLEM_LABELS.doneBefore)).toHaveLength(3);
+  });
+
+  // Google's two figures back the first question's answer, and are shown
+  // with their source. No other question carries them.
+  it('shows the two figures and their source under the first question only', () => {
+    render(<Problems />);
+    const first = screen
+      .getByRole('heading', { level: 2, name: PROBLEMS[0].title })
+      .closest('article')!;
+    for (const tile of BUDGET_FIGURES.tiles) {
+      expect(within(first).getByText(tile.figure)).toBeInTheDocument();
+      expect(within(first).getByText(tile.text)).toBeInTheDocument();
+    }
+    expect(within(first).getByText(BUDGET_FIGURES.source)).toBeInTheDocument();
+    expect(screen.getAllByText(BUDGET_FIGURES.source)).toHaveLength(1);
   });
 
   it('numbers the rows', () => {

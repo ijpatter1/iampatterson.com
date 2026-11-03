@@ -1,8 +1,12 @@
+import { BUDGET_FIGURES, type Evidence } from './stats';
+
 export interface Problem {
   num: '01' | '02' | '03';
   title: string;
   whatIDo: string;
   doneBefore: string;
+  /** Sourced figures that back the answer. */
+  evidence?: Evidence;
 }
 
 export const PROBLEMS_EYEBROW = 'What I get called for · Three questions';
@@ -14,9 +18,10 @@ export const PROBLEMS: Problem[] = [
     num: '01',
     title: 'Is the budget going to the right places?',
     whatIDo:
-      'Conversions from the server, and the ones the browser never sees: renewals, billing-system orders, deals that close in your CRM, each with its value, sent back to the ad platforms with consent so they bid on everything you sold. Meta and Google Conversions APIs, enhanced conversions, offline conversions through Data Manager.',
+      'Conversions from the server, and the ones the browser never sees: renewals, billing-system orders, deals that close in your CRM, each with its value, flow back to the ad platforms with consent. Meta and Google Conversions APIs, enhanced conversions, offline conversions through Data Manager.',
     doneBefore:
       "An ad tech startup's order-to-platform pipeline, 2026. Meta, LinkedIn and Reddit Conversions APIs through server-side GTM at Allied Global Marketing, 2025. At UP, conversion tracking and audience sync for every ad platform as the paid program grew from 4 platforms to 14.",
+    evidence: BUDGET_FIGURES,
   },
   {
     num: '02',

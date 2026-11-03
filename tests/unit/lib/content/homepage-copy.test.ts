@@ -10,7 +10,7 @@ import { NETWORKS, NETWORKS_LABEL } from '@/lib/content/networks';
 import { PROBLEMS, PROBLEMS_EYEBROW, PROBLEM_LABELS } from '@/lib/content/problems';
 import { LIVE_STRIP, PROOF } from '@/lib/content/proof';
 import { HOW_WE_WORK, REVIEW_COLUMNS, REVIEW_PAGE_HREF, REVIEW_PRICE } from '@/lib/content/review';
-import { WHY_IT_MATTERS } from '@/lib/content/stats';
+import { BUDGET_FIGURES } from '@/lib/content/stats';
 
 function strings(value: unknown): string[] {
   if (typeof value === 'string') return [value];
@@ -21,7 +21,7 @@ function strings(value: unknown): string[] {
 
 const ALL_COPY = strings([
   HERO,
-  WHY_IT_MATTERS,
+  BUDGET_FIGURES,
   PROBLEMS_EYEBROW,
   PROBLEM_LABELS,
   PROBLEMS,
@@ -125,15 +125,31 @@ describe('homepage content shape', () => {
     ]);
   });
 
+  // The profile's wording: conversions flow back with consent. The page no
+  // longer argues that the platforms need more data to bid on.
+  it('does not frame the work as feeding the platforms more to bid on', () => {
+    expect(PROBLEMS[0].whatIDo).toContain('flow back to the ad platforms with consent.');
+    expect(ALL_COPY.filter((s) => /bid on everything|run the bidding/i.test(s))).toEqual([]);
+  });
+
+  // The three AI products were the agency's own, not built for its clients.
+  it('says the AI products were a build Ian led, apart from the client work', () => {
+    const allied = DONE_WHERE.cards.find((c) => c.name === 'Allied Global Marketing')!;
+    expect(allied.text).toBe(
+      "Senior Director, then VP of Data and Technology. Conversions APIs through server-side GTM for the agency's clients. Led the build of three AI products.",
+    );
+  });
+
   // The 2026 client is not named on the site.
   it('keeps the 2026 work as "An ad tech startup"', () => {
     expect(DONE_WHERE.cards.map((c) => c.name)).toContain('An ad tech startup');
     expect(ALL_COPY.filter((s) => /adzeta/i.test(s))).toEqual([]);
   });
 
-  it('shows the source line with the two stat figures', () => {
-    expect(WHY_IT_MATTERS.tiles).toHaveLength(2);
-    expect(WHY_IT_MATTERS.source).toBe('Source: Google, September 2026');
+  it("puts Google's two figures, with their source, under the first question", () => {
+    expect(BUDGET_FIGURES.tiles.map((t) => t.figure)).toEqual(['11%', '26%']);
+    expect(BUDGET_FIGURES.source).toBe('Source: Google, September 2026');
+    expect(PROBLEMS[0].evidence).toBe(BUDGET_FIGURES);
   });
 
   it('lists four places and five networks', () => {

@@ -15,7 +15,7 @@ export const DONE_WHERE = {
     {
       name: 'Allied Global Marketing',
       when: '2024 to 2025',
-      text: "Senior Director, then VP of Data and Technology. Conversions APIs through server-side GTM for the agency's clients, and three AI products.",
+      text: "Senior Director, then VP of Data and Technology. Conversions APIs through server-side GTM for the agency's clients. Led the build of three AI products.",
     },
     {
       name: 'An ad tech startup',

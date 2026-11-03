@@ -15,7 +15,6 @@ import { DONE_WHERE } from '@/lib/content/done-where';
 import { PROBLEMS_EYEBROW } from '@/lib/content/problems';
 import { PROOF } from '@/lib/content/proof';
 import { HOW_WE_WORK } from '@/lib/content/review';
-import { WHY_IT_MATTERS } from '@/lib/content/stats';
 
 jest.mock('@/lib/events/track', () => ({
   trackClickCta: jest.fn(),
@@ -77,19 +76,19 @@ describe('HomePage composition', () => {
     );
   });
 
-  // The order of the redesign (15.4): the claim, why it matters, the three
-  // questions, how teams work with me, the proof, where I've done it, and
-  // the certifications. The old demo, services and pipeline sections are gone.
+  // The order of the redesign (15.4, as Ian changed it on 2026-11-03): the
+  // claim, the three questions, how teams work with me, the proof, and where
+  // I've done it. "Why it matters" is gone (its figures sit under the first
+  // question), and the certifications wait until one is completed. The old
+  // demo, services and pipeline sections are gone.
   it('composes the new sections in order, and none of the old ones', () => {
     const { container } = renderHome();
     const markers = [
       'Numbers your',
-      WHY_IT_MATTERS.eyebrow,
       PROBLEMS_EYEBROW,
       HOW_WE_WORK.title,
       PROOF.title,
       DONE_WHERE.eyebrow,
-      CERTIFICATIONS.eyebrow,
     ].map((text) => screen.getAllByText(text)[0]);
     for (let i = 1; i < markers.length; i++) {
       expect(
@@ -97,6 +96,10 @@ describe('HomePage composition', () => {
       ).toBeTruthy();
     }
     expect(container.querySelector('#demos')).toBeNull();
+    expect(screen.queryByText('Why it matters')).not.toBeInTheDocument();
+    // Hidden, not deleted: the section returns once a certification is completed.
+    expect(CERTIFICATIONS.completed).toHaveLength(0);
+    expect(container.querySelector('#certifications')).toBeNull();
     expect(container.textContent).not.toMatch(/Patterson Consulting|two-day review/i);
   });
 

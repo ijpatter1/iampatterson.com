@@ -3,10 +3,17 @@ export interface StatTile {
   text: string;
 }
 
-/** "Why it matters" copy. Both figures are Google's; the source line stays with them. */
-export const WHY_IT_MATTERS = {
-  eyebrow: 'Why it matters',
-  body: 'Meta and Google run the bidding on the conversion data you send them. What usually arrives is less than you have: browser-only events, some of them twice, and nothing from the sales that close off the site.',
+export interface Evidence {
+  tiles: StatTile[];
+  source: string;
+}
+
+/**
+ * Google's two figures, shown under the first question ("Is the budget going
+ * to the right places?") since 2026-11-03, when Ian dropped the "Why it
+ * matters" section. Both are Google's; the source line stays with them.
+ */
+export const BUDGET_FIGURES: Evidence = {
   tiles: [
     {
       figure: '11%',
@@ -16,6 +23,6 @@ export const WHY_IT_MATTERS = {
       figure: '26%',
       text: 'more incremental ROAS for advertisers who connect offline and app data through Data Manager.',
     },
-  ] satisfies StatTile[],
+  ],
   source: 'Source: Google, September 2026',
-} as const;
+};
