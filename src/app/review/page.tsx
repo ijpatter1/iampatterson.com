@@ -38,18 +38,19 @@ export default function ReviewPage() {
           <Eyebrow>{REVIEW_PAGE.eyebrow}</Eyebrow>
           <h1 className={`mt-5 ${PAGE_TITLE_CLASSES}`}>{REVIEW_PAGE.title}</h1>
           <div className="mt-10 flex flex-wrap items-start gap-x-16 gap-y-10 border-t border-rule-soft pt-8">
-            <p className={`min-w-[280px] max-w-[52ch] flex-[1.3] ${BODY_CLASSES} md:text-lg`}>
-              {REVIEW_PAGE.intro}
-            </p>
+            {/* The button sits under the intro, so it is above the fold (Ian, 2026-11-03). */}
+            <div className="min-w-[280px] max-w-[52ch] flex-[1.3]">
+              <p className={`${BODY_CLASSES} md:text-lg`}>{REVIEW_PAGE.intro}</p>
+              <div className="mt-6">
+                <BookButton />
+              </div>
+            </div>
             <div className="min-w-[260px] flex-1">
               <div className={STAT_FIGURE_CLASSES}>{REVIEW_PAGE.price}</div>
               <p className={`mt-4 max-w-[42ch] ${SMALL_BODY_CLASSES}`}>{REVIEW_PAGE.scope}</p>
               <p className={`mt-3 max-w-[42ch] ${LABEL_STRONG_CLASSES}`}>
                 {REVIEW_PAGE.turnaround}
               </p>
-              <div className="mt-6">
-                <BookButton />
-              </div>
             </div>
           </div>
         </div>
