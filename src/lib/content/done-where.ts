@@ -18,9 +18,9 @@ export const DONE_WHERE = {
       text: "Senior Director, then VP of Data and Technology. Conversions APIs through server-side GTM for the agency's clients. Led the build of three AI products.",
     },
     {
-      name: 'An ad tech startup',
+      name: 'AdZeta',
       when: '2026',
-      text: 'Order-to-platform conversion pipeline and customer matching.',
+      text: 'Head of Engineering and Marketing Science. First-party data turned into predicted lifetime value signals that Google, Meta and TikTok bid on.',
     },
     {
       name: 'Tuna Melts My Heart',

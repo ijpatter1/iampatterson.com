@@ -140,10 +140,32 @@ describe('homepage content shape', () => {
     );
   });
 
-  // The 2026 client is not named on the site.
-  it('keeps the 2026 work as "An ad tech startup"', () => {
-    expect(DONE_WHERE.cards.map((c) => c.name)).toContain('An ad tech startup');
-    expect(ALL_COPY.filter((s) => /adzeta/i.test(s))).toEqual([]);
+  // Ian named AdZeta on 2026-11-03, as his LinkedIn profile does.
+  it("names AdZeta for the 2026 work, in the profile's terms", () => {
+    const adzeta = DONE_WHERE.cards.find((c) => c.name === 'AdZeta')!;
+    expect(adzeta.when).toBe('2026');
+    expect(adzeta.text).toBe(
+      'Head of Engineering and Marketing Science. First-party data turned into predicted lifetime value signals that Google, Meta and TikTok bid on.',
+    );
+    expect(PROBLEMS[0].doneBefore).toMatch(/^AdZeta's order-to-platform pipeline, 2026\./);
+    expect(ALL_COPY.filter((s) => /ad tech startup/i.test(s))).toEqual([]);
+  });
+
+  // Owning the data means reporting on it and acting on it, including adding
+  // a platform without waiting on a developer. Consent is one clause of that.
+  it('makes ownership about control of the data, not only consent', () => {
+    const owns = PROBLEMS[2];
+    expect(owns.title).toBe('Who owns this data?');
+    expect(owns.whatIDo).toContain(
+      "Adding an ad platform's Conversions API becomes a change your team makes in a container it controls, not a request in the developer queue",
+    );
+    expect(owns.whatIDo).toContain('The same data feeds your reporting and your audiences');
+    expect(owns.doneBefore).toMatch(/^At UP, the paid program moved through 14 ad platforms/);
+  });
+
+  // "4 platforms to 14" is said once, under ownership.
+  it('says the UP platform count once', () => {
+    expect(ALL_COPY.filter((s) => /14 ad platforms|4 platforms to 14/.test(s))).toHaveLength(1);
   });
 
   it("puts Google's two figures, with their source, under the first question", () => {
