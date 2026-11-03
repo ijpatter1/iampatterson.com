@@ -1,4 +1,4 @@
-# Global Privacy Control, checked in a browser with the signal injected
+# Global Privacy Control, checked in a browser with the signal injected, then in real browsers
 
 2026-10-12, deliverable [15.5]. Branch `feat/15.5-global-privacy-control`.
 
@@ -91,28 +91,52 @@ Unit tests for the same behavior:
 `tests/unit/components/overlay/consent-view.test.tsx` and
 `tests/unit/components/chrome/live-strip.test.tsx`.
 
-## Still to check
+## Checked in real browsers, 2026-11-02
 
-On a preview deployment, in a browser that sends the signal natively (Firefox
-with "Tell websites not to sell or share my data" on, or Brave):
+A scripted run against a local production build of `f211c78` and the commit
+after it, with the real Cookiebot banner and the real GTM container. Both are
+served to `localhost`; the Vercel preview cannot be used, because Cookiebot
+does not show its banner there.
 
-1. Confirm the Cookiebot banner appears, then click "Allow all".
-2. In the console, read `dataLayer` and confirm no `consent update` grants an
-   advertising signal.
-3. In GTM preview, confirm the consent state on the next hit shows the three
-   advertising signals denied.
-4. Open the overlay's Consent tab and confirm the notice and the three rows.
-
-Also on the preview, without the signal: accept in the banner and confirm
-analytics tags still fire. Turning off the loader's own Consent Mode writes
-changes who grants consent for every visitor, not only those sending the
-signal.
+- **Firefox with the signal on** (`navigator.globalPrivacyControl === true`,
+  `Sec-GPC: 1`). The banner appeared, carrying Cookiebot's own line "The GPC
+  signal is honored" and still offering "Allow all". After "Allow all": one
+  consent default with everything denied; the last update kept
+  `ad_storage`, `ad_user_data` and `ad_personalization` denied and granted
+  analytics; no consent row granted an advertising signal; Cookiebot's
+  `cookie_consent_*` events went to `cookiebotDataLayer` and none to
+  `dataLayer`. The consent update was queued before the `consent_update`
+  event, and the GA4 hit for that event carried `gcs=G101`. The Consent tab
+  showed the notice and the three "Stays denied" lines, and the LiveStrip read
+  `analytics:granted ad:denied · Global Privacy Control honored`, and
+  `ad:denied · Global Privacy Control honored` before the choice.
+- **Firefox's own hits.** Firefox sends GA4 hits with `sendBeacon`, which the
+  automation cannot observe, so they were confirmed in `events_raw`: on the
+  first visit and on four reloads, every `scroll_depth` row carried analytics
+  consent true and marketing consent false, and no Firefox row from the run
+  carried marketing consent true. `events_raw` holds the site's own consent
+  fields, not Google's `gcs`.
+- **Chromium without the signal.** After "Allow all" the last update granted
+  all four signals, and `scroll_depth` reached the server container with
+  `gcs=G111`. No notice, no "Stays denied" lines, no mention of the signal.
+- **Returning visitors.** On four reloads, and one on a Slow 4G profile,
+  `scroll_depth` reached the server container with `G111`. The data layer
+  showed `gtm.js` before the stored-consent update on every reload, so GTM's
+  page-load evaluation runs under the denied defaults for a returning
+  visitor. Analytics events after it are sent; whether `GA4 - Config` itself
+  fires on that load was not established.
 
 ## Limits of the feature
 
 - The Cookiebot banner still offers its marketing option to these visitors.
-  The site ignores a grant made there and the Consent tab says why. Whether
-  Cookiebot's settings can hide or pre-decline that option for them has not
-  been checked.
+  The site ignores a grant made there and the Consent tab says why. With this
+  banner type Cookiebot has no setting that hides the option for them alone.
+- Cookiebot's own record of the choice is the raw banner answer: after
+  "Allow all" its stored consent and its consent log show marketing granted,
+  while the site applies a denial.
+- A withdrawal's `consent_update` event is now judged under the denied state
+  it introduces, so it is sent as GA4 sends any event without analytics
+  consent. An acceptance's event is judged under the granted state, which is
+  why the update goes first.
 - Enforcement is in the browser. The server container does not read the
   `Sec-GPC` request header.
