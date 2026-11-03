@@ -34,25 +34,30 @@ export function HeroEditorial() {
           </span>
         </h1>
 
-        <div className="mt-6 border-t border-rule-soft pt-6 md:mt-12 md:pt-8">
+        {/* From lg up the calls to action sit in a column beside the kicker, as
+            in the design reference, so "Start with a review" stays above the
+            fold on laptop screens down to 1280 by 720. */}
+        <div className="mt-6 border-t border-rule-soft pt-6 md:mt-12 md:pt-8 lg:flex lg:items-start lg:justify-between lg:gap-x-16">
           <p className="max-w-[40ch] font-display text-[clamp(22px,2.4vw,32px)] italic leading-[1.28] text-ink">
             {HERO.kicker}
           </p>
-          <div className="mt-6 flex flex-wrap gap-3 md:mt-8">
-            <EditorialLink
-              href={REVIEW_HREF}
-              variant="solid"
-              onClick={() => trackClickCta(HERO.primaryCta, 'hero')}
-            >
-              {HERO.primaryCta}
-            </EditorialLink>
-            <EditorialButton variant="ghost" onClick={handleOpen}>
-              {HERO.ghostCta} →
-            </EditorialButton>
+          <div className="lg:shrink-0">
+            <div className="mt-6 flex flex-wrap gap-3 md:mt-8 lg:mt-0 lg:flex-col lg:items-start">
+              <EditorialLink
+                href={REVIEW_HREF}
+                variant="solid"
+                onClick={() => trackClickCta(HERO.primaryCta, 'hero')}
+              >
+                {HERO.primaryCta}
+              </EditorialLink>
+              <EditorialButton variant="ghost" onClick={handleOpen}>
+                {HERO.ghostCta} →
+              </EditorialButton>
+            </div>
+            <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-3">
+              {HERO.capacityNote}
+            </p>
           </div>
-          <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-3">
-            {HERO.capacityNote}
-          </p>
         </div>
       </div>
     </section>
