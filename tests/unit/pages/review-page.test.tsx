@@ -101,7 +101,13 @@ describe('the review page', () => {
   it('says the build agrees its measure first and leaves everything in your name', () => {
     const build = REVIEW_PAGE.follows[0].text;
     expect(build).toContain("Before it starts, we agree how we'll measure what it changes.");
-    expect(build).toContain('Every account and asset in your name, and a runbook at handoff.');
+    expect(build).toContain(
+      'your data, accounts and assets sit in your name, with a runbook at handoff.',
+    );
+    // The AI in the homepage's words: what it does, not a label.
+    expect(build).toContain(
+      'your team asks about spend and sales, and checks the answers in data they trust.',
+    );
   });
 
   it('says what can follow: a build, then a retainer or fractional leadership', () => {

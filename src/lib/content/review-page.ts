@@ -37,7 +37,7 @@ export const REVIEW_PAGE = {
   follows: [
     {
       label: 'Build',
-      text: "A build with a fixed scope. Before it starts, we agree how we'll measure what it changes. Conversions back to the ad platforms with consent, your data in accounts you own, then AI your team can check. Every account and asset in your name, and a runbook at handoff.",
+      text: "A build with a fixed scope. Before it starts, we agree how we'll measure what it changes. Conversions go back to the ad platforms with consent, and your data, accounts and assets sit in your name, with a runbook at handoff. Then the AI: your team asks about spend and sales, and checks the answers in data they trust.",
     },
     {
       label: 'Lead',
