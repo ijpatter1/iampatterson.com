@@ -108,14 +108,21 @@ export function ProofPanel({ onOpen }: ProofPanelProps) {
   // Newest first from the hook; the panel reads oldest at the top.
   const visible = events.slice(0, MAX_ROWS).reverse();
 
-  // A visitor who declined is shown data-layer events by design. Only a
-  // visitor who allowed analytics and has no working stream is "not connected".
-  // The first connection is not counted as a failure while it is under way.
-  const streamDown = stream === 'off' || stream === 'reconnecting' || stream === 'disconnected';
-  const granted = analyticsConsent === 'granted' && visible.length > 0;
-  const notConnected = granted && !fromStream && streamDown;
-  // Stream rows stay on screen after the stream drops; they are no longer live.
-  const streamDropped = granted && fromStream && streamDown;
+  // A visitor who declined is shown data-layer events by design, so only a
+  // visitor who allowed analytics gets a note about the stream. The stream
+  // counts as down only when it is off or has given up retrying: a first
+  // connection under way, or a routine reconnect (Cloud Run ends each stream
+  // after an hour), is not a failure worth announcing. Stream rows stay on
+  // screen after the stream gives up, so the note then says they are no
+  // longer live.
+  const streamDown = stream === 'off' || stream === 'disconnected';
+  const streamNote =
+    analyticsConsent === 'granted' && visible.length > 0 && streamDown
+      ? fromStream
+        ? PROOF.panel.streamDropped
+        : PROOF.panel.notConnected
+      : null;
+  const hasRows = hasChosen && visible.length > 0;
   const headerId = useId();
 
   let body;
@@ -158,15 +165,11 @@ export function ProofPanel({ onOpen }: ProofPanelProps) {
           {eventCount} {eventCount === 1 ? PROOF.panel.eventSingular : PROOF.panel.eventPlural}
         </span>
       </div>
-      {notConnected && (
-        <p className="border-b border-u-rule-soft py-2 text-u-ink-3">{PROOF.panel.notConnected}</p>
-      )}
-      {streamDropped && (
-        <p className="border-b border-u-rule-soft py-2 text-u-ink-3">{PROOF.panel.streamDropped}</p>
-      )}
+      {streamNote && <p className="border-b border-u-rule-soft py-2 text-u-ink-3">{streamNote}</p>}
       <div
         data-testid="proof-rows"
-        tabIndex={0}
+        role="region"
+        tabIndex={hasRows ? 0 : undefined}
         aria-labelledby={headerId}
         className="overflow-x-auto pt-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-current"
       >

@@ -263,7 +263,7 @@ describe('ProofPanel', () => {
       expect(rows()).toHaveLength(1);
     });
 
-    it.each(['disconnected', 'reconnecting'] as const)(
+    it.each(['disconnected', 'off'] as const)(
       'says so while the connection is %s and the rows are the browser\u2019s own',
       (state) => {
         mockSource = 'dataLayer';
@@ -274,36 +274,41 @@ describe('ProofPanel', () => {
       },
     );
 
-    // The first connection takes a moment on every page load. Saying "not
-    // connected" during it would flash the note at nearly every visitor.
-    it('does not say so while the stream is still connecting', () => {
-      mockSource = 'dataLayer';
-      mockStream = 'connecting';
-      mockEvents = [makeEvent('page_view', [], 'dl-1-1')];
-      renderPanel();
-      expect(screen.queryByText(PROOF.panel.notConnected)).not.toBeInTheDocument();
-    });
-
-    // Once the stream has delivered, the panel keeps showing its rows. If the
-    // stream then drops, those rows stop updating, and the panel says so
-    // rather than passing them off as live.
-    it.each(['disconnected', 'reconnecting'] as const)(
-      'says the stream dropped when it is %s after delivering rows',
+    // The first connection takes a moment on every page load, and Cloud Run
+    // ends each stream after an hour, after which it reconnects. Announcing
+    // either would flash a note at visitors whose stream is working.
+    it.each(['connecting', 'reconnecting'] as const)(
+      'does not say so while the stream is %s',
       (state) => {
-        mockSource = 'sse';
+        mockSource = 'dataLayer';
         mockStream = state;
-        mockEvents = [makeEvent('page_view', streamRouting(true))];
+        mockEvents = [makeEvent('page_view', [], 'dl-1-1')];
         renderPanel();
-        expect(screen.getByText(PROOF.panel.streamDropped)).toBeInTheDocument();
         expect(screen.queryByText(PROOF.panel.notConnected)).not.toBeInTheDocument();
       },
     );
 
-    it('does not say the stream dropped while it is connected', () => {
+    // Once the stream has delivered, the panel keeps showing its rows. If the
+    // stream then drops, those rows stop updating, and the panel says so
+    // rather than passing them off as live.
+    it('says the stream dropped when it has given up after delivering rows', () => {
+      mockSource = 'sse';
+      mockStream = 'disconnected';
       mockEvents = [makeEvent('page_view', streamRouting(true))];
       renderPanel();
-      expect(screen.queryByText(PROOF.panel.streamDropped)).not.toBeInTheDocument();
+      expect(screen.getByText(PROOF.panel.streamDropped)).toBeInTheDocument();
+      expect(screen.queryByText(PROOF.panel.notConnected)).not.toBeInTheDocument();
     });
+
+    it.each(['connected', 'reconnecting'] as const)(
+      'does not say the stream dropped while it is %s',
+      (state) => {
+        mockStream = state;
+        mockEvents = [makeEvent('page_view', streamRouting(true))];
+        renderPanel();
+        expect(screen.queryByText(PROOF.panel.streamDropped)).not.toBeInTheDocument();
+      },
+    );
 
     it('does not say so while the stream is connected', () => {
       mockEvents = [makeEvent('page_view', streamRouting(true))];
@@ -357,9 +362,17 @@ describe('ProofPanel', () => {
   it('lets a keyboard user reach and scroll the rows', () => {
     mockEvents = [makeEvent('page_view', streamRouting(true))];
     renderPanel();
-    const scroller = screen.getByTestId('proof-rows');
+    const scroller = screen.getByRole('region', { name: /Session 345678/ });
+    expect(scroller).toHaveAttribute('data-testid', 'proof-rows');
     expect(scroller).toHaveAttribute('tabindex', '0');
-    expect(scroller).toHaveAccessibleName(/Session 345678/);
+  });
+
+  // With only a one-line message there is nothing to scroll, and an empty tab
+  // stop on every homepage load would be noise for keyboard users.
+  it('is not a tab stop while there are no rows', () => {
+    mockConsent = undefined;
+    renderPanel();
+    expect(screen.getByTestId('proof-rows')).not.toHaveAttribute('tabindex');
   });
 
   it('opens on a click anywhere on it', async () => {
