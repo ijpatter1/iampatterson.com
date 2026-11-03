@@ -1006,8 +1006,8 @@ Vercel route (production only)
    │  Vercel OIDC token
    ▼  STS exchange, workload identity pool `vercel` (provider `vercel-oidc`)
 service account contact-form@iampatterson.iam.gserviceaccount.com
-   ├─ reCAPTCHA Enterprise assessment (valid, action contact_submit, score ≥ 0.5)
-   └─ signJwt → domain-wide delegation assertion (sub ian@iampatterson.com, scope gmail.send)
+   ├─ reCAPTCHA Enterprise assessment (valid, action contact_submit, host www or apex, score ≥ 0.5)
+   └─ signJwt → domain-wide delegation assertion (sub ian@tunameltsmyheart.com, scope gmail.send)
         → Gmail API users.messages.send
 ```
 
@@ -1017,8 +1017,8 @@ service account contact-form@iampatterson.iam.gserviceaccount.com
 - The grant carries only the `gmail.send` scope.
 - The pool's provider accepts only production tokens from this Vercel team and project, and only the production environment holds `roles/iam.workloadIdentityUser` on the account.
 
-The code always sends as `ian@iampatterson.com`, but that is intent, not a control: code running in the production deployment could name another user.
+`ian@iampatterson.com` is an alias of the Workspace user `ian@tunameltsmyheart.com`, and delegation can only act as a primary address, so the assertion names the primary user and the message is addressed from and to the alias. The code always acts as that one user, but that is intent, not a control: code running in the production deployment could name another user in the Workspace.
 
-**What is logged.** One JSON line per submission, with the outcome and, where there is one, the reCAPTCHA score or the step that failed. No name, address or message text is logged.
+**What is logged.** One JSON line per submission, with the outcome and, where there is one, the reCAPTCHA score or the step that failed and its HTTP status. No name, address or message text is logged.
 
 **Not in Terraform yet.** The `vercel` pool and provider, the service account and its bindings, and the reCAPTCHA key were created with `gcloud` on 2026-11-02, because the Terraform deployer lacks the roles to create a pool or a reCAPTCHA key. Bringing them under Terraform is recorded as follow-up work in the project's private plan.

@@ -14,9 +14,13 @@ let loading: Promise<Grecaptcha> | null = null;
  * a visitor first focuses a field, so a page view alone makes no request to a
  * reCAPTCHA host.
  */
-export function loadRecaptcha(): Promise<Grecaptcha> {
+export function loadRecaptcha(timeoutMs = 10_000): Promise<Grecaptcha> {
   if (loading) return loading;
   loading = new Promise<Grecaptcha>((resolve, reject) => {
+    // A script held open by an extension fires neither onload nor onerror.
+    // The timeout rejects, and the reset below lets the next attempt start
+    // a fresh load instead of waiting on the stalled one.
+    const timer = setTimeout(() => reject(new Error('recaptcha timed out')), timeoutMs);
     const script = document.createElement('script');
     script.id = 'recaptcha-enterprise';
     script.src = `https://www.google.com/recaptcha/enterprise.js?render=${CONTACT_CONFIG.recaptchaSiteKey}`;
@@ -24,12 +28,17 @@ export function loadRecaptcha(): Promise<Grecaptcha> {
     script.onload = () => {
       const g = (window as unknown as { grecaptcha?: Grecaptcha }).grecaptcha;
       if (!g?.enterprise) return reject(new Error('recaptcha did not initialise'));
-      g.enterprise.ready(() => resolve(g));
+      g.enterprise.ready(() => {
+        clearTimeout(timer);
+        resolve(g);
+      });
     };
-    script.onerror = () => reject(new Error('recaptcha failed to load'));
+    script.onerror = () => {
+      clearTimeout(timer);
+      reject(new Error('recaptcha failed to load'));
+    };
     document.head.appendChild(script);
   });
-  // A failed load can be retried on the next attempt.
   loading.catch(() => {
     loading = null;
   });
@@ -38,19 +47,16 @@ export function loadRecaptcha(): Promise<Grecaptcha> {
 
 /** A token for the contact action, for the server to assess. */
 export async function getRecaptchaToken(timeoutMs = 10_000): Promise<string> {
-  // A blocked or stalled script must end in the form's failure message, not
-  // a button stuck on "Sending…".
+  const g = await loadRecaptcha(timeoutMs);
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error('recaptcha timed out')), timeoutMs);
-  });
   try {
-    const g = await Promise.race([loadRecaptcha(), timeout]);
     return await Promise.race([
       g.enterprise.execute(CONTACT_CONFIG.recaptchaSiteKey, {
         action: CONTACT_CONFIG.recaptchaAction,
       }),
-      timeout,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('recaptcha timed out')), timeoutMs);
+      }),
     ]);
   } finally {
     clearTimeout(timer);

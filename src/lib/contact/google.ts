@@ -38,6 +38,7 @@ export async function getServiceAccountToken(deps: Deps = {}): Promise<string> {
     'sts',
     await doFetch('https://sts.googleapis.com/v1/token', {
       method: 'POST',
+      signal: AbortSignal.timeout(CONTACT_CONFIG.googleTimeoutMs),
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
@@ -54,6 +55,7 @@ export async function getServiceAccountToken(deps: Deps = {}): Promise<string> {
     'generateAccessToken',
     await doFetch(`${IAM_CREDENTIALS}:generateAccessToken`, {
       method: 'POST',
+      signal: AbortSignal.timeout(CONTACT_CONFIG.googleTimeoutMs),
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sts.access_token}` },
       body: JSON.stringify({ scope: [CLOUD_PLATFORM], lifetime: '300s' }),
     }),
@@ -70,6 +72,7 @@ export async function getGmailToken(serviceAccountToken: string, deps: Deps = {}
     'signJwt',
     await doFetch(`${IAM_CREDENTIALS}:signJwt`, {
       method: 'POST',
+      signal: AbortSignal.timeout(CONTACT_CONFIG.googleTimeoutMs),
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${serviceAccountToken}`,
@@ -77,7 +80,7 @@ export async function getGmailToken(serviceAccountToken: string, deps: Deps = {}
       body: JSON.stringify({
         payload: JSON.stringify({
           iss: CONTACT_CONFIG.serviceAccount,
-          sub: CONTACT_CONFIG.mailbox,
+          sub: CONTACT_CONFIG.delegatedUser,
           scope: GMAIL_SEND,
           aud: 'https://oauth2.googleapis.com/token',
           iat: now,
@@ -91,6 +94,7 @@ export async function getGmailToken(serviceAccountToken: string, deps: Deps = {}
     'oauth2',
     await doFetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
+      signal: AbortSignal.timeout(CONTACT_CONFIG.googleTimeoutMs),
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',

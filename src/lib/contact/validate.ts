@@ -28,7 +28,9 @@ export function validateInquiry(input: unknown): ValidationResult {
   const raw = input as Record<string, unknown>;
   const name = text(raw.name);
   const email = text(raw.email);
-  const message = text(raw.message);
+  // Browsers submit textarea line breaks as CRLF but count each as one
+  // character against maxLength; normalise so the two limits agree.
+  const message = text(raw.message).replace(/\r\n/g, '\n');
   const token = text(raw.token);
   const sessionState = text(raw.session_state ?? raw.sessionState);
 

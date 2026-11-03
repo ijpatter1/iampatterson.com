@@ -13,8 +13,8 @@ export type Assessment =
 
 /**
  * Asks reCAPTCHA Enterprise about a token from the browser. A token passes only
- * if it is valid, was minted for the contact action, and scores at or above the
- * threshold.
+ * if it is valid, was minted for the contact action on this site's own host,
+ * and scores at or above the threshold.
  */
 export async function assessToken(
   token: string,
@@ -26,6 +26,7 @@ export async function assessToken(
     `https://recaptchaenterprise.googleapis.com/v1/projects/${CONTACT_CONFIG.projectId}/assessments`,
     {
       method: 'POST',
+      signal: AbortSignal.timeout(CONTACT_CONFIG.googleTimeoutMs),
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${serviceAccountToken}`,

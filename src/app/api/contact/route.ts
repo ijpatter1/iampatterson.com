@@ -3,7 +3,9 @@ import { sendMessage } from '@/lib/contact/gmail';
 import { assessToken } from '@/lib/contact/recaptcha';
 import { validateInquiry } from '@/lib/contact/validate';
 
-const MAX_BODY_BYTES = 20_000;
+// Room for every field at its limit in a four-byte script, plus the token,
+// the session summary and JSON escaping.
+const MAX_BODY_BYTES = 64_000;
 
 /**
  * One line per submission, codes only. The project rule is that no input text
@@ -34,7 +36,7 @@ export async function POST(request: Request): Promise<Response> {
   let body: unknown;
   try {
     const text = await request.text();
-    if (new TextEncoder().encode(text).length > MAX_BODY_BYTES) {
+    if (Buffer.byteLength(text, 'utf8') > MAX_BODY_BYTES) {
       log('too_large');
       return reply(413, 'too_large');
     }

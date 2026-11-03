@@ -146,6 +146,8 @@ describe('ContactPage', () => {
       '/api/contact',
       expect.objectContaining({ method: 'POST' }),
     );
+    // The request has a deadline, so a hung route ends in the failure message.
+    expect(mockFetch.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
     expect(sentBody()).toMatchObject({
       name: 'Test User',
       email: 'test@example.com',

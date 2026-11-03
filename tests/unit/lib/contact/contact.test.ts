@@ -53,6 +53,15 @@ describe('validateInquiry', () => {
     expect(validateInquiry(input).ok).toBe(false);
   });
 
+  // Browsers submit textarea line breaks as CRLF but count each as one
+  // character against maxLength. A message the form allowed must pass here.
+  it('counts a line break once, as the form does', () => {
+    const lines = Array.from({ length: 60 }, () => 'x'.repeat(82)).join('\r\n');
+    expect(lines.replace(/\r\n/g, '\n').length).toBeLessThanOrEqual(5000);
+    expect(lines.length).toBeGreaterThan(5000);
+    expect(validateInquiry({ ...ok, message: lines }).ok).toBe(true);
+  });
+
   it('rejects a body that is not an object', () => {
     expect(validateInquiry('hello').ok).toBe(false);
   });
@@ -104,6 +113,26 @@ describe('buildRawMessage', () => {
     expect(body).toContain('word word');
   });
 
+  // A plain-ASCII name that merely looks encoded must still be quoted, or its
+  // commas and angle brackets become extra addresses.
+  it('quotes an ASCII name that looks like an encoded-word', () => {
+    const { headers } = parts(
+      buildRawMessage({ name: '=?x, Bob <v@other.example>', email: 'a@example.com', message: 'm' }),
+    );
+    expect(headers).toMatch(/^Reply-To: "=\?x, Bob <v@other\.example>" <a@example\.com>$/m);
+  });
+
+  // RFC 2047 caps an encoded-word at 75 characters; longer ones are left
+  // undecoded by strict clients.
+  it('splits a long non-ASCII name into encoded-words of at most 75 characters', () => {
+    const name = 'Zoë Müller-Lüdenscheidt '.repeat(5).trim();
+    const { headers } = parts(buildRawMessage({ name, email: 'z@example.com', message: 'm' }));
+    const words = headers.match(/=\?UTF-8\?B\?[^?]*\?=/g) ?? [];
+    expect(words.length).toBeGreaterThan(2);
+    expect(Math.max(...words.map((x) => x.length))).toBeLessThanOrEqual(75);
+    expect(Math.max(...headers.split('\r\n').map((l) => l.length))).toBeLessThanOrEqual(998);
+  });
+
   // An encoded-word inside quotes is shown raw by conforming mail clients.
   it('writes a non-ASCII Reply-To name as an unquoted encoded-word', () => {
     const { headers } = parts(
@@ -144,6 +173,9 @@ describe('the keyless Google token chain', () => {
     expect((calls[1].init.headers as Record<string, string>).Authorization).toBe(
       'Bearer federated',
     );
+    // Every Google call has its own deadline, so the route answers before the
+    // form gives up and an inquiry shown as failed cannot arrive later.
+    for (const c of calls) expect(c.init.signal).toBeInstanceOf(AbortSignal);
   });
 
   // Domain-wide delegation with no stored key: the service account signs the
@@ -158,7 +190,7 @@ describe('the keyless Google token chain', () => {
     const claims = JSON.parse(body(calls[0]).payload);
     expect(claims).toMatchObject({
       iss: CONTACT_CONFIG.serviceAccount,
-      sub: CONTACT_CONFIG.mailbox,
+      sub: CONTACT_CONFIG.delegatedUser,
       scope: 'https://www.googleapis.com/auth/gmail.send',
     });
     expect(body(calls[1]).get('assertion')).toBe('signed');
