@@ -993,3 +993,31 @@ Every in-scope resource already serves production, so the first pass on any of t
 
 
 `infrastructure/gtm/reconcile.js` driven by the committed container specs, measured against a recorded census of both live containers before any write, with apply and publish as separate steps; the Metabase load-balancer topology **retired onto the Terraform layer that already declares it** rather than reimplemented in a second writer, leaving only the IAP residue — the OAuth brand and client as a console procedure, the service agent's `run.invoker` binding declared, and the `roles/iap.httpsResourceAccessor` allowlist as a runbook procedure so its additive-only semantics survive an auto-apply; a GitHub Actions workflow with a dry-run diff on pull requests touching `infrastructure/gtm/**` and a manually approved live apply through Workload Identity Federation, whose `infra-production` environment carries a required reviewer *before* `vars.GCP_WIF_PROVIDER` is set, since that one variable also arms the existing `infra-terraform.yml` apply; the `web_vital` and `page_engagement` wiring applied through the GTM reconciler; and the claudish-proxy service imported into `cloud-run.tf` with the `KILL_SWITCH` env exclusion, completing the adoption 13.4 began.
+
+## Contact form delivery (2026-11-02)
+
+The form on `/contact` posts JSON to a Vercel route handler, `src/app/api/contact/route.ts`. The handler checks the fields, asks reCAPTCHA Enterprise about the visitor's token, and sends the inquiry through the Gmail API from `ian@iampatterson.com` to itself, with the visitor's address as `Reply-To`. The form moves to the thanks page only when the route answers 200. Otherwise it says the message did not send and gives the email address.
+
+```
+/contact form ── loads reCAPTCHA on first field focus
+   │  POST /api/contact { name, email, message, session_state?, token }
+   ▼
+Vercel route (production only)
+   │  Vercel OIDC token
+   ▼  STS exchange, workload identity pool `vercel` (provider `vercel-oidc`)
+service account contact-form@iampatterson.iam.gserviceaccount.com
+   ├─ reCAPTCHA Enterprise assessment (valid, action contact_submit, score ≥ 0.5)
+   └─ signJwt → domain-wide delegation assertion (sub ian@iampatterson.com, scope gmail.send)
+        → Gmail API users.messages.send
+```
+
+**Why the Gmail API and not Workspace's SMTP relay.** The relay authenticates either with a stored password or by fixed sending IP addresses. Vercel functions have no fixed addresses, and the project keeps no stored credentials. The Gmail API path has no key anywhere: Vercel's OIDC token is exchanged for a short-lived service-account token, and the service account signs its own delegation assertion through the IAM Credentials API.
+
+**Scope of the delegation.** Domain-wide delegation lets the service account act as any user in the Workspace. Three things narrow that:
+- The grant carries only the `gmail.send` scope.
+- The pool's provider accepts only production tokens from this Vercel team and project, and only the production environment holds `roles/iam.workloadIdentityUser` on the account.
+- The code names `ian@iampatterson.com` as the only subject.
+
+**What is logged.** One JSON line per submission, with the outcome and, where there is one, the reCAPTCHA score or the step that failed. No name, address or message text is logged.
+
+**Not in Terraform yet.** The `vercel` pool and provider, the service account and its bindings, and the reCAPTCHA key were created with `gcloud` on 2026-11-02, because the Terraform deployer lacks the roles to create a pool or a reCAPTCHA key. Bringing them under Terraform is tracked.

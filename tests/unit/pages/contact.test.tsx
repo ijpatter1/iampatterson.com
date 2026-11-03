@@ -28,6 +28,15 @@ jest.mock('@/lib/events/track', () => ({
   trackFormSubmit: jest.fn(),
 }));
 
+const mockLoadRecaptcha = jest.fn(() => Promise.resolve());
+const mockGetRecaptchaToken = jest.fn(() => Promise.resolve('recaptcha-token'));
+jest.mock('@/lib/contact/recaptcha-client', () => ({
+  loadRecaptcha: () => mockLoadRecaptcha(),
+  getRecaptchaToken: () => mockGetRecaptchaToken(),
+}));
+
+const mockFetch = jest.fn();
+
 // Default the SessionStateProvider hook to null so the existing assertions
 // run against a form that does NOT render the D8 ride-along block. Tests
 // that exercise D8 integration override via `setMockSessionState(...)` below.
@@ -47,7 +56,20 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockPush.mockClear();
   mockSessionState = null;
+  mockFetch.mockResolvedValue({ ok: true, status: 200 });
+  global.fetch = mockFetch as unknown as typeof fetch;
 });
+
+async function fillAndSend(user: ReturnType<typeof userEvent.setup>) {
+  await user.type(screen.getByLabelText(/^name$/i), 'Test User');
+  await user.type(screen.getByLabelText(/^email$/i), 'test@example.com');
+  await user.type(screen.getByLabelText(/^message$/i), 'Hello');
+  await user.click(screen.getByRole('button', { name: /send/i }));
+}
+
+function sentBody(): Record<string, unknown> {
+  return JSON.parse(mockFetch.mock.calls[0][1].body);
+}
 
 describe('ContactPage', () => {
   it('renders the page heading', () => {
@@ -114,15 +136,53 @@ describe('ContactPage', () => {
     expect(mockTrackFormStart).toHaveBeenCalledTimes(1);
   });
 
-  it('fires form_submit and redirects to /contact/thanks on submission', async () => {
+  // Phase 16, deliverable 16.3: the form used to go straight to the thanks
+  // page and deliver nothing. Now the thanks page means the inquiry was sent.
+  it('posts the inquiry with a reCAPTCHA token, then shows the thanks page', async () => {
     const user = userEvent.setup();
     render(<ContactPage />);
-    await user.type(screen.getByLabelText(/name/i), 'Test User');
-    await user.type(screen.getByLabelText(/email/i), 'test@example.com');
-    await user.type(screen.getByLabelText(/message/i), 'Hello');
-    await user.click(screen.getByRole('button', { name: /send/i }));
+    await fillAndSend(user);
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/contact',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(sentBody()).toMatchObject({
+      name: 'Test User',
+      email: 'test@example.com',
+      message: 'Hello',
+      token: 'recaptcha-token',
+    });
     expect(mockTrackFormSubmit).toHaveBeenCalledWith('contact', true);
     expect(mockPush).toHaveBeenCalledWith('/contact/thanks');
+  });
+
+  it('says the message did not send, and offers the email address, when the server refuses it', async () => {
+    mockFetch.mockResolvedValue({ ok: false, status: 502 });
+    const user = userEvent.setup();
+    render(<ContactPage />);
+    await fillAndSend(user);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/didn.t send/i);
+    expect(screen.getByRole('alert')).toHaveTextContent('ian@iampatterson.com');
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(mockTrackFormSubmit).toHaveBeenCalledWith('contact', false);
+  });
+
+  it('says so too when reCAPTCHA cannot load, and sends nothing', async () => {
+    mockGetRecaptchaToken.mockRejectedValueOnce(new Error('blocked'));
+    const user = userEvent.setup();
+    render(<ContactPage />);
+    await fillAndSend(user);
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  // A page view alone must make no request to a reCAPTCHA host.
+  it('loads reCAPTCHA only when the visitor starts the form', async () => {
+    const user = userEvent.setup();
+    render(<ContactPage />);
+    expect(mockLoadRecaptcha).not.toHaveBeenCalled();
+    await user.click(screen.getByLabelText(/^name$/i));
+    expect(mockLoadRecaptcha).toHaveBeenCalledTimes(1);
   });
 
   describe('Phase 9E D8, session-state ride-along integration', () => {
@@ -183,10 +243,10 @@ describe('ContactPage', () => {
       // the label regex so "Share my session state with this message"
       // (ride-along checkbox label) doesn't collide with the textarea's
       // "Message" label.
-      await user.type(screen.getByLabelText(/^name$/i), 'Test User');
-      await user.type(screen.getByLabelText(/^email$/i), 'test@example.com');
-      await user.type(screen.getByLabelText(/^message$/i), 'Hello');
-      await user.click(screen.getByRole('button', { name: /send/i }));
+      await fillAndSend(user);
+      expect(JSON.parse(String(sentBody().session_state))).toMatchObject({
+        session_id: 'sid-contact-test',
+      });
       expect(mockTrackFormSubmit).toHaveBeenCalledWith('contact', true);
       expect(mockPush).toHaveBeenCalledWith('/contact/thanks');
     });
