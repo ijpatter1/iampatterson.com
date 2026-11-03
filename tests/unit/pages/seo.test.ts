@@ -122,6 +122,18 @@ describe('Phase 10d D4 — SEO', () => {
     });
   });
 
+  // The price lives in one constant, so the review page's search snippet and
+  // share card cannot go stale when it changes.
+  describe('Review page metadata', () => {
+    it('takes its price from the single constant', async () => {
+      const { metadata } = (await import('@/app/review/layout')) as unknown as {
+        metadata: Metadata;
+      };
+      const { REVIEW_PRICE } = await import('@/lib/content/review');
+      expect(metadata.description).toContain(`From ${REVIEW_PRICE}.`);
+    });
+  });
+
   describe('Sitemap', () => {
     it('includes canonical pages and excludes non-canonical (cart/checkout/confirmation/thanks)', async () => {
       const sitemap = (await import('@/app/sitemap')).default;

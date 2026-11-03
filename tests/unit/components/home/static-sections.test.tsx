@@ -10,7 +10,6 @@ import { HowWeWork } from '@/components/home/how-we-work';
 import { Problems } from '@/components/home/problems';
 import { CERTIFICATIONS } from '@/lib/content/certifications';
 import { DONE_WHERE } from '@/lib/content/done-where';
-import { REVIEW_HREF } from '@/lib/content/hero';
 import { NETWORKS, NETWORKS_LABEL } from '@/lib/content/networks';
 import { PROBLEMS, PROBLEMS_EYEBROW, PROBLEM_LABELS } from '@/lib/content/problems';
 import { HOW_WE_WORK, REVIEW_PAGE_HREF, REVIEW_PRICE } from '@/lib/content/review';
@@ -124,7 +123,7 @@ describe('HowWeWork', () => {
   it('sends "Start with a review" to the review page, and tracks it', async () => {
     render(<HowWeWork />);
     const link = screen.getByRole('link', { name: HOW_WE_WORK.cta });
-    expect(link).toHaveAttribute('href', REVIEW_HREF);
+    expect(link).toHaveAttribute('href', REVIEW_PAGE_HREF);
     link.addEventListener('click', (e) => e.preventDefault());
     await userEvent.click(link);
     expect(trackClickCta).toHaveBeenCalledWith(HOW_WE_WORK.cta, 'review');

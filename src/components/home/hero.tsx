@@ -3,7 +3,8 @@
 import { EditorialButton, EditorialLink } from '@/components/chrome/editorial-button';
 import { EYEBROW_CLASSES, LABEL_CLASSES, SECTION_PADDING_BOTTOM } from '@/components/home/section';
 import { useOverlay } from '@/components/overlay/overlay-context';
-import { HERO, REVIEW_HREF } from '@/lib/content/hero';
+import { HERO } from '@/lib/content/hero';
+import { REVIEW_PAGE_HREF } from '@/lib/content/review';
 import { trackClickCta } from '@/lib/events/track';
 
 export function HeroEditorial() {
@@ -45,7 +46,7 @@ export function HeroEditorial() {
           <div className="lg:shrink-0">
             <div className="mt-6 flex flex-wrap gap-3 md:mt-8 lg:mt-0 lg:flex-col lg:items-start">
               <EditorialLink
-                href={REVIEW_HREF}
+                href={REVIEW_PAGE_HREF}
                 variant="solid"
                 onClick={() => trackClickCta(HERO.primaryCta, 'hero')}
               >

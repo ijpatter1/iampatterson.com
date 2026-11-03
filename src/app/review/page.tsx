@@ -1,6 +1,4 @@
-'use client';
-
-import { EditorialLink } from '@/components/chrome/editorial-button';
+import { BookButton } from '@/components/review/book-button';
 import {
   BODY_CLASSES,
   Eyebrow,
@@ -13,21 +11,8 @@ import {
   STAT_FIGURE_CLASSES,
   Section,
 } from '@/components/home/section';
-import { BOOK_REVIEW_HREF, REVIEW_COLUMNS } from '@/lib/content/review';
+import { REVIEW_COLUMNS } from '@/lib/content/review';
 import { REVIEW_PAGE } from '@/lib/content/review-page';
-import { trackClickCta } from '@/lib/events/track';
-
-function BookButton() {
-  return (
-    <EditorialLink
-      href={BOOK_REVIEW_HREF}
-      variant="solid"
-      onClick={() => trackClickCta(REVIEW_PAGE.cta, 'review')}
-    >
-      {REVIEW_PAGE.cta}
-    </EditorialLink>
-  );
-}
 
 /** The review page: the profile's Featured item "Start with a review". */
 export default function ReviewPage() {

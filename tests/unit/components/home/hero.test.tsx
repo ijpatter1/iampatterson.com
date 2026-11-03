@@ -6,7 +6,8 @@ import userEvent from '@testing-library/user-event';
 
 import { HeroEditorial } from '@/components/home/hero';
 import { OverlayProvider, useOverlay } from '@/components/overlay/overlay-context';
-import { HERO, REVIEW_HREF } from '@/lib/content/hero';
+import { HERO } from '@/lib/content/hero';
+import { REVIEW_PAGE_HREF } from '@/lib/content/review';
 
 jest.mock('@/lib/events/track', () => ({
   trackClickCta: jest.fn(),
@@ -77,7 +78,7 @@ describe('HeroEditorial', () => {
   it('sends the primary call to action to the review page, and tracks it', async () => {
     renderHero();
     const link = screen.getByRole('link', { name: HERO.primaryCta });
-    expect(link).toHaveAttribute('href', REVIEW_HREF);
+    expect(link).toHaveAttribute('href', REVIEW_PAGE_HREF);
     link.addEventListener('click', (e) => e.preventDefault());
     await userEvent.click(link);
     expect(trackClickCta).toHaveBeenCalledWith(HERO.primaryCta, 'hero');

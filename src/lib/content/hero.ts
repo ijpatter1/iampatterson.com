@@ -1,5 +1,3 @@
-import { REVIEW_PAGE_HREF } from './review';
-
 /** Homepage hero copy, from the LinkedIn profile of 2026-11-02 (15.9). */
 export const HERO = {
   eyebrowLeft: 'I am Patterson · Atlanta',
@@ -13,6 +11,3 @@ export const HERO = {
   ghostCta: 'See your session',
   capacityNote: 'Taking project work now.',
 } as const;
-
-/** Where every review call to action lands: the review page (15.10). */
-export const REVIEW_HREF = REVIEW_PAGE_HREF;

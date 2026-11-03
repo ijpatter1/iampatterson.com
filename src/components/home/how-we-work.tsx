@@ -12,8 +12,7 @@ import {
   STEP_LINE_CLASSES,
   Section,
 } from '@/components/home/section';
-import { REVIEW_HREF } from '@/lib/content/hero';
-import { HOW_WE_WORK } from '@/lib/content/review';
+import { HOW_WE_WORK, REVIEW_PAGE_HREF } from '@/lib/content/review';
 import { trackClickCta } from '@/lib/events/track';
 
 /** "How teams work with me": Review, Build, Lead, as on the LinkedIn banner. */
@@ -52,7 +51,7 @@ export function HowWeWork() {
 
       <div className="mt-12">
         <EditorialLink
-          href={REVIEW_HREF}
+          href={REVIEW_PAGE_HREF}
           variant="solid"
           onClick={() => trackClickCta(HOW_WE_WORK.cta, 'review')}
         >

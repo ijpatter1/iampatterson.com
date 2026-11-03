@@ -3,7 +3,7 @@
  * "Start with a review" and its Founder entry, with the October review
  * block's signed columns (REVIEW_COLUMNS in ./review).
  */
-import { REVIEW_PRICE } from './review';
+import { HOW_WE_WORK, REVIEW_PRICE } from './review';
 
 export interface FollowStep {
   label: string;
@@ -41,7 +41,8 @@ export const REVIEW_PAGE = {
     },
     {
       label: 'Lead',
-      text: 'A retainer, or fractional leadership if nobody on your team owns marketing data, measurement and AI at a senior level.',
+      // The homepage ladder's Lead step, word for word, from one place.
+      text: HOW_WE_WORK.steps[2].body,
     },
   ] satisfies FollowStep[],
 } as const;

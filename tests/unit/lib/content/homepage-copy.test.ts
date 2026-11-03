@@ -5,7 +5,7 @@
  */
 import { CERTIFICATIONS } from '@/lib/content/certifications';
 import { DONE_WHERE } from '@/lib/content/done-where';
-import { HERO, REVIEW_HREF } from '@/lib/content/hero';
+import { HERO } from '@/lib/content/hero';
 import { NETWORKS, NETWORKS_LABEL } from '@/lib/content/networks';
 import { PROBLEMS, PROBLEMS_EYEBROW, PROBLEM_LABELS } from '@/lib/content/problems';
 import { LIVE_STRIP, PROOF } from '@/lib/content/proof';
@@ -85,15 +85,21 @@ describe('the priced first step', () => {
     expect(HOW_WE_WORK.steps[0].price).toBe(`From ${REVIEW_PRICE}`);
   });
 
-  it('states no duration for the review anywhere', () => {
-    expect(ALL_COPY.filter((s) => /two-day|\bdays?\b|\bhours?\b|fixed price/i.test(s))).toEqual([]);
+  // The review states no effort duration anywhere. The one timing claim is
+  // the turnaround on /review, counted from full access (Ian, 2026-11-03).
+  it('states no effort duration; the only timing is the approved turnaround', () => {
+    const timing = /two-day|\bdays?\b|\bhours?\b|\bweeks?\b|fortnight|fixed price/i;
+    expect(
+      ALL_COPY.filter(
+        (s) => s !== REVIEW_PAGE.turnaround && !/six figures a week/.test(s) && timing.test(s),
+      ),
+    ).toEqual([]);
   });
 
   // 15.10: every review link goes to the page that sets the review out; only
   // the booking buttons go to the contact page, with the review intent.
   it('sends every review call to action to the review page, and booking to contact', () => {
-    expect(REVIEW_HREF).toBe('/review');
-    expect(REVIEW_HREF).toBe(REVIEW_PAGE_HREF);
+    expect(REVIEW_PAGE_HREF).toBe('/review');
     expect(BOOK_REVIEW_HREF).toBe('/contact?intent=review');
   });
 

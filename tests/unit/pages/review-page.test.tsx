@@ -63,9 +63,10 @@ describe('the review page', () => {
     for (const item of REVIEW_PAGE.includes) expect(screen.getByText(item)).toBeInTheDocument();
   });
 
-  // The October columns were signed on 2026-10-12 and moved here from the
-  // homepage; they render unchanged.
-  it('renders the signed give, get and then columns', () => {
+  // The give, get and then columns: signed 2026-10-12, with "You give me"
+  // and "You get" rewritten on 2026-11-03 from a real review (Ian signed the
+  // page as rendered). They render from the one content module.
+  it('renders the give, get and then columns', () => {
     render(<ReviewPage />);
     for (const column of REVIEW_COLUMNS) {
       expect(screen.getByText(column.label)).toBeInTheDocument();

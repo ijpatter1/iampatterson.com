@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
 
+import { REVIEW_PRICE } from '@/lib/content/review';
+
 const TITLE = 'Start with a review';
-const DESCRIPTION =
-  "A paid, read-only review of your tracking and each ad platform's claims against your orders, with findings ranked by impact. From $2,500.";
+const DESCRIPTION = `A paid, read-only review of your tracking and each ad platform's claims against your orders, with findings ranked by impact. From ${REVIEW_PRICE}.`;
 
 export const metadata: Metadata = {
   title: TITLE,
