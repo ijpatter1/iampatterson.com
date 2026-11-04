@@ -6,9 +6,9 @@ import userEvent from '@testing-library/user-event';
 
 import ContactPage from '@/app/contact/page';
 import { ContactForm } from '@/components/contact/contact-form';
-import { CONTACT_INTROS, PRINCIPLES } from '@/lib/content/contact';
+import { CONTACT_COPY, CONTACT_INTROS, PRINCIPLES } from '@/lib/content/contact';
 import { DONE_WHERE } from '@/lib/content/done-where';
-import { REVIEW_PRICE } from '@/lib/content/review';
+import { REVIEW_PAGE_HREF, REVIEW_PRICE } from '@/lib/content/review';
 import { RENDERABLE_EVENT_NAMES } from '@/lib/events/schema';
 
 // Mock the track module
@@ -93,6 +93,21 @@ describe('ContactPage, the merged contact and about page (16.2)', () => {
     expect(facts).toHaveTextContent(REVIEW_PRICE);
   });
 
+  // A visitor on the general page hasn't decided on the review yet, so the
+  // page names the priced first step and links to what it covers. The review
+  // intent already shows the price and turnaround, so it doesn't repeat it.
+  it('points the general page at the review page, with its price', async () => {
+    await renderPage();
+    const link = screen.getByRole('link', { name: /what it includes/i });
+    expect(link).toHaveAttribute('href', REVIEW_PAGE_HREF);
+    expect(screen.getByText(/most teams start with the review/i)).toHaveTextContent(REVIEW_PRICE);
+  });
+
+  it('does not repeat the review pointer on the review intent', async () => {
+    await renderPage({ intent: 'review' });
+    expect(screen.queryByRole('link', { name: /what it includes/i })).not.toBeInTheDocument();
+  });
+
   it('treats an unknown or repeated intent as the general page', async () => {
     await renderPage({ intent: 'services' });
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
@@ -125,12 +140,14 @@ describe('ContactPage, the merged contact and about page (16.2)', () => {
     await renderPage();
     const emailLink = screen.getAllByRole('link', { name: /ian@iampatterson\.com/i })[0];
     expect(emailLink).toHaveAttribute('href', 'mailto:ian@iampatterson.com');
-    expect(screen.getByText(/respond within 24 hours/i)).toBeInTheDocument();
+    expect(screen.getByText(/reply within 24 hours/i)).toBeInTheDocument();
   });
 
   it('drops the old offer: no measurement stack, no tiers', async () => {
     const { container } = render(await ContactPage({ searchParams: Promise.resolve({}) }));
-    expect(container.textContent).not.toMatch(/measurement stack|tiers?\b|measurement infrastructure/i);
+    expect(container.textContent).not.toMatch(
+      /measurement stack|tiers?\b|measurement infrastructure/i,
+    );
   });
 });
 
@@ -140,6 +157,14 @@ describe('ContactForm', () => {
     expect(screen.getByLabelText(/name/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/message/i)).toBeInTheDocument();
+  });
+
+  // The hint tells the visitor what makes a useful first message, and is
+  // tied to the field so a screen reader announces it with the label.
+  it('describes the message field with what to include', () => {
+    render(<ContactForm />);
+    const message = screen.getByLabelText(/^message$/i);
+    expect(message).toHaveAccessibleDescription(CONTACT_COPY.messageHint);
   });
 
   it('renders a submit button', () => {

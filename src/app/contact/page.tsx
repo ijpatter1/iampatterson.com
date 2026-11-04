@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 import { ContactForm } from '@/components/contact/contact-form';
 import { DoneWhere } from '@/components/home/done-where';
 import {
@@ -37,11 +39,23 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
       <section className={`bg-paper pt-8 md:pt-16 ${SECTION_PADDING_BOTTOM}`}>
         <div className="mx-auto max-w-content px-5 md:px-10">
           <Eyebrow>{intro.eyebrow}</Eyebrow>
-          <h1 className={`mt-5 ${PAGE_TITLE_CLASSES}`}>{intro.title}</h1>
+          <h1 className={`mt-5 text-balance ${PAGE_TITLE_CLASSES}`}>{intro.title}</h1>
           <div className="mt-10 flex flex-wrap items-start gap-x-16 gap-y-10 border-t border-rule-soft pt-8">
             <div className="min-w-[280px] max-w-[52ch] flex-1">
               <p className={`${BODY_CLASSES} md:text-lg`}>{intro.intro}</p>
               {intro.facts && <p className={`mt-4 ${LABEL_STRONG_CLASSES}`}>{intro.facts}</p>}
+              {intro.reviewLink && (
+                <p className={`mt-4 flex flex-wrap items-center gap-x-4 ${LABEL_STRONG_CLASSES}`}>
+                  <span>{intro.reviewLink.lead}</span>
+                  <Link
+                    href={intro.reviewLink.href}
+                    className={`${LABEL_CLASSES} inline-flex min-h-[44px] items-center underline decoration-rule underline-offset-4 transition-colors hover:text-ink`}
+                  >
+                    {intro.reviewLink.text}
+                    <span aria-hidden="true">&nbsp;→</span>
+                  </Link>
+                </p>
+              )}
               <div className="mt-8 border-t border-rule pt-4">
                 <div className={LABEL_CLASSES}>{CONTACT_COPY.emailLabel}</div>
                 <a

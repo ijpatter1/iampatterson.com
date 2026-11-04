@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { SessionStateRideAlong } from '@/components/contact/session-state-ride-along';
+import { SMALL_BODY_CLASSES } from '@/components/home/section';
 import { CONTACT_CONFIG } from '@/lib/contact/config';
 import { getRecaptchaToken, loadRecaptcha } from '@/lib/contact/recaptcha-client';
 import { CONTACT_COPY, CONTACT_EMAIL } from '@/lib/content/contact';
@@ -98,9 +99,13 @@ export function ContactForm() {
           <label htmlFor="message" className={FIELD_LABEL_CLASSES}>
             Message
           </label>
+          <p id="message-hint" className={`mt-1.5 ${SMALL_BODY_CLASSES}`}>
+            {CONTACT_COPY.messageHint}
+          </p>
           <textarea
             id="message"
             name="message"
+            aria-describedby="message-hint"
             maxLength={CONTACT_CONFIG.limits.message}
             rows={5}
             required
