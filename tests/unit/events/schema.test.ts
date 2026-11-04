@@ -93,13 +93,13 @@ describe('Event schema types', () => {
     expect(event.cta_location).toBe('hero');
   });
 
-  it('CtaLocation covers the 7-value nav-adjacent closed enum', () => {
-    // Type-level: Record<NavAdjacent, true> requires exactly these seven keys.
+  it('CtaLocation covers the 6-value nav-adjacent closed enum', () => {
+    // Type-level: Record<NavAdjacent, true> requires exactly these six keys.
+    // `portal_about` left with the About portal (16.2).
     type NavAdjacent = Extract<
       CtaLocation,
       | 'session_pulse'
       | 'portal_services'
-      | 'portal_about'
       | 'portal_contact'
       | 'contact_cta_threshold'
       | 'pipeline_see_your_session'
@@ -108,13 +108,12 @@ describe('Event schema types', () => {
     const navAdjacent: Record<NavAdjacent, true> = {
       session_pulse: true,
       portal_services: true,
-      portal_about: true,
       portal_contact: true,
       contact_cta_threshold: true,
       pipeline_see_your_session: true,
       footer_session: true,
     };
-    expect(Object.keys(navAdjacent)).toHaveLength(7);
+    expect(Object.keys(navAdjacent)).toHaveLength(6);
   });
 
   it('CtaLocation covers the editorial closed enum', () => {
@@ -131,7 +130,6 @@ describe('Event schema types', () => {
       | 'services_tier_03'
       | 'services_tier_04'
       | 'final_cta'
-      | 'about_closer'
       | 'demo_card_ecommerce'
     >;
     const editorial: Record<Editorial, true> = {
@@ -142,10 +140,9 @@ describe('Event schema types', () => {
       services_tier_03: true,
       services_tier_04: true,
       final_cta: true,
-      about_closer: true,
       demo_card_ecommerce: true,
     };
-    expect(Object.keys(editorial)).toHaveLength(9);
+    expect(Object.keys(editorial)).toHaveLength(8);
   });
 
   it('CtaLocation covers the homepage rewrite locations', () => {
@@ -249,16 +246,17 @@ describe('Event schema types', () => {
     expect(byReselect.source).toBe('manual_select');
   });
 
-  it('defines PortalClickEvent with services, about, and contact destinations', () => {
+  it('defines PortalClickEvent with services and contact destinations (about left with 16.2)', () => {
     const toServices: PortalClickEvent = {
       ...baseFields,
       event: 'portal_click',
       destination: 'services',
     };
+    // @ts-expect-error the About portal is gone, so 'about' is not a destination
     const toAbout: PortalClickEvent = { ...toServices, destination: 'about' };
+    void toAbout;
     const toContact: PortalClickEvent = { ...toServices, destination: 'contact' };
     expect(toServices.destination).toBe('services');
-    expect(toAbout.destination).toBe('about');
     expect(toContact.destination).toBe('contact');
   });
 

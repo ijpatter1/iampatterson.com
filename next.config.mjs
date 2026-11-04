@@ -19,6 +19,8 @@ const nextConfig = {
     // way, the redirect is cacheable and signals to search engines to
     // update their index.
     return [
+      // 16.2: the about page folds into /contact.
+      { source: '/about', destination: '/contact', permanent: true },
       {
         source: '/demo/subscription/:path*',
         destination: '/?rebuild=subscription#demos',

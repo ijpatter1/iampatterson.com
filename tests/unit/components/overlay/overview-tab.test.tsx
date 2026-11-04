@@ -295,7 +295,7 @@ describe('OverviewTab', () => {
       </Wrapper>,
     );
     expect(screen.getByText(/Four tiers of measurement infrastructure/i)).toBeInTheDocument();
-    expect(screen.getByText(/Ian, Tuna, and the backstory/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Ian, Tuna, and the backstory/i)).not.toBeInTheDocument();
     expect(screen.getByText(/Start a conversation/i)).toBeInTheDocument();
   });
 
@@ -343,7 +343,7 @@ describe('OverviewTab', () => {
     expect(screen.getByTestId('consent-row-preferences')).toHaveTextContent(/granted/i);
   });
 
-  it('renders the three portal links', () => {
+  it('renders the portal links, with no About portal (16.2)', () => {
     useSessionState.mockReturnValue(makeState());
     render(
       <Wrapper>
@@ -351,7 +351,7 @@ describe('OverviewTab', () => {
       </Wrapper>,
     );
     expect(screen.getByRole('link', { name: /services/i })).toHaveAttribute('href', '/services');
-    expect(screen.getByRole('link', { name: /about/i })).toHaveAttribute('href', '/about');
+    expect(screen.queryByRole('link', { name: /about/i })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /contact/i })).toHaveAttribute('href', '/contact');
   });
 
@@ -542,7 +542,7 @@ describe('OverviewTab', () => {
     expect(portals.contains(cta)).toBe(true);
   });
 
-  it('renders the 3-portal row as a grid (multi-column at sm+)', () => {
+  it('renders the portal row as a grid, two portals after the About portal left (16.2)', () => {
     useSessionState.mockReturnValue(makeState());
     render(
       <Wrapper>
@@ -551,7 +551,7 @@ describe('OverviewTab', () => {
     );
     // Each portal link is isolable by testid.
     expect(screen.getByTestId('portal-services')).toBeInTheDocument();
-    expect(screen.getByTestId('portal-about')).toBeInTheDocument();
+    expect(screen.queryByTestId('portal-about')).not.toBeInTheDocument();
     expect(screen.getByTestId('portal-contact')).toBeInTheDocument();
   });
 

@@ -139,7 +139,7 @@ export interface ClickNavEvent extends BaseEvent {
  * Closed enum of `cta_location` values for `click_cta` emissions.
  *
  * Nav-adjacent CTAs (Phase 9E deliverable 9 closed set) must use one of:
- * `session_pulse`, `portal_services`, `portal_about`, `portal_contact`,
+ * `session_pulse`, `portal_services`, `portal_contact`,
  * `contact_cta_threshold`, `pipeline_see_your_session`, `footer_session`.
  * The "etc." escape hatch is closed, adding a nav-adjacent CTA extends this
  * union explicitly.
@@ -161,7 +161,6 @@ export type CtaLocation =
   // Phase 9E nav-adjacent closed enum
   | 'session_pulse'
   | 'portal_services'
-  | 'portal_about'
   | 'portal_contact'
   | 'contact_cta_threshold'
   | 'pipeline_see_your_session'
@@ -171,7 +170,6 @@ export type CtaLocation =
   | 'services_closer'
   | `services_tier_${'01' | '02' | '03' | '04'}`
   | 'final_cta'
-  | 'about_closer'
   // Homepage Demos section, single ecommerce entry after D6's rebuild. Name
   // retained across the card→section refactor so the analytics time series
   // stays continuous (no split series from a rename).
@@ -386,7 +384,7 @@ export interface ConsentTabViewEvent extends BaseEvent {
  */
 export interface PortalClickEvent extends BaseEvent {
   event: 'portal_click';
-  destination: 'services' | 'about' | 'contact';
+  destination: 'services' | 'contact';
 }
 
 /**

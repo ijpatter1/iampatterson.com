@@ -10,6 +10,17 @@
 import nextConfig from '../../next.config.mjs';
 
 describe('next.config.mjs redirects (Phase 9E D7)', () => {
+  // 16.2: the about page folds into /contact. Old links (LinkedIn, search)
+  // must land on the merged page, permanently, so search engines move the
+  // index entry rather than keep a dead URL.
+  it('redirects `/about` permanently to `/contact`', async () => {
+    const redirects = await nextConfig.redirects?.();
+    const about = redirects!.find((r) => r.source === '/about');
+    expect(about).toEqual(
+      expect.objectContaining({ source: '/about', destination: '/contact', permanent: true }),
+    );
+  });
+
   it('exports an async redirects() function', () => {
     expect(typeof nextConfig.redirects).toBe('function');
   });

@@ -29,8 +29,8 @@ export function Footer() {
           <div>
             <h4 className="font-display text-3xl text-ink">
               <Link
-                href="/about"
-                onClick={() => trackClickNav('Patterson', '/about')}
+                href="/contact"
+                onClick={() => trackClickNav('Patterson', '/contact')}
                 className="transition-colors hover:text-accent-current"
               >
                 Patterson<em className="not-italic text-accent-current">.</em>
