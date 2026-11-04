@@ -100,7 +100,7 @@ describe('ContactPage, the merged contact and about page (16.2)', () => {
     await renderPage();
     const link = screen.getByRole('link', { name: /what it includes/i });
     expect(link).toHaveAttribute('href', REVIEW_PAGE_HREF);
-    expect(screen.getByText(/most teams start with the review/i)).toHaveTextContent(REVIEW_PRICE);
+    expect(screen.getByText(/^start with the review, from/i)).toHaveTextContent(REVIEW_PRICE);
   });
 
   it('does not repeat the review pointer on the review intent', async () => {

@@ -27,7 +27,7 @@ export const CONTACT_INTROS: Record<ContactIntent, ContactIntro> = {
     intro:
       "Usually it's one of three things: the ad platforms and your orders don't agree, a site or platform change broke your tracking, or nobody on your team owns the data and every question waits on someone else. Tell me what you're seeing, and I'll tell you whether the review is the right first step.",
     reviewLink: {
-      lead: `Most teams start with the review, from ${REVIEW_PRICE}.`,
+      lead: `Start with the review, from ${REVIEW_PRICE}.`,
       text: 'What it includes',
       href: REVIEW_PAGE_HREF,
     },
