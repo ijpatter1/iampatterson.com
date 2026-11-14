@@ -35,7 +35,7 @@
 #   D9 — Browser storage inspector (cookies + localStorage +
 #        sessionStorage in overlay; categorized read-only view)
 #
-# 13 scenarios: 9 deliverable-aligned + 3 edge cases + 1 regression sweep.
+# 14 scenarios: 9 deliverable-aligned + 4 edge cases + 1 regression sweep.
 #   Scenarios marked [auto] run without operator interaction.
 #   Scenarios marked [devtools] require DevTools observation.
 #   Scenarios marked [prod] require BASE_URL pointing at production.
@@ -537,6 +537,10 @@ expect \
   "On https: Secure flag set; on localhost: Secure may be unset (acceptable)" \
   "Path=/"
 
+do_step "Note the _iap_aid value. Hard-reload the page (Cmd+Shift+R / Ctrl+Shift+R), wait ~2 seconds, then refresh the Application tab."
+expect \
+  "_iap_aid value unchanged: the stored grant keeps the same ID across a reload (Cookiebot resolves the stored choice ~180ms after load; nothing expires the cookie before then)"
+
 do_step "Open SessionPulse → Consent tab."
 expect \
   "Storage inspector includes an 'App identity' group and an 'Analytics' group" \
@@ -571,6 +575,7 @@ expect \
   "Click any link, then refresh the Application tab: '_iap_aid' has not come back"
 
 confirm "_iap_aid cookie has correct attributes (UUID v4, ≈365d Max-Age, SameSite=Lax)?"
+confirm "_iap_aid value unchanged across a hard reload?"
 confirm "_iap_aid surfaces in the D9 storage inspector under Analytics?"
 confirm "anonymous_id appears on event payloads in the Timeline?"
 confirm "Checkout BQ row preview shows no user_pseudo_id column and no visitor ID?"
@@ -728,6 +733,33 @@ confirm "Consent UI honestly reflects the denial (× glyph + persimmon for decli
 confirm "Timeline routing shows 'Blocked' destinations after consent denial?"
 confirm "Network tab confirms zero analytics / marketing pixels fired?"
 confirm "_iap_sid present and _iap_aid never written, from first load through the denial?"
+
+# ────────────────────────────────────────────────────────────────────────
+# Edge case A2 — a leftover _iap_aid is expired on load
+# ────────────────────────────────────────────────────────────────────────
+scenario "A2. [edge][devtools] Leftover _iap_aid — a decliner, or a visitor who never chose, loses it on load" \
+  "Production minted _iap_aid for every visitor until 2026-11-14; cookiebot-consent.tsx + initConsentState(resolved) + CookiebotOnLoad"
+
+setup \
+  "Fresh incognito window" \
+  "DevTools → Application tab + Console open"
+
+do_step "Navigate to $BASE_URL/ and click 'Reject all' / 'Decline' in the Cookiebot banner."
+open_url "$BASE_URL/"
+
+do_step "In the Console, plant a leftover: document.cookie = '_iap_aid=leftover-before-2026-11-14; Path=/; Max-Age=31536000'"
+
+do_step "Hard-reload the page, wait ~2 seconds, then refresh the Application tab."
+expect \
+  "'_iap_aid' is gone: a returning decliner loses the leftover once Cookiebot resolves the stored decline" \
+  "SessionPulse → Timeline: events carry no anonymous_id"
+
+do_step "Delete the CookieConsent cookie (the visitor has never chosen), plant the leftover again as above, hard-reload, and do not choose in the banner."
+expect \
+  "'_iap_aid' is gone after ~2 seconds: with no answer there is no consent (CookiebotOnLoad without a response)"
+
+confirm "A returning decliner's leftover _iap_aid was expired on load?"
+confirm "A never-chosen visitor's leftover _iap_aid was expired on load?"
 
 # ────────────────────────────────────────────────────────────────────────
 # Edge case B — full ecommerce funnel sweep with all D8/D9 tokens visible

@@ -89,6 +89,14 @@ function CartMutator() {
   );
 }
 
+/** The value cell the warehouse-write preview shows for a column. */
+function previewCell(column: string): string | null | undefined {
+  const keyCell = Array.from(document.querySelectorAll('aside[data-live-sidebar] span')).find(
+    (el) => el.textContent === column,
+  );
+  return keyCell?.nextElementSibling?.textContent;
+}
+
 function renderCheckout(seeded = true) {
   return render(
     <ToastProvider>
@@ -158,16 +166,19 @@ describe('CheckoutForm (Phase 9F D8)', () => {
     const sidebar = document.querySelector('aside[data-live-sidebar]');
     expect(sidebar).not.toBeNull();
     expect(sidebar?.textContent).toContain('iampatterson_raw.events_raw');
-    expect(sidebar?.textContent).toMatch(/20 of 51 columns/i);
+    // The table's real width (infrastructure/bigquery/schema.json) and only
+    // columns that exist in it; no seed for a column the table lacks.
+    expect(sidebar?.textContent).toMatch(/15 of 77 columns/i);
+    expect(sidebar?.textContent).not.toMatch(/geo_country/);
+    expect(document.body.textContent).toMatch(/15 of the 77 real columns/);
   });
 
   it('warehouse-write sidebar reflects visitor cart total + item count', () => {
     renderCheckout();
-    const sidebar = document.querySelector('aside[data-live-sidebar]') as HTMLElement;
-    // cart_value row should carry 26.00
-    expect(sidebar.textContent).toContain('26.00');
-    // cart_item_count row should carry the count 1 (fields render as separate rows)
-    expect(sidebar.textContent).toMatch(/cart_item_count/);
+    expect(previewCell('cart_total')).toBe('26.00');
+    expect(previewCell('item_count')).toBe('1');
+    // products: the cart as JSON, the string the purchase event sends.
+    expect(previewCell('products')).toContain('"product_id":"tuna-plush-classic"');
   });
 
   it('renders an order summary column with items, subtotal, total, no-kill disclaimer', () => {
@@ -328,15 +339,14 @@ describe('CheckoutForm (Phase 9F D8)', () => {
       expect(sidebar?.textContent).toMatch(/abc12345…/);
     });
 
-    it('substitutes event_timestamp with the real last-event ISO', () => {
+    it('substitutes timestamp with the real last-event ISO', () => {
       const iso = '2026-04-21T18:15:02.000Z';
       mockSession.mockReturnValue({
         ...DEFAULT_SESSION,
         last_event_at: iso,
       });
       renderCheckout();
-      const sidebar = document.querySelector('aside[data-live-sidebar]');
-      expect(sidebar?.textContent).toContain(iso);
+      expect(previewCell('timestamp')).toBe(`"${iso}"`);
     });
 
     it('substitutes consent flags once events have flowed', () => {
@@ -347,18 +357,16 @@ describe('CheckoutForm (Phase 9F D8)', () => {
         consent_marketing: true,
       });
       renderCheckout();
-      const sidebar = document.querySelector('aside[data-live-sidebar]');
-      // Both should read granted when events carry both flags granted.
-      const grantedMatches = (sidebar?.textContent ?? '').match(/granted/g) ?? [];
-      expect(grantedMatches.length).toBeGreaterThanOrEqual(2);
+      // BOOL columns, as events_raw stores them.
+      expect(previewCell('consent_analytics')).toBe('true');
+      expect(previewCell('consent_marketing')).toBe('true');
     });
 
     it('falls back to seed consent values when no events have flowed yet', () => {
       renderCheckout();
-      const sidebar = document.querySelector('aside[data-live-sidebar]');
-      // Seed has analytics=granted, marketing=denied.
-      expect(sidebar?.textContent).toMatch(/granted/);
-      expect(sidebar?.textContent).toMatch(/denied/);
+      // Seed has analytics granted, marketing declined.
+      expect(previewCell('consent_analytics')).toBe('true');
+      expect(previewCell('consent_marketing')).toBe('false');
     });
   });
 
@@ -380,7 +388,6 @@ describe('CheckoutForm (Phase 9F D8)', () => {
       act(() => {
         trackModule.initConsentState(true, false, false);
       });
-      expect(trackModule.getConsentedAnonymousId()).toBe('aid12345-6789-4def-8abc-feedfacefeed');
       renderCheckout();
       const sidebar = document.querySelector('aside[data-live-sidebar]');
       expect(sidebar?.textContent).not.toContain('user_pseudo_id');

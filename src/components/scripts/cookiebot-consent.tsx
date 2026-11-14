@@ -5,6 +5,8 @@ import { useEffect } from 'react';
 import { initConsentState, trackConsentUpdate } from '@/lib/events/track';
 
 interface CookiebotGlobal {
+  /** True once Cookiebot has resolved the visitor's answer. */
+  hasResponse?: boolean;
   consent: {
     statistics: boolean;
     marketing: boolean;
@@ -18,12 +20,32 @@ function handleConsentChange() {
   trackConsentUpdate(cb.consent.statistics, cb.consent.marketing, cb.consent.preferences);
 }
 
+/**
+ * CookiebotOnLoad without an answer (`hasResponse === false`) is a visitor who
+ * has never chosen: no consent, so a leftover `_iap_aid` is expired. With an
+ * answer, CookiebotOnAccept or CookiebotOnDecline fires alongside and handles
+ * it. Measured 2026-11-14: on a reload this event arrives at ~180ms, after
+ * Cookiebot has resolved.
+ */
+function handleCookiebotLoad() {
+  const cb = (window as unknown as { Cookiebot?: CookiebotGlobal }).Cookiebot;
+  if (cb?.hasResponse !== false) return;
+  initConsentState(false, false, false, true);
+}
+
 export function CookiebotConsentListener() {
   useEffect(() => {
     // Initialize consent state from Cookiebot if already loaded (returning visitor)
     const cb = (window as unknown as { Cookiebot?: CookiebotGlobal }).Cookiebot;
     if (cb?.consent) {
-      initConsentState(cb.consent.statistics, cb.consent.marketing, cb.consent.preferences);
+      // `hasResponse` is passed through so a resolved decline can expire a
+      // leftover `_iap_aid` and Cookiebot's unresolved default cannot.
+      initConsentState(
+        cb.consent.statistics,
+        cb.consent.marketing,
+        cb.consent.preferences,
+        cb.hasResponse === true,
+      );
     }
 
     // For a stored choice Cookiebot resolves after this mount, its loader
@@ -32,9 +54,11 @@ export function CookiebotConsentListener() {
     // because the bridge in track.ts is the only writer of Consent Mode.
     window.addEventListener('CookiebotOnAccept', handleConsentChange);
     window.addEventListener('CookiebotOnDecline', handleConsentChange);
+    window.addEventListener('CookiebotOnLoad', handleCookiebotLoad);
     return () => {
       window.removeEventListener('CookiebotOnAccept', handleConsentChange);
       window.removeEventListener('CookiebotOnDecline', handleConsentChange);
+      window.removeEventListener('CookiebotOnLoad', handleCookiebotLoad);
     };
   }, []);
 

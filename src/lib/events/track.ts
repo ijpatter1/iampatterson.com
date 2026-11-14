@@ -75,12 +75,21 @@ function clearAnonymousIdCookie(): void {
 }
 
 /**
- * The ID while analytics consent is granted, '' otherwise: the one source for
- * events and for `getConsentedAnonymousId`. Cleared in recordConsent, set in
- * applyAnonymousIdConsent.
+ * The ID this tab established while analytics consent is granted, '' otherwise.
+ * Cleared in recordConsent, set in applyAnonymousIdConsent, read through
+ * `emittedAnonymousId`.
  */
 let consentedAnonymousId = '';
-const consentListeners = new Set<() => void>();
+
+/**
+ * The ID an event carries: this tab's consented ID, but only while the cookie
+ * still holds it. If another tab withdrew (the cookie is gone) or the cookie
+ * now holds a different ID, this tab carries '' rather than a phantom ID.
+ */
+function emittedAnonymousId(): string {
+  if (!consentedAnonymousId) return '';
+  return readAnonymousIdCookie() === consentedAnonymousId ? consentedAnonymousId : '';
+}
 
 type GtagFn = {
   (command: 'consent', action: 'update', payload: Record<string, 'granted' | 'denied'>): void;
@@ -131,53 +140,24 @@ function recordConsent(
  * - Granted: mint the cookie, or reuse and refresh the one already there,
  *   including for a returning visitor whose silent initConsentState pushes no
  *   event.
- * - Not granted, on an explicit choice (`trackConsentUpdate`: the visitor's
- *   decline or withdrawal, or Cookiebot's decline event for a stored choice):
- *   expire it.
- * - Not granted, on the init path: leave it. initConsentState can run on mount
- *   with Cookiebot's all-false default before a stored grant resolves;
- *   expiring there would delete a consenting visitor's ID and mint a new one
- *   when CookiebotOnAccept follows.
- *
- * Then subscribers are told, each in its own try/catch so one broken
- * subscriber cannot stop the others.
+ * - Not granted, once Cookiebot has a resolved answer: expire it. That is
+ *   every `trackConsentUpdate` (the visitor's decline or withdrawal, or
+ *   Cookiebot's decline event for a stored choice), and `initConsentState`
+ *   called with `resolved` (a stored answer already in place, or a visitor
+ *   Cookiebot has loaded for who has never chosen). Production minted the
+ *   cookie for every visitor until 2026-11-14, so leftovers exist.
+ * - Not granted, before Cookiebot has resolved: leave it. On a reload
+ *   initConsentState runs at ~15ms with no answer yet (measured 2026-11-14);
+ *   the stored choice arrives ~180ms later. Expiring there would delete a
+ *   consenting visitor's ID and mint a new one when CookiebotOnAccept follows.
  */
-function applyAnonymousIdConsent(explicitChoice: boolean): void {
-  if (typeof document !== 'undefined') {
-    if (currentConsent.consent_analytics) {
-      consentedAnonymousId = ensureAnonymousIdCookie();
-    } else if (explicitChoice) {
-      clearAnonymousIdCookie();
-    }
+function applyAnonymousIdConsent(resolved: boolean): void {
+  if (typeof document === 'undefined') return;
+  if (currentConsent.consent_analytics) {
+    consentedAnonymousId = ensureAnonymousIdCookie();
+  } else if (resolved) {
+    clearAnonymousIdCookie();
   }
-  consentListeners.forEach((listener) => {
-    try {
-      listener();
-    } catch (error) {
-      console.error('[track] consent subscriber failed:', error);
-    }
-  });
-}
-
-/**
- * Subscribe to consent changes (new choices and returning visitors' stored
- * ones). Returns the unsubscribe function, in the shape `useSyncExternalStore`
- * expects.
- */
-export function subscribeConsent(listener: () => void): () => void {
-  consentListeners.add(listener);
-  return () => {
-    consentListeners.delete(listener);
-  };
-}
-
-/**
- * The visitor's `_iap_aid` while analytics consent is granted, '' otherwise.
- * Held in memory and updated on each consent change, so a render can call it
- * without reparsing `document.cookie`. Read-only.
- */
-export function getConsentedAnonymousId(): string {
-  return consentedAnonymousId;
 }
 
 /**
@@ -229,11 +209,17 @@ function bridgeToGtagConsent(analytics: boolean, marketing: boolean, preferences
  * layer event. The under-the-hood Timeline shouldn't show a "consent
  * changed" event for a returning visitor whose consent didn't actually
  * change this session; the gtag bridge is the only side effect.
+ *
+ * `resolved` is true only when Cookiebot has a resolved answer
+ * (`Cookiebot.hasResponse === true`, or CookiebotOnLoad for a visitor who
+ * has never chosen). Only then may an analytics-false state expire a
+ * leftover `_iap_aid`; see applyAnonymousIdConsent.
  */
 export function initConsentState(
   analytics: boolean,
   marketing: boolean,
   preferences: boolean,
+  resolved = false,
 ): void {
   const honored = recordConsent(analytics, marketing, preferences);
   bridgeToGtagConsent(
@@ -241,7 +227,7 @@ export function initConsentState(
     honored.consent_marketing,
     honored.consent_preferences,
   );
-  applyAnonymousIdConsent(false);
+  applyAnonymousIdConsent(resolved);
 }
 
 /**
@@ -274,8 +260,8 @@ function baseFields(): {
     timestamp: new Date().toISOString(),
     session_id: sid,
     iap_session_id: sid,
-    // Read only, and empty without analytics consent: see applyAnonymousIdConsent.
-    anonymous_id: consentedAnonymousId,
+    // Read only, and empty without analytics consent: see emittedAnonymousId.
+    anonymous_id: emittedAnonymousId(),
     page_path: window.location.pathname,
     page_title: document.title,
     ...currentConsent,

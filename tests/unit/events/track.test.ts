@@ -12,8 +12,6 @@ import {
   trackWebVital,
   trackPageEngagement,
   initConsentState,
-  getConsentedAnonymousId,
-  subscribeConsent,
 } from '@/lib/events/track';
 import * as trackModule from '@/lib/events/track';
 import * as anonymousIdModule from '@/lib/identity/anonymous-id';
@@ -567,14 +565,15 @@ describe('anonymous_id follows analytics consent', () => {
     expect(expiringWrites()[0]).toContain('Path=/');
   });
 
-  // initConsentState runs on mount with whatever Cookiebot reports, which for
-  // a returning visitor can be the all-false default before their stored
-  // choice resolves. Expiring there would delete a consenting visitor's ID and
-  // mint a new one when CookiebotOnAccept follows. Only an explicit decline
-  // or withdrawal (trackConsentUpdate) expires the cookie.
-  it("keeps a consenting returning visitor's ID through the init path's false default", () => {
+  // initConsentState runs on mount with whatever Cookiebot reports. Measured in
+  // production (2026-11-14): at ~15ms Cookiebot exists with no resolved
+  // answer (`hasResponse` not true, statistics undefined); the stored choice
+  // arrives ~180ms later with CookiebotOnLoad and OnAccept/OnDecline.
+  // Expiring before Cookiebot resolves would delete a consenting visitor's ID
+  // and mint a new one when CookiebotOnAccept follows.
+  it("keeps a consenting returning visitor's ID through an unresolved init", () => {
     cookieDescriptor.set!.call(document, '_iap_aid=original-id; Path=/');
-    initConsentState(false, false, false);
+    initConsentState(false, false, false, false);
     expect(readAid()).toBe('original-id');
     expect(aidWrites).toEqual([]);
     trackPageView('/');
@@ -586,9 +585,28 @@ describe('anonymous_id follows analytics consent', () => {
     expect(lastEvent().anonymous_id).toBe('original-id');
   });
 
-  it("expires a returning decliner's stale cookie on the decline event, not on init", () => {
+  // Production minted `_iap_aid` for every visitor until 2026-11-14, so
+  // decliners carry leftovers. Once Cookiebot has a resolved answer and it
+  // declines analytics, the init path is as explicit as a decline event.
+  it('expires a leftover cookie on init once Cookiebot has a resolved decline', () => {
     cookieDescriptor.set!.call(document, '_iap_aid=left-from-earlier; Path=/');
-    initConsentState(false, true, true);
+    initConsentState(false, true, true, true);
+    expect(readAid()).toBeNull();
+    expect(keepingWrites()).toEqual([]);
+    expect(expiringWrites()).toHaveLength(1);
+  });
+
+  it('keeps an ID on a resolved init that grants analytics', () => {
+    cookieDescriptor.set!.call(document, '_iap_aid=stored-id; Path=/');
+    initConsentState(true, false, false, true);
+    trackPageView('/');
+    expect(readAid()).toBe('stored-id');
+    expect(lastEvent().anonymous_id).toBe('stored-id');
+  });
+
+  it("expires a returning decliner's stale cookie on the decline event after an unresolved init", () => {
+    cookieDescriptor.set!.call(document, '_iap_aid=left-from-earlier; Path=/');
+    initConsentState(false, true, true, false);
     expect(readAid()).toBe('left-from-earlier');
     // Cookiebot's loader fires CookiebotOnDecline for the stored choice.
     trackConsentUpdate(false, true, true);
@@ -693,10 +711,8 @@ describe('anonymous_id follows analytics consent', () => {
     // The full list, so a writer cannot arrive under any name.
     expect(Object.keys(trackModule).sort()).toEqual(
       [
-        'getConsentedAnonymousId',
         'getCurrentConsent',
         'initConsentState',
-        'subscribeConsent',
         'trackAddToCart',
         'trackBeginCheckout',
         'trackClaudishDetected',
@@ -732,14 +748,33 @@ describe('anonymous_id follows analytics consent', () => {
     );
   });
 
-  // Events and the in-memory store share one value, so an event never
-  // carries an ID the consent path did not establish.
-  it('events carry the consented ID, not whatever the cookie says later', () => {
-    trackConsentUpdate(true, false, false);
-    const consented = getConsentedAnonymousId();
-    cookieDescriptor.set!.call(document, '_iap_aid=planted-elsewhere; Path=/');
-    trackPageView('/');
-    expect(lastEvent().anonymous_id).toBe(consented);
+  // A stale tab: the ID this tab established is emitted only while the
+  // cookie still holds it. When another tab withdraws and the cookie is gone,
+  // or the cookie now holds something else, this tab's events carry ''.
+  describe('a tab whose cookie changed underneath it', () => {
+    it('keeps carrying the ID while the cookie still holds it', () => {
+      trackConsentUpdate(true, false, false);
+      const minted = readAid();
+      trackPageView('/');
+      trackClickNav('Services', '/services');
+      expect(lastEvent().anonymous_id).toBe(minted);
+    });
+
+    it('carries no ID once another tab has withdrawn and the cookie is gone', () => {
+      trackConsentUpdate(true, false, false);
+      cookieDescriptor.set!.call(document, '_iap_aid=; Max-Age=0; Path=/');
+      trackPageView('/');
+      expect(lastEvent().anonymous_id).toBe('');
+    });
+
+    it('carries neither its old ID nor a foreign one when the cookie now differs', () => {
+      trackConsentUpdate(true, false, false);
+      const minted = readAid();
+      cookieDescriptor.set!.call(document, '_iap_aid=planted-elsewhere; Path=/');
+      trackPageView('/');
+      expect(lastEvent().anonymous_id).toBe('');
+      expect(lastEvent().anonymous_id).not.toBe(minted);
+    });
   });
 
   it('holds no ID when the browser refuses the cookie write, so no phantom ID is used', () => {
@@ -751,14 +786,13 @@ describe('anonymous_id follows analytics consent', () => {
       },
     });
     trackConsentUpdate(true, false, false);
-    expect(getConsentedAnonymousId()).toBe('');
     trackPageView('/');
     expect(lastEvent().anonymous_id).toBe('');
   });
 
   // Consent reaches Google first: the gtag update and the consent_update push
-  // happen before the ID is minted and before subscribers run, so neither a
-  // broken subscriber nor a browser without crypto.randomUUID can stop them.
+  // happen before the ID is minted, so a browser without crypto.randomUUID
+  // cannot stop them.
   describe('consent reaches Google first', () => {
     let gtagCalls: unknown[][];
     beforeEach(() => {
@@ -790,23 +824,6 @@ describe('anonymous_id follows analytics consent', () => {
       expect(stateAtWrite).toEqual({ gtag: true, pushed: true });
     });
 
-    it('still updates gtag and pushes when a subscriber throws, and runs the others', () => {
-      const after = jest.fn();
-      const unsubscribeBroken = subscribeConsent(() => {
-        throw new Error('broken subscriber');
-      });
-      const unsubscribeAfter = subscribeConsent(after);
-      try {
-        expect(() => trackConsentUpdate(true, false, false)).not.toThrow();
-        expect(consentUpdated()).toBe(true);
-        expect(pushedConsentUpdate()).toBe(true);
-        expect(after).toHaveBeenCalled();
-      } finally {
-        unsubscribeBroken();
-        unsubscribeAfter();
-      }
-    });
-
     it.each([
       ['is missing', undefined],
       [
@@ -829,41 +846,12 @@ describe('anonymous_id follows analytics consent', () => {
         expect(() => trackConsentUpdate(true, false, false)).not.toThrow();
         expect(consentUpdated()).toBe(true);
         expect(pushedConsentUpdate()).toBe(true);
-        expect(getConsentedAnonymousId()).toBe('');
         expect(readAid()).toBeNull();
+        trackPageView('/');
+        expect(lastEvent().anonymous_id).toBe('');
       } finally {
         if (original) Object.defineProperty(globalThis.crypto, 'randomUUID', original);
       }
-    });
-  });
-
-  describe('the in-memory consent store', () => {
-    it('notifies subscribers on every consent change and stops after unsubscribe', () => {
-      const listener = jest.fn();
-      const unsubscribe = subscribeConsent(listener);
-      initConsentState(true, false, false);
-      trackConsentUpdate(false, false, false);
-      expect(listener).toHaveBeenCalledTimes(2);
-      unsubscribe();
-      trackConsentUpdate(true, false, false);
-      expect(listener).toHaveBeenCalledTimes(2);
-    });
-
-    it('holds the ID while analytics is granted and empty once withdrawn', () => {
-      trackConsentUpdate(true, false, false);
-      expect(getConsentedAnonymousId()).toBe(readAid());
-      expect(getConsentedAnonymousId()).toBeTruthy();
-      trackConsentUpdate(false, false, false);
-      expect(getConsentedAnonymousId()).toBe('');
-    });
-
-    it('answers from memory, without reparsing document.cookie on each read', () => {
-      trackConsentUpdate(true, false, false);
-      const getter = jest.fn(() => cookieDescriptor.get!.call(document));
-      Object.defineProperty(document, 'cookie', { configurable: true, get: getter, set: () => {} });
-      getConsentedAnonymousId();
-      getConsentedAnonymousId();
-      expect(getter).not.toHaveBeenCalled();
     });
   });
 });

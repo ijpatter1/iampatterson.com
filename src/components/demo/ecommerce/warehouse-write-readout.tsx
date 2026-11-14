@@ -1,28 +1,33 @@
 'use client';
 
-import { bqRowForCart, type LiveCheckoutContext } from '@/lib/demo/reveal/warehouse-write';
+import {
+  bqRowForCart,
+  RAW_EVENTS_COLUMN_COUNT,
+  type LiveCheckoutContext,
+} from '@/lib/demo/reveal/warehouse-write';
 
 /**
  * Warehouse-write Tier 2 readout, children of `LiveSidebar` on the
  * checkout page. Renders the row preview being written to BigQuery with
- * cart-reactive fields (`cart_value`, `cart_item_count`, `items`) updated
+ * cart-reactive fields (`cart_total`, `item_count`, `products`) updated
  * live as the visitor modifies cart state. When live session context is
- * supplied, `session_id`, `event_timestamp`, `received_timestamp`, and the
+ * supplied, `session_id`, `timestamp`, `received_timestamp`, and the
  * two consent flags also substitute with the visitor's real values
  * (UAT r1 items 11 + 13).
  */
 export function WarehouseWriteReadout({
   total,
   itemCount,
-  uniqueItems,
+  products,
   live,
 }: {
   total: number;
   itemCount: number;
-  uniqueItems: number;
+  /** The cart as JSON, as the purchase event sends it. */
+  products: string;
   live?: LiveCheckoutContext;
 }) {
-  const cols = bqRowForCart({ total, itemCount, uniqueItems, live });
+  const cols = bqRowForCart({ total, itemCount, products, live });
   const utmIsExample = live?.utmIsLive === false;
   return (
     <div className="flex flex-col gap-3">
@@ -32,11 +37,11 @@ export function WarehouseWriteReadout({
       </header>
       <p className="text-[11px] leading-snug text-[#EAD9BC]/70">
         This is the row that will be <span className="text-[#F3C769]">inserted</span> when the
-        purchase event fires. {cols.length} of 51 columns shown.{' '}
+        purchase event fires. {cols.length} of {RAW_EVENTS_COLUMN_COUNT} columns shown.{' '}
         <span className="text-[#9E8A6B]">
           {utmIsExample
-            ? 'utm_* / client_id / geo_country are example seeds, no utm_campaign in your url.'
-            : 'client_id / geo_country are example seeds. The other visitor-scoped columns reflect your real session.'}
+            ? 'utm_* / client_id are example seeds, no utm_campaign in your url.'
+            : 'client_id is an example seed. The other visitor-scoped columns reflect your real session.'}
         </span>
       </p>
 
