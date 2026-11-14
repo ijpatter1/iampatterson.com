@@ -1,14 +1,13 @@
-import { CONTACT_CONFIG } from './config';
+import { contactIntent, type ContactIntent } from '@/lib/content/contact';
 
-/** Why the visitor wrote: `review` from the "Book the review" buttons. */
-export type InquiryIntent = 'review' | 'default';
+import { CONTACT_CONFIG } from './config';
 
 export interface Inquiry {
   name: string;
   email: string;
   message: string;
-  /** Missing means `default`. */
-  intent?: InquiryIntent;
+  /** `review` from the "Book the review" buttons, read as the contact page reads it. */
+  intent: ContactIntent;
   /** The session summary, when the visitor ticked the box to send it. */
   sessionState?: string;
 }
@@ -50,7 +49,7 @@ export function validateInquiry(input: unknown): ValidationResult {
   const token = text(raw.token);
   const sessionState = text(raw.session_state ?? raw.sessionState);
   // Never a rejection: a missing or unknown intent is a general inquiry.
-  const intent: InquiryIntent = raw.intent === 'review' ? 'review' : 'default';
+  const intent = contactIntent(raw.intent);
 
   // Name and address end up in mail headers; a line break there would start a
   // header of the visitor's choosing.

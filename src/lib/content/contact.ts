@@ -45,7 +45,7 @@ export const CONTACT_INTROS: Record<ContactIntent, ContactIntro> = {
 };
 
 /** `?intent=review` selects the review heading; anything else is the default. */
-export function contactIntent(value: string | string[] | undefined): ContactIntent {
+export function contactIntent(value: unknown): ContactIntent {
   return value === 'review' ? 'review' : 'default';
 }
 

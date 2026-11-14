@@ -6,6 +6,7 @@ import { assessToken, RECAPTCHA_MIN_SCORE } from '@/lib/contact/recaptcha';
 import { getGmailToken, getServiceAccountToken } from '@/lib/contact/google';
 import { CONTACT_CONFIG } from '@/lib/contact/config';
 import { validateInquiry } from '@/lib/contact/validate';
+import { contactIntent } from '@/lib/content/contact';
 
 type Call = { url: string; init: RequestInit };
 
@@ -94,6 +95,16 @@ describe('validateInquiry', () => {
     expect(r).toEqual({ ok: true, value: expect.objectContaining({ intent: expected }) });
   });
 
+  // One definition of the intent: the inquiry reads it exactly as the page
+  // does, so the heading a visitor saw and the subject Ian gets agree.
+  it.each(['review', 'default', undefined, 'sales', ['review', 'review']])(
+    'reads the intent %p as the contact page does',
+    (intent) => {
+      const r = validateInquiry({ ...ok, intent });
+      expect(r.ok && r.value.intent).toBe(contactIntent(intent));
+    },
+  );
+
   it('rejects a body that is not an object', () => {
     expect(validateInquiry('hello').ok).toBe(false);
   });
@@ -111,7 +122,12 @@ describe('buildRawMessage', () => {
 
   it('sends from and to the configured mailbox, with the visitor as Reply-To', () => {
     const { headers: mime, body } = parts(
-      buildRawMessage({ name: 'Ada Lovelace', email: 'ada@example.com', message: 'Hello there' }),
+      buildRawMessage({
+        intent: 'default',
+        name: 'Ada Lovelace',
+        email: 'ada@example.com',
+        message: 'Hello there',
+      }),
     );
     expect(mime).toMatch(new RegExp(`^From: .*<${CONTACT_CONFIG.mailbox}>`, 'm'));
     expect(mime).toMatch(new RegExp(`^To: ${CONTACT_CONFIG.mailbox}`, 'm'));
@@ -123,7 +139,12 @@ describe('buildRawMessage', () => {
   // start a new header line, or the form becomes a relay.
   it('cannot be made to add a header from the visitor’s input', () => {
     const mime = decode(
-      buildRawMessage({ name: 'Ada\nBcc: x@example.com', email: 'ada@example.com', message: 'm' }),
+      buildRawMessage({
+        intent: 'default',
+        name: 'Ada\nBcc: x@example.com',
+        email: 'ada@example.com',
+        message: 'm',
+      }),
     );
     const headers = mime.split('\r\n\r\n')[0];
     expect(headers).not.toMatch(/^Bcc:/m);
@@ -147,7 +168,9 @@ describe('buildRawMessage', () => {
   });
 
   it('encodes a non-ASCII subject so mail clients show it intact', () => {
-    const mime = decode(buildRawMessage({ name: 'Zoë', email: 'z@example.com', message: 'm' }));
+    const mime = decode(
+      buildRawMessage({ intent: 'default', name: 'Zoë', email: 'z@example.com', message: 'm' }),
+    );
     expect(mime).toMatch(/^Subject: =\?UTF-8\?B\?/m);
   });
 
@@ -155,7 +178,12 @@ describe('buildRawMessage', () => {
   // break it. Base64 lines stay short whatever the visitor writes.
   it('keeps every line within the mail line limit for a long message', () => {
     const { mime, body } = parts(
-      buildRawMessage({ name: 'Ada', email: 'a@example.com', message: 'word '.repeat(1000) }),
+      buildRawMessage({
+        intent: 'default',
+        name: 'Ada',
+        email: 'a@example.com',
+        message: 'word '.repeat(1000),
+      }),
     );
     expect(Math.max(...mime.split('\r\n').map((l) => l.length))).toBeLessThanOrEqual(998);
     expect(body).toContain('word word');
@@ -165,7 +193,12 @@ describe('buildRawMessage', () => {
   // typed by the visitor must be encoded again, not passed through.
   it('encodes a subject whose ASCII name contains an encoded-word', () => {
     const { headers } = parts(
-      buildRawMessage({ name: '=?UTF-8?B?SGk=?=', email: 'a@example.com', message: 'm' }),
+      buildRawMessage({
+        intent: 'default',
+        name: '=?UTF-8?B?SGk=?=',
+        email: 'a@example.com',
+        message: 'm',
+      }),
     );
     const subject = headers.split('\r\n').find((l) => l.startsWith('Subject:')) ?? '';
     expect(subject).not.toContain('=?UTF-8?B?SGk=?=');
@@ -176,7 +209,12 @@ describe('buildRawMessage', () => {
   // commas and angle brackets become extra addresses.
   it('quotes an ASCII name that looks like an encoded-word', () => {
     const { headers } = parts(
-      buildRawMessage({ name: '=?x, Bob <v@other.example>', email: 'a@example.com', message: 'm' }),
+      buildRawMessage({
+        intent: 'default',
+        name: '=?x, Bob <v@other.example>',
+        email: 'a@example.com',
+        message: 'm',
+      }),
     );
     expect(headers).toMatch(/^Reply-To: "=\?x, Bob <v@other\.example>" <a@example\.com>$/m);
   });
@@ -185,7 +223,9 @@ describe('buildRawMessage', () => {
   // undecoded by strict clients.
   it('splits a long non-ASCII name into encoded-words of at most 75 characters', () => {
     const name = 'Zoë Müller-Lüdenscheidt '.repeat(5).trim();
-    const { headers } = parts(buildRawMessage({ name, email: 'z@example.com', message: 'm' }));
+    const { headers } = parts(
+      buildRawMessage({ intent: 'default', name, email: 'z@example.com', message: 'm' }),
+    );
     const words = headers.match(/=\?UTF-8\?B\?[^?]*\?=/g) ?? [];
     expect(words.length).toBeGreaterThan(2);
     expect(Math.max(...words.map((x) => x.length))).toBeLessThanOrEqual(75);
@@ -195,7 +235,12 @@ describe('buildRawMessage', () => {
   // An encoded-word inside quotes is shown raw by conforming mail clients.
   it('writes a non-ASCII Reply-To name as an unquoted encoded-word', () => {
     const { headers } = parts(
-      buildRawMessage({ name: 'José Müller', email: 'j@example.com', message: 'm' }),
+      buildRawMessage({
+        intent: 'default',
+        name: 'José Müller',
+        email: 'j@example.com',
+        message: 'm',
+      }),
     );
     expect(headers).toMatch(/^Reply-To: =\?UTF-8\?B\?[^"\r\n]+\?= <j@example\.com>$/m);
   });
@@ -203,6 +248,7 @@ describe('buildRawMessage', () => {
   it('adds the session summary when the visitor chose to send it', () => {
     const { body: mime } = parts(
       buildRawMessage({
+        intent: 'default',
         name: 'Ada',
         email: 'a@example.com',
         message: 'm',
@@ -219,9 +265,13 @@ describe('sendMessage', () => {
   // failed while the mail arrives, and they would send it again.
   it('sends with no deadline of its own', async () => {
     const { fn, calls } = fakeFetch([{ match: 'gmail.googleapis.com', body: { id: 'm1' } }]);
-    await sendMessage({ name: 'Ada', email: 'a@example.com', message: 'm' }, 'gmail-token', {
-      fetch: fn,
-    });
+    await sendMessage(
+      { intent: 'default', name: 'Ada', email: 'a@example.com', message: 'm' },
+      'gmail-token',
+      {
+        fetch: fn,
+      },
+    );
     expect(calls[0].init.signal).toBeUndefined();
   });
 });
