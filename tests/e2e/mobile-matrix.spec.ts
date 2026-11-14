@@ -22,9 +22,11 @@
  *   3. No horizontal scroll: document.body.scrollWidth <= viewport.width.
  *   4. On homepage: each hero headline line renders on one line, and the
  *      primary call to action (HERO.primaryCta, "Start with a review")
- *      sits above the fold, against a Safari-chrome-aware budget.
- *      iPhone-SE budget = 132px (URL bar + bottom toolbar = ~535px usable
- *      against 667px nominal, the 9E F8 Product Minor #5 number).
+ *      sits above the fold wherever the project has no chrome budget,
+ *      390×667 included. Ian, 2026-11-14: 390×667 is the bar; on iPhone
+ *      SE with Safari chrome (132px budget, ~535px usable) the header
+ *      review link is the above-the-fold path, so there the hero CTA is
+ *      measured and recorded, and the header link is asserted.
  *   5. SessionPulse opens overlay; Overview is the default tab; tab row
  *      stays on a single row (whitespace-nowrap + overflow-x-auto from
  *      F5 UAT S11). Switch to Consent tab; storage inspector renders;
@@ -239,33 +241,27 @@ test.describe('Phase 10d D1, mobile matrix', () => {
         // don't fail the run on it (the doc surfaces actual numbers in
         // the matrix, and a real-device verification is the falsifying
         // signal anyway).
-        const isHardFail = mobileChromeBoost === 0;
+        const hasChromeBudget = mobileChromeBoost > 0;
         const message =
           `home on ${mobileLabel}: "${HERO.primaryCta}" CTA bottom=${ctaBottom.toFixed(0)}px ` +
           `vs usable=${usableHeight}px (chrome boost ${mobileChromeBoost}px).`;
-        if (isHardFail) {
+        if (!hasChromeBudget) {
           expect(ctaBottom, message).toBeLessThanOrEqual(usableHeight);
         } else {
-          // Log soft check via testInfo annotations — surfaces in the
-          // HTML report + the matrix doc summary.
+          // Ian, 2026-11-14: 390×667 is the bar; on iPhone SE with Safari
+          // chrome the header review link is the above-the-fold path. The
+          // hero CTA is still measured and recorded here, not failed.
           testInfo.annotations.push({
-            type: ctaBottom <= usableHeight ? 'fold-check-pass' : 'fold-check-soft-fail',
+            type: ctaBottom <= usableHeight ? 'fold-check-pass' : 'fold-check-recorded',
             description: message,
           });
-          // Hard ceiling on the soft path: even iPhone-SE has a real
-          // limit. Before 15.4 the CTA bottom was 562px; the chrome-aware
-          // usable is 535px (worst case). After URL-bar collapse on
-          // first scroll the visitor recovers ~50px (587px usable),
-          // so a 30px slack is reachable. A regression past ~565px
-          // (usableHeight + 30 = 565) means the CTA isn't reachable
-          // even with the URL-bar-collapse mitigation, which the
-          // matrix doc records as the load-bearing fold-line claim.
-          // See `docs/perf/mobile-matrix-2026-04-25.md` §"Soft-fail".
-          const SOFT_CEILING = usableHeight + 30;
+          const headerLink = page.locator('header').getByRole('link', { name: HERO.primaryCta });
+          const headerBox = await headerLink.boundingBox();
+          expect(headerBox, 'home: header review link boundingBox readable').not.toBeNull();
           expect(
-            ctaBottom,
-            `${message} (hard ceiling: ${SOFT_CEILING}px = usable + 30px URL-bar-collapse slack)`,
-          ).toBeLessThanOrEqual(SOFT_CEILING);
+            headerBox!.y + headerBox!.height,
+            `home on ${mobileLabel}: header review link above the ${usableHeight}px fold`,
+          ).toBeLessThanOrEqual(usableHeight);
         }
       }
 
