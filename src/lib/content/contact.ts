@@ -25,7 +25,7 @@ export const CONTACT_INTROS: Record<ContactIntent, ContactIntro> = {
     eyebrow: 'Contact',
     title: "Tell me where your numbers don't add up.",
     intro:
-      "Usually it's one of three things: the ad platforms and your orders don't agree, a site or platform change broke your tracking, or nobody on your team owns the data and every question waits on someone else. Tell me what you're seeing, and I'll tell you whether the review is the right first step.",
+      "Usually it's one of three things: the ad platforms and your orders don't agree, a site or platform change broke your tracking, or nobody on your team owns the data and every question waits on someone else. Describe what you're seeing, and I'll tell you whether the review is the right first step.",
     reviewLink: {
       lead: `Start with the review, from ${REVIEW_PRICE}.`,
       text: 'What it includes',
