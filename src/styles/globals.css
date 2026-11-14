@@ -63,9 +63,9 @@
 
   /* Smooth scrolling with reduced-motion respect.
    *
-   * Global because the in-page anchor jumps (Hero → /#demos,
-   * SessionPulse → overlay sticky, "see the stack ↓" inside the
-   * demo) all rely on it. The interaction cost: Next.js App
+   * Global because the in-page anchor jumps (SessionPulse →
+   * overlay sticky, "see the stack ↓" inside the demo) rely on it.
+   * The interaction cost: Next.js App
    * Router's post-navigation `window.scrollTo(0, 0)` ALSO
    * animates from the previous scroll position, which produces a
    * "lands halfway down" symptom on cross-page navigation from a
