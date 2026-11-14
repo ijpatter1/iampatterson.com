@@ -6,12 +6,16 @@ import type { PipelineEvent } from '@/lib/events/pipeline-schema';
 /**
  * The words for a `form_name`, which is an analytics key, not copy. The
  * review-intent form is the same contact form to the visitor (15.4). A key
- * not listed here never shows raw.
+ * not listed here never shows raw. A Map, so `constructor` and other
+ * Object.prototype keys never resolve.
  */
-const FORM_WORDS: Record<string, string> = { contact: 'contact', contact_review: 'contact' };
+const FORM_WORDS = new Map<string, string>([
+  ['contact', 'contact'],
+  ['contact_review', 'contact'],
+]);
 
 function formLabel(formName: unknown): string {
-  const words = typeof formName === 'string' ? FORM_WORDS[formName] : undefined;
+  const words = typeof formName === 'string' ? FORM_WORDS.get(formName) : undefined;
   return words ? `the ${words} form` : 'the form';
 }
 

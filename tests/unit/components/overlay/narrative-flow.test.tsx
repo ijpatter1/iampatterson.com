@@ -92,6 +92,10 @@ describe('NarrativeFlow', () => {
     ['form_start', 'contact_review', 'You started the contact form'],
     ['form_submit', 'contact_review', 'You submitted the contact form'],
     ['form_submit', 'some_future_form', 'You submitted the form'],
+    // Keys on Object.prototype must never resolve to a label.
+    ['form_start', 'constructor', 'You started the form'],
+    ['form_submit', 'toString', 'You submitted the form'],
+    ['form_start', '__proto__', 'You started the form'],
   ])('narrates %s for form_name %s as "%s"', (eventName, formName, words) => {
     const { container } = render(
       <NarrativeFlow
