@@ -59,12 +59,12 @@ export function SessionStateRideAlong() {
   const consentDefault = marketingGranted;
   const checked = userOverride ?? consentDefault;
 
-  // Four copy variants keyed on (checked, marketing-granted). The demo's
-  // progress is no longer named (16.2): the ecommerce demo leaves the site.
-  // The
+  // Four copy variants keyed on (checked, marketing-granted). The
   // transparency conceit requires showing the concrete payload whenever
   // the box is checked, including when the visitor overrode a denied
   // consent, so the visitor always sees exactly what they're sharing.
+  // The demo's progress is neither named nor sent (16.2): the ecommerce
+  // demo leaves the site.
   let summary: string;
   if (checked && marketingGranted) {
     summary = `You've triggered ${payload.event_types_triggered} of ${payload.event_types_total} event types and visited ${payload.pages_visited} pages. Your consent state and session ID will ride along.`;

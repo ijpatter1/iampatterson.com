@@ -8,7 +8,7 @@ const SITE_URL = 'https://iampatterson.com';
  * Phase 10d D4 — sitemap.
  *
  * Includes the canonical user-facing routes that should be crawled +
- * indexed: home, services, about, contact, demo entry, ecommerce
+ * indexed: home, services, contact, demo entry, ecommerce
  * landing + every product detail page in the catalog.
  *
  * Excludes session-scoped routes that have no value as standalone

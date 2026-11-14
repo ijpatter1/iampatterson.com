@@ -7,7 +7,6 @@
  *
  *   /                              homepage hero, primary CTA above-fold
  *   /services                      tier deep-link targets
- *   /about                         long-form prose + closer CTA
  *   /contact                       form
  *   /demo/ecommerce                catalog
  *   /demo/ecommerce/<product>      product detail
@@ -64,7 +63,6 @@ type RouteSpec = {
 const ROUTES: RouteSpec[] = [
   { path: '/', label: 'home', expectedH1: /measurement/i, isHomepage: true },
   { path: '/services', label: 'services', expectedH1: /./ },
-  { path: '/about', label: 'about', expectedH1: /./ },
   { path: '/contact', label: 'contact', expectedH1: /./ },
   { path: '/demo/ecommerce', label: 'ecommerce-catalog' },
   { path: '/demo/ecommerce/tuna-plush-classic', label: 'ecommerce-product' },

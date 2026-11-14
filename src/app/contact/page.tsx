@@ -43,7 +43,10 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
           <div className="mt-10 flex flex-wrap items-start gap-x-16 gap-y-10 border-t border-rule-soft pt-8">
             <div className="min-w-[280px] max-w-[52ch] flex-1">
               <p className={`${BODY_CLASSES} md:text-lg`}>{intro.intro}</p>
-              {intro.facts && <p className={`mt-4 ${LABEL_STRONG_CLASSES}`}>{intro.facts}</p>}
+              {intro.price && <p className={`mt-4 ${LABEL_STRONG_CLASSES}`}>{intro.price}</p>}
+              {intro.turnaround && (
+                <p className={`mt-1.5 ${SMALL_BODY_CLASSES}`}>{intro.turnaround}</p>
+              )}
               {intro.reviewLink && (
                 <p className={`mt-4 flex flex-wrap items-center gap-x-4 ${LABEL_STRONG_CLASSES}`}>
                   <span>{intro.reviewLink.lead}</span>

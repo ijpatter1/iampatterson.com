@@ -22,7 +22,6 @@ describe('toRideAlongPayload', () => {
       // subset, not the full schema, so the number transmitted matches
       // what the visitor saw on screen.
       event_types_total: RENDERABLE_EVENT_NAMES.length,
-      ecommerce_demo_percentage: 0,
       pages_visited: 0,
       consent: { analytics: 'denied', marketing: 'denied', preferences: 'denied' },
     });
@@ -85,7 +84,9 @@ describe('toRideAlongPayload', () => {
 
     const payload = toRideAlongPayload(state);
     expect(payload.event_types_triggered).toBe(3);
-    expect(payload.ecommerce_demo_percentage).toBe(50);
+    // The summary no longer names demo progress (16.2), so it is not
+    // sent either: the visitor sees exactly what is transmitted.
+    expect(payload).not.toHaveProperty('ecommerce_demo_percentage');
     expect(payload.pages_visited).toBe(1);
     expect(payload.consent).toEqual({
       analytics: 'granted',

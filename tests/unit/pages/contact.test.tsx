@@ -9,6 +9,7 @@ import { ContactForm } from '@/components/contact/contact-form';
 import { CONTACT_COPY, CONTACT_INTROS, PRINCIPLES } from '@/lib/content/contact';
 import { DONE_WHERE } from '@/lib/content/done-where';
 import { REVIEW_PAGE_HREF, REVIEW_PRICE } from '@/lib/content/review';
+import { REVIEW_PAGE } from '@/lib/content/review-page';
 import { RENDERABLE_EVENT_NAMES } from '@/lib/events/schema';
 
 // Mock the track module
@@ -89,8 +90,10 @@ describe('ContactPage, the merged contact and about page (16.2)', () => {
     );
     expect(screen.getByText(CONTACT_INTROS.review.intro)).toBeInTheDocument();
     expect(screen.queryByText(CONTACT_INTROS.default.intro)).not.toBeInTheDocument();
-    const facts = screen.getByText(/About a week/);
-    expect(facts).toHaveTextContent(REVIEW_PRICE);
+    // The price and the turnaround render as separate strings, each exactly
+    // as /review states it, so the claims check can match the turnaround.
+    expect(screen.getByText(REVIEW_PAGE.price)).toHaveTextContent(REVIEW_PRICE);
+    expect(screen.getByText(REVIEW_PAGE.turnaround)).toBeInTheDocument();
   });
 
   // A visitor on the general page hasn't decided on the review yet, so the
@@ -297,7 +300,6 @@ describe('ContactForm', () => {
       expect(parsed).toMatchObject({
         session_id: 'sid-contact-test',
         event_types_triggered: 3,
-        ecommerce_demo_percentage: 0,
         pages_visited: 5,
         consent: { analytics: 'granted', marketing: 'granted', preferences: 'granted' },
       });

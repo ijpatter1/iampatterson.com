@@ -411,8 +411,8 @@ verify "Homepage <head> includes JSON-LD Organization schema" \
 verify "Homepage <head> includes JSON-LD Person schema" \
   "grep -qE '\"@type\":\"Person\"|\"@type\": \"Person\"' /tmp/home.html"
 
-verify "/about <head> includes Twitter card metadata" \
-  "curl -sf '$BASE_URL/about' -o /tmp/about.html && grep -qE 'name=\"twitter:card\"' /tmp/about.html"
+verify "/contact <head> includes Twitter card metadata" \
+  "curl -sf '$BASE_URL/contact' -o /tmp/contact.html && grep -qE 'name=\"twitter:card\"' /tmp/contact.html"
 
 verify "/services has its own canonical (per-route metadata layout)" \
   "curl -sf '$BASE_URL/services' -o /tmp/services.html && grep -qE 'rel=\"canonical\"' /tmp/services.html && grep -qE '/services' /tmp/services.html"

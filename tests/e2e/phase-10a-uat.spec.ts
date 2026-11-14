@@ -86,7 +86,7 @@ test.describe('Phase 10a UAT (12 of 13 scenarios)', () => {
     const issues: ConsoleIssue[] = [];
     captureConsole(page, issues);
 
-    const routes = ['/', '/services', '/about', '/contact'];
+    const routes = ['/', '/services', '/contact'];
     for (const route of routes) {
       await page.goto(route);
       await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
@@ -315,7 +315,6 @@ test.describe('Phase 10a UAT (12 of 13 scenarios)', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
     await page.goto('/services');
-    await page.goto('/about');
     await page.goto('/contact');
     await page.goto('/');
     await page.evaluate(() => sessionStorage.removeItem('iampatterson.overlay.booted'));

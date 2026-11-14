@@ -8,7 +8,7 @@ export const NAV_LINKS: NavLink[] = [
   { href: '/', label: 'Home', num: '01' },
   { href: '/services', label: 'Services', num: '02' },
   { href: '/#demos', label: 'Demos', num: '03' },
-  { href: '/contact', label: 'Contact', num: '05' },
+  { href: '/contact', label: 'Contact', num: '04' },
 ];
 
 export interface DemoLink {

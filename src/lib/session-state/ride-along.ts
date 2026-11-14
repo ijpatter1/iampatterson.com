@@ -19,7 +19,6 @@ export interface RideAlongPayload {
   session_id: string;
   event_types_triggered: number;
   event_types_total: number;
-  ecommerce_demo_percentage: number;
   pages_visited: number;
   consent: {
     analytics: ConsentValue;
@@ -50,7 +49,6 @@ export function toRideAlongPayload(state: SessionState): RideAlongPayload {
     session_id: state.session_id,
     event_types_triggered: firedRenderable.length,
     event_types_total: RENDERABLE_EVENT_NAMES.length,
-    ecommerce_demo_percentage: state.demo_progress.ecommerce.percentage,
     pages_visited: state.page_count,
     consent: { ...state.consent_snapshot },
   };

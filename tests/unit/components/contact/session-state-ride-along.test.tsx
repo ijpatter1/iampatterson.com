@@ -171,7 +171,6 @@ describe('SessionStateRideAlong', () => {
         session_id: 'sid-abc123def456',
         event_types_triggered: 14,
         event_types_total: RENDERABLE_EVENT_NAMES.length,
-        ecommerce_demo_percentage: 75,
         pages_visited: 9,
         consent: {
           analytics: 'granted',
@@ -219,22 +218,15 @@ describe('SessionStateRideAlong', () => {
       const first = JSON.parse(
         container.querySelector<HTMLInputElement>('input[name="session_state"]')!.value,
       );
-      expect(first.ecommerce_demo_percentage).toBe(75);
+      expect(first.pages_visited).toBe(9);
 
-      // Simulate a state update pushing the visitor to 100%.
-      mockState = makeState({
-        demo_progress: {
-          ecommerce: {
-            stages_reached: ['product_view', 'add_to_cart', 'begin_checkout', 'purchase'],
-            percentage: 100,
-          },
-        },
-      });
+      // Simulate the visitor reaching two more pages.
+      mockState = makeState({ page_count: 11 });
       rerender(<SessionStateRideAlong />);
       const second = JSON.parse(
         container.querySelector<HTMLInputElement>('input[name="session_state"]')!.value,
       );
-      expect(second.ecommerce_demo_percentage).toBe(100);
+      expect(second.pages_visited).toBe(11);
     });
   });
 
@@ -364,7 +356,9 @@ describe('SessionStateRideAlong', () => {
       });
       render(<SessionStateRideAlong />);
       const summary = screen.getByTestId('ride-along-summary');
-      expect(summary.textContent).toMatch(new RegExp(`14 of ${RENDERABLE_EVENT_NAMES.length} event types`));
+      expect(summary.textContent).toMatch(
+        new RegExp(`14 of ${RENDERABLE_EVENT_NAMES.length} event types`),
+      );
       expect(summary.textContent).not.toMatch(/demo/i);
       expect(summary.textContent).toMatch(/will ride along/i);
       expect(summary.textContent).not.toMatch(/will not be included/i);
@@ -400,7 +394,9 @@ describe('SessionStateRideAlong', () => {
       await user.click(screen.getByRole('checkbox'));
       const summary = screen.getByTestId('ride-along-summary');
       expect(summary.textContent).toMatch(/overriding.*denied marketing consent/i);
-      expect(summary.textContent).toMatch(new RegExp(`14 of ${RENDERABLE_EVENT_NAMES.length} event types`));
+      expect(summary.textContent).toMatch(
+        new RegExp(`14 of ${RENDERABLE_EVENT_NAMES.length} event types`),
+      );
       expect(summary.textContent).not.toMatch(/demo/i);
       expect(summary.textContent).toMatch(/will ride along/i);
       // Critically: visitor must see the payload they're opting into,

@@ -661,7 +661,7 @@ confirm "D8 checkbox checked + summary shows concrete payload + 'will ride along
 
 do_step "14.10, Inspect the hidden session_state field. DevTools Elements → find input[name='session_state']."
 expect \
-  "Hidden input present. value attribute is JSON with session_id, event_types_triggered, event_types_total=20, ecommerce_demo_percentage=100, pages_visited, consent object."
+  "Hidden input present. value attribute is JSON with session_id, event_types_triggered, event_types_total=20, pages_visited, consent object."
 confirm "Hidden session_state field serialized with correct projection shape"
 
 do_step "14.11, Uncheck the checkbox. Re-inspect Elements."

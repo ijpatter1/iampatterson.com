@@ -1,3 +1,4 @@
+import { CONTACT_CONFIG } from '@/lib/contact/config';
 import { REVIEW_PAGE_HREF, REVIEW_PRICE } from '@/lib/content/review';
 import { REVIEW_PAGE } from '@/lib/content/review-page';
 
@@ -14,8 +15,9 @@ export interface ContactIntro {
   eyebrow: string;
   title: string;
   intro: string;
-  /** A fact line under the intro: the review's price and turnaround. */
-  facts?: string;
+  /** The review's price and turnaround, each exactly as /review states it. */
+  price?: string;
+  turnaround?: string;
   /** A pointer to the review page, for visitors who haven't decided on it. */
   reviewLink?: { lead: string; text: string; href: string };
 }
@@ -37,7 +39,8 @@ export const CONTACT_INTROS: Record<ContactIntent, ContactIntro> = {
     title: 'Book the review.',
     intro:
       'Tell me about the brand: its website, the ad platforms you buy on, and where your orders live. I confirm the scope and price before we start.',
-    facts: `${REVIEW_PAGE.price} · ${REVIEW_PAGE.turnaround}`,
+    price: REVIEW_PAGE.price,
+    turnaround: REVIEW_PAGE.turnaround,
   },
 };
 
@@ -46,7 +49,8 @@ export function contactIntent(value: string | string[] | undefined): ContactInte
   return value === 'review' ? 'review' : 'default';
 }
 
-export const CONTACT_EMAIL = 'ian@iampatterson.com';
+/** The public address, from the form's delivery config so the two can't drift. */
+export const CONTACT_EMAIL = CONTACT_CONFIG.mailbox;
 
 export const CONTACT_COPY = {
   emailLabel: 'Email',
