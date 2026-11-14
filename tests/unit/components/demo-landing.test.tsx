@@ -8,9 +8,10 @@ jest.mock('next/navigation', () => ({
 }));
 
 describe('Demo Landing Page', () => {
-  it('redirects to /#demos', async () => {
+  // 15.4 deleted the homepage's Demos section, so #demos points at nothing.
+  it('redirects to the homepage, not the deleted #demos section', async () => {
     const { default: DemoLandingPage } = await import('@/app/demo/page');
     DemoLandingPage();
-    expect(redirect).toHaveBeenCalledWith('/#demos');
+    expect(redirect).toHaveBeenCalledWith('/');
   });
 });
