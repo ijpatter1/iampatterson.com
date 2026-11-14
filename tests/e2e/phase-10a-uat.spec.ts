@@ -14,7 +14,8 @@
  *   - Scenario 7: browser console health across the full walk
  *   - Scenario 8: SessionPulse + LiveStrip session-suffix coherence
  *   - Scenario 9: session rotation propagation via cookie delete + refresh
- *   - Edge A: rebuild-banner tri-state + dismissal persistence
+ *   - Edge A: legacy demo redirects land on the homepage (15.4 retired the
+ *     rebuild banner with the Demos section)
  *   - Edge B: fresh-context cold hydration (Playwright context IS incognito)
  *   - Edge C: pre-set cookie read-don't-mint
  *
@@ -29,6 +30,8 @@
  * (same baseURL as the other e2e specs).
  */
 import { test, expect, type ConsoleMessage, type Page } from '@playwright/test';
+
+import { HERO } from '../../src/lib/content/hero';
 
 const E2E_ENABLED = process.env.E2E_ENABLED === '1';
 
@@ -93,27 +96,11 @@ test.describe('Phase 10a UAT (12 of 13 scenarios)', () => {
       await page.waitForLoadState('networkidle');
     }
 
-    // Return home, verify pipeline rotation is active (animation runs)
+    // Return home: the hero's call to action renders. (15.4 deleted the
+    // pipeline section whose rotation this step used to watch.)
     await page.goto('/');
     await page.waitForLoadState('networkidle');
-    // The pipeline-editorial rotates active stage every 1800ms. We
-    // capture two snapshots 2000ms apart and expect the active
-    // highlight to have moved — objective measure of "animation runs"
-    // that replaces the subjective "feels smooth" check.
-    const firstActiveIndex = await page.evaluate(() => {
-      const actives = document.querySelectorAll('[data-active="true"]');
-      return actives.length > 0 ? 0 : -1;
-    });
-    await page.waitForTimeout(2000);
-    const secondActiveIndex = await page.evaluate(() => {
-      const actives = document.querySelectorAll('[data-active="true"]');
-      return actives.length > 0 ? 1 : -1;
-    });
-    // Both >= 0 is enough signal that the active-state mechanism works
-    // (either a stage was highlighted or nothing is; we accept either
-    // under non-emulated motion).
-    expect(firstActiveIndex).toBeGreaterThanOrEqual(-1);
-    expect(secondActiveIndex).toBeGreaterThanOrEqual(-1);
+    await expect(page.locator('main').getByRole('link', { name: HERO.primaryCta })).toBeVisible();
 
     expect(issues.filter((i) => i.severity === 'error')).toEqual([]);
   });
@@ -243,9 +230,7 @@ test.describe('Phase 10a UAT (12 of 13 scenarios)', () => {
     captureConsole(page, issues);
 
     try {
-      // Homepage pipeline should not visibly animate (data-reduced-motion
-      // hints or the absence of motion-safe classes would ideally mark
-      // this; absent that, we confirm the page still renders cleanly).
+      // The homepage renders cleanly under reduced motion.
       await page.goto('/');
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
@@ -431,46 +416,27 @@ test.describe('Phase 10a UAT (12 of 13 scenarios)', () => {
   });
 
   // ════════════════════════════════════════════════════════════════
-  // Edge case A — Rebuild-banner tri-state + dismissal persistence
-  test('EA: rebuild-banner renders cleanly via redirect URL and dismissal persists', async ({
-    browser,
+  // Edge case A — Legacy demo redirects land on the homepage. 15.4 deleted
+  // the Demos section and its rebuild banner, so the redirects carry no
+  // #demos anchor and no ?rebuild= flag, and nothing renders a banner.
+  test('EA: legacy demo redirects land on the homepage with no banner or #demos', async ({
+    page,
   }) => {
-    const context = await browser.newContext();
-    const page = await context.newPage();
     const issues: ConsoleIssue[] = [];
     captureConsole(page, issues);
 
-    try {
-      await page.goto('/?rebuild=subscription#demos');
-      const banner = page.getByTestId('rebuild-banner');
-      await expect(banner).toBeVisible({ timeout: 3000 });
-      await expect(banner).toContainText(/subscription.*returning soon/i);
-
-      // No hydration warnings specifically during the redirect flow.
-      const hydrationIssues = issues.filter((i) =>
-        /hydrat|did not match|text content does not match/i.test(i.text),
-      );
-      expect(hydrationIssues).toEqual([]);
-
-      // Dismiss via the X button (aria-label="Dismiss").
-      await banner.getByRole('button', { name: /dismiss/i }).click();
-      await expect(banner).toHaveCount(0);
-
-      // Confirm dismissal is persisted. REBUILD_LABELS maps
-      // `?rebuild=subscription` → label `'subscription'` (lowercase);
-      // the storage key uses that exact label.
-      const dismissedKeyValue = await page.evaluate(() =>
-        sessionStorage.getItem('iampatterson.rebuild_banner_dismissed.subscription'),
-      );
-      expect(dismissedKeyValue).toBe('1');
-
-      // Reload the page with the same URL — banner should stay dismissed.
-      await page.reload();
-      await page.waitForLoadState('networkidle');
+    for (const legacy of ['/demo/subscription', '/demo/leadgen/anything/deep']) {
+      await page.goto(legacy);
+      const url = new URL(page.url());
+      expect([legacy, url.pathname, url.search, url.hash]).toEqual([legacy, '/', '', '']);
       await expect(page.getByTestId('rebuild-banner')).toHaveCount(0);
-    } finally {
-      await context.close();
+      await expect(page.locator('#demos')).toHaveCount(0);
     }
+
+    const hydrationIssues = issues.filter((i) =>
+      /hydrat|did not match|text content does not match/i.test(i.text),
+    );
+    expect(hydrationIssues).toEqual([]);
   });
 
   // ════════════════════════════════════════════════════════════════

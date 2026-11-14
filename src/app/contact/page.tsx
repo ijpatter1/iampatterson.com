@@ -1,6 +1,5 @@
-import Link from 'next/link';
-
 import { ContactForm } from '@/components/contact/contact-form';
+import { CtaLink } from '@/components/cta-link';
 import { DoneWhere } from '@/components/home/done-where';
 import {
   BODY_CLASSES,
@@ -13,13 +12,8 @@ import {
   SMALL_BODY_CLASSES,
   Section,
 } from '@/components/home/section';
-import {
-  CONTACT_COPY,
-  CONTACT_EMAIL,
-  CONTACT_INTROS,
-  PRINCIPLES,
-  contactIntent,
-} from '@/lib/content/contact';
+import { contactIntent } from '@/lib/contact/validate';
+import { CONTACT_COPY, CONTACT_EMAIL, CONTACT_INTROS, PRINCIPLES } from '@/lib/content/contact';
 
 interface ContactPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -32,7 +26,8 @@ interface ContactPageProps {
  * without scrolling; the principles and "Where I've done it" follow.
  */
 export default async function ContactPage({ searchParams }: ContactPageProps) {
-  const intro = CONTACT_INTROS[contactIntent((await searchParams).intent)];
+  const intent = contactIntent((await searchParams).intent);
+  const intro = CONTACT_INTROS[intent];
 
   return (
     <main>
@@ -50,28 +45,30 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
               {intro.reviewLink && (
                 <p className={`mt-4 flex flex-wrap items-center gap-x-4 ${LABEL_STRONG_CLASSES}`}>
                   <span>{intro.reviewLink.lead}</span>
-                  <Link
+                  <CtaLink
                     href={intro.reviewLink.href}
+                    ctaLocation="contact_review_link"
                     className={`${LABEL_CLASSES} inline-flex min-h-[44px] items-center underline decoration-rule underline-offset-4 transition-colors hover:text-ink`}
                   >
                     {intro.reviewLink.text}
                     <span aria-hidden="true">&nbsp;→</span>
-                  </Link>
+                  </CtaLink>
                 </p>
               )}
               <div className="mt-8 border-t border-rule pt-4">
                 <div className={LABEL_CLASSES}>{CONTACT_COPY.emailLabel}</div>
-                <a
+                <CtaLink
                   href={`mailto:${CONTACT_EMAIL}`}
+                  ctaLocation="contact_email"
                   className="mt-2 inline-block font-display text-2xl text-ink underline decoration-rule underline-offset-4 hover:decoration-ink"
                 >
                   {CONTACT_EMAIL}
-                </a>
+                </CtaLink>
                 <p className={`mt-3 ${SMALL_BODY_CLASSES}`}>{CONTACT_COPY.response}</p>
               </div>
             </div>
             <div className="min-w-[300px] flex-[1.2]">
-              <ContactForm />
+              <ContactForm intent={intent} />
             </div>
           </div>
         </div>

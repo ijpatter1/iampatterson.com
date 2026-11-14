@@ -1,3 +1,6 @@
+/** The practice's name since 15.9. */
+export const PRACTICE_NAME = 'I am Patterson';
+
 /**
  * The site's one-line description: the LinkedIn profile's headline
  * (2026-11-02). Page metadata, the social cards and the Organization JSON-LD

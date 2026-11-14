@@ -5,42 +5,17 @@ const nextConfig = {
   // on the LAN got the page HTML and a 403 for every chunk. Ignored by production builds.
   allowedDevOrigins: ['192.168.86.*'],
   async redirects() {
-    // Phase 9E deliverable 7: subscription + leadgen demos removed from the
-    // site pending rebuild to the native-reveal pattern language (Phase 9F
-    // establishes the pattern). 308 permanent redirects catch old LinkedIn
-    // links, session handoff references, and search-indexed URLs. The
-    // `:path*` glob catches deep links into child routes (e.g.
-    // /demo/subscription/account) so no child path 404s. The `rebuild`
-    // query param signals the Demos section to surface a one-line honesty
-    // banner explaining the rebuild-in-progress status.
-    //
-    // Spec: UX_PIVOT_SPEC §3.7 + §4; REQUIREMENTS Phase 9E D7 line 366.
-    // permanent: true → 308 via Next.js (some CDNs rewrite to 301); either
-    // way, the redirect is cacheable and signals to search engines to
-    // update their index.
+    // Phase 9E deliverable 7 removed the subscription and leadgen demos; 308
+    // permanent redirects catch old LinkedIn links, handoff references and
+    // search-indexed URLs. 15.4 deleted the homepage's Demos section and its
+    // rebuild banner, so they now land on the homepage itself.
     return [
       // 16.2: the about page folds into /contact.
       { source: '/about', destination: '/contact', permanent: true },
-      {
-        source: '/demo/subscription/:path*',
-        destination: '/?rebuild=subscription#demos',
-        permanent: true,
-      },
-      {
-        source: '/demo/subscription',
-        destination: '/?rebuild=subscription#demos',
-        permanent: true,
-      },
-      {
-        source: '/demo/leadgen/:path*',
-        destination: '/?rebuild=leadgen#demos',
-        permanent: true,
-      },
-      {
-        source: '/demo/leadgen',
-        destination: '/?rebuild=leadgen#demos',
-        permanent: true,
-      },
+      // `:path*` matches zero or more segments, so each rule covers the bare
+      // URL too.
+      { source: '/demo/subscription/:path*', destination: '/', permanent: true },
+      { source: '/demo/leadgen/:path*', destination: '/', permanent: true },
     ];
   },
 };

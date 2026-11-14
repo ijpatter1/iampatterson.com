@@ -13,6 +13,8 @@
  * AmbientBubbles would each break the clone's fidelity.
  */
 
+import { REVIEW_PAGE_HREF } from '@/lib/content/review';
+
 const CLAUDISH = '/claudish';
 
 export function showSiteFooter(pathname: string): boolean {
@@ -45,4 +47,13 @@ export function showHomeBar(pathname: string): boolean {
  * as Google Translate. */
 export function showLiveStrip(pathname: string): boolean {
   return !pathname.startsWith(CLAUDISH);
+}
+
+/**
+ * The header's review link (15.4). Hidden on /review, where it would link to
+ * the page itself, and on /contact, where the visitor is already booking and
+ * it would send them back a step.
+ */
+export function showReviewLink(pathname: string): boolean {
+  return pathname !== REVIEW_PAGE_HREF && pathname !== '/contact';
 }

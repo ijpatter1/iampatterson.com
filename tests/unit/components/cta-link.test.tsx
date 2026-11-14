@@ -26,7 +26,7 @@ describe('CtaLink', () => {
   it('renders as a link with correct href', () => {
     const CtaLink = getCtaLink();
     render(
-      <CtaLink href="/services" ctaLocation="hero">
+      <CtaLink href="/services" ctaLocation="hero_review">
         Click me
       </CtaLink>,
     );
@@ -37,30 +37,30 @@ describe('CtaLink', () => {
     const CtaLink = getCtaLink();
     const user = userEvent.setup();
     render(
-      <CtaLink href="/services" ctaLocation="hero">
+      <CtaLink href="/services" ctaLocation="hero_review">
         See how it works
       </CtaLink>,
     );
     await user.click(screen.getByRole('link'));
-    expect(mockTrackClickCta).toHaveBeenCalledWith('See how it works', 'hero');
+    expect(mockTrackClickCta).toHaveBeenCalledWith('See how it works', 'hero_review');
   });
 
   it('extracts text from JSX children for tracking', async () => {
     const CtaLink = getCtaLink();
     const user = userEvent.setup();
     render(
-      <CtaLink href="/services" ctaLocation="hero">
+      <CtaLink href="/services" ctaLocation="hero_review">
         <span>Explore</span> the demo
       </CtaLink>,
     );
     await user.click(screen.getByRole('link'));
-    expect(mockTrackClickCta).toHaveBeenCalledWith('Explore the demo', 'hero');
+    expect(mockTrackClickCta).toHaveBeenCalledWith('Explore the demo', 'hero_review');
   });
 
   it('renders disabled state as span with aria-disabled', () => {
     const CtaLink = getCtaLink();
     render(
-      <CtaLink href="/demo" ctaLocation="hero" disabled>
+      <CtaLink href="/demo" ctaLocation="hero_review" disabled>
         Coming soon
       </CtaLink>,
     );
@@ -72,7 +72,7 @@ describe('CtaLink', () => {
   it('does not render a link when disabled', () => {
     const CtaLink = getCtaLink();
     render(
-      <CtaLink href="/demo" ctaLocation="hero" disabled>
+      <CtaLink href="/demo" ctaLocation="hero_review" disabled>
         Coming soon
       </CtaLink>,
     );

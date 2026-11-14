@@ -6,7 +6,7 @@ import userEvent from '@testing-library/user-event';
 
 import ContactPage from '@/app/contact/page';
 import { ContactForm } from '@/components/contact/contact-form';
-import { CONTACT_COPY, CONTACT_INTROS, PRINCIPLES } from '@/lib/content/contact';
+import { CONTACT_COPY, CONTACT_EMAIL, CONTACT_INTROS, PRINCIPLES } from '@/lib/content/contact';
 import { DONE_WHERE } from '@/lib/content/done-where';
 import { REVIEW_PAGE_HREF, REVIEW_PRICE } from '@/lib/content/review';
 import { REVIEW_PAGE } from '@/lib/content/review-page';
@@ -19,6 +19,7 @@ jest.mock('next/navigation', () => ({
 }));
 
 jest.mock('@/lib/events/track', () => ({
+  trackClickCta: jest.fn(),
   trackFormStart: jest.fn(),
   trackFormFieldFocus: jest.fn(),
   trackFormSubmit: jest.fn(),
@@ -41,9 +42,15 @@ jest.mock('@/components/session-state-provider', () => ({
   useSessionState: () => mockSessionState,
 }));
 
-import { trackFormStart, trackFormFieldFocus, trackFormSubmit } from '@/lib/events/track';
+import {
+  trackClickCta,
+  trackFormStart,
+  trackFormFieldFocus,
+  trackFormSubmit,
+} from '@/lib/events/track';
 import type { SessionState } from '@/lib/session-state/types';
 
+const mockTrackClickCta = trackClickCta as jest.Mock;
 const mockTrackFormStart = trackFormStart as jest.Mock;
 const mockTrackFormFieldFocus = trackFormFieldFocus as jest.Mock;
 const mockTrackFormSubmit = trackFormSubmit as jest.Mock;
@@ -111,6 +118,18 @@ describe('ContactPage, the merged contact and about page (16.2)', () => {
     expect(screen.queryByRole('link', { name: /what it includes/i })).not.toBeInTheDocument();
   });
 
+  // The page hands its intent to the form, so the inquiry carries it.
+  it.each([
+    [{ intent: 'review' }, 'review'],
+    [{}, 'default'],
+    [{ intent: 'sales' }, 'default'],
+  ])('passes %j to the form as the %s intent', async (params, intent) => {
+    const user = userEvent.setup();
+    await renderPage(params);
+    await fillAndSend(user);
+    expect(sentBody().intent).toBe(intent);
+  });
+
   it('treats an unknown or repeated intent as the general page', async () => {
     await renderPage({ intent: 'services' });
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
@@ -144,6 +163,27 @@ describe('ContactPage, the merged contact and about page (16.2)', () => {
     const emailLink = screen.getAllByRole('link', { name: /ian@iampatterson\.com/i })[0];
     expect(emailLink).toHaveAttribute('href', 'mailto:ian@iampatterson.com');
     expect(screen.getByText(/reply within 24 hours/i)).toBeInTheDocument();
+  });
+
+  // 15.4: each call to action on the page fires one click_cta with its own
+  // location. The form reports through form_* events instead.
+  it('tracks the review link and the address, each with its own location', async () => {
+    const user = userEvent.setup();
+    await renderPage();
+    const review = screen.getByRole('link', { name: CONTACT_INTROS.default.reviewLink!.text });
+    const email = screen.getByRole('link', { name: CONTACT_EMAIL });
+    const calls: unknown[][] = [];
+    for (const link of [review, email]) {
+      mockTrackClickCta.mockClear();
+      link.addEventListener('click', (e) => e.preventDefault());
+      await user.click(link);
+      expect(mockTrackClickCta).toHaveBeenCalledTimes(1);
+      calls.push(mockTrackClickCta.mock.calls[0]);
+    }
+    expect(calls).toEqual([
+      [expect.stringContaining(CONTACT_INTROS.default.reviewLink!.text), 'contact_review_link'],
+      [CONTACT_EMAIL, 'contact_email'],
+    ]);
   });
 
   it('drops the old offer: no measurement stack, no tiers', async () => {
@@ -222,6 +262,59 @@ describe('ContactForm', () => {
     });
     expect(mockTrackFormSubmit).toHaveBeenCalledWith('contact', true);
     expect(mockPush).toHaveBeenCalledWith('/contact/thanks');
+  });
+
+  // The inquiry records its intent (Ian, 2026-11-14): a visitor who came from
+  // a "Book the review" button is a review lead, and the mailbox and the
+  // form analytics can tell those apart from general questions.
+  it('posts the default intent and reports form_name contact without a review intent', async () => {
+    const user = userEvent.setup();
+    render(<ContactForm />);
+    await fillAndSend(user);
+    expect(sentBody().intent).toBe('default');
+    expect(mockTrackFormStart).toHaveBeenCalledWith('contact');
+    expect(mockTrackFormFieldFocus.mock.calls.map((c) => c[0])).toEqual([
+      'contact',
+      'contact',
+      'contact',
+    ]);
+    expect(mockTrackFormSubmit).toHaveBeenCalledWith('contact', true);
+  });
+
+  it('posts the review intent and reports form_name contact_review on every form event', async () => {
+    const user = userEvent.setup();
+    render(<ContactForm intent="review" />);
+    await fillAndSend(user);
+    expect(sentBody().intent).toBe('review');
+    expect(mockTrackFormStart).toHaveBeenCalledWith('contact_review');
+    expect(mockTrackFormFieldFocus.mock.calls.map((c) => c[0])).toEqual([
+      'contact_review',
+      'contact_review',
+      'contact_review',
+    ]);
+    expect(mockTrackFormSubmit).toHaveBeenCalledWith('contact_review', true);
+  });
+
+  it('reports a failed review submission under contact_review too', async () => {
+    mockFetch.mockResolvedValue({ ok: false, status: 502 });
+    const user = userEvent.setup();
+    render(<ContactForm intent="review" />);
+    await fillAndSend(user);
+    await screen.findByRole('alert');
+    expect(mockTrackFormSubmit).toHaveBeenCalledWith('contact_review', false);
+  });
+
+  // The form's analytics carry the field names only, never what was typed.
+  it('puts no message text in any form event', async () => {
+    const user = userEvent.setup();
+    render(<ContactForm intent="review" />);
+    await fillAndSend(user);
+    const calls = [
+      ...mockTrackFormStart.mock.calls,
+      ...mockTrackFormFieldFocus.mock.calls,
+      ...mockTrackFormSubmit.mock.calls,
+    ];
+    expect(JSON.stringify(calls)).not.toMatch(/Hello|Test User|test@example\.com/);
   });
 
   it('says the message did not send, and offers the email address, when the server refuses it', async () => {

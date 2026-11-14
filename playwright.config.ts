@@ -19,6 +19,16 @@ const mobileMatrixProjects = [
     },
     metadata: { mobileLabel: 'iPhone SE (375×667)', mobileChromeBoost: 132 },
   },
+  // 15.4's acceptance viewport: the hero's primary call to action must sit
+  // above the fold here, with no chrome budget (Ian, 2026-11-14).
+  {
+    name: 'matrix-390x667',
+    use: {
+      ...devices['iPhone 13'],
+      viewport: { width: 390, height: 667 },
+    },
+    metadata: { mobileLabel: '390×667 (15.4 acceptance)', mobileChromeBoost: 0 },
+  },
   {
     name: 'matrix-iphone-13',
     use: { ...devices['iPhone 13'] },

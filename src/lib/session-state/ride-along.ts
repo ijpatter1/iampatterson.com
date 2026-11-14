@@ -9,7 +9,9 @@
  * network boundary must go through this helper, not `JSON.stringify` the
  * whole blob.
  *
- * Shape matches `docs/UX_PIVOT_SPEC.md` §3.6 verbatim.
+ * Shape follows `docs/UX_PIVOT_SPEC.md` §3.6, less `ecommerce_demo_percentage`:
+ * 16.2 stopped showing the demo percentage on the form, so it stopped sending
+ * it, and the visitor sees exactly what is transmitted.
  */
 import { RENDERABLE_EVENT_NAMES } from '@/lib/events/schema';
 

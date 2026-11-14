@@ -1,4 +1,5 @@
 import { CONTACT_CONFIG } from '@/lib/contact/config';
+import type { ContactIntent } from '@/lib/contact/validate';
 import { REVIEW_PAGE_HREF, REVIEW_PRICE } from '@/lib/content/review';
 import { REVIEW_PAGE } from '@/lib/content/review-page';
 
@@ -8,8 +9,6 @@ import { REVIEW_PAGE } from '@/lib/content/review-page';
  * with the visitor's intent, and the three principles restate the profile's
  * review, build and ownership lines.
  */
-
-export type ContactIntent = 'default' | 'review';
 
 export interface ContactIntro {
   eyebrow: string;
@@ -43,11 +42,6 @@ export const CONTACT_INTROS: Record<ContactIntent, ContactIntro> = {
     turnaround: REVIEW_PAGE.turnaround,
   },
 };
-
-/** `?intent=review` selects the review heading; anything else is the default. */
-export function contactIntent(value: string | string[] | undefined): ContactIntent {
-  return value === 'review' ? 'review' : 'default';
-}
 
 /** The public address, from the form's delivery config so the two can't drift. */
 export const CONTACT_EMAIL = CONTACT_CONFIG.mailbox;
@@ -85,6 +79,12 @@ export const PRINCIPLES = {
       body: 'The warehouse, the server container and the reports sit in accounts in your name, and you get a runbook at handoff. If we stop working together, it all keeps running.',
     },
   ] satisfies Principle[],
+} as const;
+
+/** /contact/thanks: its own metadata, so it never borrows the contact page's. */
+export const THANKS_METADATA = {
+  title: 'Message sent',
+  description: 'Thanks for reaching out. I reply within 24 hours.',
 } as const;
 
 export const CONTACT_METADATA = {

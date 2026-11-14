@@ -2,11 +2,28 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 
 import { BODY_CLASSES, LABEL_CLASSES, PAGE_TITLE_CLASSES } from '@/components/home/section';
-import { CONTACT_COPY } from '@/lib/content/contact';
+import { CONTACT_COPY, THANKS_METADATA } from '@/lib/content/contact';
 
+const THANKS_URL = 'https://iampatterson.com/contact/thanks';
+
+// Its own title, description, share card and canonical, so nothing inherits
+// from /contact's layout; and kept out of search, like robots.ts asks.
 export const metadata: Metadata = {
-  title: 'Message sent',
-  description: 'Thanks for reaching out. I reply within 24 hours.',
+  title: THANKS_METADATA.title,
+  description: THANKS_METADATA.description,
+  openGraph: {
+    title: THANKS_METADATA.title,
+    description: THANKS_METADATA.description,
+    url: THANKS_URL,
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: THANKS_METADATA.title,
+    description: THANKS_METADATA.description,
+  },
+  alternates: { canonical: THANKS_URL },
+  robots: { index: false, follow: true },
 };
 
 /** After a message is accepted: the same response promise the contact page made. */

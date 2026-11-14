@@ -27,7 +27,7 @@ export default function ReviewPage() {
             <div className="min-w-[280px] max-w-[52ch] flex-[1.3]">
               <p className={`${BODY_CLASSES} md:text-lg`}>{REVIEW_PAGE.intro}</p>
               <div className="mt-6">
-                <BookButton />
+                <BookButton ctaLocation="review_page_top" />
               </div>
             </div>
             <div className="min-w-[260px] flex-1">
@@ -73,7 +73,7 @@ export default function ReviewPage() {
           ))}
         </div>
         <div className="mt-12">
-          <BookButton />
+          <BookButton ctaLocation="review_page_bottom" />
         </div>
       </Section>
     </main>

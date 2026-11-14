@@ -66,6 +66,18 @@ describe('POST /api/contact', () => {
     );
   });
 
+  // The review intent reaches the mail, which names it in the subject; the
+  // log line stays codes only.
+  it('passes the review intent to the mail and logs no message text', async () => {
+    const res = await post({ ...inquiry, intent: 'review' });
+    expect(res.status).toBe(200);
+    expect(mockSendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ intent: 'review' }),
+      'gmail-token',
+    );
+    expect(logged.join('\n')).not.toMatch(/Ada|ada@example|disagree/);
+  });
+
   it('rejects an invalid inquiry with 400 before calling Google', async () => {
     const res = await post({ ...inquiry, email: 'nope' });
     expect(res.status).toBe(400);

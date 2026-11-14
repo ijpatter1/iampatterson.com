@@ -420,6 +420,9 @@ verify "/services has its own canonical (per-route metadata layout)" \
 verify "/contact has its own openGraph metadata" \
   "curl -sf '$BASE_URL/contact' -o /tmp/contact.html && grep -qE 'property=\"og:title\"' /tmp/contact.html"
 
+verify "/review has its own openGraph, Twitter card and canonical metadata" \
+  "curl -sf '$BASE_URL/review' -o /tmp/review.html && grep -qE 'property=\"og:title\"' /tmp/review.html && grep -qE 'name=\"twitter:card\"' /tmp/review.html && grep -qE 'rel=\"canonical\"[^>]*/review' /tmp/review.html"
+
 verify "/demo/ecommerce has its own metadata via the EcomProviders Server-Component lift" \
   "curl -sf '$BASE_URL/demo/ecommerce' -o /tmp/ecom.html && grep -qE 'property=\"og:title\"' /tmp/ecom.html"
 
@@ -575,14 +578,11 @@ setup "Desktop viewport. Reduced-motion OFF. Fresh cookies."
 do_step "Navigate to $BASE_URL/"
 open_url "$BASE_URL/"
 expect \
-  "Hero subtitle (the p-meta line) reads as a single deliberate sentence" \
-  "Pipeline-section CTA uses persimmon as its base hue (not amber)" \
-  "Tier cards link directly into the ecommerce tier deep-anchors (not a detour)" \
   "No 'evidence' section as a standalone block (cut in 10d)"
 
-do_step "Scroll to the Explore the demo section."
-expect \
-  "Heading is singular: 'Explore the demo' (NOT 'demos')"
+# 15.4 rewrote the homepage: the hero p-meta line, the pipeline section's
+# CTA, the tier cards and the Explore the demo section are gone, so their
+# polish checks retired with them.
 
 do_step "Navigate to $BASE_URL/demo/ecommerce"
 expect \
@@ -612,8 +612,6 @@ expect \
   "StatusBadge + ConsentRow inside EventDetail use the same token + glyph treatment" \
   "NarrativeFlow blocked StageCard (if visible) uses u-deny + ×"
 
-confirm "Hero p-meta reads as polished single sentence?"
-confirm "Explore section is singular ('demo', not 'demos')?"
 confirm "All 6 shop products show real .webp images?"
 confirm "Demo banner has the back-to-homepage link?"
 confirm "Overview directive reads claim-led + mobile preserves the demo-honesty clause?"
@@ -792,7 +790,7 @@ setup "Fresh tab at $BASE_URL/"
 
 do_step "Open DevTools → Console (cleared). Hard-reload $BASE_URL/."
 
-do_step "Walk: / → /services → /about → /contact → /demo/ecommerce."
+do_step "Walk: / → /services → /review → /contact → /demo/ecommerce."
 
 do_step "Open SessionPulse → cycle Overview / Timeline / Consent → close."
 

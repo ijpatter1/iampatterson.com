@@ -10,10 +10,10 @@ import { trackClickCta } from '@/lib/events/track';
 export function ProofSection() {
   const { open } = useOverlay();
 
-  // One handler for the button and the panel: both are the Proof section's
-  // "open the overlay", on the timeline.
-  const handleOpen = () => {
-    trackClickCta(PROOF.cta, 'proof');
+  // The button and the panel both open the overlay on the timeline, and each
+  // reports its own location, so the click data can tell them apart.
+  const openFrom = (location: 'proof_button' | 'proof_panel') => {
+    trackClickCta(PROOF.cta, location);
     open('timeline');
   };
 
@@ -26,13 +26,13 @@ export function ProofSection() {
           <h2 className={SECTION_TITLE_CLASSES}>{PROOF.title}</h2>
           <p className={`mt-5 max-w-[52ch] ${BODY_CLASSES}`}>{PROOF.body}</p>
           <div className="mt-7">
-            <EditorialButton variant="ghost" onClick={handleOpen}>
+            <EditorialButton variant="ghost" onClick={() => openFrom('proof_button')}>
               {PROOF.cta} →
             </EditorialButton>
           </div>
         </div>
         <div className="min-w-[280px] flex-[1.1] lg:pt-2">
-          <ProofPanel onOpen={handleOpen} />
+          <ProofPanel onOpen={() => openFrom('proof_panel')} />
         </div>
       </div>
     </Section>
