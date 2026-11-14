@@ -62,24 +62,33 @@ export function useLiveEventsSource(options: UseLiveEventsOptions = {}): UseLive
   const eventStreamUrl = baseUrl.endsWith('/events') ? baseUrl : `${baseUrl}/events`;
   const sseEnabled = baseUrl.length > 0;
 
-  const { events: sseEvents, status: sseStatus } = useEventStream({
+  const {
+    events: sseEvents,
+    status: sseStatus,
+    sessionId: sseSession,
+  } = useEventStream({
     url: eventStreamUrl,
     enabled: sseEnabled,
   });
   const { events: dlEvents } = useDataLayerEvents();
 
-  // Sticky "has SSE ever delivered?" latch. Once flipped true, stays
-  // true for the session so the source doesn't flap back to dataLayer
-  // when the SSE buffer is later cleared (e.g. clearEvents from
-  // session-state reset). Converted from ref to state so the
-  // render-time read below doesn't trip `react-hooks/refs`.
-  const [sseEverDelivered, setSseEverDelivered] = useState(false);
+  // Sticky "has SSE delivered?" latch, held for the session the stream
+  // delivered on, so the source doesn't flap back to dataLayer when the SSE
+  // buffer is later cleared. When the stream moves to a new session (the
+  // session cookie changed, see `useEventStream`), the stream returns only
+  // the new session's events, none at first, and the latch no longer
+  // applies: the panel shows the browser's own events
+  // until the new session's stream delivers, rather than an empty stream
+  // panel. State, not a ref, so the render-time read below doesn't trip
+  // `react-hooks/refs`.
+  const [sseDeliveredSession, setSseDeliveredSession] = useState<string | null>(null);
   useEffect(() => {
-    if (sseEnabled && sseEvents.length > 0 && !sseEverDelivered) {
+    if (sseEnabled && sseEvents.length > 0 && sseSession && sseSession !== sseDeliveredSession) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- sticky latch (see comment above)
-      setSseEverDelivered(true);
+      setSseDeliveredSession(sseSession);
     }
-  }, [sseEnabled, sseEvents.length, sseEverDelivered]);
+  }, [sseEnabled, sseEvents.length, sseSession, sseDeliveredSession]);
+  const sseEverDelivered = sseDeliveredSession !== null && sseDeliveredSession === sseSession;
 
   // A decliner's events never reach the server, so SSE can only ever offer the
   // one exempt tag. Pin to the data layer rather than let that single event

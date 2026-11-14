@@ -358,6 +358,23 @@ The thresholds are named constants in `src/hooks/useEventStream.ts`:
 - A browser `online` event restarts the connection only when the hook has given up (`disconnected` after its retries ran out). A stream that is still trying, whether connecting, open or failing in backoff, keeps its attempt, backoff and loop history.
 - Two tabs on one session are two healthy connections (see the service above), so neither reports `failing`.
 
+**The stream follows the session cookie.** `useEventStream` and `SessionStateProvider` both read one snapshot, `getKnownSessionId()` in `src/lib/events/session.ts` (this tab's last-known session ID, or the cookie's value before it has one), through `useSyncExternalStore`, so the stream and the session state always name the same session. When the session changes, it changes in the same render that closes the connection opened under the old ID and opens one under the new ID. This is a new stream, not a drop: in that render the hook already reports `connecting` with no error, so a replaced stream's `failing` or `disconnected` note is neither shown nor announced, and the loop history, the retry count and `failing` start over. The buffer records the session its events belong to and is returned only for the current session, and a message whose `session_id` is not the connection's session is dropped, so the old session's rows never mix with the new session's. `useLiveEvents` holds its "stream has delivered" latch per session, so until the new session's stream delivers, the panel shows the browser's own data-layer events rather than an empty stream panel.
+
+What counts as a change:
+
+- `setSessionCookie` notifies when the value differs from this tab's own last-known value, not from the cookie jar. Another tab shares the jar, so a rotation made there is announced in this tab on its next write (the next event's `getSessionId()`).
+- `session.ts` also re-checks the jar when the tab becomes visible or gains focus, and notifies if it holds a value this tab has not seen.
+- Same-value writes (the max-age refresh on every event) never reconnect.
+- A deleted cookie is not a change: the stream keeps its last session until the site writes the next ID, including when the connect effect re-runs while the cookie is missing.
+- Known limit: a window that is visible but not focused learns of a change made in another tab only on focus or on its own next write.
+- A hook that started with no cookie opens its stream when one is written.
+
+`SessionStateProvider` follows the same session, so the session header (LiveStrip and the proof panel), the overlay's overview and the contact ride-along name the new session. The readout counts the tab's activity: event counts and coverage carry over, as a reload after a rotation already does (`reconcileRehydrated`). `started_at` is the current session's start: it restarts at the moment of the change, so the overview's "Started" is true for the new session.
+
+Accepted limit: the event that mints a new session can reach the service before the new stream connects, and the service has no replay, so the new session's first event may be missing from the stream. It shows from the data layer until the new session's stream delivers.
+
+Why: on 2026-11-14, a first visit's "Allow all" made Cookiebot delete `_iap_sid` (its consent reset, `resetForCookieTable` in `uc.js`, because its scan had filed the cookie as Unclassified). The site's next `getSessionId()` minted a new ID and every later event went out under it, while the open page's stream stayed on the old ID and received nothing more until a reload. Ian reclassified `_iap_sid` as Necessary in Cookiebot on 2026-11-14, and production confirmed it survives "Allow all". The session still changes after 30 minutes idle, and another tab can change it, which is why the stream and the session state follow the cookie.
+
 ---
 
 ## Phase 3, Flip-the-Card UI Architecture

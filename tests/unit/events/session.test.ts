@@ -181,3 +181,79 @@ describe('setSessionCookie change-detection', () => {
     unsub();
   });
 });
+
+// Another tab shares the cookie jar but not this module's listeners. When it
+// rotates the session, this tab's next write carries the jar's (already new)
+// value, so comparing against the jar would never notify, and this tab's
+// subscribers would stay on the old session.
+describe('cross-tab session changes', () => {
+  function writeJarDirectly(id: string): void {
+    document.cookie = `${SESSION_COOKIE_NAME}=${id}; Path=/`;
+  }
+
+  function setVisibility(state: 'visible' | 'hidden'): void {
+    Object.defineProperty(document, 'visibilityState', { value: state, configurable: true });
+  }
+
+  afterEach(() => {
+    setVisibility('visible');
+  });
+
+  it("notifies when this tab's next write carries another tab's new value", () => {
+    setSessionCookie('tab-a-session');
+    writeJarDirectly('tab-b-session');
+    const cb = jest.fn();
+    const unsub = subscribeSessionCookie(cb);
+    expect(getSessionId()).toBe('tab-b-session');
+    expect(cb).toHaveBeenCalledTimes(1);
+    unsub();
+  });
+
+  it('notifies when the tab becomes visible and the jar holds another value', () => {
+    setSessionCookie('tab-a-session');
+    const cb = jest.fn();
+    const unsub = subscribeSessionCookie(cb);
+    writeJarDirectly('tab-b-session');
+    setVisibility('visible');
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(cb).toHaveBeenCalledTimes(1);
+    // Already announced: a second check finds nothing new.
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(cb).toHaveBeenCalledTimes(1);
+    unsub();
+  });
+
+  it('notifies on focus when the jar holds another value', () => {
+    setSessionCookie('tab-a-session');
+    const cb = jest.fn();
+    const unsub = subscribeSessionCookie(cb);
+    writeJarDirectly('tab-b-session');
+    window.dispatchEvent(new Event('focus'));
+    expect(cb).toHaveBeenCalledTimes(1);
+    unsub();
+  });
+
+  it('does not notify on visibility or focus when nothing changed, or when the tab is hidden', () => {
+    setSessionCookie('tab-a-session');
+    const cb = jest.fn();
+    const unsub = subscribeSessionCookie(cb);
+    document.dispatchEvent(new Event('visibilitychange'));
+    window.dispatchEvent(new Event('focus'));
+    writeJarDirectly('tab-b-session');
+    setVisibility('hidden');
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(cb).not.toHaveBeenCalled();
+    unsub();
+  });
+
+  // A deleted cookie (no value) is not a new session; the next write is.
+  it('does not notify on focus when the cookie is gone', () => {
+    setSessionCookie('tab-a-session');
+    const cb = jest.fn();
+    const unsub = subscribeSessionCookie(cb);
+    document.cookie = `${SESSION_COOKIE_NAME}=; Max-Age=0; Path=/`;
+    window.dispatchEvent(new Event('focus'));
+    expect(cb).not.toHaveBeenCalled();
+    unsub();
+  });
+});
