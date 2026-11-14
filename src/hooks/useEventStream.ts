@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from '
 
 import type { PipelineEvent } from '@/lib/events/pipeline-schema';
 import { isPipelineEvent } from '@/lib/events/pipeline-schema';
-import { readSessionCookie, subscribeSessionCookie } from '@/lib/events/session';
+import { getKnownSessionId, subscribeSessionCookie } from '@/lib/events/session';
 
 /**
  * - `connecting`: the first connection is under way.
@@ -101,7 +101,11 @@ export interface UseEventStreamReturn {
   error: string | null;
   /** Clear the event buffer. */
   clearEvents: () => void;
-  /** The session the current connection was opened for, or null before one. */
+  /**
+   * The session the stream follows: this tab's known session ID (the cookie's
+   * value, kept through a deleted cookie). Null while the hook is disabled or
+   * before there is a session.
+   */
   sessionId: string | null;
 }
 
@@ -119,28 +123,27 @@ export function useEventStream({
   const [error, setError] = useState<string | null>(null);
 
   // The stream follows the session cookie. The session it connects under is
-  // read from the cookie store, so a new ID changes `session` in the same
-  // render that triggers the connect effect's cleanup and reconnect. A new
-  // value starts a new stream: the effect re-runs, so the loop history, the
-  // retry count and `failing` start over. It is sticky through a missing
-  // cookie: a deleted cookie keeps the last session until the site writes
-  // the next ID. `setSessionCookie` notifies on a change from this tab's last
-  // known value, and `session.ts` re-checks the jar when the tab is shown or
-  // focused, so a rotation made in another tab is followed too.
+  // this tab's known session (`getKnownSessionId`), read through the cookie
+  // store, so a new ID changes `session` in the same render that triggers the
+  // connect effect's cleanup and reconnect. `SessionStateProvider` reads the
+  // same snapshot, so the two always name the same session. A new value
+  // starts a new stream: the effect re-runs, so the loop history, the retry
+  // count and `failing` start over. A deleted cookie keeps the last session
+  // until the site writes the next ID. `setSessionCookie` notifies on a
+  // change from this tab's last-known value, and `session.ts` re-checks the
+  // jar when the tab is shown or focused, so a rotation made in another tab
+  // is followed then.
   //
   // Why (2026-11-14): a first visit's "Allow all" made Cookiebot delete
   // `_iap_sid`, which its scan had filed as Unclassified, and the site's next
   // `getSessionId()` minted a new ID. The stream stayed on the old ID and
   // received nothing more until a reload. Ian reclassified the cookie as
   // Necessary that day; the session still changes after 30 minutes idle.
-  const cookieSession = useSyncExternalStore(
+  const session = useSyncExternalStore(
     subscribeSessionCookie,
-    readSessionCookie,
+    getKnownSessionId,
     getServerSessionSnapshot,
   );
-  const [lastSession, setLastSession] = useState<string | null>(null);
-  if (cookieSession && cookieSession !== lastSession) setLastSession(cookieSession);
-  const session = cookieSession ?? lastSession;
 
   // The buffer records the session its events belong to. Events are returned
   // only for the current session, so in the render where the session
@@ -150,6 +153,11 @@ export function useEventStream({
     events: NO_EVENTS,
   });
   const events = buffer.session === session ? buffer.events : NO_EVENTS;
+  // The buffer's session is set when a connection is opened for a session.
+  // In the render where the session changes, there is no connection for the
+  // new one yet: report `connecting` with no error, not the replaced
+  // connection's state, so its note is neither shown nor announced.
+  const switching = enabled && session !== null && buffer.session !== session;
   // Incremented by the `online` event listener to force a fresh reconnect
   // after an offline period. Included in the connect-effect's dep array
   // so a bump triggers the effect's cleanup (closes prior EventSource,
@@ -204,8 +212,10 @@ export function useEventStream({
     if (!session) {
       // Hydration renders with no cookie (the server has none), and the
       // cookie store reports the real value a render later. A cookie the
-      // store has not reported yet is not a missing session.
-      if (!readSessionCookie()) setStatus('disconnected');
+      // store has not reported yet is not a missing session. (The switching
+      // rule above also keeps `disconnected` from being returned then; this
+      // keeps the internal status from passing through it.)
+      if (!getKnownSessionId()) setStatus('disconnected');
       return;
     }
     const connectionSession = session;
@@ -385,5 +395,11 @@ export function useEventStream({
     };
   }, [url, enabled, maxRetries, retryTrigger, session]);
 
-  return { status, events, error, clearEvents, sessionId: enabled ? session : null };
+  return {
+    status: switching ? 'connecting' : status,
+    events,
+    error: switching ? null : error,
+    clearEvents,
+    sessionId: enabled ? session : null,
+  };
 }

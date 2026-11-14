@@ -29,6 +29,25 @@ const cookieChangeListeners = new Set<() => void>();
 // already-new value and a jar comparison would never notify.
 let lastKnownSessionId: string | null = null;
 
+/**
+ * The session this tab knows: its last-known ID, or the cookie's value if it
+ * has none yet. The one snapshot the live stream and the session state both
+ * read through `useSyncExternalStore`, so they always name the same session.
+ * It is sticky: a deleted cookie keeps the last ID until the next one is
+ * written. It changes only with a notify (a write here, or the jar re-check
+ * on visibility and focus), so a visible but unfocused window learns of a
+ * change made in another tab only on focus or on its own next write.
+ */
+export function getKnownSessionId(): string | null {
+  if (lastKnownSessionId === null) lastKnownSessionId = readSessionCookie();
+  return lastKnownSessionId;
+}
+
+/** Test-only: forget this tab's last-known ID, so tests do not depend on order. */
+export function _resetKnownSessionIdForTests(): void {
+  lastKnownSessionId = null;
+}
+
 // Another tab's rotation writes the jar without reaching this tab's
 // listeners. Re-check when the tab is shown or focused, which is when the
 // visitor comes back to it.

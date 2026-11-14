@@ -8,16 +8,23 @@
  * - Persists the next state to sessionStorage after every update.
  * - Consumer hook returns null outside a provider (SSR-safe).
  */
-import { render, renderHook, act } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import { render, renderHook, act, screen, within } from '@testing-library/react';
+import { useState, type ReactNode } from 'react';
+
+jest.mock('next/navigation', () => ({
+  usePathname: () => '/',
+}));
 
 jest.mock('@/hooks/useLiveEvents', () => ({
   useLiveEvents: () => ({ events: [], source: 'dataLayer', stream: 'off' }),
 }));
 
+import { OverlayProvider } from '@/components/overlay/overlay-context';
+import { OverviewTab } from '@/components/overlay/overview-tab';
 import { SessionStateProvider, useSessionState } from '@/components/session-state-provider';
+import { useEventStream } from '@/hooks/useEventStream';
 import { useSessionReadout } from '@/hooks/useSessionReadout';
-import { setSessionCookie } from '@/lib/events/session';
+import { _resetKnownSessionIdForTests, setSessionCookie } from '@/lib/events/session';
 import { DATA_LAYER_EVENT_NAMES } from '@/lib/events/schema';
 import { SESSION_STATE_STORAGE_KEY, loadSessionState } from '@/lib/session-state/storage';
 
@@ -535,8 +542,89 @@ describe('SessionStateProvider', () => {
       );
     }
 
+    beforeEach(() => {
+      _resetKnownSessionIdForTests();
+    });
+
     afterEach(() => {
       document.cookie = '_iap_sid=; Path=/; Max-Age=0';
+    });
+
+    // The readout counts the tab's activity, which carries over, but
+    // "Started" is the current session's start: a new session starts now.
+    it('shows the new ID and the new start time in the header and the overview', () => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2026-11-14T10:00:00Z'));
+      setSessionCookie('aaaaaaaa-first1');
+      render(
+        <OverlayProvider>
+          <SessionStateProvider>
+            <Header />
+            <OverviewTab />
+          </SessionStateProvider>
+        </OverlayProvider>,
+      );
+      expect(screen.getByTestId('short-id')).toHaveTextContent('first1');
+      expect(screen.getByText('10:00:00 UTC')).toBeInTheDocument();
+
+      jest.setSystemTime(new Date('2026-11-14T10:42:07Z'));
+      act(() => setSessionCookie('bbbbbbbb-second'));
+
+      expect(screen.getByTestId('short-id')).toHaveTextContent('second');
+      const overviewSession = screen.getByText('Session', { selector: 'dt' }).parentElement!;
+      expect(within(overviewSession).getByText('second')).toBeInTheDocument();
+      expect(screen.getByText('10:42:07 UTC')).toBeInTheDocument();
+      expect(loadSessionState()?.started_at).toBe('2026-11-14T10:42:07.000Z');
+    });
+
+    // A window that is visible but not focused hears of another tab's change
+    // only on focus or on its next write. Until then, the stream and the
+    // session state must name the same session, even when one of them
+    // re-renders for an unrelated reason.
+    it('keeps the stream and the session state on the same session until this tab hears of a change', () => {
+      class MockEventSource {
+        onopen: (() => void) | null = null;
+        onmessage: ((e: MessageEvent) => void) | null = null;
+        onerror: (() => void) | null = null;
+        constructor(public url: string) {}
+        close(): void {}
+      }
+      Object.defineProperty(globalThis, 'EventSource', { value: MockEventSource, writable: true });
+
+      function Both() {
+        const [, setTick] = useState(0);
+        const { sessionId } = useEventStream({ url: 'http://localhost:8080/events' });
+        const state = useSessionState();
+        return (
+          <p>
+            <span data-testid="stream-id">{sessionId}</span>
+            <span data-testid="state-id">{state?.session_id}</span>
+            <button type="button" onClick={() => setTick((n) => n + 1)}>
+              re-render
+            </button>
+          </p>
+        );
+      }
+
+      setSessionCookie('aaaaaaaa-first1');
+      render(
+        <SessionStateProvider>
+          <Both />
+        </SessionStateProvider>,
+      );
+      // Another tab rotates the shared jar; this tab is not told.
+      document.cookie = '_iap_sid=cccccccc-other1; Path=/';
+      // Only the stream's component re-renders.
+      act(() => screen.getByRole('button', { name: 're-render' }).click());
+
+      expect(screen.getByTestId('stream-id')).toHaveTextContent('aaaaaaaa-first1');
+      expect(screen.getByTestId('state-id')).toHaveTextContent('aaaaaaaa-first1');
+
+      act(() => {
+        window.dispatchEvent(new Event('focus'));
+      });
+      expect(screen.getByTestId('stream-id')).toHaveTextContent('cccccccc-other1');
+      expect(screen.getByTestId('state-id')).toHaveTextContent('cccccccc-other1');
     });
 
     it('takes the new ID, so the header names the new session', () => {

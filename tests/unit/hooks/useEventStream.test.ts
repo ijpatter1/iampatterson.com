@@ -17,6 +17,7 @@ import { createPipelineEvent } from '@/lib/events/pipeline-schema';
 // on a change, is imported under another name.
 import { useLiveEventsSource } from '@/hooks/useLiveEvents';
 import {
+  _resetKnownSessionIdForTests,
   getSessionId,
   notifySessionCookieChange,
   setSessionCookie as writeSessionCookie,
@@ -117,6 +118,8 @@ beforeEach(() => {
   MockEventSource.instances = [];
   MockEventSource.script = null;
   clearCookies();
+  // The session module keeps this tab's last-known ID between tests.
+  _resetKnownSessionIdForTests();
   setSessionCookie(mockSessionId);
 });
 
@@ -1157,9 +1160,6 @@ describe('useEventStream follows the session cookie', () => {
   beforeEach(() => {
     jest.useFakeTimers();
     randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.5);
-    // This tab's own record of its session, as its first getSessionId() sets
-    // it. The module keeps it between tests.
-    writeSessionCookie(mockSessionId);
   });
 
   afterEach(() => {
@@ -1218,6 +1218,7 @@ describe('useEventStream follows the session cookie', () => {
 
   it('opens the stream when a cookie appears after it started without one', () => {
     clearCookies();
+    _resetKnownSessionIdForTests();
     const { result } = renderRecording();
     expect(MockEventSource.instances).toHaveLength(0);
     expect(result.current.status).toBe('disconnected');
@@ -1400,6 +1401,31 @@ describe('useEventStream follows the session cookie', () => {
       }
     } finally {
       process.env.NEXT_PUBLIC_EVENT_STREAM_URL = previousUrl;
+    }
+  });
+
+  // In the render where the session changes there is no connection for the
+  // new session yet. The old connection's `failing` and its error must not be
+  // shown, or announced, for a stream that has just been replaced.
+  it('reports connecting with no error in the render that switches a failing stream', () => {
+    const renders: { status: string; error: string | null }[] = [];
+    const { result } = renderHook(() => {
+      const r = useEventStream({ url: URL });
+      renders.push({ status: r.status, error: r.error });
+      return r;
+    });
+    act(() => jest.advanceTimersByTime(STREAM_FAILING_AFTER_MS));
+    expect(result.current.status).toBe('failing');
+    expect(result.current.error).toBeTruthy();
+    const changedAt = renders.length;
+
+    act(() => writeSessionCookie('sess-after-change'));
+
+    const after = renders.slice(changedAt);
+    expect(after.length).toBeGreaterThan(0);
+    for (const r of after) {
+      expect(r.status).toBe('connecting');
+      expect(r.error).toBeNull();
     }
   });
 });
