@@ -45,6 +45,21 @@ describe('NarrativeFlow', () => {
     expect(screen.getByText(/\/services/)).toBeInTheDocument();
   });
 
+  // 15.4: the narrative names the button by its words, never by its
+  // cta_location, which is an analytics key and not copy.
+  it('narrates the header review link by its text, not its location', () => {
+    render(
+      <NarrativeFlow
+        event={makeEvent({
+          event_name: 'click_cta',
+          parameters: { cta_text: 'Start with a review', cta_location: 'header_review' },
+        })}
+      />,
+    );
+    expect(screen.getByText(/clicked/i)).toHaveTextContent('Start with a review');
+    expect(screen.queryByText(/header_review/)).not.toBeInTheDocument();
+  });
+
   it('shows a user action description for click_cta', () => {
     render(
       <NarrativeFlow
@@ -108,9 +123,7 @@ describe('NarrativeFlow', () => {
         })}
       />,
     );
-    expect(
-      screen.getByText(/translated 412 characters into Claudish/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/translated 412 characters into Claudish/i)).toBeInTheDocument();
   });
 
   it('describes a refused claudish_translate honestly', () => {

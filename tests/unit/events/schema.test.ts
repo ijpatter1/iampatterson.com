@@ -1,3 +1,6 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
 import {
   DATA_LAYER_EVENT_NAMES,
   HIDDEN_FROM_COVERAGE,
@@ -23,6 +26,10 @@ import type {
   CoverageMilestoneEvent,
   WebVitalEvent,
 } from '@/lib/events/schema';
+
+const bigQueryColumns = JSON.parse(
+  readFileSync(join(__dirname, '../../../infrastructure/bigquery/schema.json'), 'utf8'),
+) as { name: string; description: string }[];
 
 const baseFields = {
   iap_source: true,
@@ -86,72 +93,67 @@ describe('Event schema types', () => {
     const event: ClickCtaEvent = {
       ...baseFields,
       event: 'click_cta',
-      cta_text: 'See how it works',
-      cta_location: 'hero',
+      cta_text: 'Start with a review',
+      cta_location: 'hero_review',
     };
-    expect(event.cta_text).toBe('See how it works');
-    expect(event.cta_location).toBe('hero');
+    expect(event.cta_text).toBe('Start with a review');
+    expect(event.cta_location).toBe('hero_review');
   });
 
-  it('CtaLocation covers the 6-value nav-adjacent closed enum', () => {
-    // Type-level: Record<NavAdjacent, true> requires exactly these six keys.
-    // `portal_about` left with the About portal (16.2).
-    type NavAdjacent = Extract<
-      CtaLocation,
-      | 'session_pulse'
-      | 'portal_services'
-      | 'portal_contact'
-      | 'contact_cta_threshold'
-      | 'pipeline_see_your_session'
-      | 'footer_session'
-    >;
-    const navAdjacent: Record<NavAdjacent, true> = {
+  // The schema pin (15.4). Record<CtaLocation, true> makes tsc fail on a
+  // missing value and on one that isn't in the union, so a change to the set
+  // is a change to this list. Every call to action has its own value: two
+  // buttons on one page that share a value can't be told apart in BigQuery.
+  it('CtaLocation is exactly this set, one value per call to action', () => {
+    const all: Record<CtaLocation, true> = {
       session_pulse: true,
+      header_review: true,
       portal_services: true,
       portal_contact: true,
       contact_cta_threshold: true,
-      pipeline_see_your_session: true,
-      footer_session: true,
-    };
-    expect(Object.keys(navAdjacent)).toHaveLength(6);
-  });
-
-  it('CtaLocation covers the editorial closed enum', () => {
-    // Parallel sentinel to the nav-adjacent one above. Guards the editorial /
-    // page-specific side of the CtaLocation union against silent drop or rename.
-    // Template-literal `services_tier_${N}` values are enumerated explicitly as
-    // their four concrete strings so the Extract<> evaluates correctly.
-    type Editorial = Extract<
-      CtaLocation,
-      | 'hero'
-      | 'services_closer'
-      | 'services_tier_01'
-      | 'services_tier_02'
-      | 'services_tier_03'
-      | 'services_tier_04'
-      | 'final_cta'
-      | 'demo_card_ecommerce'
-    >;
-    const editorial: Record<Editorial, true> = {
-      hero: true,
+      hero_review: true,
+      hero_session: true,
+      how_we_work_link: true,
+      how_we_work_review: true,
+      proof_button: true,
+      proof_panel: true,
+      review_page_top: true,
+      review_page_bottom: true,
+      contact_review_link: true,
+      contact_email: true,
+      footer_contact: true,
+      footer_email: true,
       services_closer: true,
       services_tier_01: true,
       services_tier_02: true,
       services_tier_03: true,
       services_tier_04: true,
-      final_cta: true,
-      demo_card_ecommerce: true,
     };
-    expect(Object.keys(editorial)).toHaveLength(8);
+    expect(Object.keys(all)).toHaveLength(22);
+
+    // The schema checklist: the BigQuery column says what the values are.
+    const column = bigQueryColumns.find((c) => c.name === 'cta_location')!;
+    for (const value of Object.keys(all)) {
+      expect([value, column.description.includes(value)]).toEqual([value, true]);
+    }
   });
 
-  it('CtaLocation covers the homepage rewrite locations', () => {
-    // Phase 15. Each new call to action on the rewritten homepage reports its
-    // own location, so the review offer and the proof panel can be told apart
-    // from the hero in the click data.
-    type Homepage = Extract<CtaLocation, 'review' | 'proof'>;
-    const homepage: Record<Homepage, true> = { review: true, proof: true };
-    expect(Object.keys(homepage)).toHaveLength(2);
+  // The values whose calls to action 15.4 deleted (and the two the phase 15
+  // rewrite used before 15.4 split them). Rows in BigQuery keep them, and the
+  // column description documents them, but no code may emit them again.
+  it('CtaLocation no longer carries the deleted locations', () => {
+    type Deleted = Extract<
+      CtaLocation,
+      | 'hero'
+      | 'final_cta'
+      | 'demo_card_ecommerce'
+      | 'pipeline_see_your_session'
+      | 'footer_session'
+      | 'review'
+      | 'proof'
+    >;
+    const none: [Deleted] extends [never] ? true : false = true;
+    expect(none).toBe(true);
   });
 
   it('defines FormFieldFocusEvent with form and field name', () => {

@@ -462,13 +462,17 @@ describe('ProofSection', () => {
     renderSection();
     await userEvent.click(screen.getByRole('button', { name: /^Open the overlay →$/ }));
     expect(screen.getByTestId('overlay-status')).toHaveTextContent('open:timeline');
-    expect(trackClickCta).toHaveBeenCalledWith(PROOF.cta, 'proof');
+    expect(trackClickCta).toHaveBeenCalledTimes(1);
+    expect(trackClickCta).toHaveBeenCalledWith(PROOF.cta, 'proof_button');
   });
 
-  it('does the same from a click on the panel', async () => {
+  // Same destination, its own location: the click data tells the button and
+  // the panel apart (15.4).
+  it('does the same from a click on the panel, with the panel location', async () => {
     renderSection();
     await userEvent.click(screen.getByTestId('proof-header'));
     expect(screen.getByTestId('overlay-status')).toHaveTextContent('open:timeline');
-    expect(trackClickCta).toHaveBeenCalledWith(PROOF.cta, 'proof');
+    expect(trackClickCta).toHaveBeenCalledTimes(1);
+    expect(trackClickCta).toHaveBeenCalledWith(PROOF.cta, 'proof_panel');
   });
 });

@@ -37,7 +37,7 @@ export function HowWeWork() {
                   <Link
                     href={step.link.href}
                     className={`${LABEL_CLASSES} inline-flex min-h-[44px] items-center underline decoration-rule underline-offset-4 transition-colors hover:text-ink`}
-                    onClick={() => trackClickCta(step.link!.text, 'review')}
+                    onClick={() => trackClickCta(step.link!.text, 'how_we_work_link')}
                   >
                     {step.link.text}
                     <span aria-hidden="true">&nbsp;→</span>
@@ -53,7 +53,7 @@ export function HowWeWork() {
         <EditorialLink
           href={REVIEW_PAGE_HREF}
           variant="solid"
-          onClick={() => trackClickCta(HOW_WE_WORK.cta, 'review')}
+          onClick={() => trackClickCta(HOW_WE_WORK.cta, 'how_we_work_review')}
         >
           {HOW_WE_WORK.cta}
         </EditorialLink>

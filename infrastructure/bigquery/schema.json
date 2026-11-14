@@ -87,7 +87,7 @@
     "name": "cta_location",
     "type": "STRING",
     "mode": "NULLABLE",
-    "description": "CTA location on page (click_cta events)"
+    "description": "CTA location on page (click_cta events). Current values (15.4): session_pulse, header_review, portal_services, portal_contact, contact_cta_threshold, hero_review, hero_session, how_we_work_link, how_we_work_review, proof_button, proof_panel, review_page_top, review_page_bottom, contact_review_link, contact_email, footer_contact, footer_email, services_closer, services_tier_01, services_tier_02, services_tier_03, services_tier_04. Older rows also carry values retired in 15.4 when their CTAs were deleted: hero (the old hero), final_cta, demo_card_ecommerce, pipeline_see_your_session, footer_session."
   },
   {
     "name": "form_name",

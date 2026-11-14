@@ -11,7 +11,7 @@ export function HeroEditorial() {
   const { open } = useOverlay();
 
   const handleOpen = () => {
-    trackClickCta(HERO.ghostCta, 'hero');
+    trackClickCta(HERO.ghostCta, 'hero_session');
     open();
   };
 
@@ -48,7 +48,7 @@ export function HeroEditorial() {
               <EditorialLink
                 href={REVIEW_PAGE_HREF}
                 variant="solid"
-                onClick={() => trackClickCta(HERO.primaryCta, 'hero')}
+                onClick={() => trackClickCta(HERO.primaryCta, 'hero_review')}
               >
                 {HERO.primaryCta}
               </EditorialLink>

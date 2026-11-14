@@ -6,6 +6,7 @@
  * verifies that the composition itself is in place.
  */
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import HomePage from '@/app/page';
 import { Footer } from '@/components/footer';
@@ -17,6 +18,7 @@ import { DONE_WHERE } from '@/lib/content/done-where';
 import { PROBLEMS_EYEBROW } from '@/lib/content/problems';
 import { PROOF } from '@/lib/content/proof';
 import { HOW_WE_WORK } from '@/lib/content/review';
+import { trackClickCta } from '@/lib/events/track';
 
 jest.mock('@/lib/events/track', () => ({
   trackClickCta: jest.fn(),
@@ -144,5 +146,39 @@ describe('HomePage composition', () => {
     for (let i = 1; i < levels.length; i++) {
       expect(levels[i]).toBeLessThanOrEqual(levels[i - 1] + 1);
     }
+  });
+
+  // 15.4 acceptance: every call to action on the page fires exactly one
+  // click_cta, and no two share a location, so each can be read on its own
+  // in BigQuery. The proof panel is a clickable region, not a button.
+  it('fires exactly one click_cta per call to action, each with its own location', async () => {
+    const user = userEvent.setup();
+    const { container } = renderHome();
+    const main = container.querySelector('main')!;
+    const targets = [
+      ...main.querySelectorAll<HTMLElement>('a, button'),
+      screen.getByTestId('proof-panel'),
+    ];
+    const locations: string[] = [];
+    for (const target of targets) {
+      (trackClickCta as jest.Mock).mockClear();
+      target.addEventListener('click', (e) => e.preventDefault());
+      await user.click(target);
+      expect([target.textContent, (trackClickCta as jest.Mock).mock.calls.length]).toEqual([
+        target.textContent,
+        1,
+      ]);
+      locations.push((trackClickCta as jest.Mock).mock.calls[0][1]);
+    }
+    expect(locations.sort()).toEqual(
+      [
+        'hero_review',
+        'hero_session',
+        'how_we_work_link',
+        'how_we_work_review',
+        'proof_button',
+        'proof_panel',
+      ].sort(),
+    );
   });
 });

@@ -118,7 +118,9 @@ describe('the review page', () => {
     }
   });
 
-  it('books the review on the contact page with the review intent, from both buttons, tracked', async () => {
+  // Each button reports its own place, so the click data says whether
+  // visitors book from the top of the page or after reading it (15.4).
+  it('books the review on the contact page with the review intent, from both buttons, tracked apart', async () => {
     render(<ReviewPage />);
     const buttons = screen.getAllByRole('link', { name: REVIEW_PAGE.cta });
     expect(buttons).toHaveLength(2);
@@ -127,8 +129,10 @@ describe('the review page', () => {
       b.addEventListener('click', (e) => e.preventDefault());
       await userEvent.click(b);
     }
-    expect(trackClickCta).toHaveBeenCalledTimes(2);
-    expect(trackClickCta).toHaveBeenCalledWith(REVIEW_PAGE.cta, 'review');
+    expect((trackClickCta as jest.Mock).mock.calls).toEqual([
+      [REVIEW_PAGE.cta, 'review_page_top'],
+      [REVIEW_PAGE.cta, 'review_page_bottom'],
+    ]);
   });
 
   // The homepage's design system: one shared eyebrow per section, and

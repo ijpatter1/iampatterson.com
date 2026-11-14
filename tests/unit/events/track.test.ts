@@ -75,11 +75,11 @@ describe('trackClickNav', () => {
 
 describe('trackClickCta', () => {
   it('pushes a click_cta event with CTA text and location', () => {
-    trackClickCta('See how it works', 'hero');
+    trackClickCta('See how it works', 'hero_review');
     expect(window.dataLayer[0]).toMatchObject({
       event: 'click_cta',
       cta_text: 'See how it works',
-      cta_location: 'hero',
+      cta_location: 'hero_review',
     });
   });
 });

@@ -117,7 +117,8 @@ describe('HowWeWork', () => {
     expect(link).toHaveAttribute('href', REVIEW_PAGE_HREF);
     link.addEventListener('click', (e) => e.preventDefault());
     await userEvent.click(link);
-    expect(trackClickCta).toHaveBeenCalledWith(text, 'review');
+    expect(trackClickCta).toHaveBeenCalledTimes(1);
+    expect(trackClickCta).toHaveBeenCalledWith(text, 'how_we_work_link');
   });
 
   it('sends "Start with a review" to the review page, and tracks it', async () => {
@@ -126,7 +127,8 @@ describe('HowWeWork', () => {
     expect(link).toHaveAttribute('href', REVIEW_PAGE_HREF);
     link.addEventListener('click', (e) => e.preventDefault());
     await userEvent.click(link);
-    expect(trackClickCta).toHaveBeenCalledWith(HOW_WE_WORK.cta, 'review');
+    expect(trackClickCta).toHaveBeenCalledTimes(1);
+    expect(trackClickCta).toHaveBeenCalledWith(HOW_WE_WORK.cta, 'how_we_work_review');
   });
 });
 

@@ -81,7 +81,8 @@ describe('HeroEditorial', () => {
     expect(link).toHaveAttribute('href', REVIEW_PAGE_HREF);
     link.addEventListener('click', (e) => e.preventDefault());
     await userEvent.click(link);
-    expect(trackClickCta).toHaveBeenCalledWith(HERO.primaryCta, 'hero');
+    expect(trackClickCta).toHaveBeenCalledTimes(1);
+    expect(trackClickCta).toHaveBeenCalledWith(HERO.primaryCta, 'hero_review');
   });
 
   it('opens the overlay from "See your session" and tracks it', async () => {
@@ -89,7 +90,8 @@ describe('HeroEditorial', () => {
     expect(screen.getByTestId('overlay-status')).toHaveTextContent('closed');
     await userEvent.click(screen.getByRole('button', { name: /see your session/i }));
     expect(screen.getByTestId('overlay-status')).toHaveTextContent('open');
-    expect(trackClickCta).toHaveBeenCalledWith(HERO.ghostCta, 'hero');
+    expect(trackClickCta).toHaveBeenCalledTimes(1);
+    expect(trackClickCta).toHaveBeenCalledWith(HERO.ghostCta, 'hero_session');
   });
 
   it('no longer links to the demo or names the old positioning', () => {
