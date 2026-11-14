@@ -1,4 +1,9 @@
-/** Proof section and panel copy. Verbatim from the handoff bundle's copy.md. */
+/**
+ * Proof section and panel copy. Most strings are verbatim from the handoff
+ * bundle's copy.md. Not from the bundle: `streamDropped`, which Ian signed on
+ * 2026-11-03 together with `notConnected`; `blockedReason` and `regionLabel`,
+ * written for the panel; and `rowsLabel`, pending Ian's sign-off.
+ */
 export const PROOF = {
   eyebrow: 'Proof',
   title: 'This site runs the stack it describes.',

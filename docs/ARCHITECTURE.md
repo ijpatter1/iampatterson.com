@@ -340,6 +340,23 @@ A React hook (`useEventStream`) that:
 3. Maintains an in-memory event buffer (most recent N events)
 4. Exposes the buffer and connection status to consuming components
 
+**Connection status (15.7).** The hook reports one of five statuses. Readers decide whether to say the stream is down with `isStreamDown()`, exported from the hook; the proof panel's stream note shows only when it returns true.
+
+- `connecting`: the first connection is under way.
+- `connected`: a connection is open.
+- `reconnecting`: a routine reconnect. Cloud Run ends each stream after an hour and the hook reopens it after a one-second backoff. Not a failure.
+- `failing`: still retrying, but the stream is not working. Down.
+- `disconnected`: given up after `maxRetries` (default 5), or not started. Down.
+
+The thresholds are named constants in `src/hooks/useEventStream.ts`:
+
+- A stream with no open connection for 15 seconds (`STREAM_FAILING_AFTER_MS`) is failing, whether the attempts error or hang. The clock starts when the stream goes down and only an open stops it. When it runs out on an attempt that has neither opened nor errored, the hook closes that attempt and retries.
+- Three drops of an opened connection within 60 seconds (`STREAM_LOOP_DROPS`, `STREAM_LOOP_WINDOW_MS`) are a loop, and the stream is failing. The hourly reconnects never meet in the window. A loop slower than about one drop every 30 seconds is not flagged.
+- Within a loop, an open does not reset the retry count, so the backoff grows and the hook reaches `disconnected` after `maxRetries`. A reopen keeps the status `failing`, so the note does not flicker. A connection that stays open for 10 seconds (`STREAM_SETTLE_MS`) ends the loop: the status returns to `connected`, and the drop history and retry count are cleared.
+- A browser `online` event restarts the connection only when no connection is open.
+
+**Known server gap: two tabs on one session.** The service is meant to keep one connection per session, with a new connection ending the old one. On the deployed server, `add()` in `connections.ts` ends the older response, and that request's close handler in `server.ts` calls `remove(sessionId)`, which deletes the newer connection from the map. The older tab reconnects once and gets the events. The newer tab stays open and receives nothing. No connection event shows that, so the hook reports it as `connected` and the panel shows no note. Once the server removes only the connection that is closing, two tabs take the connection from each other in turn, which the loop rule above catches. The hook's two-tab test models that fixed server.
+
 ---
 
 ## Phase 3, Flip-the-Card UI Architecture
