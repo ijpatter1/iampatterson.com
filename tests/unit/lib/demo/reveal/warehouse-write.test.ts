@@ -1,26 +1,99 @@
 import {
   BQ_ROW_COLUMNS,
+  RAW_EVENTS_COLUMN_COUNT,
   bqRowForCart,
   FULL_PAGE_DIAGNOSTIC_LINES,
   diagnosticLinesForConsent,
 } from '@/lib/demo/reveal/warehouse-write';
+import { trackPurchase, trackSessionPulseHover } from '@/lib/events/track';
+import * as fs from 'fs';
+import * as path from 'path';
+
+const schema: { name: string; type: string }[] = JSON.parse(
+  fs.readFileSync(path.join(process.cwd(), 'infrastructure/bigquery/schema.json'), 'utf-8'),
+);
+
+const CART_PRODUCTS = JSON.stringify([
+  { product_id: 'tuna-plush-classic', product_name: 'Tuna Plush', price: 26, quantity: 2 },
+]);
 
 describe('warehouse-write, BQ row preview', () => {
-  it('exposes 21 representative columns from the ~51-col raw schema', () => {
-    expect(BQ_ROW_COLUMNS).toHaveLength(21);
+  // The checkout tells the visitor this is the row that lands in
+  // iampatterson_raw.events_raw, "N of the M real columns". So every column
+  // it shows must exist there with the type it shows, and M must be the
+  // table's real width. Before 2026-11-14 the preview showed nine columns the
+  // table does not have and claimed 51 columns of 77.
+  it('shows only columns that exist in infrastructure/bigquery/schema.json, with their real types', () => {
+    const schemaTypes = new Map(schema.map((f) => [f.name, f.type]));
+    const shown = bqRowForCart({ total: 0, itemCount: 0, products: CART_PRODUCTS });
+    for (const c of shown) {
+      expect({ column: c.k, type: schemaTypes.get(c.k) }).toEqual({ column: c.k, type: c.type });
+    }
+  });
+
+  it('states the table width the schema actually has', () => {
+    expect(RAW_EVENTS_COLUMN_COUNT).toBe(schema.length);
+  });
+
+  it('shows no visitor ID column: nothing forwards _iap_aid to BigQuery yet', () => {
+    const keys = BQ_ROW_COLUMNS.map((c) => c.k);
+    expect(keys).not.toContain('user_pseudo_id');
+    expect(keys).not.toContain('anonymous_id');
+  });
+
+  // The checkout presents this as the row the purchase event writes, so it
+  // must be a purchase row: event_name 'purchase', and every column specific
+  // to the event is one trackPurchase actually sends. The keys are read from
+  // the real function's data-layer push, not from a hand-written list.
+  describe('a true purchase row', () => {
+    // Columns GA4 or sGTM fill in, not the data-layer event itself.
+    const PIPELINE_ADDED = new Set([
+      'event_name',
+      'received_timestamp',
+      'client_id',
+      'page_location',
+      'page_referrer',
+      'utm_source',
+      'utm_campaign',
+    ]);
+    function pushedKeys(fire: () => void): Set<string> {
+      window.dataLayer = [];
+      document.cookie = '_iap_sid=test-session; Path=/';
+      fire();
+      return new Set(Object.keys(window.dataLayer[0] as object));
+    }
+
+    it("pins event_name to 'purchase'", () => {
+      expect(BQ_ROW_COLUMNS.find((c) => c.k === 'event_name')?.v).toBe('"purchase"');
+    });
+
+    it('shows only event-specific columns that trackPurchase sends', () => {
+      const baseKeys = pushedKeys(() => trackSessionPulseHover());
+      const purchaseKeys = pushedKeys(() =>
+        trackPurchase({ order_id: 'ORD-1', order_total: 1, item_count: 1, products: '[]' }),
+      );
+      const eventSpecific = BQ_ROW_COLUMNS.map((c) => c.k).filter(
+        (k) => !baseKeys.has(k) && !PIPELINE_ADDED.has(k),
+      );
+      expect(eventSpecific.length).toBeGreaterThan(0);
+      expect(eventSpecific.filter((k) => !purchaseKeys.has(k))).toEqual([]);
+      // And the preview leaves none of the purchase's own columns out.
+      const purchaseSpecific = [...purchaseKeys].filter((k) => !baseKeys.has(k) && k !== 'event');
+      expect(eventSpecific.sort()).toEqual(purchaseSpecific.sort());
+    });
   });
 
   it('includes the expected core columns', () => {
     const keys = BQ_ROW_COLUMNS.map((c) => c.k);
     expect(keys).toContain('event_name');
+    expect(keys).toContain('timestamp');
     expect(keys).toContain('session_id');
-    expect(keys).toContain('cart_value');
-    expect(keys).toContain('cart_item_count');
-    expect(keys).toContain('items');
+    expect(keys).toContain('order_id');
+    expect(keys).toContain('order_total');
+    expect(keys).toContain('item_count');
+    expect(keys).toContain('products');
     expect(keys).toContain('utm_source');
-    expect(keys).toContain('channel_classified');
     expect(keys).toContain('consent_analytics');
-    expect(keys).toContain('ingested_at');
   });
 
   it('each column has key, value, and type', () => {
@@ -33,19 +106,26 @@ describe('warehouse-write, BQ row preview', () => {
 });
 
 describe('bqRowForCart', () => {
-  it('substitutes cart_value / cart_item_count / items with visitor cart state', () => {
-    const rows = bqRowForCart({ total: 52.5, itemCount: 3, uniqueItems: 2 });
-    expect(rows.find((c) => c.k === 'cart_value')?.v).toBe('52.50');
-    expect(rows.find((c) => c.k === 'cart_item_count')?.v).toBe('3');
-    expect(rows.find((c) => c.k === 'items')?.v).toBe('ARRAY<STRUCT>(2)');
+  it('substitutes order_id / order_total / item_count / products with the order the form will submit', () => {
+    const rows = bqRowForCart({
+      total: 52.5,
+      itemCount: 3,
+      products: CART_PRODUCTS,
+      orderId: 'ORD-LIVE123',
+    });
+    expect(rows.find((c) => c.k === 'order_id')?.v).toBe('"ORD-LIVE123"');
+    expect(rows.find((c) => c.k === 'order_total')?.v).toBe('52.50');
+    expect(rows.find((c) => c.k === 'item_count')?.v).toBe('3');
+    // products is a STRING column holding the cart as JSON, as the purchase
+    // event sends it.
+    expect(rows.find((c) => c.k === 'products')?.v).toBe(`"${CART_PRODUCTS}"`);
   });
 
   it('preserves non-cart columns unchanged when no live context supplied', () => {
-    const rows = bqRowForCart({ total: 0, itemCount: 0, uniqueItems: 0 });
-    const channel = rows.find((c) => c.k === 'channel_classified');
-    expect(channel?.v).toBe('"Meta · Prospecting"');
+    const rows = bqRowForCart({ total: 0, itemCount: 0, products: CART_PRODUCTS });
     const sid = rows.find((c) => c.k === 'session_id');
     expect(sid?.v).toBe('"ses_x9b2jk3q"'); // seed
+    expect(rows.find((c) => c.k === 'utm_source')?.v).toBe('"meta"');
   });
 
   // UAT r1 items 11 + 13, checkout sidebar advertised as live but all
@@ -55,81 +135,45 @@ describe('bqRowForCart', () => {
       const rows = bqRowForCart({
         total: 26,
         itemCount: 1,
-        uniqueItems: 1,
+        products: CART_PRODUCTS,
         live: { sessionId: 'abc12345-6789-4def-8abc-deadbeefcafe' },
       });
       expect(rows.find((c) => c.k === 'session_id')?.v).toBe('"abc12345…"');
     });
 
-    it('substitutes event_timestamp + received_timestamp with the live ISO + its ms', () => {
+    it('substitutes timestamp + received_timestamp with the live ISO + its ms', () => {
       const iso = '2026-04-21T18:15:02.000Z';
       const rows = bqRowForCart({
         total: 0,
         itemCount: 0,
-        uniqueItems: 0,
+        products: CART_PRODUCTS,
         live: { eventTimestamp: iso },
       });
-      expect(rows.find((c) => c.k === 'event_timestamp')?.v).toBe(`"${iso}"`);
+      expect(rows.find((c) => c.k === 'timestamp')?.v).toBe(`"${iso}"`);
       expect(rows.find((c) => c.k === 'received_timestamp')?.v).toBe(String(Date.parse(iso)));
     });
 
-    it('substitutes consent_analytics / consent_marketing with the real flags', () => {
+    it('substitutes consent_analytics / consent_marketing with the real flags as BOOL', () => {
       const rows = bqRowForCart({
         total: 0,
         itemCount: 0,
-        uniqueItems: 0,
+        products: CART_PRODUCTS,
         live: { consentAnalytics: true, consentMarketing: false },
       });
-      expect(rows.find((c) => c.k === 'consent_analytics')?.v).toBe('"granted"');
-      expect(rows.find((c) => c.k === 'consent_marketing')?.v).toBe('"denied"');
-    });
-
-    // Phase 10d D7: user_pseudo_id (the ~equivalent of GA4's anonymous client id)
-    // substitutes from the visitor's `_iap_aid` cookie when present, instead of
-    // showing seed `NULL`. Truncated to first 8 chars + ellipsis to keep the
-    // sidebar narrow (same convention as session_id).
-    it('substitutes user_pseudo_id with the real anonymous_id (truncated 8 chars + ellipsis)', () => {
-      const rows = bqRowForCart({
-        total: 0,
-        itemCount: 0,
-        uniqueItems: 0,
-        live: { anonymousId: 'aid12345-6789-4def-8abc-feedfacefeed' },
-      });
-      expect(rows.find((c) => c.k === 'user_pseudo_id')?.v).toBe('"aid12345…"');
-    });
-
-    it('user_pseudo_id falls back to NULL seed when no anonymous_id is supplied', () => {
-      const rows = bqRowForCart({
-        total: 0,
-        itemCount: 0,
-        uniqueItems: 0,
-        live: { sessionId: 'x'.repeat(36) },
-      });
-      expect(rows.find((c) => c.k === 'user_pseudo_id')?.v).toBe('NULL');
-    });
-
-    it('user_pseudo_id falls back to NULL seed when anonymousId is empty string', () => {
-      // SSR / pre-mount paths return '' from getAnonymousId; treat that as
-      // "not yet known" rather than substituting an empty quoted string.
-      const rows = bqRowForCart({
-        total: 0,
-        itemCount: 0,
-        uniqueItems: 0,
-        live: { anonymousId: '' },
-      });
-      expect(rows.find((c) => c.k === 'user_pseudo_id')?.v).toBe('NULL');
+      expect(rows.find((c) => c.k === 'consent_analytics')?.v).toBe('true');
+      expect(rows.find((c) => c.k === 'consent_marketing')?.v).toBe('false');
     });
 
     it('consent columns fall back to seed when no live consent is supplied', () => {
       const rows = bqRowForCart({
         total: 0,
         itemCount: 0,
-        uniqueItems: 0,
+        products: CART_PRODUCTS,
         live: { sessionId: 'x'.repeat(36) }, // live ctx, but no consent keys
       });
       // Seed values stay intact (consent keys not in the partial ctx).
-      expect(rows.find((c) => c.k === 'consent_analytics')?.v).toBe('"granted"');
-      expect(rows.find((c) => c.k === 'consent_marketing')?.v).toBe('"denied"');
+      expect(rows.find((c) => c.k === 'consent_analytics')?.v).toBe('true');
+      expect(rows.find((c) => c.k === 'consent_marketing')?.v).toBe('false');
     });
 
     // Pass-1 product-review fix: page + utm columns were hardcoded-as-live.
@@ -137,7 +181,7 @@ describe('bqRowForCart', () => {
       const rows = bqRowForCart({
         total: 0,
         itemCount: 0,
-        uniqueItems: 0,
+        products: CART_PRODUCTS,
         live: {
           pageLocation: 'https://iampatterson.com/demo/ecommerce/checkout',
           pageReferrer: 'https://iampatterson.com/demo/ecommerce/cart',
@@ -151,39 +195,49 @@ describe('bqRowForCart', () => {
       );
     });
 
-    it('substitutes utm_campaign / utm_source / channel_classified when utmIsLive=true', () => {
+    // events_raw stores the raw utm_source parameter (e.g. "facebook"), not
+    // the demo taxonomy's classified source, so the preview shows the raw one.
+    it('shows the raw utm_source from the URL when the URL carried a utm_campaign', () => {
       const rows = bqRowForCart({
         total: 0,
         itemCount: 0,
-        uniqueItems: 0,
+        products: CART_PRODUCTS,
         live: {
           utmIsLive: true,
           utmCampaign: 'google_brand_tuna',
-          utmSource: 'Google',
-          channelClassified: 'Google · Brand · Search',
+          utmSource: 'facebook',
         },
       });
       expect(rows.find((c) => c.k === 'utm_campaign')?.v).toBe('"google_brand_tuna"');
-      expect(rows.find((c) => c.k === 'utm_source')?.v).toBe('"Google"');
-      expect(rows.find((c) => c.k === 'channel_classified')?.v).toBe('"Google · Brand · Search"');
+      expect(rows.find((c) => c.k === 'utm_source')?.v).toBe('"facebook"');
+    });
+
+    it('shows utm_source as NULL when the URL had a utm_campaign but no utm_source', () => {
+      // The other utm values are real, so the small print does not call them
+      // examples; a missing parameter is a NULL column, not a seed.
+      const rows = bqRowForCart({
+        total: 0,
+        itemCount: 0,
+        products: CART_PRODUCTS,
+        live: { utmIsLive: true, utmCampaign: 'google_brand_tuna', utmSource: '' },
+      });
+      expect(rows.find((c) => c.k === 'utm_source')?.v).toBe('NULL');
     });
 
     it('leaves utm_* as seed when utmIsLive=false (honest about example data)', () => {
       const rows = bqRowForCart({
         total: 0,
         itemCount: 0,
-        uniqueItems: 0,
+        products: CART_PRODUCTS,
         live: {
           utmIsLive: false,
           utmCampaign: 'meta_prospecting_lal_tuna_q1', // seed value
-          utmSource: 'Meta',
-          channelClassified: 'Meta · Prospecting · Lookalike',
+          utmSource: 'facebook',
         },
       });
       // Seed row values preserve (unchanged from BQ_ROW_COLUMNS defaults).
       expect(rows.find((c) => c.k === 'utm_campaign')?.v).toBe('"prospecting_lal_tuna_q1"');
       expect(rows.find((c) => c.k === 'utm_source')?.v).toBe('"meta"');
-      expect(rows.find((c) => c.k === 'channel_classified')?.v).toBe('"Meta · Prospecting"');
     });
   });
 });

@@ -17,12 +17,13 @@ export const STORAGE_CATEGORIES: readonly CategoryDef[] = [
   {
     id: 'app-identity',
     label: 'app identity',
-    description: 'first-party keys this site mints to identify the visitor or session',
+    description: "first-party keys this site sets for your session and the demo's state",
   },
   {
     id: 'analytics',
     label: 'analytics',
-    description: 'first-party measurement cookies set by GA4, sGTM, and Google Ads',
+    description:
+      "first-party measurement cookies: this site's visitor ID, and those set by GA4, sGTM, and Google Ads",
   },
   {
     id: 'consent',
@@ -47,12 +48,14 @@ interface ClassifierRule {
 }
 
 const RULES: readonly ClassifierRule[] = [
-  // First-party app identity. _iap_aid (D7) + _iap_sid (Phase 2) + iampatterson.* namespace.
-  { category: 'app-identity', match: /^_iap_aid$/ },
+  // First-party app identity. _iap_sid (Phase 2) + iampatterson.* namespace.
   { category: 'app-identity', match: /^_iap_sid$/ },
   { category: 'app-identity', match: /^iampatterson\./ },
 
-  // First-party analytics. GA4, legacy GA, sGTM first-party id/linker, Google Ads conversion linker.
+  // First-party analytics. _iap_aid (D7; a Statistics cookie since 2026-11-14,
+  // written only with analytics consent), GA4, legacy GA, sGTM first-party
+  // id/linker, Google Ads conversion linker.
+  { category: 'analytics', match: /^_iap_aid$/ },
   { category: 'analytics', match: /^_ga$/ },
   { category: 'analytics', match: /^_ga_/ },
   { category: 'analytics', match: /^_gid$/ },

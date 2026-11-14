@@ -44,16 +44,16 @@ describe('StorageInspector', () => {
     render(
       <StorageInspector
         snapshot={snap([
-          { name: '_iap_aid', value: 'aid-uuid-1234', source: 'cookie', category: 'app-identity' },
+          { name: '_iap_aid', value: 'aid-uuid-1234', source: 'cookie', category: 'analytics' },
           { name: '_iap_sid', value: 'sid-uuid-5678', source: 'cookie', category: 'app-identity' },
           { name: '_ga', value: 'GA1.1.123.456', source: 'cookie', category: 'analytics' },
         ])}
       />,
     );
     const appGroup = screen.getByTestId('storage-group-app-identity');
-    expect(appGroup.querySelectorAll('[data-testid^="storage-row-"]')).toHaveLength(2);
+    expect(appGroup.querySelectorAll('[data-testid^="storage-row-"]')).toHaveLength(1);
     const analyticsGroup = screen.getByTestId('storage-group-analytics');
-    expect(analyticsGroup.querySelectorAll('[data-testid^="storage-row-"]')).toHaveLength(1);
+    expect(analyticsGroup.querySelectorAll('[data-testid^="storage-row-"]')).toHaveLength(2);
   });
 
   // Bug fix 2026-04-25 (mobile spill, take 1): on iPhone-SE-width
@@ -72,7 +72,7 @@ describe('StorageInspector', () => {
     render(
       <StorageInspector
         snapshot={snap([
-          { name: '_iap_aid', value: 'short', source: 'cookie', category: 'app-identity' },
+          { name: '_iap_aid', value: 'short', source: 'cookie', category: 'analytics' },
         ])}
       />,
     );
@@ -124,13 +124,13 @@ describe('StorageInspector', () => {
     render(
       <StorageInspector
         snapshot={snap([
-          { name: '_iap_aid', value: 'short-value', source: 'cookie', category: 'app-identity' },
+          { name: '_iap_aid', value: 'short-value', source: 'cookie', category: 'analytics' },
         ])}
       />,
     );
     const row = screen.getByTestId('storage-row-cookie-_iap_aid');
     expect(row).toHaveAttribute('data-storage-source', 'cookie');
-    expect(row).toHaveAttribute('data-storage-category', 'app-identity');
+    expect(row).toHaveAttribute('data-storage-category', 'analytics');
     expect(row.textContent).toContain('_iap_aid');
     expect(row.textContent?.toLowerCase()).toContain('cookie');
   });
@@ -162,7 +162,7 @@ describe('StorageInspector', () => {
     render(
       <StorageInspector
         snapshot={snap([
-          { name: '_iap_aid', value: 'short', source: 'cookie', category: 'app-identity' },
+          { name: '_iap_aid', value: 'short', source: 'cookie', category: 'analytics' },
         ])}
       />,
     );

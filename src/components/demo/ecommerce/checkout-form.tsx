@@ -5,9 +5,8 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { trackBeginCheckout, trackPurchase } from '@/lib/events/track';
-import { getAnonymousId } from '@/lib/identity/anonymous-id';
 import { useScrollToTopOnMount } from '@/hooks/useScrollToTopOnMount';
-import { useCart } from './cart-context';
+import { useCart, type CartItem } from './cart-context';
 import { useToast } from '@/components/demo/reveal/toast-provider';
 import { LiveSidebar } from '@/components/demo/reveal/live-sidebar';
 import { FullPageDiagnostic } from '@/components/demo/reveal/full-page-diagnostic';
@@ -15,12 +14,14 @@ import { WalkthroughBlurb } from '@/components/demo/reveal/walkthrough-blurb';
 import { useSessionContext } from '@/hooks/useSessionContext';
 import { WarehouseWriteReadout } from './warehouse-write-readout';
 import {
+  BQ_ROW_COLUMNS,
   FULL_PAGE_DIAGNOSTIC_LINES,
+  RAW_EVENTS_COLUMN_COUNT,
   diagnosticLinesForConsent,
 } from '@/lib/demo/reveal/warehouse-write';
-import { classifyUtm, resolveUtmMeta } from '@/lib/demo/reveal/campaign-taxonomy';
+import { resolveUtmMeta } from '@/lib/demo/reveal/campaign-taxonomy';
 
-// Client-only metadata (URL, referrer, UA-derived device class) for the
+// Client-only metadata (URL, referrer) for the
 // BQ row preview in LiveSidebar. Read once on first client render via
 // useSyncExternalStore so SSR renders with empty defaults, hydration
 // matches, and the populated values apply on the first post-mount render
@@ -37,24 +38,22 @@ import { classifyUtm, resolveUtmMeta } from '@/lib/demo/reveal/campaign-taxonomy
 interface ClientMeta {
   pageLocation: string;
   pageReferrer: string;
-  deviceCategory: 'mobile' | 'tablet' | 'desktop' | '';
-  /** Phase 10d D7: real `_iap_aid` value for the BQ row's user_pseudo_id. */
-  anonymousId: string;
 }
 const EMPTY_CLIENT_META: ClientMeta = {
   pageLocation: '',
   pageReferrer: '',
-  deviceCategory: '',
-  anonymousId: '',
 };
 let clientMetaCache: ClientMeta | null = null;
-function deviceCategoryFromUA(ua: string): ClientMeta['deviceCategory'] {
-  // Conservative UA-based classifier matching GA4's device_category
-  // dimension. Enough for the demo's honest "this is what lands in the
-  // row" reading; avoids a dependency on heavier UA-parser libs.
-  if (/iPad|Tablet|Android(?!.*Mobile)/i.test(ua)) return 'tablet';
-  if (/Mobi|Android|iPhone|iPod/i.test(ua)) return 'mobile';
-  return 'desktop';
+/** The cart as JSON, the `products` string the purchase event sends. */
+function productsJson(items: CartItem[]): string {
+  return JSON.stringify(
+    items.map((i) => ({
+      product_id: i.product_id,
+      product_name: i.product_name,
+      price: i.product_price,
+      quantity: i.quantity,
+    })),
+  );
 }
 function subscribeClientMeta(): () => void {
   return () => {};
@@ -65,8 +64,6 @@ function getClientMetaSnapshot(): ClientMeta {
   clientMetaCache = {
     pageLocation: window.location.href,
     pageReferrer: typeof document !== 'undefined' ? document.referrer : '',
-    deviceCategory: deviceCategoryFromUA(navigator.userAgent),
-    anonymousId: getAnonymousId(),
   };
   return clientMetaCache;
 }
@@ -104,8 +101,9 @@ export function CheckoutForm() {
     () => resolveUtmMeta({ utm_campaign: searchParams?.get('utm_campaign') }),
     [searchParams],
   );
-  const utmClassification = useMemo(() => classifyUtm(utmMeta.value), [utmMeta.value]);
-  const { pageLocation, pageReferrer, deviceCategory, anonymousId } = useSyncExternalStore(
+  // events_raw stores the raw utm_source parameter, so the preview shows it.
+  const utmSource = searchParams?.get('utm_source') ?? '';
+  const { pageLocation, pageReferrer } = useSyncExternalStore(
     subscribeClientMeta,
     getClientMetaSnapshot,
     getClientMetaServerSnapshot,
@@ -144,23 +142,17 @@ export function CheckoutForm() {
   // subtle regen bug the React-Compiler purity rule surfaced.
   const [orderId] = useState(() => `ORD-${Date.now().toString(36).toUpperCase()}`);
   const orderParams = useMemo(() => ({ orderId, total, itemCount }), [orderId, total, itemCount]);
+  // The cart as JSON: the same string the preview shows and trackPurchase sends.
+  const cartProducts = useMemo(() => productsJson(items), [items]);
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (items.length === 0) return;
-    const productsJson = JSON.stringify(
-      items.map((i) => ({
-        product_id: i.product_id,
-        product_name: i.product_name,
-        price: i.product_price,
-        quantity: i.quantity,
-      })),
-    );
     trackPurchase({
       order_id: orderParams.orderId,
       order_total: total,
       item_count: itemCount,
-      products: productsJson,
+      products: cartProducts,
     });
     setStep('diagnostic');
   }
@@ -206,8 +198,9 @@ export function CheckoutForm() {
       <WalkthroughBlurb route="checkout">
         The checkout form. A <span className="font-mono">begin_checkout</span> event already fired
         and landed in BigQuery. Tap <em className="not-italic">see the stack ↓</em> to preview the
-        row that will be inserted when you submit: 21 of the 51 real columns, with live values from
-        your session where we have them.
+        row that will be inserted when you submit: {BQ_ROW_COLUMNS.length} of the{' '}
+        {RAW_EVENTS_COLUMN_COUNT} real columns, with live values from your session where we have
+        them.
       </WalkthroughBlurb>
 
       {/* Sidebar slot sized to LiveSidebar's intrinsic `lg:w-[360px]`,
@@ -376,10 +369,10 @@ export function CheckoutForm() {
             <WarehouseWriteReadout
               total={total}
               itemCount={itemCount}
-              uniqueItems={items.length}
+              products={cartProducts}
+              orderId={orderId}
               live={{
                 sessionId: session.session_id,
-                anonymousId: anonymousId || undefined,
                 eventTimestamp: session.last_event_at || undefined,
                 // Consent flags only substitute once at least one event
                 // has landed, before that we don't know the real state.
@@ -391,9 +384,7 @@ export function CheckoutForm() {
                 pageReferrer: pageReferrer || undefined,
                 utmCampaign: utmMeta.value,
                 utmIsLive: utmMeta.isLive,
-                utmSource: utmClassification.source,
-                channelClassified: `${utmClassification.source} · ${utmClassification.bucket}`,
-                deviceCategory: deviceCategory || undefined,
+                utmSource,
               }}
             />
           </LiveSidebar>

@@ -29,10 +29,13 @@
  *      measured and recorded, and the header link is asserted.
  *   5. SessionPulse opens overlay; Overview is the default tab; tab row
  *      stays on a single row (whitespace-nowrap + overflow-x-auto from
- *      F5 UAT S11). Switch to Consent tab; storage inspector renders;
- *      D7's `_iap_aid` row appears under app-identity. Storage inspector
- *      rows must not horizontally overflow the inspector group's content
- *      box (the c5c52e2 take-2 mobile-spill regression pin).
+ *      F5 UAT S11). Switch to Consent tab; storage inspector renders.
+ *      Storage inspector rows must not horizontally overflow the
+ *      inspector group's content box (the c5c52e2 take-2 mobile-spill
+ *      regression pin). The pin is anchored on the `_iap_sid` row, a
+ *      36-character UUID every visitor gets. It used to rely on D7's
+ *      `_iap_aid`, which since 2026-11-14 exists only with Statistics
+ *      consent, and this spec makes no consent choice.
  *
  * Screenshots are written to `docs/perf/mobile-matrix-screenshots/<date>/`
  * via `page.screenshot()`. The capture script
@@ -306,8 +309,7 @@ test.describe('Phase 10d D1, mobile matrix', () => {
 
       await captureScreenshot(page, testInfo, route.label, '02-overlay-overview');
 
-      // Switch to Consent tab to exercise the D9 storage inspector +
-      // D7 `_iap_aid` surfacing.
+      // Switch to Consent tab to exercise the D9 storage inspector.
       const consentTab = page.getByRole('button', { name: /^consent$/i }).first();
       if ((await consentTab.count()) > 0) {
         await consentTab.click();
@@ -345,6 +347,14 @@ test.describe('Phase 10d D1, mobile matrix', () => {
             });
           });
         });
+        // Anchor: the pin needs at least one long-UUID row, or it passes
+        // vacuously. `_iap_sid` is minted for every visitor, consent or
+        // not; `_iap_aid` would need a Statistics grant this spec never
+        // makes.
+        expect(
+          rowMeasurements.some((m) => m.rowTestId === 'storage-row-cookie-_iap_sid'),
+          `storage inspector lists the _iap_sid row on ${mobileLabel}`,
+        ).toBe(true);
         for (const m of rowMeasurements) {
           expect(
             m.rowOverflow,
