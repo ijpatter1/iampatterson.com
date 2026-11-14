@@ -177,7 +177,11 @@ export type CtaLocation =
   // Homepage rewrite (Phase 15): the review offer's call to action, and the
   // Proof section's button and panel.
   | 'review'
-  | 'proof';
+  | 'proof'
+  // 15.4 chrome: the header's review link and the one-row footer's links.
+  | 'header_review'
+  | 'footer_contact'
+  | 'footer_email';
 
 /** Fired when a CTA button is clicked. */
 export interface ClickCtaEvent extends BaseEvent {

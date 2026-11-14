@@ -7,13 +7,5 @@ export interface NavLink {
 export const NAV_LINKS: NavLink[] = [
   { href: '/', label: 'Home', num: '01' },
   { href: '/services', label: 'Services', num: '02' },
-  { href: '/#demos', label: 'Demos', num: '03' },
-  { href: '/contact', label: 'Contact', num: '04' },
+  { href: '/contact', label: 'Contact', num: '03' },
 ];
-
-export interface DemoLink {
-  href: string;
-  title: string;
-}
-
-export const DEMO_LINKS: DemoLink[] = [{ href: '/demo/ecommerce', title: 'The Tuna Shop' }];

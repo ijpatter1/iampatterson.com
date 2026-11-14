@@ -21,11 +21,20 @@ describe('next.config.mjs redirects (Phase 9E D7)', () => {
     );
   });
 
+  // 15.4 deleted the Demos section and its rebuild banner, so `#demos` and
+  // `?rebuild=` would point at nothing. No demo redirect may carry either.
+  it('sends no demo redirect to the deleted Demos section or its rebuild banner', async () => {
+    const redirects = await nextConfig.redirects?.();
+    for (const r of redirects!) {
+      expect(r.destination).not.toMatch(/#demos|rebuild=/);
+    }
+  });
+
   it('exports an async redirects() function', () => {
     expect(typeof nextConfig.redirects).toBe('function');
   });
 
-  it('redirects `/demo/subscription` and deep-link children to /?rebuild=subscription#demos', async () => {
+  it('redirects `/demo/subscription` and deep-link children to the homepage (15.4)', async () => {
     const redirects = await nextConfig.redirects?.();
     expect(redirects).toBeDefined();
     const subs = redirects!.filter((r) => r.source.startsWith('/demo/subscription'));
@@ -33,7 +42,7 @@ describe('next.config.mjs redirects (Phase 9E D7)', () => {
     // bare URL doesn't 404 past the glob.
     expect(subs.length).toBeGreaterThanOrEqual(2);
     for (const redirect of subs) {
-      expect(redirect.destination).toBe('/?rebuild=subscription#demos');
+      expect(redirect.destination).toBe('/');
       expect(redirect.permanent).toBe(true);
     }
     expect(subs.map((r) => r.source)).toEqual(
@@ -41,12 +50,12 @@ describe('next.config.mjs redirects (Phase 9E D7)', () => {
     );
   });
 
-  it('redirects `/demo/leadgen` and deep-link children to /?rebuild=leadgen#demos', async () => {
+  it('redirects `/demo/leadgen` and deep-link children to the homepage (15.4)', async () => {
     const redirects = await nextConfig.redirects?.();
     const leads = redirects!.filter((r) => r.source.startsWith('/demo/leadgen'));
     expect(leads.length).toBeGreaterThanOrEqual(2);
     for (const redirect of leads) {
-      expect(redirect.destination).toBe('/?rebuild=leadgen#demos');
+      expect(redirect.destination).toBe('/');
       expect(redirect.permanent).toBe(true);
     }
     expect(leads.map((r) => r.source)).toEqual(

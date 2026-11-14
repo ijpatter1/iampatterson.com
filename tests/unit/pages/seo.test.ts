@@ -121,6 +121,36 @@ describe('Phase 10d D4 — SEO', () => {
     });
   });
 
+  // 15.4 acceptance: what a search result, a link preview or the Knowledge
+  // Graph shows carries the new positioning and none of the old offer's words.
+  describe('Old positioning (15.4)', () => {
+    const OLD_WORDS =
+      /\btiers?\b|measurement infrastructure|\bdemos?\b|tuna shop|explore your session first|metabase/i;
+
+    // The site metadata carries the default share image's alt text.
+    it('appears nowhere in the site metadata or the JSON-LD', async () => {
+      const layout = await import('@/app/layout');
+      const jsonLd = await import('@/lib/seo/json-ld');
+      const surfaces = [
+        (layout as unknown as { metadata: Metadata }).metadata,
+        jsonLd.organizationJsonLd(),
+        jsonLd.personJsonLd(),
+      ];
+      for (const surface of surfaces) expect(JSON.stringify(surface)).not.toMatch(OLD_WORDS);
+    });
+
+    it('appears nowhere in the metadata of /review and /contact', async () => {
+      for (const path of ['@/app/review/layout', '@/app/contact/layout']) {
+        const mod = await import(/* webpackIgnore: true */ path);
+        const metadata = (mod as unknown as { metadata: Metadata }).metadata;
+        expect([path, JSON.stringify(metadata)]).not.toEqual([
+          path,
+          expect.stringMatching(OLD_WORDS),
+        ]);
+      }
+    });
+  });
+
   // The price lives in one constant, so the review page's search snippet and
   // share card cannot go stale when it changes.
   describe('Review page metadata', () => {

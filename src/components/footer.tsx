@@ -2,112 +2,43 @@
 
 import Link from 'next/link';
 
-import { DEMO_LINKS, NAV_LINKS } from '@/components/chrome/nav-links';
 import { SessionPulse } from '@/components/chrome/session-pulse';
-import type { OverlayTab } from '@/components/overlay/overlay-context';
-import { useOverlay } from '@/components/overlay/overlay-context';
+import { CONTACT_EMAIL } from '@/lib/content/contact';
 import { trackClickCta, trackClickNav } from '@/lib/events/track';
 
-const SESSION_LINKS: { label: string; tab: OverlayTab }[] = [
-  { label: 'Overview', tab: 'overview' },
-  { label: 'Live event stream', tab: 'timeline' },
-  { label: 'Consent state', tab: 'consent' },
-];
+const LINK_CLASSES =
+  'inline-flex min-h-[44px] items-center text-sm text-ink-2 transition-colors hover:text-ink';
 
+/**
+ * One row (15.4): the wordmark, the contact page, the address and the session
+ * readout. The header carries the way to the review and opens the overlay.
+ */
 export function Footer() {
-  const { open } = useOverlay();
-
-  const openOverlay = (label: string, tab: OverlayTab) => {
-    trackClickCta(label, 'footer_session');
-    open(tab);
-  };
-
   return (
     <footer className="border-t border-rule-soft bg-paper text-ink-2">
-      <div className="mx-auto max-w-content px-5 py-14 md:px-10">
-        <div className="grid gap-10 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
-          <div>
-            <h4 className="font-display text-3xl text-ink">
-              <Link
-                href="/contact"
-                onClick={() => trackClickNav('Patterson', '/contact')}
-                className="transition-colors hover:text-accent-current"
-              >
-                Patterson<em className="not-italic text-accent-current">.</em>
-              </Link>
-            </h4>
-            <p className="mt-3 max-w-xs text-sm leading-relaxed text-ink-3">
-              Measurement infrastructure for marketing teams. This site runs on the same stack I
-              build for clients.
-            </p>
-            <div className="mt-5">
-              <SessionPulse />
-            </div>
-          </div>
-
-          <div>
-            <h5 className="font-mono text-[10px] uppercase tracking-widest text-ink-3">Pages</h5>
-            <ul className="mt-4 space-y-2">
-              {NAV_LINKS.map((l) => (
-                <li key={l.href}>
-                  <Link
-                    href={l.href}
-                    onClick={() => trackClickNav(l.label, l.href)}
-                    className="text-sm text-ink-2 transition-colors hover:text-ink"
-                  >
-                    {l.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <h5 className="font-mono text-[10px] uppercase tracking-widest text-ink-3">Demos</h5>
-            <ul className="mt-4 space-y-2">
-              {DEMO_LINKS.map((d) => (
-                <li key={d.href}>
-                  <Link
-                    href={d.href}
-                    onClick={() => trackClickNav(d.title, d.href)}
-                    className="text-sm text-ink-2 transition-colors hover:text-ink"
-                  >
-                    {d.title}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <h5 className="font-mono text-[10px] uppercase tracking-widest text-ink-3">Session</h5>
-            <ul className="mt-4 space-y-2">
-              {SESSION_LINKS.map(({ label, tab }) => (
-                <li key={label}>
-                  <button
-                    type="button"
-                    onClick={() => openOverlay(label, tab)}
-                    className="text-left text-sm text-ink-2 transition-colors hover:text-ink"
-                  >
-                    {label}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-
-        <div className="mt-14 flex flex-col justify-between gap-2 border-t border-rule-soft pt-6 font-mono text-[10px] tracking-wide text-ink-3 md:flex-row">
-          <span>© 2026 I am Patterson</span>
-          <a
-            href="mailto:ian@iampatterson.com"
-            className="transition-colors hover:text-ink"
-            onClick={() => trackClickNav('ian@iampatterson.com', 'mailto:ian@iampatterson.com')}
-          >
-            ian@iampatterson.com
-          </a>
-          <span>Built on Next.js · GTM · sGTM · BigQuery · Dataform</span>
-        </div>
+      <div className="mx-auto flex max-w-content flex-wrap items-center gap-x-8 gap-y-2 px-5 py-8 md:px-10">
+        <Link
+          href="/"
+          onClick={() => trackClickNav('Patterson', '/')}
+          className="inline-flex min-h-[44px] items-center font-display text-3xl text-ink transition-colors hover:text-accent-current"
+        >
+          Patterson<em className="not-italic text-accent-current">.</em>
+        </Link>
+        <Link
+          href="/contact"
+          onClick={() => trackClickCta('Contact', 'footer_contact')}
+          className={LINK_CLASSES}
+        >
+          Contact
+        </Link>
+        <a
+          href={`mailto:${CONTACT_EMAIL}`}
+          onClick={() => trackClickCta(CONTACT_EMAIL, 'footer_email')}
+          className={LINK_CLASSES}
+        >
+          {CONTACT_EMAIL}
+        </a>
+        <SessionPulse />
       </div>
     </footer>
   );

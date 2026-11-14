@@ -7,6 +7,8 @@ import { usePathname } from 'next/navigation';
 import { NavHint } from '@/components/chrome/nav-hint';
 import { SessionPulse } from '@/components/chrome/session-pulse';
 import { useOverlay } from '@/components/overlay/overlay-context';
+import { HERO } from '@/lib/content/hero';
+import { REVIEW_PAGE_HREF } from '@/lib/content/review';
 import { trackClickCta } from '@/lib/events/track';
 
 import { LiveStrip } from '@/components/chrome/live-strip';
@@ -18,9 +20,8 @@ export function Header() {
   const isHomepage = pathname === '/';
   const { open } = useOverlay();
   // Phase 9E D1: conventional nav (Home/Services/Demos/About/Contact)
-  // is removed from the header; the SessionPulse is the only nav
-  // affordance. Footer carries the conventional-nav escape hatch on
-  // every page. `sessionPulseRef` lets NavHint classify clicks on the
+  // is removed from the header; the SessionPulse and, since 15.4, the
+  // review link are its only affordances. `sessionPulseRef` lets NavHint classify clicks on the
   // pulse (which hides the hint visually without firing a dismissal
   // event) vs `click_outside` (which fires `nav_hint_dismissed`).
   const sessionPulseRef = useRef<HTMLElement>(null);
@@ -58,6 +59,18 @@ export function Header() {
             </Link>
             {isHomepage && <NavHint sessionPulseRef={sessionPulseRef} />}
           </span>
+          {/* 15.4: the way to the review, on every page, in the homepage
+              call to action's words. First on mobile so the pulse keeps the
+              top-right corner; after the pulse, at the far end, from md up.
+              Kept compact and unwrapped so the row fits a 375px screen
+              beside the pulse and the hero keeps its fold. */}
+          <Link
+            href={REVIEW_PAGE_HREF}
+            onClick={() => trackClickCta(HERO.primaryCta, 'header_review')}
+            className="order-first mr-auto inline-flex min-h-[44px] items-center whitespace-nowrap text-sm font-semibold text-ink underline decoration-rule underline-offset-4 transition-colors hover:decoration-ink md:order-none md:ml-auto md:mr-0"
+          >
+            {HERO.primaryCta}
+          </Link>
         </div>
       </header>
       {showLiveStrip(pathname) && <LiveStrip />}
