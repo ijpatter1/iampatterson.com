@@ -358,6 +358,10 @@ The thresholds are named constants in `src/hooks/useEventStream.ts`:
 - A browser `online` event restarts the connection only when the hook has given up (`disconnected` after its retries ran out). A stream that is still trying, whether connecting, open or failing in backoff, keeps its attempt, backoff and loop history.
 - Two tabs on one session are two healthy connections (see the service above), so neither reports `failing`.
 
+**The stream follows the session cookie.** The hook subscribes to `subscribeSessionCookie` (`src/lib/events/session.ts`). When `_iap_sid` takes a new value, it closes the connection opened under the old ID and opens one under the new ID. This is a new stream, not a drop: the status goes to `connecting`, which shows no note, and the loop history, the retry count and `failing` start over. The old session's rows are cleared from the buffer, and `useLiveEvents` holds its "stream has delivered" latch per session, so until the new session's stream delivers, the panel shows the browser's own data-layer events rather than an empty stream panel. Same-value writes (the max-age refresh on every event) do not notify and never reconnect. A deleted cookie is ignored until the site writes the next ID. A hook that started with no cookie opens its stream when one is written.
+
+Why: on 2026-11-14, a first visit's "Allow all" was seen to make Cookiebot delete `_iap_sid` (its consent reset, `resetForCookieTable` in `uc.js`, because its scan filed the cookie as Unclassified). The site's next `getSessionId()` minted a new ID and every later event went out under it, while the open page's stream stayed on the old ID and received nothing more until a reload. The cookie is being reclassified in Cookiebot; following the cookie keeps the stream right after any session change.
+
 ---
 
 ## Phase 3, Flip-the-Card UI Architecture

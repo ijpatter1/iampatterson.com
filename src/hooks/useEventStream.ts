@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { PipelineEvent } from '@/lib/events/pipeline-schema';
 import { isPipelineEvent } from '@/lib/events/pipeline-schema';
-import { readSessionCookie } from '@/lib/events/session';
+import { readSessionCookie, subscribeSessionCookie } from '@/lib/events/session';
 
 /**
  * - `connecting`: the first connection is under way.
@@ -95,6 +95,8 @@ export interface UseEventStreamReturn {
   error: string | null;
   /** Clear the event buffer. */
   clearEvents: () => void;
+  /** The session the current connection was opened for, or null before one. */
+  sessionId: string | null;
 }
 
 export function useEventStream({
@@ -110,6 +112,10 @@ export function useEventStream({
   const [status, setStatus] = useState<ConnectionStatus>(enabled ? 'connecting' : 'disconnected');
   const [events, setEvents] = useState<PipelineEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  // Incremented when the session cookie takes a new value, so the connect
+  // effect reopens the stream for the new session (see followSession below).
+  const [sessionChange, setSessionChange] = useState(0);
   // Incremented by the `online` event listener to force a fresh reconnect
   // after an offline period. Included in the connect-effect's dep array
   // so a bump triggers the effect's cleanup (closes prior EventSource,
@@ -161,14 +167,33 @@ export function useEventStream({
       return;
     }
 
-    const sessionId = readSessionCookie();
-    if (!sessionId) {
-      setStatus('disconnected');
-      return;
+    // The stream follows the session cookie. On a first visit, "Allow all"
+    // makes Cookiebot delete `_iap_sid` (2026-11-14: its scan files it as
+    // Unclassified), and the site's next `getSessionId()` mints a new ID. A
+    // stream left on the old ID would receive nothing more. A new value starts
+    // a new stream: this effect re-runs, so the loop history, the retry count
+    // and `failing` start over, and the old session's rows are cleared. A
+    // deleted cookie is ignored, since the site writes the next ID through
+    // `setSessionCookie`, which notifies; same-value writes do not notify.
+    function followSession(current: string | null): () => void {
+      return subscribeSessionCookie(() => {
+        const next = readSessionCookie();
+        if (!next || next === current) return;
+        if (current) setEvents([]);
+        setSessionChange((n) => n + 1);
+      });
     }
 
+    const cookieSession = readSessionCookie();
+    if (!cookieSession) {
+      setStatus('disconnected');
+      return followSession(null);
+    }
+    setSessionId(cookieSession);
+    const unfollowSession = followSession(cookieSession);
+
     const separator = url.includes('?') ? '&' : '?';
-    const fullUrl = `${url}${separator}session_id=${encodeURIComponent(sessionId)}`;
+    const fullUrl = `${url}${separator}session_id=${encodeURIComponent(cookieSession)}`;
 
     let retryCount = 0;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
@@ -320,6 +345,7 @@ export function useEventStream({
     connect();
 
     return () => {
+      unfollowSession();
       closed = true;
       if (retryTimer) clearTimeout(retryTimer);
       stopFailTimer();
@@ -327,7 +353,7 @@ export function useEventStream({
       gaveUpRef.current = false;
       es?.close();
     };
-  }, [url, enabled, maxRetries, retryTrigger]);
+  }, [url, enabled, maxRetries, retryTrigger, sessionChange]);
 
-  return { status, events, error, clearEvents };
+  return { status, events, error, clearEvents, sessionId };
 }

@@ -12,6 +12,12 @@ import {
 } from '@/hooks/useEventStream';
 import type { PipelineEvent } from '@/lib/events/pipeline-schema';
 import { createPipelineEvent } from '@/lib/events/pipeline-schema';
+// The file's own `setSessionCookie` helper writes the cookie without notifying;
+// the site's writer, which notifies on a change, is imported under another name.
+import {
+  notifySessionCookieChange,
+  setSessionCookie as writeSessionCookie,
+} from '@/lib/events/session';
 
 // ---------------------------------------------------------------------------
 // Mock SSE (EventSource)
@@ -1115,6 +1121,126 @@ describe('useEventStream routine reconnect vs failing stream (15.7)', () => {
       }
       expect(MockEventSource.instances.every((es) => !es.closed)).toBe(true);
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The stream follows the session cookie
+//
+// On a first visit, "Allow all" makes Cookiebot delete `_iap_sid` (its scan
+// files the cookie as Unclassified). The site's next `getSessionId()` mints a
+// new ID, and every later event goes out under it. A stream still open on the
+// old ID would receive nothing more until a reload. So when the cookie's value
+// changes, the hook closes the old connection and opens one for the new ID.
+// ---------------------------------------------------------------------------
+
+describe('useEventStream follows the session cookie', () => {
+  const URL = 'http://localhost:8080/events';
+  let randomSpy: jest.SpyInstance;
+  const latest = () => MockEventSource.instances[MockEventSource.instances.length - 1];
+
+  function renderRecording() {
+    const seen: string[] = [];
+    const hook = renderHook(() => {
+      const r = useEventStream({ url: URL });
+      seen.push(r.status);
+      return r;
+    });
+    return { ...hook, seen };
+  }
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.5);
+  });
+
+  afterEach(() => {
+    randomSpy.mockRestore();
+    jest.useRealTimers();
+  });
+
+  it('closes the old connection and opens one for the new session when the cookie changes', () => {
+    const { result, seen } = renderRecording();
+    const old = latest();
+    act(() => old.simulateOpen());
+    act(() => old.simulateMessage(JSON.stringify(makePipelineEvent({ event_name: 'page_view' }))));
+    expect(result.current.events).toHaveLength(1);
+    expect(result.current.sessionId).toBe(mockSessionId);
+    const changedAt = seen.length;
+
+    act(() => writeSessionCookie('sess-after-consent'));
+
+    expect(old.closed).toBe(true);
+    expect(MockEventSource.instances).toHaveLength(2);
+    expect(latest().url).toBe(`${URL}?session_id=sess-after-consent`);
+    expect(result.current.sessionId).toBe('sess-after-consent');
+    // A new stream, not a drop: `connecting`, which shows no note.
+    expect(result.current.status).toBe('connecting');
+    expect(seen.slice(changedAt).filter((st) => isStreamDown(st as 'connecting'))).toEqual([]);
+    // The old session's rows are not the new session's.
+    expect(result.current.events).toEqual([]);
+
+    act(() => latest().simulateOpen());
+    expect(result.current.status).toBe('connected');
+  });
+
+  // `getSessionId()` rewrites the cookie with the same value on every event
+  // to refresh its max-age. That must never cost the visitor their stream.
+  it('never reconnects on a same-value write or a bare notify', () => {
+    renderRecording();
+    act(() => latest().simulateOpen());
+    act(() => writeSessionCookie(mockSessionId));
+    act(() => notifySessionCookieChange());
+    expect(MockEventSource.instances).toHaveLength(1);
+    expect(latest().closed).toBe(false);
+  });
+
+  // Cookiebot deletes the cookie without the site's notify. Until the site
+  // mints the next ID, the open stream stays on the session it has.
+  it('keeps the open stream when the cookie is deleted', () => {
+    const { rerender } = renderRecording();
+    act(() => latest().simulateOpen());
+    clearCookies();
+    act(() => notifySessionCookieChange());
+    rerender();
+    expect(MockEventSource.instances).toHaveLength(1);
+    expect(latest().closed).toBe(false);
+  });
+
+  it('opens the stream when a cookie appears after it started without one', () => {
+    clearCookies();
+    const { result } = renderRecording();
+    expect(MockEventSource.instances).toHaveLength(0);
+    expect(result.current.status).toBe('disconnected');
+
+    act(() => writeSessionCookie('sess-late'));
+
+    expect(MockEventSource.instances).toHaveLength(1);
+    expect(latest().url).toBe(`${URL}?session_id=sess-late`);
+    expect(result.current.status).toBe('connecting');
+  });
+
+  it('gives a failing stream a fresh start under the new session, not a continued loop', () => {
+    const { result } = renderRecording();
+    for (let i = 0; i < STREAM_LOOP_DROPS; i++) {
+      act(() => latest().simulateOpen());
+      act(() => latest().simulateError());
+      act(() => jest.advanceTimersByTime(1000));
+    }
+    expect(result.current.status).toBe('failing');
+
+    act(() => writeSessionCookie('sess-after-consent'));
+    expect(result.current.status).toBe('connecting');
+    expect(latest().url).toBe(`${URL}?session_id=sess-after-consent`);
+
+    // One drop now is a routine reconnect: the loop history and the retry
+    // count started over, so the backoff is one second again.
+    act(() => latest().simulateOpen());
+    act(() => latest().simulateError());
+    expect(result.current.status).toBe('reconnecting');
+    const before = MockEventSource.instances.length;
+    act(() => jest.advanceTimersByTime(1000));
+    expect(MockEventSource.instances.length).toBe(before + 1);
   });
 });
 
