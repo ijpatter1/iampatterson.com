@@ -39,8 +39,8 @@ beforeEach(() => {
   sourceCalls.length = 0;
 });
 
-// The stream service keeps one connection per session and ends the previous
-// one when another arrives. So however many components show live events, the
+// The stream service caps the connections one session may hold and ends the
+// oldest beyond the cap. So however many components show live events, the
 // page must open the stream once.
 describe('LiveEventsProvider', () => {
   it('opens the stream once for any number of readers', () => {

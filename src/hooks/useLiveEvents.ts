@@ -5,7 +5,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { PipelineEvent } from '@/lib/events/pipeline-schema';
 
 import { useDataLayerEvents } from './useDataLayerEvents';
-import { useEventStream } from './useEventStream';
+import { type ConnectionStatus, useEventStream } from './useEventStream';
 
 export interface UseLiveEventsReturn {
   /** Merged event stream: SSE when connected, dataLayer otherwise. */
@@ -16,8 +16,10 @@ export interface UseLiveEventsReturn {
    * State of the stream connection itself, whichever source is active. `off`
    * means no stream is configured. A reader uses this to tell "data-layer
    * events because the stream is down" from "data-layer events by design".
+   * `reconnecting` is routine; `failing` is a stream still retrying that is
+   * not working (see `useEventStream`).
    */
-  stream: 'off' | 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
+  stream: 'off' | ConnectionStatus;
 }
 
 export interface UseLiveEventsOptions {
@@ -95,10 +97,12 @@ export function useLiveEventsSource(options: UseLiveEventsOptions = {}): UseLive
 /**
  * The page's one live event source, provided by `LiveEventsProvider`.
  *
- * It is shared because the stream service keeps a single connection per
- * session: a second connection for the same session ends the first. Every
- * component that opened its own stream would take the feed away from the
- * others, so exactly one place opens it and everything else reads from here.
+ * It is shared so that a page holds one connection. The stream service keeps
+ * a connection per tab for each session, up to a cap, and ends the oldest
+ * beyond it (connections.ts). Components that each opened their own stream
+ * would multiply the connections per tab, and enough of them across a few
+ * tabs would pass the cap and end each other. So exactly one place opens it
+ * and everything else reads from here.
  */
 export const LiveEventsContext = createContext<UseLiveEventsReturn | null>(null);
 

@@ -330,6 +330,10 @@ A lightweight Node.js service on Cloud Run that:
 3. When a message arrives, routes it to the matching session's connection
 4. Handles connection lifecycle (open, close, reconnect)
 
+**Connections per session (15.7).** The map holds a set of SSE responses for each session, one per open tab (`infrastructure/cloud-run/event-stream/src/connections.ts`). Each of the session's events is written to every response in the set, so two tabs on one session both receive it. A request's close handler removes only its own response, and the session's key goes when its set is empty. A session holds at most `MAX_CONNECTIONS_PER_SESSION` (5) connections. A sixth request is refused with HTTP 429 and the five open connections are left alone; ending the oldest instead would set off a ring, since that tab is alive and would reconnect and end the next. A visitor with six or more tabs on the site gets the live stream in five of them. Each tab beyond five is refused on every retry and its proof panel shows the stream note; it stays that way after another tab closes, until it is reloaded or the browser comes back online. The cap bounds one session's set, not the total: the client picks the session ID, so it can open more connections under other IDs. There is no global cap; that is recorded as debt alongside the unauthenticated push endpoint. `/health` reports `connections` as the number of open responses across all sessions, which before this change was also the number of sessions. The design depends on one instance: `max_instance_count = 1` in `infrastructure/terraform/cloud-run.tf`, because the session map is in memory and a Pub/Sub push must reach the instance the session's tabs are connected to. Each open tab holds one of that instance's 80 request slots (`max_instance_request_concurrency`), which the Pub/Sub pushes share.
+
+Before 15.7, a new connection for a session ended the old one, and the old request's close handler then removed the session's entry, which was by then the new connection. With two tabs, the newer tab stayed open and received nothing.
+
 ### Client-Side Hook
 
 A React hook (`useEventStream`) that:
@@ -337,6 +341,22 @@ A React hook (`useEventStream`) that:
 2. Establishes a WebSocket or SSE connection to the Cloud Run service
 3. Maintains an in-memory event buffer (most recent N events)
 4. Exposes the buffer and connection status to consuming components
+
+**Connection status (15.7).** The hook reports one of five statuses. Readers decide whether to say the stream is down with `isStreamDown()`, exported from the hook; the proof panel's stream note shows only when it returns true.
+
+- `connecting`: the first connection is under way. An enabled stream also starts here, before its first attempt, so the first render shows no note.
+- `connected`: a connection is open.
+- `reconnecting`: a routine reconnect. Cloud Run ends each stream after an hour and the hook reopens it after a one-second backoff. Not a failure.
+- `failing`: still retrying, but the stream is not working. Down.
+- `disconnected`: given up after `maxRetries` (default 5), or not started because the stream is disabled or there is no session cookie yet. Down.
+
+The thresholds are named constants in `src/hooks/useEventStream.ts`:
+
+- A stream with no open connection for 15 seconds (`STREAM_FAILING_AFTER_MS`) is failing, whether the attempts error or hang. The clock starts when the stream goes down and only an open stops it. When it runs out on an attempt that has neither opened nor errored, the hook closes that attempt and retries.
+- Three drops of an opened connection within 60 seconds (`STREAM_LOOP_DROPS`, `STREAM_LOOP_WINDOW_MS`) are a loop, and the stream is failing. The hourly reconnects never meet in the window. A loop slower than about one drop every 30 seconds is not flagged.
+- Within a loop, an open does not reset the retry count, so the backoff grows and the hook reaches `disconnected` after `maxRetries`. A reopen keeps the status `failing`, so the note does not flicker. A connection that stays open for 10 seconds (`STREAM_SETTLE_MS`) ends the loop: the status returns to `connected`, and the drop history and retry count are cleared.
+- A browser `online` event restarts the connection only when the hook has given up (`disconnected` after its retries ran out). A stream that is still trying, whether connecting, open or failing in backoff, keeps its attempt, backoff and loop history.
+- Two tabs on one session are two healthy connections (see the service above), so neither reports `failing`.
 
 ---
 

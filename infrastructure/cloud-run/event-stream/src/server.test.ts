@@ -1,4 +1,5 @@
 import http from 'http';
+import { MAX_CONNECTIONS_PER_SESSION } from './connections';
 import { app, manager } from './server';
 
 let server: http.Server;
@@ -15,6 +16,8 @@ beforeAll((done) => {
 });
 
 afterAll((done) => {
+  // An SSE response stays open until the client goes; close any a failed test left behind.
+  server.closeAllConnections();
   server.close(done);
 });
 
@@ -88,5 +91,150 @@ describe('POST /pubsub/push', () => {
     // Dockerfile's — does not have. First CI run caught it: TS18046.
     const json = (await res.json()) as { delivered: boolean };
     expect(json.delivered).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Two tabs on one session
+//
+// Each tab opens its own stream for the visitor's session. Both must receive
+// the session's events, and one tab closing must not take the stream from the
+// other. Until this was fixed, the second connection ended the first, and the
+// first's close handler then removed the second, leaving it open and silent.
+// ---------------------------------------------------------------------------
+
+interface OpenStream {
+  controller: AbortController;
+  /** Resolves with the stream's text once it contains `needle`, or rejects after a timeout. */
+  waitFor: (needle: string) => Promise<string>;
+}
+
+const openControllers: AbortController[] = [];
+
+afterEach(() => {
+  openControllers.splice(0).forEach((c) => c.abort());
+});
+
+async function openStream(sessionId: string): Promise<OpenStream> {
+  const controller = new AbortController();
+  openControllers.push(controller);
+  const res = await fetch(`${baseUrl}/events?session_id=${sessionId}`, {
+    signal: controller.signal,
+  });
+  const reader = (res.body as ReadableStream<Uint8Array>).getReader();
+  const decoder = new TextDecoder();
+  let text = '';
+  let ended = false;
+  const pump = (async () => {
+    try {
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        text += decoder.decode(value, { stream: true });
+      }
+    } catch {
+      // Aborted by the test.
+    }
+    ended = true;
+  })();
+  void pump;
+
+  async function waitFor(needle: string): Promise<string> {
+    const deadline = Date.now() + 1000;
+    while (!text.includes(needle)) {
+      if (ended) throw new Error(`stream ended before "${needle}" arrived`);
+      if (Date.now() > deadline) throw new Error(`"${needle}" did not arrive within 1s`);
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    return text;
+  }
+
+  return { controller, waitFor };
+}
+
+async function push(payload: Record<string, unknown>): Promise<boolean> {
+  const res = await fetch(`${baseUrl}/pubsub/push`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      message: { data: Buffer.from(JSON.stringify(payload)).toString('base64') },
+    }),
+  });
+  const json = (await res.json()) as { delivered: boolean };
+  return json.delivered;
+}
+
+async function waitForConnections(count: number): Promise<void> {
+  const deadline = Date.now() + 1000;
+  while (manager.size !== count) {
+    if (Date.now() > deadline)
+      throw new Error(`expected ${count} connections, have ${manager.size}`);
+    await new Promise((r) => setTimeout(r, 10));
+  }
+}
+
+describe('two tabs on one session', () => {
+  it("delivers the session's events to both tabs", async () => {
+    const before = manager.size;
+    const tabA = await openStream('two-tabs-both');
+    await tabA.waitFor('"type":"connected"');
+    const tabB = await openStream('two-tabs-both');
+    await tabB.waitFor('"type":"connected"');
+    await waitForConnections(before + 2);
+
+    expect(await push({ session_id: 'two-tabs-both', event_name: 'page_view' })).toBe(true);
+    await expect(tabA.waitFor('page_view')).resolves.toContain('page_view');
+    await expect(tabB.waitFor('page_view')).resolves.toContain('page_view');
+
+    tabA.controller.abort();
+    tabB.controller.abort();
+    await waitForConnections(before);
+  });
+
+  it('keeps delivering to the other tab after one tab closes', async () => {
+    const before = manager.size;
+    const tabA = await openStream('two-tabs-close');
+    await tabA.waitFor('"type":"connected"');
+    const tabB = await openStream('two-tabs-close');
+    await tabB.waitFor('"type":"connected"');
+
+    tabA.controller.abort();
+    // Tab A's close handler has run once only tab B is left.
+    await waitForConnections(before + 1);
+
+    expect(await push({ session_id: 'two-tabs-close', event_name: 'click_cta' })).toBe(true);
+    await expect(tabB.waitFor('click_cta')).resolves.toContain('click_cta');
+
+    tabB.controller.abort();
+    await waitForConnections(before);
+    expect(manager.get('two-tabs-close')).toBeUndefined();
+  });
+  // Above the cap the newest request is refused. Ending the oldest instead
+  // would start a ring: that tab is alive, reconnects, and ends the next.
+  it(`refuses a connection beyond ${MAX_CONNECTIONS_PER_SESSION} with 429, leaving the open ones receiving`, async () => {
+    const before = manager.size;
+    const open: OpenStream[] = [];
+    for (let i = 0; i < MAX_CONNECTIONS_PER_SESSION; i++) {
+      const tab = await openStream('many-tabs');
+      await tab.waitFor('"type":"connected"');
+      open.push(tab);
+    }
+    await waitForConnections(before + MAX_CONNECTIONS_PER_SESSION);
+
+    const refused = await fetch(`${baseUrl}/events?session_id=many-tabs`);
+    expect(refused.status).toBe(429);
+    await refused.text();
+    expect(manager.size).toBe(before + MAX_CONNECTIONS_PER_SESSION);
+
+    expect(await push({ session_id: 'many-tabs', event_name: 'scroll_depth' })).toBe(true);
+    for (const tab of open) {
+      await expect(tab.waitFor('scroll_depth')).resolves.toContain('scroll_depth');
+    }
+
+    // Once one tab closes, a new one is accepted.
+    open[0].controller.abort();
+    await waitForConnections(before + MAX_CONNECTIONS_PER_SESSION - 1);
+    const next = await openStream('many-tabs');
+    await expect(next.waitFor('"type":"connected"')).resolves.toContain('connected');
   });
 });

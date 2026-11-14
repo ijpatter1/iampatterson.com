@@ -16,7 +16,8 @@ jest.mock('@/lib/events/session', () => ({
 
 let mockEvents: PipelineEvent[] = [];
 let mockSource: 'sse' | 'dataLayer' = 'sse';
-let mockStream: 'off' | 'connecting' | 'connected' | 'reconnecting' | 'disconnected' = 'connected';
+let mockStream: 'off' | 'connecting' | 'connected' | 'reconnecting' | 'failing' | 'disconnected' =
+  'connected';
 jest.mock('@/hooks/useLiveEvents', () => ({
   useLiveEvents: () => ({ events: mockEvents, source: mockSource, stream: mockStream }),
 }));
@@ -263,7 +264,9 @@ describe('ProofPanel', () => {
       expect(rows()).toHaveLength(1);
     });
 
-    it.each(['disconnected', 'off'] as const)(
+    // `failing` is the hook still retrying a stream that is not working: one
+    // that never opened within its stated time, or keeps opening and dropping.
+    it.each(['failing', 'disconnected', 'off'] as const)(
       'says so while the connection is %s and the rows are the browser\u2019s own',
       (state) => {
         mockSource = 'dataLayer';
@@ -291,13 +294,37 @@ describe('ProofPanel', () => {
     // Once the stream has delivered, the panel keeps showing its rows. If the
     // stream then drops, those rows stop updating, and the panel says so
     // rather than passing them off as live.
-    it('says the stream dropped when it has given up after delivering rows', () => {
+    it.each(['failing', 'disconnected'] as const)(
+      'says the stream dropped when it is %s after delivering rows',
+      (state) => {
+        mockSource = 'sse';
+        mockStream = state;
+        mockEvents = [makeEvent('page_view', streamRouting(true))];
+        renderPanel();
+        expect(screen.getByText(PROOF.panel.streamDropped)).toBeInTheDocument();
+        expect(screen.queryByText(PROOF.panel.notConnected)).not.toBeInTheDocument();
+      },
+    );
+
+    // The note appears while the visitor is reading, often with no focus
+    // change. A screen reader only announces text that changes inside a live
+    // region it already knows about, so the region is there from the start,
+    // empty, and the note fills it.
+    it('announces the note through a status region that is present before the note', () => {
       mockSource = 'sse';
-      mockStream = 'disconnected';
+      mockStream = 'connected';
       mockEvents = [makeEvent('page_view', streamRouting(true))];
-      renderPanel();
-      expect(screen.getByText(PROOF.panel.streamDropped)).toBeInTheDocument();
-      expect(screen.queryByText(PROOF.panel.notConnected)).not.toBeInTheDocument();
+      const { rerender } = renderPanel();
+      // role="status" is a polite live region; the repo uses it alone.
+      const live = screen.getByRole('status');
+      expect(live).toHaveAttribute('data-testid', 'proof-stream-note');
+      expect(live).not.toHaveAttribute('aria-live');
+      expect(live).toBeEmptyDOMElement();
+
+      mockStream = 'failing';
+      rerender(<ProofPanel onOpen={onOpen} />);
+      expect(screen.getByRole('status')).toBe(live);
+      expect(live).toHaveTextContent(PROOF.panel.streamDropped);
     });
 
     it.each(['connected', 'reconnecting'] as const)(
@@ -358,20 +385,39 @@ describe('ProofPanel', () => {
   });
 
   // The rows can be wider than a phone. A region that scrolls must be
-  // reachable from the keyboard, and it carries the header as its name.
+  // reachable from the keyboard.
   it('lets a keyboard user reach and scroll the rows', () => {
     mockEvents = [makeEvent('page_view', streamRouting(true))];
     renderPanel();
-    const scroller = screen.getByRole('region', { name: /Session 345678/ });
+    const scroller = screen.getByRole('region', { name: PROOF.panel.rowsLabel });
     expect(scroller).toHaveAttribute('data-testid', 'proof-rows');
     expect(scroller).toHaveAttribute('tabindex', '0');
   });
 
+  // A screen reader reads a region's name on entering it and in its landmark
+  // list. Named after the live header, it changed with every event and read
+  // the whole header each time; a short fixed name says what the region holds.
+  it('names the rows region with a short name that does not change as events arrive', () => {
+    mockEvents = [makeEvent('page_view', streamRouting(true))];
+    const { rerender } = renderPanel();
+    const region = screen.getByRole('region', { name: PROOF.panel.rowsLabel });
+
+    mockEvents = [makeEvent('click_cta', streamRouting(true)), ...mockEvents];
+    rerender(<ProofPanel onOpen={onOpen} />);
+    expect(screen.getByRole('region', { name: PROOF.panel.rowsLabel })).toBe(region);
+    expect(region).not.toHaveAttribute('aria-labelledby');
+  });
+
   // With only a one-line message there is nothing to scroll, and an empty tab
   // stop on every homepage load would be noise for keyboard users.
-  it('is not a tab stop while there are no rows', () => {
-    mockConsent = undefined;
+  it.each([
+    ['the visitor has not chosen', undefined, PROOF.panel.notChosen],
+    ['the visitor is waiting for a first event', 'granted', PROOF.panel.waiting],
+  ] as const)('is not a tab stop while %s', (_case, consent, message) => {
+    mockConsent = consent;
+    mockEvents = [];
     renderPanel();
+    expect(screen.getByText(message)).toBeInTheDocument();
     expect(screen.getByTestId('proof-rows')).not.toHaveAttribute('tabindex');
   });
 
