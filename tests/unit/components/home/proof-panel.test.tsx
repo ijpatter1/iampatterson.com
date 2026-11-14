@@ -310,19 +310,20 @@ describe('ProofPanel', () => {
     // change. A screen reader only announces text that changes inside a live
     // region it already knows about, so the region is there from the start,
     // empty, and the note fills it.
-    it('announces the note through a polite live region that is present before the note', () => {
+    it('announces the note through a status region that is present before the note', () => {
       mockSource = 'sse';
       mockStream = 'connected';
       mockEvents = [makeEvent('page_view', streamRouting(true))];
       const { rerender } = renderPanel();
-      const live = screen.getByTestId('proof-stream-note');
-      expect(live).toHaveAttribute('role', 'status');
-      expect(live).toHaveAttribute('aria-live', 'polite');
+      // role="status" is a polite live region; the repo uses it alone.
+      const live = screen.getByRole('status');
+      expect(live).toHaveAttribute('data-testid', 'proof-stream-note');
+      expect(live).not.toHaveAttribute('aria-live');
       expect(live).toBeEmptyDOMElement();
 
       mockStream = 'failing';
       rerender(<ProofPanel onOpen={onOpen} />);
-      expect(screen.getByTestId('proof-stream-note')).toBe(live);
+      expect(screen.getByRole('status')).toBe(live);
       expect(live).toHaveTextContent(PROOF.panel.streamDropped);
     });
 

@@ -3,9 +3,11 @@
  */
 import { renderHook, act } from '@testing-library/react';
 import {
+  isStreamDown,
   STREAM_FAILING_AFTER_MS,
   STREAM_LOOP_DROPS,
   STREAM_LOOP_WINDOW_MS,
+  STREAM_SETTLE_MS,
   useEventStream,
 } from '@/hooks/useEventStream';
 import type { PipelineEvent } from '@/lib/events/pipeline-schema';
@@ -741,6 +743,28 @@ describe('useEventStream routine reconnect vs failing stream (15.7)', () => {
     };
   }
 
+  /** Advances in small steps until the hook makes its next connection attempt. */
+  function waitForNextAttempt(): void {
+    const before = MockEventSource.instances.length;
+    for (let i = 0; i < 600 && MockEventSource.instances.length === before; i++) {
+      act(() => jest.advanceTimersByTime(100));
+    }
+    expect(MockEventSource.instances.length).toBe(before + 1);
+  }
+
+  /** The newest connection opens and the far end ends it at once; the hook retries. */
+  function openAndDrop(): void {
+    act(() => latest().simulateOpen());
+    act(() => latest().simulateError());
+    waitForNextAttempt();
+  }
+
+  /** Drives a loop until the hook calls it failing. */
+  function loopUntilFailing(result: { current: { status: string } }): void {
+    for (let i = 0; i < STREAM_LOOP_DROPS; i++) openAndDrop();
+    expect(result.current.status).toBe('failing');
+  }
+
   beforeEach(() => {
     jest.useFakeTimers();
     // Jitter factor 1.0, so the backoff is exactly 1s, 2s, 4s...
@@ -753,22 +777,30 @@ describe('useEventStream routine reconnect vs failing stream (15.7)', () => {
   });
 
   describe('a routine reconnect is never failing', () => {
-    it('reports the hourly reconnect as reconnecting, hour after hour, and never as failing', () => {
+    // More hours than the retry limit: each reconnect must start the backoff
+    // and the retry count afresh, or the stream would give up after a few hours.
+    it('reconnects after one second every hour, never failing and never giving up', () => {
       const { result, seen } = renderRecording();
       act(() => latest().simulateOpen());
 
-      for (let hour = 0; hour < 3; hour++) {
+      for (let hour = 0; hour < 7; hour++) {
         act(() => jest.advanceTimersByTime(HOUR));
         // Cloud Run ends the stream.
         act(() => latest().simulateError());
         expect(result.current.status).toBe('reconnecting');
-        act(() => jest.advanceTimersByTime(1000));
+        const before = MockEventSource.instances.length;
+        act(() => jest.advanceTimersByTime(999));
+        expect(MockEventSource.instances.length).toBe(before);
+        act(() => jest.advanceTimersByTime(1));
+        expect(MockEventSource.instances.length).toBe(before + 1);
         act(() => latest().simulateOpen());
         expect(result.current.status).toBe('connected');
       }
 
       act(() => jest.advanceTimersByTime(STREAM_FAILING_AFTER_MS * 2));
       expect(seen).not.toContain('failing');
+      // The first entry is the hook's initial state, before it connects.
+      expect(seen.slice(1)).not.toContain('disconnected');
     });
 
     // A cold start can refuse the first retry. The stream is back within
@@ -789,12 +821,30 @@ describe('useEventStream routine reconnect vs failing stream (15.7)', () => {
   });
 
   describe('a connection that never opens is failing within the stated time', () => {
-    it('when the attempt hangs without opening or erroring', () => {
+    // Fifteen seconds is the stated time in docs/ARCHITECTURE.md, so it is a literal here.
+    it('when the attempt hangs without opening or erroring, at fifteen seconds', () => {
       const { result } = renderRecording();
-      act(() => jest.advanceTimersByTime(STREAM_FAILING_AFTER_MS - 1));
+      act(() => jest.advanceTimersByTime(14_999));
       expect(result.current.status).toBe('connecting');
       act(() => jest.advanceTimersByTime(1));
       expect(result.current.status).toBe('failing');
+    });
+
+    // A hung attempt is a dead socket. Waiting on it would leave the stream
+    // failing for good, with nothing that could bring it back.
+    it('abandons the hung attempt and retries it after the backoff', () => {
+      const { result } = renderRecording();
+      const hung = latest();
+      act(() => jest.advanceTimersByTime(STREAM_FAILING_AFTER_MS));
+      expect(hung.closed).toBe(true);
+
+      act(() => jest.advanceTimersByTime(1000));
+      expect(MockEventSource.instances).toHaveLength(2);
+      expect(latest().closed).toBe(false);
+      expect(result.current.status).toBe('failing');
+
+      act(() => latest().simulateOpen());
+      expect(result.current.status).toBe('connected');
     });
 
     it('when every attempt errors, and it stays failing while it keeps retrying', () => {
@@ -822,11 +872,28 @@ describe('useEventStream routine reconnect vs failing stream (15.7)', () => {
       );
     });
 
-    it('is connected as soon as the stream finally opens', () => {
+    // `error` is the hook's second account of the same state; it must not say
+    // all is well while `status` says failing.
+    it('keeps an error set while failing, through the next attempt', () => {
       const { result } = renderRecording();
       act(() => jest.advanceTimersByTime(STREAM_FAILING_AFTER_MS));
       expect(result.current.status).toBe('failing');
+      expect(result.current.error).toBeTruthy();
+
+      act(() => jest.advanceTimersByTime(1000));
+      expect(MockEventSource.instances).toHaveLength(2);
+      expect(result.current.status).toBe('failing');
+      expect(result.current.error).toBeTruthy();
+
       act(() => latest().simulateOpen());
+      expect(result.current.error).toBeNull();
+    });
+
+    it('is connected as soon as the stream finally opens', () => {
+      const { result } = renderRecording();
+      act(() => jest.advanceTimersByTime(STREAM_FAILING_AFTER_MS - 1));
+      act(() => latest().simulateOpen());
+      act(() => jest.advanceTimersByTime(1));
       expect(result.current.status).toBe('connected');
     });
 
@@ -851,7 +918,6 @@ describe('useEventStream routine reconnect vs failing stream (15.7)', () => {
       const { result } = renderRecording();
       let drops = 0;
       const countDrops = () => MockEventSource.instances.filter((es) => es.closed).length;
-
       const withinWindow = () => jest.now() - start < STREAM_LOOP_WINDOW_MS;
 
       // Each loop is about 1.6s: open, drop after half a second, retry after 1s.
@@ -871,7 +937,7 @@ describe('useEventStream routine reconnect vs failing stream (15.7)', () => {
 
     // Each reopen in the loop must not clear the note, or it would flash on
     // and off every second and be re-announced each time.
-    it('stays failing through each reopen while the loop continues', () => {
+    it('stays failing through each short reopen while the loop continues', () => {
       openThenDropEveryConnection();
       const { result, seen } = renderRecording();
       act(() => jest.advanceTimersByTime(10_000));
@@ -882,33 +948,94 @@ describe('useEventStream routine reconnect vs failing stream (15.7)', () => {
       );
     });
 
-    it('is connected again once a connection stays open past the loop window', () => {
-      openThenDropEveryConnection();
+    // A connection that stays open is delivering. Holding `failing` on it
+    // would put "These are the last events it delivered" over rows that are
+    // still updating.
+    // Ten seconds is the figure docs/ARCHITECTURE.md states, so it is a literal here.
+    it('is connected once a reopen stays open for ten seconds, and not at 9.9', () => {
       const { result } = renderRecording();
-      act(() => jest.advanceTimersByTime(10_000));
-      expect(result.current.status).toBe('failing');
+      loopUntilFailing(result);
 
-      // The loop stops: the next connection opens and stays open.
-      MockEventSource.script = (es) => {
-        setTimeout(() => {
-          if (!es.closed) es.simulateOpen();
-        }, 100);
-      };
-      act(() => jest.advanceTimersByTime(2000));
-      expect(latest().readyState).toBe(1);
-      // Still failing right after the reopen: the loop has not been ruled out.
+      act(() => latest().simulateOpen());
       expect(result.current.status).toBe('failing');
-
-      act(() => jest.advanceTimersByTime(STREAM_LOOP_WINDOW_MS));
+      act(() => jest.advanceTimersByTime(9_900));
+      expect(result.current.status).toBe('failing');
+      act(() => jest.advanceTimersByTime(100));
       expect(result.current.status).toBe('connected');
     });
 
-    // The stream service keeps one connection per session and ends the older
-    // one when another arrives. Two tabs on one session therefore take the
-    // connection from each other in turn: each reopens a second after it is
-    // ended, which ends the other. Neither tab ever gives up, since each
-    // reopen succeeds.
-    it('is failing in both of two tabs on one session within ten seconds', () => {
+    // After the stream has settled, the old loop's drops must not count
+    // against the next ordinary drop.
+    it('forgets the loop once settled: the next drop is a routine reconnect', () => {
+      const { result } = renderRecording();
+      loopUntilFailing(result);
+      act(() => latest().simulateOpen());
+      act(() => jest.advanceTimersByTime(STREAM_SETTLE_MS));
+      expect(result.current.status).toBe('connected');
+
+      act(() => latest().simulateError());
+      expect(result.current.status).toBe('reconnecting');
+      const before = MockEventSource.instances.length;
+      act(() => jest.advanceTimersByTime(1000));
+      expect(MockEventSource.instances.length).toBe(before + 1);
+    });
+
+    // A loop that reconnects every second forever costs the server and, with
+    // two tabs, takes the stream from the other tab each time. Each open in a
+    // loop must not reset the backoff, so the gaps grow and it gives up.
+    it('backs off with growing gaps and gives up on a loop that does not stop', () => {
+      const attemptTimes: number[] = [];
+      MockEventSource.script = (es) => {
+        attemptTimes.push(jest.now());
+        setTimeout(() => {
+          if (!es.closed) es.simulateOpen();
+        }, 100);
+        setTimeout(() => {
+          if (!es.closed) es.simulateError();
+        }, 600);
+      };
+      const { result } = renderRecording();
+      act(() => jest.advanceTimersByTime(5 * 60 * 1000));
+
+      expect(result.current.status).toBe('disconnected');
+      const gaps = attemptTimes.slice(1).map((t, i) => t - attemptTimes[i]);
+      // Once the loop is detected, each gap is longer than the one before.
+      const afterDetection = gaps.slice(STREAM_LOOP_DROPS - 1);
+      expect(afterDetection.length).toBeGreaterThan(2);
+      afterDetection.slice(1).forEach((gap, i) => {
+        expect(gap).toBeGreaterThan(afterDetection[i]);
+      });
+    });
+
+    // `online` fires spuriously on network hand-offs. Restarting an open
+    // connection would drop a working stream and wipe the loop's history.
+    it('does not tear down an open connection on an online event, and keeps the loop state', () => {
+      const { result } = renderRecording();
+      loopUntilFailing(result);
+      act(() => latest().simulateOpen());
+      const open = latest();
+      const before = MockEventSource.instances.length;
+
+      act(() => {
+        window.dispatchEvent(new Event('online'));
+      });
+
+      expect(open.closed).toBe(false);
+      expect(MockEventSource.instances.length).toBe(before);
+      expect(result.current.status).toBe('failing');
+      act(() => jest.advanceTimersByTime(STREAM_SETTLE_MS));
+      expect(result.current.status).toBe('connected');
+    });
+
+    // On the deployed server this is not what two tabs do: `add()` in
+    // connections.ts ends the older response, and that request's close handler
+    // in server.ts calls `remove(sessionId)`, which deletes the newer
+    // connection from the map. The older tab reconnects once and works; the
+    // newer tab stays open and silent, which no connection event reveals, so
+    // this hook cannot see it. This test models the server once that bug is
+    // fixed: one connection per session, a new one ends the old, and the two
+    // tabs take the connection from each other in turn.
+    it('is failing in both of two tabs on one session within ten seconds, once the server bug is fixed', () => {
       let current: MockEventSource | null = null;
       MockEventSource.script = (es) => {
         setTimeout(() => {
@@ -927,5 +1054,17 @@ describe('useEventStream routine reconnect vs failing stream (15.7)', () => {
       expect(tabA.result.current.status).toBe('failing');
       expect(tabB.result.current.status).toBe('failing');
     });
+  });
+});
+
+describe('isStreamDown', () => {
+  // The panel's note shows exactly for these; a first connection or a routine
+  // reconnect is not a failure worth announcing.
+  it.each(['off', 'failing', 'disconnected'] as const)('is true for %s', (status) => {
+    expect(isStreamDown(status)).toBe(true);
+  });
+
+  it.each(['connecting', 'connected', 'reconnecting'] as const)('is false for %s', (status) => {
+    expect(isStreamDown(status)).toBe(false);
   });
 });

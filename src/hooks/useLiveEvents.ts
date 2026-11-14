@@ -5,6 +5,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { PipelineEvent } from '@/lib/events/pipeline-schema';
 
 import { useDataLayerEvents } from './useDataLayerEvents';
+import type { ConnectionStatus } from './useEventStream';
 import { useEventStream } from './useEventStream';
 
 export interface UseLiveEventsReturn {
@@ -19,7 +20,7 @@ export interface UseLiveEventsReturn {
    * `reconnecting` is routine; `failing` is a stream still retrying that is
    * not working (see `useEventStream`).
    */
-  stream: 'off' | 'connecting' | 'connected' | 'reconnecting' | 'failing' | 'disconnected';
+  stream: 'off' | ConnectionStatus;
 }
 
 export interface UseLiveEventsOptions {
@@ -97,10 +98,13 @@ export function useLiveEventsSource(options: UseLiveEventsOptions = {}): UseLive
 /**
  * The page's one live event source, provided by `LiveEventsProvider`.
  *
- * It is shared because the stream service keeps a single connection per
- * session: a second connection for the same session ends the first. Every
- * component that opened its own stream would take the feed away from the
- * others, so exactly one place opens it and everything else reads from here.
+ * It is shared because the stream service keeps one connection per session.
+ * On the deployed server, a second connection for the same session ends the
+ * first, and the first's close handler then removes the second from the
+ * service's map (connections.ts `add()`, server.ts `remove(sessionId)`). The
+ * first reconnects and gets the events; the second stays open and receives
+ * nothing. Components that each opened their own stream would race for the
+ * feed, so exactly one place opens it and everything else reads from here.
  */
 export const LiveEventsContext = createContext<UseLiveEventsReturn | null>(null);
 

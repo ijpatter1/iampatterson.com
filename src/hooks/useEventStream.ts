@@ -16,7 +16,21 @@ import { readSessionCookie } from '@/lib/events/session';
  *   and dropping (`STREAM_LOOP_DROPS` drops within `STREAM_LOOP_WINDOW_MS`).
  * - `disconnected`: given up, or not started.
  */
-type ConnectionStatus = 'connecting' | 'connected' | 'reconnecting' | 'failing' | 'disconnected';
+export type ConnectionStatus =
+  | 'connecting'
+  | 'connected'
+  | 'reconnecting'
+  | 'failing'
+  | 'disconnected';
+
+/**
+ * Whether a reader should say the stream is not working. `off` is a stream
+ * that is not configured (see `useLiveEvents`). A first connection under way
+ * and a routine reconnect are not failures.
+ */
+export function isStreamDown(status: ConnectionStatus | 'off'): boolean {
+  return status === 'off' || status === 'failing' || status === 'disconnected';
+}
 
 /**
  * How long the stream may go without an open connection before it counts as
@@ -31,15 +45,37 @@ export const STREAM_FAILING_AFTER_MS = 15_000;
 
 /**
  * Drops of an opened connection, within `STREAM_LOOP_WINDOW_MS`, that make a
- * loop. A loop never trips the timer above, because each reopen succeeds, and
- * never exhausts the retries, because each open resets them. Cloud Run's
- * hourly ends are an hour apart, so they never meet in the window; three
- * rather than two leaves room for one unrelated drop, such as a deploy, near
- * a routine one. A loop that cycles every couple of seconds, as two tabs on
- * one session do, reaches three in a few seconds.
+ * loop. A loop never trips the timer above, because each reopen succeeds.
+ * Cloud Run's hourly ends are an hour apart, so they never meet in the window;
+ * three rather than two leaves room for one unrelated drop, such as a deploy,
+ * near a routine one. A loop that drops every couple of seconds reaches three
+ * in a few seconds; one slower than about a drop every 30 seconds is not
+ * flagged.
+ *
+ * Two tabs on one session do not loop on the deployed server. Its `add()`
+ * (connections.ts) ends the older response, and that request's close handler
+ * (server.ts) calls `remove(sessionId)`, which deletes the newer connection.
+ * The older tab reconnects once and works; the newer tab stays open and
+ * silent, which no connection event reveals, so this hook cannot see it. Once
+ * that server bug is fixed, two tabs take the connection from each other in
+ * turn, which is a loop this rule catches.
+ *
+ * Within a loop, an open does not reset the retry count, so the backoff grows
+ * and the hook gives up after `maxRetries`.
  */
 export const STREAM_LOOP_DROPS = 3;
 export const STREAM_LOOP_WINDOW_MS = 60_000;
+
+/**
+ * How long a reopened connection must stay open to end a loop. A connection
+ * that holds this long is delivering, and holding `failing` on it would put a
+ * "last events it delivered" note over rows that are still updating. The opens
+ * inside a loop seen so far last about a second, so ten seconds is several of
+ * them. Settling clears `failing`, the drop history and the retry count.
+ */
+export const STREAM_SETTLE_MS = 10_000;
+
+const FAILING_ERROR = 'Live stream failing, still retrying';
 
 export interface UseEventStreamOptions {
   /** URL of the Cloud Run SSE endpoint. */
@@ -85,34 +121,20 @@ export function useEventStream({
   useEffect(() => {
     bufferSizeRef.current = maxBufferSize;
   }, [maxBufferSize]);
-  // Mirror `status` into a ref so the `online` listener can read it
-  // without re-registering on every status transition. Known narrow
-  // race acknowledged in Pass-1 Tech Minor #6: between a
-  // `setStatus('disconnected')` inside onerror and this effect flushing
-  // the ref, an `online` event could read the stale ref. In practice
-  // `online` events are browser-triggered and the race window is
-  // microseconds, so collisions are theoretical. A stricter pattern
-  // (inline-setState-and-ref via a wrapper) is a carry-forward if
-  // field data shows the race materializing.
-  const statusRef = useRef<ConnectionStatus>(status);
-  useEffect(() => {
-    statusRef.current = status;
-  }, [status]);
+  // True while an EventSource is open. Written only from the connect effect's
+  // callbacks; read by the `online` listener.
+  const openRef = useRef(false);
 
   const clearEvents = useCallback(() => setEvents([]), []);
 
   // D5: Online-event recovery. When the browser transitions offline
-  // → online, if we're currently not-connected, bump the retry trigger
-  // to force a fresh connect. Guarded by status so a healthy connection
-  // doesn't churn on every `online` event (some browsers fire `online`
-  // spuriously on network hand-offs).
+  // → online and no connection is open, bump the retry trigger to force a
+  // fresh connect. An open connection is never torn down: some browsers fire
+  // `online` spuriously on network hand-offs, and a restart would drop a
+  // working stream and forget a loop's history.
   useEffect(() => {
     function handleOnline(): void {
-      if (
-        statusRef.current === 'disconnected' ||
-        statusRef.current === 'reconnecting' ||
-        statusRef.current === 'failing'
-      ) {
+      if (!openRef.current) {
         setRetryTrigger((n) => n + 1);
       }
     }
@@ -148,17 +170,21 @@ export function useEventStream({
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
     let es: EventSource | null = null;
     let closed = false;
-    // Failure detection; see STREAM_FAILING_AFTER_MS and STREAM_LOOP_DROPS.
-    // Once failing, the status stays `failing` across retries and reopens, so
-    // the panel's note does not flash off and on with each attempt.
+    // Failure detection; see STREAM_FAILING_AFTER_MS, STREAM_LOOP_DROPS and
+    // STREAM_SETTLE_MS. Once failing, the status stays `failing` across
+    // retries and short reopens, so the panel's note does not flash off and on
+    // with each attempt.
     let failing = false;
     let failTimer: ReturnType<typeof setTimeout> | null = null;
     let settleTimer: ReturnType<typeof setTimeout> | null = null;
     let drops: number[] = [];
+    // The error path of an attempt that has neither opened nor failed yet.
+    let abandonAttempt: (() => void) | null = null;
 
     function markFailing(): void {
       failing = true;
       setStatus('failing');
+      setError(FAILING_ERROR);
     }
 
     function startFailTimer(): void {
@@ -166,6 +192,9 @@ export function useEventStream({
       failTimer = setTimeout(() => {
         failTimer = null;
         markFailing();
+        // An attempt that has neither opened nor errored by now is a dead
+        // socket: close it and retry, rather than wait on it.
+        abandonAttempt?.();
       }, STREAM_FAILING_AFTER_MS);
     }
 
@@ -180,36 +209,81 @@ export function useEventStream({
       return drops.length >= STREAM_LOOP_DROPS;
     }
 
-    // Runs on open. The stream is connected unless it is in a loop; then it
-    // stays failing until enough drops have aged out of the window with the
-    // connection still open.
-    function settle(): void {
-      settleTimer = null;
-      if (inLoop()) {
-        markFailing();
-        settleTimer = setTimeout(settle, drops[0] + STREAM_LOOP_WINDOW_MS - Date.now());
-        return;
-      }
+    function markConnected(): void {
       failing = false;
+      retryCount = 0;
       setStatus('connected');
+      setError(null);
     }
 
     function connect(): void {
       if (closed) return;
 
-      if (!failing) setStatus(retryCount === 0 ? 'connecting' : 'reconnecting');
-      setError(null);
+      if (!failing) {
+        setStatus(retryCount === 0 ? 'connecting' : 'reconnecting');
+        setError(null);
+      }
       startFailTimer();
 
       let opened = false;
       es = new EventSource(fullUrl);
 
+      function fail(): void {
+        abandonAttempt = null;
+        openRef.current = false;
+        es?.close();
+        es = null;
+
+        if (closed) return;
+
+        if (settleTimer) clearTimeout(settleTimer);
+        settleTimer = null;
+        if (opened) drops.push(Date.now());
+        if (inLoop()) failing = true;
+
+        retryCount++;
+        if (retryCount > maxRetries) {
+          stopFailTimer();
+          setStatus('disconnected');
+          setError('EventSource connection failed after max retries');
+          return;
+        }
+
+        startFailTimer();
+        setStatus(failing ? 'failing' : 'reconnecting');
+        setError(failing ? FAILING_ERROR : 'Connection lost, retrying...');
+        // D5: ±20% jitter on the exponential backoff. Without jitter a
+        // wave of clients that drop simultaneously (e.g. backend rolling
+        // restart or a shared network blip) would all reconnect at the
+        // same delays and thundering-herd the server on recovery. The
+        // factor range 0.8-1.2 is the standard AWS/Google SRE jitter
+        // band , small enough not to noticeably delay individual
+        // clients, wide enough to spread the reconnect distribution.
+        const baseDelay = Math.min(1000 * Math.pow(2, retryCount - 1), 30000);
+        const jitterFactor = 0.8 + Math.random() * 0.4;
+        const delay = baseDelay * jitterFactor;
+        retryTimer = setTimeout(connect, delay);
+      }
+      abandonAttempt = fail;
+
       es.onopen = () => {
         opened = true;
-        retryCount = 0;
+        abandonAttempt = null;
+        openRef.current = true;
         stopFailTimer();
-        setError(null);
-        settle();
+        if (inLoop()) {
+          // A reopen inside a loop: stay failing and keep the retry count, so
+          // the backoff keeps growing. Only a connection that stays open for
+          // STREAM_SETTLE_MS ends the loop.
+          markFailing();
+          settleTimer = setTimeout(() => {
+            settleTimer = null;
+            drops = [];
+            markConnected();
+          }, STREAM_SETTLE_MS);
+          return;
+        }
+        markConnected();
       };
 
       es.onmessage = (event: MessageEvent) => {
@@ -237,40 +311,7 @@ export function useEventStream({
         });
       };
 
-      es.onerror = () => {
-        es?.close();
-        es = null;
-
-        if (closed) return;
-
-        if (settleTimer) clearTimeout(settleTimer);
-        settleTimer = null;
-        if (opened) drops.push(Date.now());
-        if (inLoop()) failing = true;
-
-        retryCount++;
-        if (retryCount > maxRetries) {
-          stopFailTimer();
-          setStatus('disconnected');
-          setError('EventSource connection failed after max retries');
-          return;
-        }
-
-        startFailTimer();
-        setStatus(failing ? 'failing' : 'reconnecting');
-        setError('Connection lost, retrying...');
-        // D5: ±20% jitter on the exponential backoff. Without jitter a
-        // wave of clients that drop simultaneously (e.g. backend rolling
-        // restart or a shared network blip) would all reconnect at the
-        // same delays and thundering-herd the server on recovery. The
-        // factor range 0.8-1.2 is the standard AWS/Google SRE jitter
-        // band , small enough not to noticeably delay individual
-        // clients, wide enough to spread the reconnect distribution.
-        const baseDelay = Math.min(1000 * Math.pow(2, retryCount - 1), 30000);
-        const jitterFactor = 0.8 + Math.random() * 0.4;
-        const delay = baseDelay * jitterFactor;
-        retryTimer = setTimeout(connect, delay);
-      };
+      es.onerror = fail;
     }
 
     connect();
@@ -280,6 +321,7 @@ export function useEventStream({
       if (retryTimer) clearTimeout(retryTimer);
       stopFailTimer();
       if (settleTimer) clearTimeout(settleTimer);
+      openRef.current = false;
       es?.close();
     };
   }, [url, enabled, maxRetries, retryTrigger]);

@@ -1,6 +1,7 @@
 'use client';
 
 import { useAnalyticsConsent } from '@/hooks/useAnalyticsConsent';
+import { isStreamDown } from '@/hooks/useEventStream';
 import { useLiveEvents } from '@/hooks/useLiveEvents';
 import { useSessionReadout } from '@/hooks/useSessionReadout';
 import { PROOF } from '@/lib/content/proof';
@@ -107,16 +108,15 @@ export function ProofPanel({ onOpen }: ProofPanelProps) {
   const visible = events.slice(0, MAX_ROWS).reverse();
 
   // A visitor who declined is shown data-layer events by design, so only a
-  // visitor who allowed analytics gets a note about the stream. The stream
-  // counts as down when it is off, failing (the hook's stated time without a
-  // connection, or a loop of opens and drops) or has given up retrying: a
-  // first connection under way, or a routine reconnect (Cloud Run ends each
-  // stream after an hour), is not a failure worth announcing. Stream rows stay
-  // on screen after the stream fails, so the note then says they are no longer
+  // visitor who allowed analytics gets a note about the stream. `isStreamDown`
+  // says when the stream is not working: off, failing (the hook's stated time
+  // without a connection, or a loop of opens and drops) or given up. A first
+  // connection under way, or a routine reconnect (Cloud Run ends each stream
+  // after an hour), is not a failure worth announcing. Stream rows stay on
+  // screen after the stream fails, so the note then says they are no longer
   // live.
-  const streamDown = stream === 'off' || stream === 'failing' || stream === 'disconnected';
   const streamNote =
-    analyticsConsent === 'granted' && visible.length > 0 && streamDown
+    analyticsConsent === 'granted' && visible.length > 0 && isStreamDown(stream)
       ? fromStream
         ? PROOF.panel.streamDropped
         : PROOF.panel.notConnected
@@ -164,7 +164,7 @@ export function ProofPanel({ onOpen }: ProofPanelProps) {
       </div>
       {/* Always rendered, empty until there is a note, so that a screen reader
           already tracks the live region when the note appears. */}
-      <div data-testid="proof-stream-note" role="status" aria-live="polite">
+      <div data-testid="proof-stream-note" role="status">
         {streamNote && (
           <p className="border-b border-u-rule-soft py-2 text-u-ink-3">{streamNote}</p>
         )}
