@@ -1026,33 +1026,39 @@ describe('useEventStream routine reconnect vs failing stream (15.7)', () => {
       act(() => jest.advanceTimersByTime(STREAM_SETTLE_MS));
       expect(result.current.status).toBe('connected');
     });
+  });
 
-    // On the deployed server this is not what two tabs do: `add()` in
-    // connections.ts ends the older response, and that request's close handler
-    // in server.ts calls `remove(sessionId)`, which deletes the newer
-    // connection from the map. The older tab reconnects once and works; the
-    // newer tab stays open and silent, which no connection event reveals, so
-    // this hook cannot see it. This test models the server once that bug is
-    // fixed: one connection per session, a new one ends the old, and the two
-    // tabs take the connection from each other in turn.
-    it('is failing in both of two tabs on one session within ten seconds, once the server bug is fixed', () => {
-      let current: MockEventSource | null = null;
+  // The stream service keeps a set of connections per session, one per tab,
+  // and sends each of the session's events to all of them (connections.ts).
+  // So two tabs on one session are two healthy streams: neither ends the
+  // other, and neither may be reported as failing.
+  describe('two tabs on one session', () => {
+    it('keeps both tabs connected and delivering, never failing', () => {
       MockEventSource.script = (es) => {
         setTimeout(() => {
-          if (es.closed) return;
-          es.simulateOpen();
-          const previous = current;
-          current = es;
-          if (previous && previous !== es && !previous.closed) previous.simulateError();
+          if (!es.closed) es.simulateOpen();
         }, 100);
       };
-
       const tabA = renderRecording();
       const tabB = renderRecording();
-      act(() => jest.advanceTimersByTime(10_000));
+      act(() => jest.advanceTimersByTime(1000));
+      expect(MockEventSource.instances).toHaveLength(2);
 
-      expect(tabA.result.current.status).toBe('failing');
-      expect(tabB.result.current.status).toBe('failing');
+      // The server sends the session's event to every open connection.
+      const event = makePipelineEvent({ event_name: 'click_cta' });
+      act(() => {
+        MockEventSource.instances
+          .filter((es) => !es.closed)
+          .forEach((es) => es.simulateMessage(JSON.stringify(event)));
+      });
+
+      act(() => jest.advanceTimersByTime(STREAM_LOOP_WINDOW_MS));
+      for (const tab of [tabA, tabB]) {
+        expect(tab.result.current.status).toBe('connected');
+        expect(tab.result.current.events.map((e) => e.event_name)).toEqual(['click_cta']);
+        expect(tab.seen).not.toContain('failing');
+      }
+      expect(MockEventSource.instances.every((es) => !es.closed)).toBe(true);
     });
   });
 });

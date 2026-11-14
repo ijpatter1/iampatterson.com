@@ -332,6 +332,10 @@ A lightweight Node.js service on Cloud Run that:
 3. When a message arrives, routes it to the matching session's connection
 4. Handles connection lifecycle (open, close, reconnect)
 
+**Connections per session (15.7).** The map holds a set of SSE responses for each session, one per open tab (`infrastructure/cloud-run/event-stream/src/connections.ts`). Each of the session's events is written to every response in the set, so two tabs on one session both receive it. A request's close handler removes only its own response, and the session's key goes when its set is empty. A session holds at most `MAX_CONNECTIONS_PER_SESSION` (5) connections; a sixth ends the oldest, so a client that keeps opening connections cannot grow the set without limit. `/health` reports `connections` as the number of open responses across all sessions, which before this change was also the number of sessions.
+
+Before 15.7, a new connection for a session ended the old one, and the old request's close handler then removed the session's entry, which was by then the new connection. With two tabs, the newer tab stayed open and received nothing.
+
 ### Client-Side Hook
 
 A React hook (`useEventStream`) that:
@@ -354,8 +358,7 @@ The thresholds are named constants in `src/hooks/useEventStream.ts`:
 - Three drops of an opened connection within 60 seconds (`STREAM_LOOP_DROPS`, `STREAM_LOOP_WINDOW_MS`) are a loop, and the stream is failing. The hourly reconnects never meet in the window. A loop slower than about one drop every 30 seconds is not flagged.
 - Within a loop, an open does not reset the retry count, so the backoff grows and the hook reaches `disconnected` after `maxRetries`. A reopen keeps the status `failing`, so the note does not flicker. A connection that stays open for 10 seconds (`STREAM_SETTLE_MS`) ends the loop: the status returns to `connected`, and the drop history and retry count are cleared.
 - A browser `online` event restarts the connection only when no connection is open.
-
-**Known server gap: two tabs on one session.** The service is meant to keep one connection per session, with a new connection ending the old one. On the deployed server, `add()` in `connections.ts` ends the older response, and that request's close handler in `server.ts` calls `remove(sessionId)`, which deletes the newer connection from the map. The older tab reconnects once and gets the events. The newer tab stays open and receives nothing. No connection event shows that, so the hook reports it as `connected` and the panel shows no note. Once the server removes only the connection that is closing, two tabs take the connection from each other in turn, which the loop rule above catches. The hook's two-tab test models that fixed server.
+- Two tabs on one session are two healthy connections (see the service above), so neither reports `failing`.
 
 ---
 

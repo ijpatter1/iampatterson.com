@@ -52,13 +52,11 @@ export const STREAM_FAILING_AFTER_MS = 15_000;
  * in a few seconds; one slower than about a drop every 30 seconds is not
  * flagged.
  *
- * Two tabs on one session do not loop on the deployed server. Its `add()`
- * (connections.ts) ends the older response, and that request's close handler
- * (server.ts) calls `remove(sessionId)`, which deletes the newer connection.
- * The older tab reconnects once and works; the newer tab stays open and
- * silent, which no connection event reveals, so this hook cannot see it. Once
- * that server bug is fixed, two tabs take the connection from each other in
- * turn, which is a loop this rule catches.
+ * Two tabs on one session are not a loop: the stream service keeps one
+ * connection per tab and sends the session's events to each (connections.ts).
+ * It ends a session's oldest connection only past its per-session cap, so a
+ * page that opened more than that many streams would loop, and this rule
+ * would catch it.
  *
  * Within a loop, an open does not reset the retry count, so the backoff grows
  * and the hook gives up after `maxRetries`.
