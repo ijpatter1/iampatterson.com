@@ -7,25 +7,23 @@
  * read path and breaks on subdomain hops.
  *
  * Consent: the cookie is classified Statistics in Cookiebot (Ian, 2026-11-14),
- * so it is written only while analytics consent is granted. Cookiebot
- * statistics is the analytics consent `src/lib/events/track.ts` holds, and the
- * caller passes that honored state in. Without it, nothing is minted, written
- * or refreshed and the ID is the empty string: a visitor who declines, or has
- * not chosen yet, carries no year-long identifier. On a decline Cookiebot
- * deletes the cookie, and nothing here mints it again. On a grant
- * `track.ts` mints the cookie, or reuses the one already there.
+ * so it exists only while analytics consent is granted. This module is
+ * read-only on purpose. The only writer is `recordConsent` in
+ * `src/lib/events/track.ts`, which holds the honored analytics consent: a
+ * grant mints the cookie (or reuses and refreshes the one already there), and
+ * a decline or withdrawal expires it. No export here can write it, so no
+ * caller can mint the ID without consent. A visitor who declines, or has not
+ * chosen yet, carries no year-long identifier, and events carry ''.
  *
- * Cookie properties:
+ * Cookie properties (set in `track.ts`):
  * - Path: / (available on all routes)
  * - SameSite: Lax (sent on top-level navigations; not on cross-site)
- * - Max-Age: 31536000 (365 days; refreshed on every consented read for a
- *   sliding window)
+ * - Max-Age: 31536000 (365 days; refreshed on each consent record, which runs
+ *   on every page load for a visitor with a stored choice)
  * - Secure: only when on https origin (omitted on http://localhost dev)
  *
- * Categorized by `src/lib/identity/storage-categories.ts` as `app-identity`,
- * so it surfaces automatically in the Phase 10d D9 storage inspector
- * (Overview tab summary chip + Consent tab full per-key row) whenever it
- * exists.
+ * Categorized by `src/lib/identity/storage-categories.ts` as `analytics`, so
+ * it surfaces in the Phase 10d D9 storage inspector whenever it exists.
  */
 
 export const ANONYMOUS_ID_COOKIE_NAME = '_iap_aid';
@@ -37,31 +35,4 @@ export function readAnonymousIdCookie(): string | null {
   const prefix = `${ANONYMOUS_ID_COOKIE_NAME}=`;
   const match = document.cookie.split('; ').find((c) => c.startsWith(prefix));
   return match ? decodeURIComponent(match.slice(prefix.length)) : null;
-}
-
-function writeAnonymousIdCookie(id: string): void {
-  if (typeof document === 'undefined') return;
-  const secure = globalThis.location?.protocol === 'https:' ? '; Secure' : '';
-  document.cookie = `${ANONYMOUS_ID_COOKIE_NAME}=${encodeURIComponent(id)}; Path=/; SameSite=Lax; Max-Age=${ANONYMOUS_ID_MAX_AGE}${secure}`;
-}
-
-/**
- * Get the current anonymous ID, honoring analytics consent.
- *
- * `analyticsGranted` must be the honored analytics consent from
- * `getCurrentConsent()` in `src/lib/events/track.ts`, so there is one source
- * of truth for it. When it is false, returns '' and touches no cookie. When it
- * is true, mints an ID if needed and refreshes the cookie max-age (sliding
- * 365-day window).
- *
- * SSR-safe: returns '' when document is undefined. Callers treat '' as "no
- * ID", never as a real one.
- */
-export function getAnonymousId(analyticsGranted: boolean): string {
-  if (typeof document === 'undefined') return '';
-  if (!analyticsGranted) return '';
-  const existing = readAnonymousIdCookie();
-  const id = existing ?? crypto.randomUUID();
-  writeAnonymousIdCookie(id);
-  return id;
 }

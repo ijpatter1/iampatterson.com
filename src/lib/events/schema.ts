@@ -16,11 +16,13 @@ export interface BaseEvent {
   iap_session_id: string;
   /**
    * Cross-session identifier minted into `_iap_aid` cookie (365d, SameSite=Lax,
-   * Secure in prod). Phase 10d D7. Threaded into every event so BigQuery has a
-   * stable identifier that survives session expiry, in contrast to `session_id`
-   * which rotates on the 30-min idle window. A Statistics cookie (Ian,
-   * 2026-11-14): empty string unless analytics consent is granted, and during
-   * SSR. Treat empty as "no ID", never as one shared visitor.
+   * Secure in prod). Phase 10d D7. Threaded into every data-layer event as an
+   * identifier that survives session expiry, in contrast to `session_id` which
+   * rotates on the 30-min idle window. It goes no further today: the web
+   * container does not send it, the Pub/Sub template does not forward it and
+   * BigQuery has no column for it. A Statistics cookie (Ian, 2026-11-14):
+   * empty string unless analytics consent is granted, and during SSR. Treat
+   * empty as "no ID", never as one shared visitor.
    */
   anonymous_id: string;
   page_path: string;

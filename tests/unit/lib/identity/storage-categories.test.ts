@@ -20,11 +20,17 @@ describe('storage-categories', () => {
     });
   });
 
-  describe('categorizeKey — app-identity', () => {
-    it('classifies _iap_aid as app-identity (D7 anonymous id cookie)', () => {
-      expect(categorizeKey('_iap_aid', 'cookie')).toBe('app-identity');
+  // `_iap_aid` (D7 anonymous id) is a Statistics cookie in Cookiebot (Ian,
+  // 2026-11-14), written only with analytics consent. The inspector groups it
+  // with the measurement cookies it is consented alongside, not with the
+  // session cookie every visitor gets.
+  describe('categorizeKey — _iap_aid', () => {
+    it('classifies _iap_aid as analytics, the Statistics consent it is written under', () => {
+      expect(categorizeKey('_iap_aid', 'cookie')).toBe('analytics');
     });
+  });
 
+  describe('categorizeKey — app-identity', () => {
     it('classifies _iap_sid as app-identity (Phase 2 session cookie)', () => {
       expect(categorizeKey('_iap_sid', 'cookie')).toBe('app-identity');
     });

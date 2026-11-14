@@ -4,8 +4,12 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'reac
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-import { getCurrentConsent, trackBeginCheckout, trackPurchase } from '@/lib/events/track';
-import { readAnonymousIdCookie } from '@/lib/identity/anonymous-id';
+import {
+  getConsentedAnonymousId,
+  subscribeConsent,
+  trackBeginCheckout,
+  trackPurchase,
+} from '@/lib/events/track';
 import { useScrollToTopOnMount } from '@/hooks/useScrollToTopOnMount';
 import { useCart } from './cart-context';
 import { useToast } from '@/components/demo/reveal/toast-provider';
@@ -70,16 +74,13 @@ function getClientMetaServerSnapshot(): ClientMeta {
   return EMPTY_CLIENT_META;
 }
 
-// Phase 10d D7: the visitor's real `_iap_aid` for the BQ row's
-// user_pseudo_id. The cookie is a Statistics cookie (Ian, 2026-11-14), so
-// the preview shows it only while analytics consent is granted, read from
-// the same state the events use, and only reads it: minting and refreshing
-// belong to `track.ts`. Not cached, so a grant or a withdrawal shows on the
-// next render instead of freezing the first value.
-function getAnonymousIdSnapshot(): string {
-  if (!getCurrentConsent().consent_analytics) return '';
-  return readAnonymousIdCookie() ?? '';
-}
+// Phase 10d D7: the visitor's real `_iap_aid`, shown in the preview's
+// user_pseudo_id column. The preview is illustrative: nothing writes this ID
+// to BigQuery today (the raw table has no such column and the Pub/Sub
+// template does not forward it). The cookie is a Statistics cookie (Ian,
+// 2026-11-14), so the store in `track.ts` holds it only while analytics
+// consent is granted and notifies on every consent change: a grant or a
+// withdrawal on this page re-renders the preview. Read-only here.
 function getAnonymousIdServerSnapshot(): string {
   return '';
 }
@@ -121,8 +122,8 @@ export function CheckoutForm() {
     getClientMetaServerSnapshot,
   );
   const anonymousId = useSyncExternalStore(
-    subscribeClientMeta,
-    getAnonymousIdSnapshot,
+    subscribeConsent,
+    getConsentedAnonymousId,
     getAnonymousIdServerSnapshot,
   );
   const toastedRef = useRef(false);

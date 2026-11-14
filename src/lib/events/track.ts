@@ -1,4 +1,8 @@
-import { getAnonymousId } from '@/lib/identity/anonymous-id';
+import {
+  ANONYMOUS_ID_COOKIE_NAME,
+  ANONYMOUS_ID_MAX_AGE,
+  readAnonymousIdCookie,
+} from '@/lib/identity/anonymous-id';
 import { isGlobalPrivacyControlEnabled } from './global-privacy-control';
 import { pushEvent } from './push';
 import type {
@@ -21,6 +25,38 @@ let currentConsent = {
   consent_marketing: false,
   consent_preferences: false,
 };
+
+/**
+ * `_iap_aid`, the 365-day visitor ID, is a Statistics cookie (Ian,
+ * 2026-11-14): it exists only while analytics consent is granted. These two
+ * writers are private to this module and called only from `recordConsent`, so
+ * nothing can mint the ID without the visitor's consent. See
+ * `src/lib/identity/anonymous-id.ts`.
+ */
+function anonymousIdCookie(value: string, maxAge: number): string {
+  const secure = globalThis.location?.protocol === 'https:' ? '; Secure' : '';
+  return `${ANONYMOUS_ID_COOKIE_NAME}=${encodeURIComponent(value)}; Path=/; SameSite=Lax; Max-Age=${maxAge}${secure}`;
+}
+
+/** Mint the cookie, or reuse the one already there, and refresh its expiry. */
+function ensureAnonymousIdCookie(): string {
+  const id = readAnonymousIdCookie() || crypto.randomUUID();
+  document.cookie = anonymousIdCookie(id, ANONYMOUS_ID_MAX_AGE);
+  return id;
+}
+
+/**
+ * Expire the cookie on a decline or withdrawal. Cookiebot deletes it too, but
+ * a decliner must not keep the ID whatever Cookiebot does or when.
+ */
+function clearAnonymousIdCookie(): void {
+  if (readAnonymousIdCookie() === null) return;
+  document.cookie = anonymousIdCookie('', 0);
+}
+
+/** The ID while analytics consent is granted, '' otherwise. Set in recordConsent. */
+let consentedAnonymousId = '';
+const consentListeners = new Set<() => void>();
 
 type GtagFn = {
   (command: 'consent', action: 'update', payload: Record<string, 'granted' | 'denied'>): void;
@@ -57,11 +93,40 @@ function recordConsent(
     consent_marketing: honorGlobalPrivacyControl(marketing),
     consent_preferences: preferences,
   };
-  // `_iap_aid` is a Statistics cookie: a grant mints it now (or reuses the
-  // one already there), including for a returning visitor whose silent
-  // initConsentState pushes no event. Without the grant, nothing writes it.
-  getAnonymousId(currentConsent.consent_analytics);
+  // The one place `_iap_aid` is written. A grant mints it (or reuses it),
+  // including for a returning visitor whose silent initConsentState pushes no
+  // event; a decline or withdrawal expires it.
+  if (typeof document !== 'undefined') {
+    if (currentConsent.consent_analytics) {
+      consentedAnonymousId = ensureAnonymousIdCookie();
+    } else {
+      clearAnonymousIdCookie();
+      consentedAnonymousId = '';
+    }
+  }
+  consentListeners.forEach((listener) => listener());
   return currentConsent;
+}
+
+/**
+ * Subscribe to consent changes (new choices and returning visitors' stored
+ * ones). Returns the unsubscribe function, in the shape `useSyncExternalStore`
+ * expects.
+ */
+export function subscribeConsent(listener: () => void): () => void {
+  consentListeners.add(listener);
+  return () => {
+    consentListeners.delete(listener);
+  };
+}
+
+/**
+ * The visitor's `_iap_aid` while analytics consent is granted, '' otherwise.
+ * Held in memory and updated on each consent change, so a render can call it
+ * without reparsing `document.cookie`. Read-only.
+ */
+export function getConsentedAnonymousId(): string {
+  return consentedAnonymousId;
 }
 
 /**
@@ -157,8 +222,8 @@ function baseFields(): {
     timestamp: new Date().toISOString(),
     session_id: sid,
     iap_session_id: sid,
-    // Empty without analytics consent: see `src/lib/identity/anonymous-id.ts`.
-    anonymous_id: getAnonymousId(currentConsent.consent_analytics),
+    // Read only, and empty without analytics consent: see recordConsent.
+    anonymous_id: currentConsent.consent_analytics ? (readAnonymousIdCookie() ?? '') : '',
     page_path: window.location.pathname,
     page_title: document.title,
     ...currentConsent,

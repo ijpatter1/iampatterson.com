@@ -254,8 +254,8 @@ verify "D6 load-test runner is executable + report exists" \
 verify "D7 anonymous-id helper defines _iap_aid cookie name" \
   "grep -qE \"ANONYMOUS_ID_COOKIE_NAME = '_iap_aid'\" src/lib/identity/anonymous-id.ts"
 
-verify "D9 storage-categories include app-identity classifier for _iap_aid" \
-  "grep -q \"category: 'app-identity'\" src/lib/identity/storage-categories.ts && grep -qE '_iap_aid' src/lib/identity/storage-categories.ts"
+verify "D9 storage-categories classify _iap_aid as analytics (a Statistics cookie since 2026-11-14)" \
+  "grep -qF \"category: 'analytics', match: /^_iap_aid\" src/lib/identity/storage-categories.ts"
 
 echo "  Baseline complete. Begin visitor scenarios:"
 echo ""
@@ -539,8 +539,8 @@ expect \
 
 do_step "Open SessionPulse → Consent tab."
 expect \
-  "Storage inspector includes an 'App identity' group" \
-  "_iap_aid row is visible in the App identity group" \
+  "Storage inspector includes an 'App identity' group and an 'Analytics' group" \
+  "_iap_aid row is visible in the Analytics group (a Statistics cookie since 2026-11-14)" \
   "Click-to-reveal works (initial truncated/masked, expands to full UUID)" \
   "_iap_sid (Phase 2 session cookie) is also in the App identity group"
 
@@ -563,8 +563,15 @@ do_step "Application tab → re-check _iap_aid value."
 expect \
   "Cookie value unchanged across the funnel — same id from homepage to confirmation"
 
+do_step "Without reloading, run Cookiebot.renew() in the Console and decline Statistics."
+expect \
+  "Application tab: '_iap_aid' is gone (the site expires it on withdrawal, not only Cookiebot)" \
+  "SessionPulse → Consent tab inspector: no _iap_aid row in the Analytics group within ~1 second" \
+  "Click any link, then refresh the Application tab: '_iap_aid' has not come back"
+
 confirm "_iap_aid cookie has correct attributes (UUID v4, ≈365d Max-Age, SameSite=Lax)?"
-confirm "_iap_aid surfaces in the D9 storage inspector under App identity?"
+confirm "_iap_aid surfaces in the D9 storage inspector under Analytics?"
+confirm "Withdrawing Statistics removed _iap_aid at once, and it did not come back?"
 confirm "anonymous_id appears on event payloads in the Timeline?"
 confirm "Confirmation page BQ row preview shows the real anonymous id (not seed NULL)?"
 
@@ -641,12 +648,12 @@ do_step "Open SessionPulse → Overview tab."
 expect \
   "Storage summary chips per category visible" \
   "Categories include at minimum: app-identity, cmp (Cookiebot), analytics" \
-  "Each chip shows a count (e.g. 'app-identity · 2 keys')"
+  "Each chip shows a count of its keys (e.g. 'app identity · 2 keys'); _iap_aid counts under analytics, and only when Statistics is allowed"
 
 do_step "Switch to Consent tab → scroll to the storage inspector section."
 expect \
   "Per-key inspector with category groupings" \
-  "_iap_aid + _iap_sid both visible under app-identity (_iap_aid only if Statistics is allowed)" \
+  "_iap_sid visible under app-identity; _iap_aid visible under analytics only if Statistics is allowed" \
   "CookieConsent (Cookiebot) cookie visible under cmp" \
   "Click-to-reveal: clicking a row expands to show the full value" \
   "Cookie expiry / domain / path show 'not readable from document.cookie' footnote"
@@ -670,7 +677,7 @@ expect \
   "Any new keys (e.g. cart state, last-viewed product) appear in their categories"
 
 confirm "Overview shows category chips with counts?"
-confirm "Consent inspector shows _iap_aid + _iap_sid in app-identity with click-to-reveal?"
+confirm "Consent inspector shows _iap_sid in app-identity (and _iap_aid in analytics only with Statistics allowed), with click-to-reveal?"
 confirm "Live updates: adding a localStorage key reflects within 1s without overlay reopen?"
 confirm "Cookie expiry/domain/path narrowing is shown as a footnote (no fabricated metadata)?"
 

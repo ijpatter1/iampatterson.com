@@ -12,7 +12,11 @@ import {
   trackWebVital,
   trackPageEngagement,
   initConsentState,
+  getConsentedAnonymousId,
+  subscribeConsent,
 } from '@/lib/events/track';
+import * as trackModule from '@/lib/events/track';
+import * as anonymousIdModule from '@/lib/identity/anonymous-id';
 
 // Mock crypto.randomUUID for session ID
 Object.defineProperty(globalThis, 'crypto', {
@@ -490,8 +494,8 @@ describe('trackPageEngagement (Phase 10d D3)', () => {
 // cookie with a 365-day sliding expiry. Ian classified it Statistics in
 // Cookiebot on 2026-11-14, and Cookiebot statistics is the analytics consent
 // this module holds. A visitor who declines analytics, or has not chosen yet,
-// must carry no year-long ID: the site neither mints, writes nor refreshes the
-// cookie, and events carry an empty anonymous_id.
+// must carry no year-long ID: the site neither mints nor refreshes the cookie,
+// expires one that is there, and events carry an empty anonymous_id.
 describe('anonymous_id follows analytics consent', () => {
   let aidWrites: string[];
   const cookieDescriptor = Object.getOwnPropertyDescriptor(Document.prototype, 'cookie')!;
@@ -500,15 +504,18 @@ describe('anonymous_id follows analytics consent', () => {
       .split('; ')
       .find((c) => c.startsWith('_iap_aid='))
       ?.slice('_iap_aid='.length) ?? null;
+  // A write that keeps or creates the cookie, as opposed to one expiring it.
+  const keepingWrites = () => aidWrites.filter((w) => !/Max-Age=0(;|$)/.test(w));
+  const expiringWrites = () => aidWrites.filter((w) => /Max-Age=0(;|$)/.test(w));
   // Cookiebot removes a Statistics cookie when the visitor declines.
   const cookiebotDeletes = () => {
-    document.cookie = '_iap_aid=; Max-Age=0; Path=/';
-    aidWrites.length = 0;
+    cookieDescriptor.set!.call(document, '_iap_aid=; Max-Age=0; Path=/');
   };
   const lastEvent = () => window.dataLayer[window.dataLayer.length - 1] as { anonymous_id: string };
 
   beforeEach(() => {
     initConsentState(false, false, false);
+    cookiebotDeletes();
     aidWrites = [];
     Object.defineProperty(document, 'cookie', {
       configurable: true,
@@ -544,21 +551,40 @@ describe('anonymous_id follows analytics consent', () => {
       '',
       '',
     ]);
-    expect(aidWrites).toEqual([]);
+    expect(keepingWrites()).toEqual([]);
     expect(readAid()).toBeNull();
   });
 
-  it('neither refreshes nor re-mints a cookie Cookiebot deletes on decline', () => {
-    document.cookie = '_iap_aid=left-from-earlier; Path=/';
-    aidWrites.length = 0;
+  it('expires a cookie left from an earlier grant when the visitor declines', () => {
+    // Expiring it ourselves, rather than trusting Cookiebot to, means a
+    // decliner never keeps the year-long ID whatever Cookiebot does.
+    cookieDescriptor.set!.call(document, '_iap_aid=left-from-earlier; Path=/');
     trackConsentUpdate(false, false, false);
     expect(lastEvent().anonymous_id).toBe('');
+    expect(readAid()).toBeNull();
+    expect(keepingWrites()).toEqual([]);
+    expect(expiringWrites()).toHaveLength(1);
+    expect(expiringWrites()[0]).toContain('Path=/');
+  });
+
+  it('expires a stale cookie for a returning visitor whose stored choice declined analytics', () => {
+    cookieDescriptor.set!.call(document, '_iap_aid=left-from-earlier; Path=/');
+    initConsentState(false, true, true);
+    expect(readAid()).toBeNull();
+    expect(keepingWrites()).toEqual([]);
+  });
+
+  it('writes nothing on a decline when there is no cookie to expire', () => {
+    trackConsentUpdate(false, false, false);
     expect(aidWrites).toEqual([]);
-    cookiebotDeletes();
+  });
+
+  it('never mints the cookie again after a decline, whatever the visitor does next', () => {
+    trackConsentUpdate(false, false, false);
     trackPageView('/');
     trackClickNav('Services', '/services');
     expect(lastEvent().anonymous_id).toBe('');
-    expect(aidWrites).toEqual([]);
+    expect(keepingWrites()).toEqual([]);
     expect(readAid()).toBeNull();
   });
 
@@ -571,30 +597,48 @@ describe('anonymous_id follows analytics consent', () => {
     expect(lastEvent().anonymous_id).toBe(minted);
   });
 
+  it('writes the cookie once per grant, with the 365-day first-party attributes', () => {
+    trackConsentUpdate(true, false, false);
+    expect(aidWrites).toHaveLength(1);
+    expect(aidWrites[0]).toContain('Path=/');
+    expect(aidWrites[0]).toContain('SameSite=Lax');
+    expect(aidWrites[0]).toContain(`Max-Age=${anonymousIdModule.ANONYMOUS_ID_MAX_AGE}`);
+  });
+
+  it('only reads the cookie on events: the grant is the one write', () => {
+    initConsentState(true, false, false);
+    aidWrites.length = 0;
+    trackPageView('/');
+    trackClickNav('Services', '/services');
+    expect(aidWrites).toEqual([]);
+    expect(lastEvent().anonymous_id).toBe(readAid());
+  });
+
   it('mints the cookie for a returning visitor whose stored choice granted analytics', () => {
     // initConsentState pushes no event, so the grant itself must mint.
     initConsentState(true, false, false);
     expect(readAid()).toBeTruthy();
   });
 
-  it('reuses an ID the visitor already has when analytics is granted', () => {
-    document.cookie = '_iap_aid=test-anon-uuid; Path=/';
+  it('reuses an ID the visitor already has when analytics is granted, refreshing its expiry', () => {
+    cookieDescriptor.set!.call(document, '_iap_aid=test-anon-uuid; Path=/');
     initConsentState(true, false, false);
     trackPageView('/');
     expect(lastEvent().anonymous_id).toBe('test-anon-uuid');
     expect(readAid()).toBe('test-anon-uuid');
+    expect(aidWrites).toHaveLength(1);
+    expect(aidWrites[0]).toContain(`Max-Age=${anonymousIdModule.ANONYMOUS_ID_MAX_AGE}`);
   });
 
-  it('stops writing the cookie once the visitor withdraws analytics', () => {
+  it('removes the cookie as soon as the visitor withdraws analytics, without a reload', () => {
     trackConsentUpdate(true, true, true);
     expect(readAid()).toBeTruthy();
     trackConsentUpdate(false, false, false);
+    expect(readAid()).toBeNull();
     expect(lastEvent().anonymous_id).toBe('');
-    cookiebotDeletes();
     trackPageView('/');
     trackFormStart('contact');
     expect(lastEvent().anonymous_id).toBe('');
-    expect(aidWrites).toEqual([]);
     expect(readAid()).toBeNull();
   });
 
@@ -604,11 +648,54 @@ describe('anonymous_id follows analytics consent', () => {
     Object.defineProperty(navigator, 'globalPrivacyControl', { value: true, configurable: true });
     trackConsentUpdate(false, true, false);
     expect(lastEvent().anonymous_id).toBe('');
-    expect(aidWrites).toEqual([]);
+    expect(keepingWrites()).toEqual([]);
 
     trackConsentUpdate(true, true, true);
     expect(lastEvent()).toMatchObject({ consent_marketing: false, consent_analytics: true });
     expect(lastEvent().anonymous_id).toBe(readAid());
     expect(readAid()).toBeTruthy();
+  });
+
+  // No module offers a way to write the cookie: the only write path is a
+  // consent change through this module, so a future caller cannot mint the
+  // ID without the visitor's analytics consent.
+  it('exposes no function that writes the cookie', () => {
+    expect(Object.keys(anonymousIdModule).sort()).toEqual([
+      'ANONYMOUS_ID_COOKIE_NAME',
+      'ANONYMOUS_ID_MAX_AGE',
+      'readAnonymousIdCookie',
+    ]);
+    const trackExports = Object.keys(trackModule);
+    expect(trackExports.filter((k) => /anonymous/i.test(k))).toEqual(['getConsentedAnonymousId']);
+  });
+
+  describe('the consent-change store the checkout preview reads', () => {
+    it('notifies subscribers on every consent change and stops after unsubscribe', () => {
+      const listener = jest.fn();
+      const unsubscribe = subscribeConsent(listener);
+      initConsentState(true, false, false);
+      trackConsentUpdate(false, false, false);
+      expect(listener).toHaveBeenCalledTimes(2);
+      unsubscribe();
+      trackConsentUpdate(true, false, false);
+      expect(listener).toHaveBeenCalledTimes(2);
+    });
+
+    it('holds the ID while analytics is granted and empty once withdrawn', () => {
+      trackConsentUpdate(true, false, false);
+      expect(getConsentedAnonymousId()).toBe(readAid());
+      expect(getConsentedAnonymousId()).toBeTruthy();
+      trackConsentUpdate(false, false, false);
+      expect(getConsentedAnonymousId()).toBe('');
+    });
+
+    it('answers from memory, without reparsing document.cookie on each read', () => {
+      trackConsentUpdate(true, false, false);
+      const getter = jest.fn(() => cookieDescriptor.get!.call(document));
+      Object.defineProperty(document, 'cookie', { configurable: true, get: getter, set: () => {} });
+      getConsentedAnonymousId();
+      getConsentedAnonymousId();
+      expect(getter).not.toHaveBeenCalled();
+    });
   });
 });

@@ -37,7 +37,7 @@ describe('readAllStorage', () => {
     document.cookie = 'CookieConsent=granted_all';
     const snap = readAllStorage();
     const byName = Object.fromEntries(snap.entries.map((e) => [e.name, e]));
-    expect(byName._iap_aid.category).toBe('app-identity');
+    expect(byName._iap_aid.category).toBe('analytics');
     expect(byName._iap_aid.source).toBe('cookie');
     expect(byName._iap_aid.value).toBe('abc-123');
     expect(byName._ga.category).toBe('analytics');
