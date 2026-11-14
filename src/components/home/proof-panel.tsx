@@ -1,7 +1,5 @@
 'use client';
 
-import { useId } from 'react';
-
 import { useAnalyticsConsent } from '@/hooks/useAnalyticsConsent';
 import { useLiveEvents } from '@/hooks/useLiveEvents';
 import { useSessionReadout } from '@/hooks/useSessionReadout';
@@ -110,12 +108,13 @@ export function ProofPanel({ onOpen }: ProofPanelProps) {
 
   // A visitor who declined is shown data-layer events by design, so only a
   // visitor who allowed analytics gets a note about the stream. The stream
-  // counts as down only when it is off or has given up retrying: a first
-  // connection under way, or a routine reconnect (Cloud Run ends each stream
-  // after an hour), is not a failure worth announcing. Stream rows stay on
-  // screen after the stream gives up, so the note then says they are no
-  // longer live.
-  const streamDown = stream === 'off' || stream === 'disconnected';
+  // counts as down when it is off, failing (the hook's stated time without a
+  // connection, or a loop of opens and drops) or has given up retrying: a
+  // first connection under way, or a routine reconnect (Cloud Run ends each
+  // stream after an hour), is not a failure worth announcing. Stream rows stay
+  // on screen after the stream fails, so the note then says they are no longer
+  // live.
+  const streamDown = stream === 'off' || stream === 'failing' || stream === 'disconnected';
   const streamNote =
     analyticsConsent === 'granted' && visible.length > 0 && streamDown
       ? fromStream
@@ -123,7 +122,6 @@ export function ProofPanel({ onOpen }: ProofPanelProps) {
         : PROOF.panel.notConnected
       : null;
   const hasRows = hasChosen && visible.length > 0;
-  const headerId = useId();
 
   let body;
   if (!hasChosen) {
@@ -151,7 +149,6 @@ export function ProofPanel({ onOpen }: ProofPanelProps) {
       className="cursor-pointer rounded-sm bg-u-paper p-5 font-mono text-xs leading-relaxed text-u-ink"
     >
       <div
-        id={headerId}
         data-testid="proof-header"
         className="flex flex-wrap gap-x-4 gap-y-1 border-b border-u-rule pb-3 text-[10px] uppercase tracking-[0.14em] text-u-ink-3"
       >
@@ -165,12 +162,18 @@ export function ProofPanel({ onOpen }: ProofPanelProps) {
           {eventCount} {eventCount === 1 ? PROOF.panel.eventSingular : PROOF.panel.eventPlural}
         </span>
       </div>
-      {streamNote && <p className="border-b border-u-rule-soft py-2 text-u-ink-3">{streamNote}</p>}
+      {/* Always rendered, empty until there is a note, so that a screen reader
+          already tracks the live region when the note appears. */}
+      <div data-testid="proof-stream-note" role="status" aria-live="polite">
+        {streamNote && (
+          <p className="border-b border-u-rule-soft py-2 text-u-ink-3">{streamNote}</p>
+        )}
+      </div>
       <div
         data-testid="proof-rows"
         role="region"
         tabIndex={hasRows ? 0 : undefined}
-        aria-labelledby={headerId}
+        aria-label={PROOF.panel.rowsLabel}
         className="overflow-x-auto pt-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-current"
       >
         {body}

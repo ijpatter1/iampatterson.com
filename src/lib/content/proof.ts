@@ -12,12 +12,14 @@ export const PROOF = {
     waiting: 'Waiting for your first event. Scroll the page.',
     /** A header note, shown above data-layer rows when the stream is not connected. */
     notConnected: "Showing this browser's events. Live stream not connected.",
-    /** A header note, shown above stream rows when the stream has given up since it delivered them. */
+    /** A header note, shown above stream rows when the stream is failing or has given up since it delivered them. */
     streamDropped: 'Live stream dropped. These are the last events it delivered.',
     sent: 'sent',
     blocked: 'blocked',
     blockedReason: 'consent denied',
     regionLabel: 'Your session, live',
+    /** The rows region's name. Fixed, so it does not change as events arrive. */
+    rowsLabel: 'Your recent events',
     sessionLabel: 'Session',
     consentLabel: 'Consent',
     eventSingular: 'event',
