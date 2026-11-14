@@ -13,6 +13,8 @@
  * AmbientBubbles would each break the clone's fidelity.
  */
 
+import { REVIEW_PAGE_HREF } from '@/lib/content/review';
+
 const CLAUDISH = '/claudish';
 
 export function showSiteFooter(pathname: string): boolean {
@@ -53,5 +55,5 @@ export function showLiveStrip(pathname: string): boolean {
  * it would send them back a step.
  */
 export function showReviewLink(pathname: string): boolean {
-  return pathname !== '/review' && pathname !== '/contact';
+  return pathname !== REVIEW_PAGE_HREF && pathname !== '/contact';
 }

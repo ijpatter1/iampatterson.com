@@ -46,6 +46,7 @@ import { test, expect, type Page } from '@playwright/test';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
+import { showReviewLink } from '../../src/lib/chrome/suppression';
 import { HERO } from '../../src/lib/content/hero';
 
 const E2E_ENABLED = process.env.E2E_ENABLED === '1';
@@ -184,10 +185,10 @@ test.describe('Phase 10d D1, mobile matrix', () => {
       );
 
       // ── 3b. Header review link (15.4): 44px target, same row as the pulse.
-      // Hidden on /review and /contact, where it would point back a step.
+      // Hidden where showReviewLink says (/review and /contact).
       const reviewLink = page.locator('header').getByRole('link', { name: HERO.primaryCta });
       const routePath = new URL(route.path, 'http://localhost').pathname;
-      if (routePath === '/review' || routePath === '/contact') {
+      if (!showReviewLink(routePath)) {
         await expect(reviewLink, `${route.label}: no header review link`).toHaveCount(0);
       } else {
         await expect(reviewLink, `${route.label}: header review link visible`).toBeVisible();

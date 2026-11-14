@@ -15,6 +15,7 @@ import {
   showReviewLink,
   showSiteFooter,
 } from '@/lib/chrome/suppression';
+import { REVIEW_PAGE_HREF } from '@/lib/content/review';
 
 describe('showSiteFooter', () => {
   it.each(['/', '/services', '/about', '/contact'])('shows on %s', (p) => {
@@ -66,6 +67,10 @@ describe('showLiveStrip', () => {
 describe('showReviewLink', () => {
   it.each(['/review', '/contact'])('hides on %s', (p) => {
     expect(showReviewLink(p)).toBe(false);
+  });
+  // The rule follows the review page's one constant, not a retyped path.
+  it('hides on whatever REVIEW_PAGE_HREF is', () => {
+    expect(showReviewLink(REVIEW_PAGE_HREF)).toBe(false);
   });
   it.each(['/', '/services', '/contact/thanks', '/demo/ecommerce', '/claudish'])(
     'shows on %s',
