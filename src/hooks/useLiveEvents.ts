@@ -5,8 +5,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { PipelineEvent } from '@/lib/events/pipeline-schema';
 
 import { useDataLayerEvents } from './useDataLayerEvents';
-import type { ConnectionStatus } from './useEventStream';
-import { useEventStream } from './useEventStream';
+import { type ConnectionStatus, useEventStream } from './useEventStream';
 
 export interface UseLiveEventsReturn {
   /** Merged event stream: SSE when connected, dataLayer otherwise. */

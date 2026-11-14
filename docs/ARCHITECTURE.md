@@ -346,18 +346,18 @@ A React hook (`useEventStream`) that:
 
 **Connection status (15.7).** The hook reports one of five statuses. Readers decide whether to say the stream is down with `isStreamDown()`, exported from the hook; the proof panel's stream note shows only when it returns true.
 
-- `connecting`: the first connection is under way.
+- `connecting`: the first connection is under way. An enabled stream also starts here, before its first attempt, so the first render shows no note.
 - `connected`: a connection is open.
 - `reconnecting`: a routine reconnect. Cloud Run ends each stream after an hour and the hook reopens it after a one-second backoff. Not a failure.
 - `failing`: still retrying, but the stream is not working. Down.
-- `disconnected`: given up after `maxRetries` (default 5), or not started. Down.
+- `disconnected`: given up after `maxRetries` (default 5), or not started because the stream is disabled or there is no session cookie yet. Down.
 
 The thresholds are named constants in `src/hooks/useEventStream.ts`:
 
 - A stream with no open connection for 15 seconds (`STREAM_FAILING_AFTER_MS`) is failing, whether the attempts error or hang. The clock starts when the stream goes down and only an open stops it. When it runs out on an attempt that has neither opened nor errored, the hook closes that attempt and retries.
 - Three drops of an opened connection within 60 seconds (`STREAM_LOOP_DROPS`, `STREAM_LOOP_WINDOW_MS`) are a loop, and the stream is failing. The hourly reconnects never meet in the window. A loop slower than about one drop every 30 seconds is not flagged.
 - Within a loop, an open does not reset the retry count, so the backoff grows and the hook reaches `disconnected` after `maxRetries`. A reopen keeps the status `failing`, so the note does not flicker. A connection that stays open for 10 seconds (`STREAM_SETTLE_MS`) ends the loop: the status returns to `connected`, and the drop history and retry count are cleared.
-- A browser `online` event restarts the connection only when no connection is open.
+- A browser `online` event restarts the connection only when the hook has given up (`disconnected` after its retries ran out). A stream that is still trying, whether connecting, open or failing in backoff, keeps its attempt, backoff and loop history.
 - Two tabs on one session are two healthy connections (see the service above), so neither reports `failing`.
 
 ---

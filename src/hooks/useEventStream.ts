@@ -103,7 +103,11 @@ export function useEventStream({
   enabled = true,
   maxRetries = 5,
 }: UseEventStreamOptions): UseEventStreamReturn {
-  const [status, setStatus] = useState<ConnectionStatus>('disconnected');
+  // An enabled stream starts as `connecting`, not `disconnected`: before the
+  // connect effect runs it has not tried yet, and a down state on the first
+  // render would flash the panel's note and announce it. If there turns out
+  // to be no session cookie, the effect reports `disconnected`.
+  const [status, setStatus] = useState<ConnectionStatus>(enabled ? 'connecting' : 'disconnected');
   const [events, setEvents] = useState<PipelineEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
   // Incremented by the `online` event listener to force a fresh reconnect
@@ -119,20 +123,22 @@ export function useEventStream({
   useEffect(() => {
     bufferSizeRef.current = maxBufferSize;
   }, [maxBufferSize]);
-  // True while an EventSource is open. Written only from the connect effect's
+  // True once the connect effect has used up its retries: no attempt in
+  // flight and none scheduled. Written only from the connect effect's
   // callbacks; read by the `online` listener.
-  const openRef = useRef(false);
+  const gaveUpRef = useRef(false);
 
   const clearEvents = useCallback(() => setEvents([]), []);
 
   // D5: Online-event recovery. When the browser transitions offline
-  // → online and no connection is open, bump the retry trigger to force a
-  // fresh connect. An open connection is never torn down: some browsers fire
-  // `online` spuriously on network hand-offs, and a restart would drop a
-  // working stream and forget a loop's history.
+  // → online after the stream has given up, bump the retry trigger to force a
+  // fresh connect. A stream that is still trying is left alone, open or not:
+  // some browsers fire `online` spuriously on network hand-offs, and a
+  // restart would throw away the attempt in flight, the backoff and a loop's
+  // history, so a failing loop could never reach `disconnected`.
   useEffect(() => {
     function handleOnline(): void {
-      if (!openRef.current) {
+      if (gaveUpRef.current) {
         setRetryTrigger((n) => n + 1);
       }
     }
@@ -228,7 +234,6 @@ export function useEventStream({
 
       function fail(): void {
         abandonAttempt = null;
-        openRef.current = false;
         es?.close();
         es = null;
 
@@ -242,6 +247,7 @@ export function useEventStream({
         retryCount++;
         if (retryCount > maxRetries) {
           stopFailTimer();
+          gaveUpRef.current = true;
           setStatus('disconnected');
           setError('EventSource connection failed after max retries');
           return;
@@ -267,7 +273,6 @@ export function useEventStream({
       es.onopen = () => {
         opened = true;
         abandonAttempt = null;
-        openRef.current = true;
         stopFailTimer();
         if (inLoop()) {
           // A reopen inside a loop: stay failing and keep the retry count, so
@@ -319,7 +324,7 @@ export function useEventStream({
       if (retryTimer) clearTimeout(retryTimer);
       stopFailTimer();
       if (settleTimer) clearTimeout(settleTimer);
-      openRef.current = false;
+      gaveUpRef.current = false;
       es?.close();
     };
   }, [url, enabled, maxRetries, retryTrigger]);

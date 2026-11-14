@@ -714,6 +714,20 @@ describe('useEventStream graceful degradation (D2)', () => {
 // ---------------------------------------------------------------------------
 
 describe('useEventStream routine reconnect vs failing stream (15.7)', () => {
+  // Before the connect effect runs, the hook has not tried yet. Reporting a
+  // down state then would flash the panel's note on the first render and
+  // announce it, then take it back.
+  it('reports a state that is not down before its first attempt', () => {
+    const seen: string[] = [];
+    renderHook(() => {
+      const r = useEventStream({ url: 'http://localhost:8080/events' });
+      seen.push(r.status);
+      return r;
+    });
+    expect(seen[0]).toBe('connecting');
+    expect(isStreamDown(seen[0] as Parameters<typeof isStreamDown>[0])).toBe(false);
+  });
+
   const URL = 'http://localhost:8080/events';
   const HOUR = 60 * 60 * 1000;
   let randomSpy: jest.SpyInstance;
@@ -896,18 +910,57 @@ describe('useEventStream routine reconnect vs failing stream (15.7)', () => {
       act(() => jest.advanceTimersByTime(1));
       expect(result.current.status).toBe('connected');
     });
+  });
 
-    // An offline spell is a common cause; coming back online should try again
-    // at once rather than wait out the backoff.
-    it('reconnects at once when the browser comes back online', () => {
+  // `online` restarts only a stream that has given up. Restarting one that
+  // is still trying would throw away its attempt, its backoff and a loop's
+  // history: the note would vanish and the loop could never reach
+  // `disconnected`. Some browsers fire `online` spuriously on hand-offs.
+  describe('the online event', () => {
+    it('does not restart the first attempt while it is still connecting', () => {
       const { result } = renderRecording();
-      act(() => jest.advanceTimersByTime(STREAM_FAILING_AFTER_MS));
-      expect(result.current.status).toBe('failing');
-      const before = MockEventSource.instances.length;
+      const first = latest();
       act(() => {
         window.dispatchEvent(new Event('online'));
       });
+      expect(MockEventSource.instances).toHaveLength(1);
+      expect(first.closed).toBe(false);
+      expect(result.current.status).toBe('connecting');
+    });
+
+    it('leaves a failing loop in backoff as it is: still failing, same backoff, still able to give up', () => {
+      const { result } = renderRecording();
+      loopUntilFailing(result);
+      // A fourth drop inside the loop: the retry count is now 2, so the next
+      // attempt is 2s away.
+      act(() => latest().simulateOpen());
+      act(() => latest().simulateError());
+      const before = MockEventSource.instances.length;
+
+      act(() => {
+        window.dispatchEvent(new Event('online'));
+      });
+      expect(MockEventSource.instances.length).toBe(before);
+      expect(result.current.status).toBe('failing');
+
+      act(() => jest.advanceTimersByTime(1999));
+      expect(MockEventSource.instances.length).toBe(before);
+      act(() => jest.advanceTimersByTime(1));
       expect(MockEventSource.instances.length).toBe(before + 1);
+      expect(result.current.status).toBe('failing');
+
+      // The loop keeps its count (2), so it still gives up after the default
+      // five retries: four more drops take it to 3, 4, 5 and then past five.
+      // A restart would have reset it to 0 and needed six.
+      let moreDrops = 0;
+      while (result.current.status !== 'disconnected' && moreDrops < 10) {
+        act(() => latest().simulateOpen());
+        act(() => latest().simulateError());
+        moreDrops++;
+        if (result.current.status !== 'disconnected') waitForNextAttempt();
+      }
+      expect(moreDrops).toBe(4);
+      expect(result.current.status).toBe('disconnected');
     });
   });
 
