@@ -1014,11 +1014,11 @@ Every in-scope resource already serves production, so the first pass on any of t
 
 ## Contact form delivery (2026-11-02)
 
-The form on `/contact` posts JSON to a Vercel route handler, `src/app/api/contact/route.ts`. The handler checks the fields, asks reCAPTCHA Enterprise about the visitor's token, and sends the inquiry through the Gmail API from `ian@iampatterson.com` to itself, with the visitor's address as `Reply-To`. The form moves to the thanks page only when the route answers 200. Otherwise it says the message did not send and gives the email address.
+The form on `/contact` posts JSON to a Vercel route handler, `src/app/api/contact/route.ts`. The handler checks the fields, asks reCAPTCHA Enterprise about the visitor's token, and sends the inquiry through the Gmail API from `ian@iampatterson.com` to itself, with the visitor's address as `Reply-To`. The form moves to the thanks page only when the route answers 200. Otherwise it says the message did not send and gives the email address. The form carries the page's intent: `review` when the visitor came from a "Book the review" button (`/contact?intent=review`), `default` otherwise. The route accepts only those two and reads anything else as `default`; a review inquiry's subject starts "Review inquiry from", and the form's events report `form_name` `contact_review` instead of `contact`.
 
 ```
 /contact form ── loads reCAPTCHA on first field focus
-   │  POST /api/contact { name, email, message, session_state?, token }
+   │  POST /api/contact { name, email, message, intent, session_state?, token }
    ▼
 Vercel route (production only)
    │  Vercel OIDC token

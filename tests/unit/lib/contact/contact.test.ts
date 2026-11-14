@@ -79,6 +79,21 @@ describe('validateInquiry', () => {
     expect(validateInquiry({ ...ok, email }).ok).toBe(false);
   });
 
+  // The intent decides the email subject. Only the two known values pass; a
+  // missing or unknown one is a general inquiry rather than a rejected one,
+  // so an old form or a tampered body still delivers.
+  it.each([
+    ['review', 'review'],
+    ['default', 'default'],
+    [undefined, 'default'],
+    ['sales', 'default'],
+    ['REVIEW', 'default'],
+    [42, 'default'],
+  ])('reads the intent %p as %s', (intent, expected) => {
+    const r = validateInquiry({ ...ok, intent });
+    expect(r).toEqual({ ok: true, value: expect.objectContaining({ intent: expected }) });
+  });
+
   it('rejects a body that is not an object', () => {
     expect(validateInquiry('hello').ok).toBe(false);
   });
@@ -113,6 +128,22 @@ describe('buildRawMessage', () => {
     const headers = mime.split('\r\n\r\n')[0];
     expect(headers).not.toMatch(/^Bcc:/m);
     expect(mime).not.toMatch(/^Bcc:/m);
+  });
+
+  const subject = (raw: string) =>
+    decode(raw)
+      .split('\r\n')
+      .find((l) => l.startsWith('Subject:'));
+
+  // A review lead reads differently in the inbox from a general question.
+  it('names a review inquiry in the subject, and leaves the general one as it was', () => {
+    const base = { name: 'Ada Lovelace', email: 'ada@example.com', message: 'm' };
+    expect(subject(buildRawMessage({ ...base, intent: 'review' }))).toBe(
+      'Subject: Review inquiry from Ada Lovelace via iampatterson.com',
+    );
+    expect(subject(buildRawMessage({ ...base, intent: 'default' }))).toBe(
+      'Subject: Inquiry from Ada Lovelace via iampatterson.com',
+    );
   });
 
   it('encodes a non-ASCII subject so mail clients show it intact', () => {

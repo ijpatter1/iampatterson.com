@@ -69,7 +69,8 @@ function sessionSection(sessionState: string | undefined): string {
 
 /** The inquiry as a MIME message, base64url-encoded for the Gmail API. */
 export function buildRawMessage(inquiry: Inquiry): string {
-  const subject = encodeHeader(`Inquiry from ${inquiry.name} via iampatterson.com`);
+  const kind = inquiry.intent === 'review' ? 'Review inquiry' : 'Inquiry';
+  const subject = encodeHeader(`${kind} from ${inquiry.name} via iampatterson.com`);
   const lines = [
     `From: "iampatterson.com contact form" <${CONTACT_CONFIG.mailbox}>`,
     `To: ${CONTACT_CONFIG.mailbox}`,

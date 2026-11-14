@@ -7,18 +7,24 @@ import { SessionStateRideAlong } from '@/components/contact/session-state-ride-a
 import { SMALL_BODY_CLASSES } from '@/components/home/section';
 import { CONTACT_CONFIG } from '@/lib/contact/config';
 import { getRecaptchaToken, loadRecaptcha } from '@/lib/contact/recaptcha-client';
-import { CONTACT_COPY, CONTACT_EMAIL } from '@/lib/content/contact';
+import { CONTACT_COPY, CONTACT_EMAIL, type ContactIntent } from '@/lib/content/contact';
 import { trackFormFieldFocus, trackFormStart, trackFormSubmit } from '@/lib/events/track';
 
 const FIELD_CLASSES =
   'mt-1.5 block w-full rounded-sm border border-rule-soft bg-paper px-4 py-2.5 text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/20';
 const FIELD_LABEL_CLASSES = 'block font-mono text-[11px] uppercase tracking-[0.14em] text-ink-2';
 
+interface ContactFormProps {
+  /** From `/contact?intent=review`: the inquiry and its form events say so. */
+  intent?: ContactIntent;
+}
+
 /**
  * The inquiry form. It posts to `/api/contact` (16.3) with a reCAPTCHA token,
  * and shows the thanks page only when the server accepts the message.
  */
-export function ContactForm() {
+export function ContactForm({ intent = 'default' }: ContactFormProps) {
+  const formName = intent === 'review' ? 'contact_review' : 'contact';
   const formStartedRef = useRef(false);
   const router = useRouter();
   const [status, setStatus] = useState<'idle' | 'sending' | 'failed'>('idle');
@@ -26,11 +32,11 @@ export function ContactForm() {
   function handleFieldFocus(fieldName: string) {
     if (!formStartedRef.current) {
       formStartedRef.current = true;
-      trackFormStart('contact');
+      trackFormStart(formName);
       // The spam check loads only once someone starts the form.
       loadRecaptcha().catch(() => {});
     }
-    trackFormFieldFocus('contact', fieldName);
+    trackFormFieldFocus(formName, fieldName);
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -48,15 +54,16 @@ export function ContactForm() {
           name: form.get('name'),
           email: form.get('email'),
           message: form.get('message'),
+          intent,
           session_state: form.get('session_state') ?? undefined,
           token,
         }),
       });
       if (!res.ok) throw new Error(`contact ${res.status}`);
-      trackFormSubmit('contact', true);
+      trackFormSubmit(formName, true);
       router.push('/contact/thanks');
     } catch {
-      trackFormSubmit('contact', false);
+      trackFormSubmit(formName, false);
       setStatus('failed');
     }
   }

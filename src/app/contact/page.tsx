@@ -31,7 +31,8 @@ interface ContactPageProps {
  * without scrolling; the principles and "Where I've done it" follow.
  */
 export default async function ContactPage({ searchParams }: ContactPageProps) {
-  const intro = CONTACT_INTROS[contactIntent((await searchParams).intent)];
+  const intent = contactIntent((await searchParams).intent);
+  const intro = CONTACT_INTROS[intent];
 
   return (
     <main>
@@ -72,7 +73,7 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
               </div>
             </div>
             <div className="min-w-[300px] flex-[1.2]">
-              <ContactForm />
+              <ContactForm intent={intent} />
             </div>
           </div>
         </div>
