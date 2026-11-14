@@ -75,8 +75,9 @@ export function useLiveEventsSource(options: UseLiveEventsOptions = {}): UseLive
   // Sticky "has SSE delivered?" latch, held for the session the stream
   // delivered on, so the source doesn't flap back to dataLayer when the SSE
   // buffer is later cleared. When the stream moves to a new session (the
-  // session cookie changed, see `useEventStream`), the buffer is cleared and
-  // the latch no longer applies: the panel shows the browser's own events
+  // session cookie changed, see `useEventStream`), the stream returns only
+  // the new session's events, none at first, and the latch no longer
+  // applies: the panel shows the browser's own events
   // until the new session's stream delivers, rather than an empty stream
   // panel. State, not a ref, so the render-time read below doesn't trip
   // `react-hooks/refs`.

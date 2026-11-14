@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
 import type { PipelineEvent } from '@/lib/events/pipeline-schema';
 import { isPipelineEvent } from '@/lib/events/pipeline-schema';
@@ -73,6 +73,12 @@ export const STREAM_LOOP_WINDOW_MS = 60_000;
  */
 export const STREAM_SETTLE_MS = 10_000;
 
+const NO_EVENTS: PipelineEvent[] = [];
+
+function getServerSessionSnapshot(): string | null {
+  return null;
+}
+
 const FAILING_ERROR = 'Live stream failing, still retrying';
 
 export interface UseEventStreamOptions {
@@ -110,12 +116,40 @@ export function useEventStream({
   // render would flash the panel's note and announce it. If there turns out
   // to be no session cookie, the effect reports `disconnected`.
   const [status, setStatus] = useState<ConnectionStatus>(enabled ? 'connecting' : 'disconnected');
-  const [events, setEvents] = useState<PipelineEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  // Incremented when the session cookie takes a new value, so the connect
-  // effect reopens the stream for the new session (see followSession below).
-  const [sessionChange, setSessionChange] = useState(0);
+
+  // The stream follows the session cookie. The session it connects under is
+  // read from the cookie store, so a new ID changes `session` in the same
+  // render that triggers the connect effect's cleanup and reconnect. A new
+  // value starts a new stream: the effect re-runs, so the loop history, the
+  // retry count and `failing` start over. It is sticky through a missing
+  // cookie: a deleted cookie keeps the last session until the site writes
+  // the next ID. `setSessionCookie` notifies on a change from this tab's last
+  // known value, and `session.ts` re-checks the jar when the tab is shown or
+  // focused, so a rotation made in another tab is followed too.
+  //
+  // Why (2026-11-14): a first visit's "Allow all" made Cookiebot delete
+  // `_iap_sid`, which its scan had filed as Unclassified, and the site's next
+  // `getSessionId()` minted a new ID. The stream stayed on the old ID and
+  // received nothing more until a reload. Ian reclassified the cookie as
+  // Necessary that day; the session still changes after 30 minutes idle.
+  const cookieSession = useSyncExternalStore(
+    subscribeSessionCookie,
+    readSessionCookie,
+    getServerSessionSnapshot,
+  );
+  const [lastSession, setLastSession] = useState<string | null>(null);
+  if (cookieSession && cookieSession !== lastSession) setLastSession(cookieSession);
+  const session = cookieSession ?? lastSession;
+
+  // The buffer records the session its events belong to. Events are returned
+  // only for the current session, so in the render where the session
+  // changes the old session's rows are already gone.
+  const [buffer, setBuffer] = useState<{ session: string | null; events: PipelineEvent[] }>({
+    session: null,
+    events: NO_EVENTS,
+  });
+  const events = buffer.session === session ? buffer.events : NO_EVENTS;
   // Incremented by the `online` event listener to force a fresh reconnect
   // after an offline period. Included in the connect-effect's dep array
   // so a bump triggers the effect's cleanup (closes prior EventSource,
@@ -134,7 +168,7 @@ export function useEventStream({
   // callbacks; read by the `online` listener.
   const gaveUpRef = useRef(false);
 
-  const clearEvents = useCallback(() => setEvents([]), []);
+  const clearEvents = useCallback(() => setBuffer((prev) => ({ ...prev, events: NO_EVENTS })), []);
 
   // D5: Online-event recovery. When the browser transitions offline
   // → online after the stream has given up, bump the retry trigger to force a
@@ -167,33 +201,20 @@ export function useEventStream({
       return;
     }
 
-    // The stream follows the session cookie. On a first visit, "Allow all"
-    // makes Cookiebot delete `_iap_sid` (2026-11-14: its scan files it as
-    // Unclassified), and the site's next `getSessionId()` mints a new ID. A
-    // stream left on the old ID would receive nothing more. A new value starts
-    // a new stream: this effect re-runs, so the loop history, the retry count
-    // and `failing` start over, and the old session's rows are cleared. A
-    // deleted cookie is ignored, since the site writes the next ID through
-    // `setSessionCookie`, which notifies; same-value writes do not notify.
-    function followSession(current: string | null): () => void {
-      return subscribeSessionCookie(() => {
-        const next = readSessionCookie();
-        if (!next || next === current) return;
-        if (current) setEvents([]);
-        setSessionChange((n) => n + 1);
-      });
+    if (!session) {
+      // Hydration renders with no cookie (the server has none), and the
+      // cookie store reports the real value a render later. A cookie the
+      // store has not reported yet is not a missing session.
+      if (!readSessionCookie()) setStatus('disconnected');
+      return;
     }
-
-    const cookieSession = readSessionCookie();
-    if (!cookieSession) {
-      setStatus('disconnected');
-      return followSession(null);
-    }
-    setSessionId(cookieSession);
-    const unfollowSession = followSession(cookieSession);
+    const connectionSession = session;
+    setBuffer((prev) =>
+      prev.session === connectionSession ? prev : { session: connectionSession, events: NO_EVENTS },
+    );
 
     const separator = url.includes('?') ? '&' : '?';
-    const fullUrl = `${url}${separator}session_id=${encodeURIComponent(cookieSession)}`;
+    const fullUrl = `${url}${separator}session_id=${encodeURIComponent(connectionSession)}`;
 
     let retryCount = 0;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
@@ -315,6 +336,7 @@ export function useEventStream({
       };
 
       es.onmessage = (event: MessageEvent) => {
+        if (closed) return;
         let parsed: unknown;
         try {
           parsed = JSON.parse(event.data as string);
@@ -322,11 +344,16 @@ export function useEventStream({
           return;
         }
         if (!isPipelineEvent(parsed)) return;
+        // The service routes by the payload's session_id; anything else is
+        // not this connection's session.
+        if (parsed.session_id !== connectionSession) return;
 
-        setEvents((prev) => {
+        setBuffer((prev) => {
+          // A message from a connection whose session has been replaced.
+          if (prev.session !== connectionSession) return prev;
           // Deduplicate by event_name + timestamp + page_path (catches both
           // Pub/Sub redelivery and duplicate GTM tags firing the same event)
-          const isDupe = prev.some(
+          const isDupe = prev.events.some(
             (e) =>
               e.event_name === parsed.event_name &&
               e.timestamp === parsed.timestamp &&
@@ -334,8 +361,12 @@ export function useEventStream({
           );
           if (isDupe) return prev;
 
-          const next = [parsed, ...prev];
-          return next.length > bufferSizeRef.current ? next.slice(0, bufferSizeRef.current) : next;
+          const next = [parsed, ...prev.events];
+          return {
+            session: prev.session,
+            events:
+              next.length > bufferSizeRef.current ? next.slice(0, bufferSizeRef.current) : next,
+          };
         });
       };
 
@@ -345,7 +376,6 @@ export function useEventStream({
     connect();
 
     return () => {
-      unfollowSession();
       closed = true;
       if (retryTimer) clearTimeout(retryTimer);
       stopFailTimer();
@@ -353,7 +383,7 @@ export function useEventStream({
       gaveUpRef.current = false;
       es?.close();
     };
-  }, [url, enabled, maxRetries, retryTrigger, sessionChange]);
+  }, [url, enabled, maxRetries, retryTrigger, session]);
 
-  return { status, events, error, clearEvents, sessionId };
+  return { status, events, error, clearEvents, sessionId: enabled ? session : null };
 }
