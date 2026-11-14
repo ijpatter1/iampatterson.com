@@ -6,15 +6,26 @@
  * party cookie is the honest baseline — localStorage is blocked from sGTM's
  * read path and breaks on subdomain hops.
  *
+ * Consent: the cookie is classified Statistics in Cookiebot (Ian, 2026-11-14),
+ * so it is written only while analytics consent is granted. Cookiebot
+ * statistics is the analytics consent `src/lib/events/track.ts` holds, and the
+ * caller passes that honored state in. Without it, nothing is minted, written
+ * or refreshed and the ID is the empty string: a visitor who declines, or has
+ * not chosen yet, carries no year-long identifier. On a decline Cookiebot
+ * deletes the cookie, and nothing here mints it again. On a grant
+ * `track.ts` mints the cookie, or reuses the one already there.
+ *
  * Cookie properties:
  * - Path: / (available on all routes)
  * - SameSite: Lax (sent on top-level navigations; not on cross-site)
- * - Max-Age: 31536000 (365 days; refreshed on every read for sliding window)
+ * - Max-Age: 31536000 (365 days; refreshed on every consented read for a
+ *   sliding window)
  * - Secure: only when on https origin (omitted on http://localhost dev)
  *
  * Categorized by `src/lib/identity/storage-categories.ts` as `app-identity`,
  * so it surfaces automatically in the Phase 10d D9 storage inspector
- * (Overview tab summary chip + Consent tab full per-key row).
+ * (Overview tab summary chip + Consent tab full per-key row) whenever it
+ * exists.
  */
 
 export const ANONYMOUS_ID_COOKIE_NAME = '_iap_aid';
@@ -35,13 +46,20 @@ function writeAnonymousIdCookie(id: string): void {
 }
 
 /**
- * Get the current anonymous ID, minting one if needed. Refreshes the cookie
- * max-age on every call (sliding 365-day window). SSR-safe — returns an
- * empty string when document is undefined; callers should treat that as
- * "not yet known" rather than a real ID.
+ * Get the current anonymous ID, honoring analytics consent.
+ *
+ * `analyticsGranted` must be the honored analytics consent from
+ * `getCurrentConsent()` in `src/lib/events/track.ts`, so there is one source
+ * of truth for it. When it is false, returns '' and touches no cookie. When it
+ * is true, mints an ID if needed and refreshes the cookie max-age (sliding
+ * 365-day window).
+ *
+ * SSR-safe: returns '' when document is undefined. Callers treat '' as "no
+ * ID", never as a real one.
  */
-export function getAnonymousId(): string {
+export function getAnonymousId(analyticsGranted: boolean): string {
   if (typeof document === 'undefined') return '';
+  if (!analyticsGranted) return '';
   const existing = readAnonymousIdCookie();
   const id = existing ?? crypto.randomUUID();
   writeAnonymousIdCookie(id);

@@ -57,6 +57,10 @@ function recordConsent(
     consent_marketing: honorGlobalPrivacyControl(marketing),
     consent_preferences: preferences,
   };
+  // `_iap_aid` is a Statistics cookie: a grant mints it now (or reuses the
+  // one already there), including for a returning visitor whose silent
+  // initConsentState pushes no event. Without the grant, nothing writes it.
+  getAnonymousId(currentConsent.consent_analytics);
   return currentConsent;
 }
 
@@ -153,7 +157,8 @@ function baseFields(): {
     timestamp: new Date().toISOString(),
     session_id: sid,
     iap_session_id: sid,
-    anonymous_id: getAnonymousId(),
+    // Empty without analytics consent: see `src/lib/identity/anonymous-id.ts`.
+    anonymous_id: getAnonymousId(currentConsent.consent_analytics),
     page_path: window.location.pathname,
     page_title: document.title,
     ...currentConsent,

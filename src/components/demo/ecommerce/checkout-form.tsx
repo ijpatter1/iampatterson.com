@@ -4,8 +4,8 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'reac
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-import { trackBeginCheckout, trackPurchase } from '@/lib/events/track';
-import { getAnonymousId } from '@/lib/identity/anonymous-id';
+import { getCurrentConsent, trackBeginCheckout, trackPurchase } from '@/lib/events/track';
+import { readAnonymousIdCookie } from '@/lib/identity/anonymous-id';
 import { useScrollToTopOnMount } from '@/hooks/useScrollToTopOnMount';
 import { useCart } from './cart-context';
 import { useToast } from '@/components/demo/reveal/toast-provider';
@@ -38,14 +38,11 @@ interface ClientMeta {
   pageLocation: string;
   pageReferrer: string;
   deviceCategory: 'mobile' | 'tablet' | 'desktop' | '';
-  /** Phase 10d D7: real `_iap_aid` value for the BQ row's user_pseudo_id. */
-  anonymousId: string;
 }
 const EMPTY_CLIENT_META: ClientMeta = {
   pageLocation: '',
   pageReferrer: '',
   deviceCategory: '',
-  anonymousId: '',
 };
 let clientMetaCache: ClientMeta | null = null;
 function deviceCategoryFromUA(ua: string): ClientMeta['deviceCategory'] {
@@ -66,12 +63,25 @@ function getClientMetaSnapshot(): ClientMeta {
     pageLocation: window.location.href,
     pageReferrer: typeof document !== 'undefined' ? document.referrer : '',
     deviceCategory: deviceCategoryFromUA(navigator.userAgent),
-    anonymousId: getAnonymousId(),
   };
   return clientMetaCache;
 }
 function getClientMetaServerSnapshot(): ClientMeta {
   return EMPTY_CLIENT_META;
+}
+
+// Phase 10d D7: the visitor's real `_iap_aid` for the BQ row's
+// user_pseudo_id. The cookie is a Statistics cookie (Ian, 2026-11-14), so
+// the preview shows it only while analytics consent is granted, read from
+// the same state the events use, and only reads it: minting and refreshing
+// belong to `track.ts`. Not cached, so a grant or a withdrawal shows on the
+// next render instead of freezing the first value.
+function getAnonymousIdSnapshot(): string {
+  if (!getCurrentConsent().consent_analytics) return '';
+  return readAnonymousIdCookie() ?? '';
+}
+function getAnonymousIdServerSnapshot(): string {
+  return '';
 }
 
 /**
@@ -105,10 +115,15 @@ export function CheckoutForm() {
     [searchParams],
   );
   const utmClassification = useMemo(() => classifyUtm(utmMeta.value), [utmMeta.value]);
-  const { pageLocation, pageReferrer, deviceCategory, anonymousId } = useSyncExternalStore(
+  const { pageLocation, pageReferrer, deviceCategory } = useSyncExternalStore(
     subscribeClientMeta,
     getClientMetaSnapshot,
     getClientMetaServerSnapshot,
+  );
+  const anonymousId = useSyncExternalStore(
+    subscribeClientMeta,
+    getAnonymousIdSnapshot,
+    getAnonymousIdServerSnapshot,
   );
   const toastedRef = useRef(false);
   const checkoutFiredRef = useRef(false);

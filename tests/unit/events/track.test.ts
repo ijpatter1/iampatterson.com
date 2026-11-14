@@ -37,29 +37,6 @@ describe('trackPageView', () => {
       session_id: 'test-session-id',
     });
   });
-
-  // Phase 10d D7: every event carries `anonymous_id` from the `_iap_aid`
-  // first-party cookie alongside the session-scoped `session_id`. The base
-  // fields helper threads it through automatically, so this regression
-  // pin on page_view also covers every other tracker that uses baseFields().
-  it('threads anonymous_id from the _iap_aid cookie into the data-layer push', () => {
-    document.cookie = '_iap_aid=test-anon-uuid; Path=/';
-    trackPageView('/');
-    expect(window.dataLayer[0]).toMatchObject({
-      event: 'page_view',
-      anonymous_id: 'test-anon-uuid',
-    });
-  });
-
-  it('mints a fresh anonymous_id on first call when the _iap_aid cookie is empty', () => {
-    // Cookie cleared by beforeEach. The file-level crypto.randomUUID mock returns
-    // 'test-session-id' for every call, so the freshly-minted anonymous_id ends
-    // up as that same value — the assertion proves "mint happened" rather than
-    // pinning a real UUID format.
-    trackPageView('/');
-    const event = window.dataLayer[0] as { anonymous_id: string };
-    expect(event.anonymous_id).toBe('test-session-id');
-  });
 });
 
 describe('trackClickNav', () => {
@@ -506,5 +483,132 @@ describe('trackPageEngagement (Phase 10d D3)', () => {
     expect(
       (window.dataLayer as Array<{ engagement_seconds: number }>).map((e) => e.engagement_seconds),
     ).toEqual([15, 60, 180]);
+  });
+});
+
+// `_iap_aid` is the cross-session visitor ID: a random UUID in a first-party
+// cookie with a 365-day sliding expiry. Ian classified it Statistics in
+// Cookiebot on 2026-11-14, and Cookiebot statistics is the analytics consent
+// this module holds. A visitor who declines analytics, or has not chosen yet,
+// must carry no year-long ID: the site neither mints, writes nor refreshes the
+// cookie, and events carry an empty anonymous_id.
+describe('anonymous_id follows analytics consent', () => {
+  let aidWrites: string[];
+  const cookieDescriptor = Object.getOwnPropertyDescriptor(Document.prototype, 'cookie')!;
+  const readAid = () =>
+    document.cookie
+      .split('; ')
+      .find((c) => c.startsWith('_iap_aid='))
+      ?.slice('_iap_aid='.length) ?? null;
+  // Cookiebot removes a Statistics cookie when the visitor declines.
+  const cookiebotDeletes = () => {
+    document.cookie = '_iap_aid=; Max-Age=0; Path=/';
+    aidWrites.length = 0;
+  };
+  const lastEvent = () => window.dataLayer[window.dataLayer.length - 1] as { anonymous_id: string };
+
+  beforeEach(() => {
+    initConsentState(false, false, false);
+    aidWrites = [];
+    Object.defineProperty(document, 'cookie', {
+      configurable: true,
+      get: () => cookieDescriptor.get!.call(document),
+      set: (v: string) => {
+        if (v.startsWith('_iap_aid=')) aidWrites.push(v);
+        cookieDescriptor.set!.call(document, v);
+      },
+    });
+  });
+  afterEach(() => {
+    delete (document as unknown as { cookie?: string }).cookie;
+    delete (navigator as unknown as { globalPrivacyControl?: unknown }).globalPrivacyControl;
+    initConsentState(false, false, false);
+  });
+
+  it('gives a visitor who has not chosen yet no ID and no cookie', () => {
+    // A fresh module: no banner choice has reached this page at all.
+    jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const fresh = require('@/lib/events/track') as typeof import('@/lib/events/track');
+      fresh.trackPageView('/');
+    });
+    expect(lastEvent().anonymous_id).toBe('');
+    expect(aidWrites).toEqual([]);
+    expect(readAid()).toBeNull();
+  });
+
+  it('gives a visitor who declines analytics no ID and no cookie', () => {
+    trackConsentUpdate(false, true, true);
+    trackPageView('/');
+    expect(window.dataLayer.map((e) => (e as { anonymous_id: string }).anonymous_id)).toEqual([
+      '',
+      '',
+    ]);
+    expect(aidWrites).toEqual([]);
+    expect(readAid()).toBeNull();
+  });
+
+  it('neither refreshes nor re-mints a cookie Cookiebot deletes on decline', () => {
+    document.cookie = '_iap_aid=left-from-earlier; Path=/';
+    aidWrites.length = 0;
+    trackConsentUpdate(false, false, false);
+    expect(lastEvent().anonymous_id).toBe('');
+    expect(aidWrites).toEqual([]);
+    cookiebotDeletes();
+    trackPageView('/');
+    trackClickNav('Services', '/services');
+    expect(lastEvent().anonymous_id).toBe('');
+    expect(aidWrites).toEqual([]);
+    expect(readAid()).toBeNull();
+  });
+
+  it('mints the cookie when analytics is granted and every later event carries it', () => {
+    trackConsentUpdate(true, false, false);
+    const minted = readAid();
+    expect(minted).toBeTruthy();
+    expect(lastEvent().anonymous_id).toBe(minted);
+    trackPageView('/');
+    expect(lastEvent().anonymous_id).toBe(minted);
+  });
+
+  it('mints the cookie for a returning visitor whose stored choice granted analytics', () => {
+    // initConsentState pushes no event, so the grant itself must mint.
+    initConsentState(true, false, false);
+    expect(readAid()).toBeTruthy();
+  });
+
+  it('reuses an ID the visitor already has when analytics is granted', () => {
+    document.cookie = '_iap_aid=test-anon-uuid; Path=/';
+    initConsentState(true, false, false);
+    trackPageView('/');
+    expect(lastEvent().anonymous_id).toBe('test-anon-uuid');
+    expect(readAid()).toBe('test-anon-uuid');
+  });
+
+  it('stops writing the cookie once the visitor withdraws analytics', () => {
+    trackConsentUpdate(true, true, true);
+    expect(readAid()).toBeTruthy();
+    trackConsentUpdate(false, false, false);
+    expect(lastEvent().anonymous_id).toBe('');
+    cookiebotDeletes();
+    trackPageView('/');
+    trackFormStart('contact');
+    expect(lastEvent().anonymous_id).toBe('');
+    expect(aidWrites).toEqual([]);
+    expect(readAid()).toBeNull();
+  });
+
+  // Global Privacy Control overrides marketing only; analytics keeps following
+  // the banner. The ID follows the honored analytics choice, never marketing.
+  it('follows the honored analytics choice when Global Privacy Control is on', () => {
+    Object.defineProperty(navigator, 'globalPrivacyControl', { value: true, configurable: true });
+    trackConsentUpdate(false, true, false);
+    expect(lastEvent().anonymous_id).toBe('');
+    expect(aidWrites).toEqual([]);
+
+    trackConsentUpdate(true, true, true);
+    expect(lastEvent()).toMatchObject({ consent_marketing: false, consent_analytics: true });
+    expect(lastEvent().anonymous_id).toBe(readAid());
+    expect(readAid()).toBeTruthy();
   });
 });

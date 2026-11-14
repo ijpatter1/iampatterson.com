@@ -19,9 +19,15 @@ jest.mock('next/navigation', () => ({
 
 const mockBeginCheckout = jest.fn();
 const mockPurchase = jest.fn();
+let mockAnalyticsConsent = false;
 jest.mock('@/lib/events/track', () => ({
   trackBeginCheckout: (...a: unknown[]) => mockBeginCheckout(...a),
   trackPurchase: (...a: unknown[]) => mockPurchase(...a),
+  getCurrentConsent: () => ({
+    consent_analytics: mockAnalyticsConsent,
+    consent_marketing: false,
+    consent_preferences: false,
+  }),
 }));
 
 const mockSession = jest.fn();
@@ -355,6 +361,62 @@ describe('CheckoutForm (Phase 9F D8)', () => {
       // Seed has analytics=granted, marketing=denied.
       expect(sidebar?.textContent).toMatch(/granted/);
       expect(sidebar?.textContent).toMatch(/denied/);
+    });
+  });
+
+  // `_iap_aid` is classified Statistics in Cookiebot (Ian, 2026-11-14). The
+  // warehouse-write preview shows it as user_pseudo_id, so it follows the same
+  // rule as the events: a visitor without analytics consent has no year-long
+  // ID shown, minted or refreshed by this page.
+  describe('user_pseudo_id follows analytics consent', () => {
+    const pseudoIdCell = () => {
+      const keyCell = Array.from(document.querySelectorAll('aside[data-live-sidebar] span')).find(
+        (el) => el.textContent === 'user_pseudo_id',
+      );
+      return keyCell?.nextElementSibling?.textContent;
+    };
+    let aidWrites: string[];
+    const cookieDescriptor = Object.getOwnPropertyDescriptor(Document.prototype, 'cookie')!;
+
+    beforeEach(() => {
+      document.cookie = '_iap_aid=; Max-Age=0; Path=/';
+      aidWrites = [];
+      Object.defineProperty(document, 'cookie', {
+        configurable: true,
+        get: () => cookieDescriptor.get!.call(document),
+        set: (v: string) => {
+          if (v.startsWith('_iap_aid=')) aidWrites.push(v);
+          cookieDescriptor.set!.call(document, v);
+        },
+      });
+    });
+    afterEach(() => {
+      delete (document as unknown as { cookie?: string }).cookie;
+      document.cookie = '_iap_aid=; Max-Age=0; Path=/';
+      mockAnalyticsConsent = false;
+    });
+
+    it('shows NULL and writes no cookie while analytics consent is not granted', () => {
+      mockAnalyticsConsent = false;
+      renderCheckout();
+      expect(pseudoIdCell()).toBe('NULL');
+      expect(aidWrites).toEqual([]);
+    });
+
+    it('does not show or refresh a cookie left from an earlier grant once analytics is declined', () => {
+      document.cookie = '_iap_aid=aid12345-6789-4def-8abc-feedfacefeed; Path=/';
+      aidWrites.length = 0;
+      mockAnalyticsConsent = false;
+      renderCheckout();
+      expect(pseudoIdCell()).toBe('NULL');
+      expect(aidWrites).toEqual([]);
+    });
+
+    it("shows the visitor's own ID once analytics consent is granted", () => {
+      document.cookie = '_iap_aid=aid12345-6789-4def-8abc-feedfacefeed; Path=/';
+      mockAnalyticsConsent = true;
+      renderCheckout();
+      expect(pseudoIdCell()).toBe('"aid12345…"');
     });
   });
 

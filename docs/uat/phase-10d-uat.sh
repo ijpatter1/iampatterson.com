@@ -524,7 +524,11 @@ do_step "Clear all cookies for the origin."
 do_step "Navigate to $BASE_URL/"
 open_url "$BASE_URL/"
 
-do_step "Wait ~2 seconds for cookies to mint, then refresh the Application tab."
+do_step "Before choosing in the Cookiebot banner, refresh the Application tab."
+expect \
+  "No '_iap_aid' cookie: it is a Statistics cookie, written only with analytics consent (2026-11-14)"
+
+do_step "Allow Statistics in the Cookiebot banner ('Allow all'), wait ~2 seconds, then refresh the Application tab."
 expect \
   "Cookie '_iap_aid' exists" \
   "Value is a UUID v4 (8-4-4-4-12 hex pattern)" \
@@ -642,7 +646,7 @@ expect \
 do_step "Switch to Consent tab → scroll to the storage inspector section."
 expect \
   "Per-key inspector with category groupings" \
-  "_iap_aid + _iap_sid both visible under app-identity" \
+  "_iap_aid + _iap_sid both visible under app-identity (_iap_aid only if Statistics is allowed)" \
   "CookieConsent (Cookiebot) cookie visible under cmp" \
   "Click-to-reveal: clicking a row expands to show the full value" \
   "Cookie expiry / domain / path show 'not readable from document.cookie' footnote"
@@ -709,12 +713,13 @@ do_step "Switch back to Consent tab → storage inspector."
 expect \
   "Analytics-category storage entries are absent or marked as denied" \
   "Marketing-category storage entries are absent" \
-  "_iap_aid + _iap_sid (necessary / app-identity) still present"
+  "_iap_sid (app-identity) still present" \
+  "_iap_aid absent: a Statistics cookie, deleted by Cookiebot on decline and not minted again"
 
 confirm "Consent UI honestly reflects the denial (× glyph + persimmon for declined categories)?"
 confirm "Timeline routing shows 'Blocked' destinations after consent denial?"
 confirm "Network tab confirms zero analytics / marketing pixels fired?"
-confirm "Necessary cookies (_iap_aid, _iap_sid) still present despite denial of other categories?"
+confirm "_iap_sid still present and _iap_aid absent after the denial?"
 
 # ────────────────────────────────────────────────────────────────────────
 # Edge case B — full ecommerce funnel sweep with all D8/D9 tokens visible

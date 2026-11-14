@@ -48,28 +48,28 @@ describe('readAnonymousIdCookie', () => {
   });
 });
 
-describe('getAnonymousId', () => {
+describe('getAnonymousId with analytics consent granted', () => {
   it('mints a new UUID on first call when the cookie is empty', () => {
-    const id = getAnonymousId();
+    const id = getAnonymousId(true);
     expect(id).toMatch(/^aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeee\d{2}$/);
   });
 
   it('persists the minted UUID to the cookie', () => {
-    const id = getAnonymousId();
+    const id = getAnonymousId(true);
     expect(readAnonymousIdCookie()).toBe(id);
   });
 
   it('returns the same value on subsequent calls (idempotent)', () => {
-    const first = getAnonymousId();
-    const second = getAnonymousId();
-    const third = getAnonymousId();
+    const first = getAnonymousId(true);
+    const second = getAnonymousId(true);
+    const third = getAnonymousId(true);
     expect(first).toBe(second);
     expect(second).toBe(third);
   });
 
   it('reads the existing value if the cookie was set before this call', () => {
     document.cookie = `${ANONYMOUS_ID_COOKIE_NAME}=preexisting-anon-id; Path=/`;
-    expect(getAnonymousId()).toBe('preexisting-anon-id');
+    expect(getAnonymousId(true)).toBe('preexisting-anon-id');
   });
 
   it('writes the cookie with Max-Age=31536000 (365 days)', () => {
@@ -90,7 +90,7 @@ describe('getAnonymousId', () => {
       },
     });
     try {
-      getAnonymousId();
+      getAnonymousId(true);
       expect(writtenCookie).toContain('SameSite=Lax');
       expect(writtenCookie).toContain('Path=/');
       expect(writtenCookie).toContain(`Max-Age=${ANONYMOUS_ID_MAX_AGE}`);
@@ -119,7 +119,7 @@ describe('getAnonymousId', () => {
       },
     });
     try {
-      getAnonymousId();
+      getAnonymousId(true);
       // The write should still have the full Max-Age attribute even when
       // the value didn't change — sliding window keeps the cookie from
       // expiring during long-lived visitor lifecycles.
@@ -127,6 +127,54 @@ describe('getAnonymousId', () => {
       expect(writtenCookie).toContain('existing');
     } finally {
       if (cookieDescriptor) Object.defineProperty(document, 'cookie', cookieDescriptor);
+    }
+  });
+});
+
+// `_iap_aid` is classified Statistics in Cookiebot (Ian, 2026-11-14). A visitor
+// who has declined analytics, or not chosen yet, must carry no year-long
+// identifier: the helper neither mints, writes nor refreshes the cookie, and
+// hands events an empty ID instead.
+describe('getAnonymousId without analytics consent', () => {
+  function recordCookieWrites(): { writes: string[]; restore: () => void } {
+    const writes: string[] = [];
+    const descriptor = Object.getOwnPropertyDescriptor(Document.prototype, 'cookie')!;
+    Object.defineProperty(document, 'cookie', {
+      configurable: true,
+      get: () => descriptor.get!.call(document),
+      set: (v: string) => {
+        writes.push(v);
+        descriptor.set!.call(document, v);
+      },
+    });
+    return {
+      writes,
+      restore: () => {
+        delete (document as unknown as { cookie?: string }).cookie;
+      },
+    };
+  }
+
+  it('returns an empty ID and mints no cookie for a visitor without one', () => {
+    const { writes, restore } = recordCookieWrites();
+    try {
+      expect(getAnonymousId(false)).toBe('');
+      expect(writes.filter((w) => w.startsWith(`${ANONYMOUS_ID_COOKIE_NAME}=`))).toEqual([]);
+      expect(readAnonymousIdCookie()).toBeNull();
+    } finally {
+      restore();
+    }
+  });
+
+  it('neither returns nor refreshes a cookie left from an earlier grant', () => {
+    // Refreshing would push a declined visitor's 365-day expiry forward.
+    document.cookie = `${ANONYMOUS_ID_COOKIE_NAME}=left-from-grant; Path=/`;
+    const { writes, restore } = recordCookieWrites();
+    try {
+      expect(getAnonymousId(false)).toBe('');
+      expect(writes).toEqual([]);
+    } finally {
+      restore();
     }
   });
 });

@@ -223,7 +223,7 @@ What that costs, recorded rather than discovered later:
 | Cookiebot Category | gtag Signal(s) | Controls |
 |---|---|---|
 | Necessary | (always granted; not bridged) | sGTM base event routing |
-| Statistics | `analytics_storage` | GA4, BigQuery event sink |
+| Statistics | `analytics_storage` | GA4, BigQuery event sink, the `_iap_aid` visitor ID |
 | Marketing | `ad_storage`, `ad_user_data`, `ad_personalization` | Meta CAPI, Google Ads (simulated) |
 | Preferences | `functionality_storage`, `personalization_storage` | Personalization features |
 | (no Cookiebot mapping) | `security_storage` | Always granted; covers fraud-prevention / security-essential storage that doesn't carry tracking |
@@ -705,6 +705,8 @@ src/components/overlay/
 **Cookie metadata limitation.** `document.cookie` exposes only `name=value` pairs to JavaScript. Cookie expiry, domain, path, Secure, and SameSite metadata are NOT readable for cookies set by other tags. Cookie Store API would expose this but is Chrome-only and not yet in Safari/Firefox stable; the inspector defers Cookie-Store-API enhancement as a follow-up, surfacing the limitation as a footnote in the meantime. This itself is a moment of "make the invisible visible" — visitors learn that JavaScript can't see all cookie state.
 
 **D7 dependency inversion.** Original D7 spec required a one-off `_iap_aid` surface in the Overview portals-and-state block. With D9 in place, D7 reduces to: mint the cookie, classify it under "App identity" via a one-line entry in `storage-categories.ts`, thread `anonymous_id` into `BaseEvent`/`buildBaseEvent`. The Overview chip + Consent row appear automatically because the inspector reads the cookie jar generically.
+
+**`_iap_aid` consent (2026-11-14).** `_iap_aid` is a random UUID in a first-party cookie with a 365-day sliding expiry. Ian classified it Statistics in Cookiebot on 2026-11-14, so the site writes it only while analytics consent is granted, reading the honored analytics state `track.ts` holds (Global Privacy Control does not change analytics). A grant mints the cookie, or reuses the one already there, in `recordConsent`, which covers both a new choice and a returning visitor's stored one. Each event then refreshes it. Before a choice, after a decline and after a withdrawal, nothing mints, writes or refreshes it, and events carry `anonymous_id: ''`. Cookiebot deletes the cookie on a decline, and the site does not mint it again. The storage inspector shows the row only while the cookie exists. The checkout's warehouse-write preview reads the cookie under the same rule and never writes it. Downstream, `anonymous_id` is not mapped by the sGTM Pub/Sub template, the GTM containers, `infrastructure/bigquery/schema.json` or any Dataform model, so the empty value reaches no table.
 
 **What's deliberately unchanged.** Existing Overview portals-and-state block layout (a new section is appended), existing Consent destination chips + headers (a new section is appended below them), the `u-accept` / `u-deny` semantic-token palette from D8.j (the inspector reuses `u-accept` for newly-written-key highlight). The SSE pipeline + event schema are unchanged — the inspector is a new client-side surface with no event-pipeline integration; it doesn't push events of its own (read-only by design also means observer-only — visitor watching their own storage shouldn't fire telemetry).
 
