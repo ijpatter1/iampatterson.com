@@ -48,7 +48,7 @@ describe('StorageSummary', () => {
     render(
       <StorageSummary
         snapshot={snap([
-          { name: '_iap_aid', value: 'x', source: 'cookie', category: 'app-identity' },
+          { name: '_iap_aid', value: 'x', source: 'cookie', category: 'analytics' },
           { name: '_iap_sid', value: 'x', source: 'cookie', category: 'app-identity' },
           {
             name: 'iampatterson.session_state',
@@ -61,8 +61,8 @@ describe('StorageSummary', () => {
         ])}
       />,
     );
-    expect(screen.getByTestId('storage-chip-app-identity')).toHaveAttribute('data-key-count', '3');
-    expect(screen.getByTestId('storage-chip-analytics')).toHaveAttribute('data-key-count', '1');
+    expect(screen.getByTestId('storage-chip-app-identity')).toHaveAttribute('data-key-count', '2');
+    expect(screen.getByTestId('storage-chip-analytics')).toHaveAttribute('data-key-count', '2');
     expect(screen.getByTestId('storage-chip-consent')).toHaveAttribute('data-key-count', '1');
     expect(screen.getByTestId('storage-chip-third-party')).toHaveAttribute('data-key-count', '0');
   });
@@ -71,8 +71,13 @@ describe('StorageSummary', () => {
     render(
       <StorageSummary
         snapshot={snap([
-          { name: '_iap_aid', value: 'x', source: 'cookie', category: 'app-identity' },
           { name: '_iap_sid', value: 'x', source: 'cookie', category: 'app-identity' },
+          {
+            name: 'iampatterson.session_state',
+            value: 'x',
+            source: 'sessionStorage',
+            category: 'app-identity',
+          },
         ])}
       />,
     );
