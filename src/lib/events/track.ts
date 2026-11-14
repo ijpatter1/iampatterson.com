@@ -29,9 +29,9 @@ let currentConsent = {
 /**
  * `_iap_aid`, the 365-day visitor ID, is a Statistics cookie (Ian,
  * 2026-11-14): it exists only while analytics consent is granted. These
- * writers are private to this module and called only from
- * `applyAnonymousIdConsent`, so nothing can mint the ID without the visitor's
- * consent. See `src/lib/identity/anonymous-id.ts`.
+ * writers are private to this module. Only `applyAnonymousIdConsent` mints,
+ * on a grant; `expireAnonymousIdLeftover` can only expire. So nothing can mint
+ * the ID without the visitor's consent. See `src/lib/identity/anonymous-id.ts`.
  */
 function anonymousIdCookie(value: string, maxAge: number): string {
   const secure = globalThis.location?.protocol === 'https:' ? '; Secure' : '';
@@ -133,9 +133,10 @@ function recordConsent(
 }
 
 /**
- * The one place `_iap_aid` is written, run after the consent has reached
- * Google (the gtag update, and the consent_update push for a choice), so
- * nothing here can hold that up.
+ * One of the two places `_iap_aid` is written; the other is
+ * expireAnonymousIdLeftover, which only expires it. Runs after the consent
+ * has reached Google (the gtag update, and the consent_update push for a
+ * choice), so nothing here can hold that up.
  *
  * - Granted: mint the cookie, or reuse and refresh the one already there,
  *   including for a returning visitor whose silent initConsentState pushes no
@@ -201,9 +202,10 @@ function bridgeToGtagConsent(analytics: boolean, marketing: boolean, preferences
 
 /**
  * Expire a leftover `_iap_aid`, and do nothing else: no consent is recorded
- * and no gtag update is sent. For CookiebotOnLoad without an answer (a visitor
- * who has never chosen, where Cookiebot does not report statistics granted):
- * production minted the cookie for every visitor until 2026-11-14. A no-op
+ * and no gtag update is sent. For a visitor Cookiebot reports as never chosen
+ * (`hasResponse === false`, on mount or CookiebotOnDialogInit) where it does
+ * not report statistics granted: production minted the cookie for every
+ * visitor until 2026-11-14. A no-op
  * while this module holds analytics consent, so it can never remove a
  * consented ID.
  */

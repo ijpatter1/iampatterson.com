@@ -17,7 +17,10 @@
  * `geo_country`, `device_category`, `ingested_at`), and the consent flags
  * show as BOOL, as stored. The row then became a true purchase row
  * (`event_name` 'purchase', `order_id` and `order_total` in place of
- * `cart_total`), and `utm_source` shows the raw URL parameter.
+ * `cart_total`). `utm_source` and `utm_campaign` always show NULL, as a
+ * real-site row stores them: nothing in the tag setup sends utm_* (measured
+ * in BigQuery 2026-11-14; only the data generator fills them).
+ * `page_referrer` shows NULL when the visitor has no referrer.
  */
 
 export interface BQColumn {
@@ -46,13 +49,13 @@ export const BQ_ROW_COLUMNS: BQColumn[] = [
   { k: 'client_id', v: '"GA1.1.4821…"', type: 'STRING' },
   { k: 'page_location', v: '".../checkout"', type: 'STRING' },
   { k: 'page_path', v: '"/demo/ecommerce/checkout"', type: 'STRING' },
-  { k: 'page_referrer', v: '".../cart"', type: 'STRING' },
+  { k: 'page_referrer', v: 'NULL', type: 'STRING' },
   { k: 'order_id', v: '"ORD-LX3K9Q2A"', type: 'STRING' },
   { k: 'order_total', v: '84.00', type: 'FLOAT64' },
   { k: 'item_count', v: '3', type: 'INT64' },
   { k: 'products', v: `"${SEED_PRODUCTS}"`, type: 'STRING' },
-  { k: 'utm_source', v: '"meta"', type: 'STRING' },
-  { k: 'utm_campaign', v: '"prospecting_lal_tuna_q1"', type: 'STRING' },
+  { k: 'utm_source', v: 'NULL', type: 'STRING' },
+  { k: 'utm_campaign', v: 'NULL', type: 'STRING' },
   { k: 'consent_analytics', v: 'true', type: 'BOOL' },
   { k: 'consent_marketing', v: 'false', type: 'BOOL' },
 ];
@@ -70,12 +73,6 @@ export interface LiveCheckoutContext {
   pageLocation?: string;
   /** document.referrer, honest about where the visitor came from. */
   pageReferrer?: string;
-  /** Resolved utm_campaign (either URL param or "" when absent). */
-  utmCampaign?: string;
-  /** Whether utmCampaign came from the visitor's URL (vs fallback seed). */
-  utmIsLive?: boolean;
-  /** The raw utm_source URL parameter, as events_raw stores it ('' when absent). */
-  utmSource?: string;
 }
 
 /**
@@ -111,11 +108,6 @@ export function bqRowForCart(params: {
     params.live?.pageReferrer && params.live.pageReferrer.length > 0
       ? params.live.pageReferrer
       : null;
-  // utm_* substitute only when the visitor's URL actually carried a
-  // utm_campaign. Otherwise the seed stays and we surface the "example"
-  // framing via the readout header (same honesty pattern as the
-  // listing-hero UTM panel).
-  const utmLive = params.live?.utmIsLive === true;
 
   return BQ_ROW_COLUMNS.map((c) => {
     if (c.k === 'order_id' && params.orderId) return { ...c, v: `"${params.orderId}"` };
@@ -136,14 +128,6 @@ export function bqRowForCart(params: {
     }
     if (c.k === 'page_location' && pageLoc) return { ...c, v: `"${pageLoc}"` };
     if (c.k === 'page_referrer' && pageRef) return { ...c, v: `"${pageRef}"` };
-    if (c.k === 'utm_campaign' && utmLive && params.live?.utmCampaign) {
-      return { ...c, v: `"${params.live.utmCampaign}"` };
-    }
-    // Raw parameter, or NULL when the URL had none: with a live utm_campaign
-    // the utm values are real, so a missing one is a NULL column, not a seed.
-    if (c.k === 'utm_source' && utmLive) {
-      return { ...c, v: params.live?.utmSource ? `"${params.live.utmSource}"` : 'NULL' };
-    }
     return c;
   });
 }

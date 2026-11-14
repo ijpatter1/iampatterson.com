@@ -125,7 +125,6 @@ describe('bqRowForCart', () => {
     const rows = bqRowForCart({ total: 0, itemCount: 0, products: CART_PRODUCTS });
     const sid = rows.find((c) => c.k === 'session_id');
     expect(sid?.v).toBe('"ses_x9b2jk3q"'); // seed
-    expect(rows.find((c) => c.k === 'utm_source')?.v).toBe('"meta"');
   });
 
   // UAT r1 items 11 + 13, checkout sidebar advertised as live but all
@@ -195,49 +194,31 @@ describe('bqRowForCart', () => {
       );
     });
 
-    // events_raw stores the raw utm_source parameter (e.g. "facebook"), not
-    // the demo taxonomy's classified source, so the preview shows the raw one.
-    it('shows the raw utm_source from the URL when the URL carried a utm_campaign', () => {
+    // A real-site row never carries utm_* (measured in BigQuery 2026-11-14:
+    // nothing in the tag setup sends them; only the data generator fills
+    // them), so the preview shows NULL, whatever the URL carried.
+    it('shows utm_source and utm_campaign as NULL, as a real-site row stores them', () => {
       const rows = bqRowForCart({
         total: 0,
         itemCount: 0,
         products: CART_PRODUCTS,
-        live: {
-          utmIsLive: true,
-          utmCampaign: 'google_brand_tuna',
-          utmSource: 'facebook',
-        },
-      });
-      expect(rows.find((c) => c.k === 'utm_campaign')?.v).toBe('"google_brand_tuna"');
-      expect(rows.find((c) => c.k === 'utm_source')?.v).toBe('"facebook"');
-    });
-
-    it('shows utm_source as NULL when the URL had a utm_campaign but no utm_source', () => {
-      // The other utm values are real, so the small print does not call them
-      // examples; a missing parameter is a NULL column, not a seed.
-      const rows = bqRowForCart({
-        total: 0,
-        itemCount: 0,
-        products: CART_PRODUCTS,
-        live: { utmIsLive: true, utmCampaign: 'google_brand_tuna', utmSource: '' },
+        live: { sessionId: 'abc12345-6789-4def-8abc-deadbeefcafe' },
       });
       expect(rows.find((c) => c.k === 'utm_source')?.v).toBe('NULL');
+      expect(rows.find((c) => c.k === 'utm_campaign')?.v).toBe('NULL');
     });
 
-    it('leaves utm_* as seed when utmIsLive=false (honest about example data)', () => {
+    it('shows page_referrer as NULL when the visitor has no referrer', () => {
       const rows = bqRowForCart({
         total: 0,
         itemCount: 0,
         products: CART_PRODUCTS,
         live: {
-          utmIsLive: false,
-          utmCampaign: 'meta_prospecting_lal_tuna_q1', // seed value
-          utmSource: 'facebook',
+          pageLocation: 'https://iampatterson.com/demo/ecommerce/checkout',
+          pageReferrer: '',
         },
       });
-      // Seed row values preserve (unchanged from BQ_ROW_COLUMNS defaults).
-      expect(rows.find((c) => c.k === 'utm_campaign')?.v).toBe('"prospecting_lal_tuna_q1"');
-      expect(rows.find((c) => c.k === 'utm_source')?.v).toBe('"meta"');
+      expect(rows.find((c) => c.k === 'page_referrer')?.v).toBe('NULL');
     });
   });
 });

@@ -29,7 +29,9 @@ describe('CookiebotConsentListener', () => {
     render(<CookiebotConsentListener />);
     expect(addSpy).toHaveBeenCalledWith('CookiebotOnAccept', expect.any(Function));
     expect(addSpy).toHaveBeenCalledWith('CookiebotOnDecline', expect.any(Function));
-    expect(addSpy).toHaveBeenCalledWith('CookiebotOnLoad', expect.any(Function));
+    // The never-chosen cleanup: CookiebotOnLoad never fires for that visitor.
+    expect(addSpy).toHaveBeenCalledWith('CookiebotOnDialogInit', expect.any(Function));
+    expect(addSpy).not.toHaveBeenCalledWith('CookiebotOnLoad', expect.any(Function));
     addSpy.mockRestore();
   });
 
@@ -105,7 +107,7 @@ describe('CookiebotConsentListener', () => {
     unmount();
     expect(removeSpy).toHaveBeenCalledWith('CookiebotOnAccept', expect.any(Function));
     expect(removeSpy).toHaveBeenCalledWith('CookiebotOnDecline', expect.any(Function));
-    expect(removeSpy).toHaveBeenCalledWith('CookiebotOnLoad', expect.any(Function));
+    expect(removeSpy).toHaveBeenCalledWith('CookiebotOnDialogInit', expect.any(Function));
     removeSpy.mockRestore();
   });
 });
