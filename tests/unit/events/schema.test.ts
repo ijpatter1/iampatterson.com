@@ -31,6 +31,37 @@ const bigQueryColumns = JSON.parse(
   readFileSync(join(__dirname, '../../../infrastructure/bigquery/schema.json'), 'utf8'),
 ) as { name: string; description: string }[];
 
+/** The values 15.4 retired, which older BigQuery rows still carry. */
+const RETIRED_CTA_LOCATIONS = [
+  'hero',
+  'final_cta',
+  'demo_card_ecommerce',
+  'pipeline_see_your_session',
+  'review',
+  'proof',
+];
+
+const ctaDescription = () => bigQueryColumns.find((c) => c.name === 'cta_location')!.description;
+
+/** The two lists in the cta_location description, read as lists only. */
+function ctaLists(description: string): { current: string[]; retired: string[] } {
+  const list = (label: string) => {
+    const match = description.match(new RegExp(`${label}: ([a-z0-9_]+(?:, [a-z0-9_]+)*)\\.`));
+    return match ? match[1].split(', ') : [];
+  };
+  return {
+    current: list('Current values \\(15\\.4\\)'),
+    retired: list('Retired values, still in older rows'),
+  };
+}
+
+function compareWithUnion(described: string[], union: string[]) {
+  return {
+    notInUnion: described.filter((v) => !union.includes(v)),
+    notInDescription: union.filter((v) => !described.includes(v)),
+  };
+}
+
 const baseFields = {
   iap_source: true,
   timestamp: '2026-03-26T12:00:00.000Z',
@@ -132,32 +163,41 @@ describe('Event schema types', () => {
     };
     expect(Object.keys(all)).toHaveLength(23);
 
-    // The schema checklist: the BigQuery column says what the values are.
-    // Whole tokens, so `hero` can't pass on the strength of `hero_review`.
-    const column = bigQueryColumns.find((c) => c.name === 'cta_location')!;
-    const [current, retired] = column.description.split('Older rows');
-    const tokens = (text: string) => new Set(text.match(/[a-z0-9_]+/g) ?? []);
-    const currentTokens = tokens(current);
-    for (const value of Object.keys(all)) {
-      expect([value, currentTokens.has(value)]).toEqual([value, true]);
-    }
-    // And the retired values are documented as retired, also whole tokens.
-    // Preview deploys emitted `review` and `proof` before 15.4 split them.
-    const retiredTokens = tokens(retired ?? '');
-    for (const value of [
-      'hero',
-      'final_cta',
-      'demo_card_ecommerce',
-      'pipeline_see_your_session',
-      'review',
-      'proof',
-    ]) {
-      expect([value, retiredTokens.has(value), currentTokens.has(value)]).toEqual([
-        value,
-        true,
-        false,
-      ]);
-    }
+    // The schema checklist: the BigQuery column lists exactly the union.
+    const { current, retired } = ctaLists(ctaDescription());
+    expect(compareWithUnion(current, Object.keys(all))).toEqual({
+      notInUnion: [],
+      notInDescription: [],
+    });
+    // Retired values stay documented for the rows that carry them, and none
+    // is current. Preview deploys emitted `review` and `proof` before 15.4.
+    expect([...retired].sort()).toEqual([...RETIRED_CTA_LOCATIONS].sort());
+    for (const value of retired) expect([value, value in all]).toEqual([value, false]);
+  });
+
+  // The check above must fail in both directions. A value dropped from the
+  // union but left in the description is reported, and so is the reverse.
+  it('the description check catches a value in only one of the two lists', () => {
+    const { current } = ctaLists(ctaDescription());
+    const union = [...current];
+    const dropped = union.pop()!;
+    expect(compareWithUnion(current, union)).toEqual({
+      notInUnion: [dropped],
+      notInDescription: [],
+    });
+    expect(compareWithUnion(union, current)).toEqual({
+      notInUnion: [],
+      notInDescription: [dropped],
+    });
+  });
+
+  // The parser reads the lists only, so a value named in prose can't count.
+  it('reads the current and retired lists, not the prose around them', () => {
+    const { current, retired } = ctaLists(
+      'About hero_review. Current values (15.4): a_one, b_two. Retired values, still in older rows: c_three. Prose naming d_four.',
+    );
+    expect(current).toEqual(['a_one', 'b_two']);
+    expect(retired).toEqual(['c_three']);
   });
 
   // The values whose calls to action 15.4 deleted (and the two the phase 15
