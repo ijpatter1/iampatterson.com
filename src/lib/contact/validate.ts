@@ -1,6 +1,16 @@
-import { contactIntent, type ContactIntent } from '@/lib/content/contact';
-
 import { CONTACT_CONFIG } from './config';
+
+/** Why the visitor wrote: `review` from the "Book the review" buttons. */
+export type ContactIntent = 'default' | 'review';
+
+/**
+ * `review` selects the review heading on /contact and the review subject on
+ * the inquiry; anything else, missing or unknown, is the default. Lives with
+ * validation so the API route doesn't depend on page copy.
+ */
+export function contactIntent(value: unknown): ContactIntent {
+  return value === 'review' ? 'review' : 'default';
+}
 
 export interface Inquiry {
   name: string;

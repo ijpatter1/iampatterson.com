@@ -7,7 +7,8 @@ import { SessionStateRideAlong } from '@/components/contact/session-state-ride-a
 import { SMALL_BODY_CLASSES } from '@/components/home/section';
 import { CONTACT_CONFIG } from '@/lib/contact/config';
 import { getRecaptchaToken, loadRecaptcha } from '@/lib/contact/recaptcha-client';
-import { CONTACT_COPY, CONTACT_EMAIL, type ContactIntent } from '@/lib/content/contact';
+import type { ContactIntent } from '@/lib/contact/validate';
+import { CONTACT_COPY, CONTACT_EMAIL } from '@/lib/content/contact';
 import { trackFormFieldFocus, trackFormStart, trackFormSubmit } from '@/lib/events/track';
 
 const FIELD_CLASSES =

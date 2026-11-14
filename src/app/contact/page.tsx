@@ -12,13 +12,8 @@ import {
   SMALL_BODY_CLASSES,
   Section,
 } from '@/components/home/section';
-import {
-  CONTACT_COPY,
-  CONTACT_EMAIL,
-  CONTACT_INTROS,
-  PRINCIPLES,
-  contactIntent,
-} from '@/lib/content/contact';
+import { contactIntent } from '@/lib/contact/validate';
+import { CONTACT_COPY, CONTACT_EMAIL, CONTACT_INTROS, PRINCIPLES } from '@/lib/content/contact';
 
 interface ContactPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;

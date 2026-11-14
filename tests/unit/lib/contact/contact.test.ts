@@ -1,12 +1,14 @@
 /**
  * @jest-environment node
  */
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
 import { buildRawMessage, sendMessage } from '@/lib/contact/gmail';
 import { assessToken, RECAPTCHA_MIN_SCORE } from '@/lib/contact/recaptcha';
 import { getGmailToken, getServiceAccountToken } from '@/lib/contact/google';
 import { CONTACT_CONFIG } from '@/lib/contact/config';
-import { validateInquiry } from '@/lib/contact/validate';
-import { contactIntent } from '@/lib/content/contact';
+import { contactIntent, validateInquiry } from '@/lib/contact/validate';
 
 type Call = { url: string; init: RequestInit };
 
@@ -104,6 +106,13 @@ describe('validateInquiry', () => {
       expect(r.ok && r.value.intent).toBe(contactIntent(intent));
     },
   );
+
+  // The API route validates with this module, so it must not reach into the
+  // page copy: the intent lives here and the copy imports it.
+  it('depends on no page-copy module', () => {
+    const source = readFileSync(join(process.cwd(), 'src/lib/contact/validate.ts'), 'utf8');
+    expect(source).not.toMatch(/lib\/content/);
+  });
 
   it('rejects a body that is not an object', () => {
     expect(validateInquiry('hello').ok).toBe(false);
