@@ -180,7 +180,7 @@ if skip_if_not_prod; then :; else
     "Open Vercel dashboard → Deployments → current deployment → Logs." \
     "Ensure no [metabase/keep-warm] entries in the last 5 minutes."
 
-  do_step "In a fresh incognito tab, navigate to ${BASE_URL}/ (homepage)"
+  do_step "In a fresh incognito tab, navigate to ${BASE_URL}/demo/ecommerce (the homepage stopped warming Metabase in 15.4)"
   do_step "Wait 10 seconds for the fire-and-forget chain to complete."
   do_step "Refresh the Vercel logs panel."
   expect \
@@ -268,23 +268,17 @@ confirm "Banner + carousel + cart all render correctly at 360px without horizont
 confirm "Walkthrough 'see the stack ↓' chip scrolls to sidebar on tap"
 
 # ────────────────────────────────────────────────────────────────────────
-scenario "7. UAT r2 item 6 re-verify: random UTM seed on demo entry" \
+scenario "7. UAT r2 item 6 re-verify: random UTM seed on demo entry (retired in 15.4)" \
   "Demos-section CTA navigates with randomized utm_campaign / source / medium"
 
-setup "Clear any existing demo session state (close all tabs to the site)."
-
-do_step "Navigate to ${BASE_URL}/ and scroll to the Demos section."
-do_step "Click the 'Enter the demo →' CTA three times (new tab each time, or back-nav in between)."
-expect \
-  "Each navigation to /demo/ecommerce has a different utm_campaign value" \
-  "utm_source + utm_medium match the taxonomy seed for the picked campaign (not random combinations)" \
-  "The listing-hero classified-as panel reflects the right bucket per the campaign"
-
-confirm "Three separate clicks produced three different UTM param combinations"
-confirm "Each classified-as readout matched its UTM (e.g. meta_prospecting_* → paid_social / meta)"
+# Retired in 15.4: the homepage's Demos section and its 'Enter the demo →'
+# CTA, the only caller of the random UTM seed, were deleted.
+echo "  ⊘ SKIP (the Demos section CTA no longer exists, 15.4)"
+((SKIP++))
+echo ""
 
 # ────────────────────────────────────────────────────────────────────────
-scenario "8. Regression canary: Phase 9E overlay + pipeline still work" \
+scenario "8. Regression canary: Phase 9E overlay still works" \
   "9E deliverables D1–D9 at ship-ready state (joint 9E+9F release)"
 
 setup "Fresh incognito."
@@ -300,10 +294,6 @@ expect \
   "Overview shows portals + event coverage chips + threshold CTA at top" \
   "Event coverage denominator is N/20 (RENDERABLE_EVENT_NAMES count), NOT N/24"
 
-do_step "Navigate to any page to trigger the pipeline-section bleed reveal."
-expect \
-  "Pipeline section reveals once on scroll; doesn't re-bleed on subsequent scroll after overlay-open"
-
 do_step "Press Escape."
 expect \
   "Overlay closes"
@@ -312,7 +302,7 @@ do_step "Click outside the overlay (background)."
 expect \
   "Overlay closes on background click"
 
-confirm "All Phase 9E behaviors hold (overlay, tabs, Overview content, pipeline bleed, keyboard/background close)"
+confirm "All Phase 9E behaviors hold (overlay, tabs, Overview content, keyboard/background close)"
 
 # ════════════════════════════════════════════════════════════════════════
 # Results summary

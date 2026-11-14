@@ -87,51 +87,36 @@ fi
 
 # ── Scenario 1, First-visit editorial read ──────────
 section "Scenario 1, First-visit editorial read of the homepage"
-echo "  Exercises: D1 tokens · D3 hero · D4 pipeline · D5 demos · D6 teaser · D7 proof · D8 CTA"
+echo "  Exercises: D1 tokens · D3 hero · D7 proof (rewritten in 15.4: the pipeline,"
+echo "  demos, services teaser and final CTA sections are gone)"
 
 HOME_HTML="$(fetch "${BASE_URL}/")"
 
 verify "Homepage returns 200" \
   "curl -sI --max-time 5 ${BASE_URL}/ | grep -q '200'"
 
-verify "Hero headline 'I build' present" \
-  "echo \"\${HOME_HTML}\" | grep -q 'I build'"
+verify "Hero headline 'Numbers your' present" \
+  "echo \"\${HOME_HTML}\" | grep -q 'Numbers your'"
 
-verify "Hero emphasis word 'measurement' present" \
-  "echo \"\${HOME_HTML}\" | grep -q 'measurement'"
+verify "Primary CTA 'Start with a review' present" \
+  "echo \"\${HOME_HTML}\" | grep -q 'Start with a review'"
 
-verify "Proof metric '2.5' present" \
-  "echo \"\${HOME_HTML}\" | grep -q '2.5'"
-
-verify "Proof metric '\$45' present" \
-  "echo \"\${HOME_HTML}\" | grep -q '\\\$45'"
-
-verify "Final CTA phrase 'Then hire me' present" \
-  "echo \"\${HOME_HTML}\" | grep -q 'Then hire me'"
+verify "No Demos section (no #demos anchor)" \
+  "! echo \"\${HOME_HTML}\" | grep -q 'id=\"demos\"'"
 
 echo ""
 echo "  → Open ${BASE_URL}/ in a browser for the visual checks below."
-confirm "Hero headline renders in Instrument Serif (tall serif), with 'measurement' italicized and in persimmon #EA5F2A" \
+confirm "Hero headline renders in Instrument Serif (tall serif), with 'can count on.' italicized and in persimmon #EA5F2A" \
   "Hero serif + italic accent"
-confirm "Scrolling top-to-bottom: hero → pipeline → demos → services teaser (4 tiers) → proof (3 metrics) → final CTA" \
+confirm "Scrolling top-to-bottom: hero → the three questions → how teams work with me → proof → where I've done it" \
   "Homepage section order"
 confirm "Accent color is persimmon everywhere (italic emphases, CTAs, metric units, left borders), NOT amber. Background is paper, not dark" \
   "Accent discipline on paper surface"
-confirm "Proof section shows 2.5M, \$45K, 24/7 metrics with tags + context blurbs" \
-  "Proof 3-metric grid"
 
-# ── Scenario 2, Pipeline with real events ───────────
-section "Scenario 2, Pipeline section shows real events flowing"
-echo "  Exercises: D4 (pipeline + useLiveEvents), D10 (event pipeline preserved)"
-
-confirm "5 pipeline stages labeled in order: Browser → Client GTM → sGTM → BigQuery → Dashboards" \
-  "Pipeline stage labels + order"
-confirm "Active-stage indicator cycles along the pipeline every ~1.4s" \
-  "Active-stage rotation"
-confirm "After scrolling for ~3s, the live log feed has populated with timestamp · event_name · page_path rows (NOT hard-coded mock strings)" \
-  "Live log feed wired to real events"
-confirm "A 'Watch it live' pill CTA sits near the log feed" \
-  "Pipeline CTA present"
+# ── Scenario 2, Pipeline with real events (retired) ─
+section "Scenario 2, Pipeline section (retired in 15.4)"
+echo "  Retired in 15.4: the homepage's pipeline section was deleted. The proof"
+echo "  section's live panel and the overlay timeline carry real events now."
 
 # ── Scenario 3, Flip the card ───────────────────────
 section "Scenario 3, Flip the card: paper → CRT boot → amber overlay → back to paper"
@@ -206,10 +191,8 @@ verify "'Not sure where you' closer phrase present" \
   "echo \"\${SERVICES_HTML}\" | grep -q 'Not sure where you'"
 
 echo ""
-echo "  → On the homepage, scroll to the services teaser. Click any tier row."
+echo "  → Navigate to /services. (15.4 deleted the homepage's services teaser.)"
 
-confirm "Each teaser row links to /services (row click lands on that page)" \
-  "Teaser → /services navigation"
 confirm "/services has a sticky tier-nav sidebar on desktop with 4 tier entries" \
   "Sticky tier-nav"
 
@@ -242,19 +225,14 @@ echo "  → Close the overlay."
 section "Scenario 6, Editorial chrome wraps every consulting route"
 echo "  Exercises: D2 (chrome), D10 (route integration), D1, D9 (tab-hinted open)"
 
-confirm "Header: SessionPulse left · nav center (Home, Services, Demos, About, Contact) · hamburger on narrow widths" \
+confirm "Header: SessionPulse left · 'Start with a review' link at the right (15.4) · no nav links, no hamburger" \
   "Header composition"
 confirm "Sticky LiveStrip ticker sits directly below the header with fields: SESSION · STACK · CONSENT · PIPELINE · DASHBOARDS · ATTRIB" \
   "LiveStrip fields"
 confirm "LiveStrip session suffix matches the one shown in SessionPulse (6-char match)" \
   "LiveStrip/SessionPulse session-id parity"
-confirm "Footer: 4-column editorial grid (brand · pages · demos · under-the-hood) + legal row at the very bottom" \
-  "Footer 4-column grid"
-
-echo ""
-echo "  → Click one of the 3 'under the hood' deep links in the footer column (Live event stream / Pipeline architecture / Consent state)."
-confirm "Overlay opens already on the matching tab (Timeline / Overview / Consent), no extra click needed" \
-  "Tab-hinted deep link from footer"
+confirm "Footer: one row (15.4): Patterson. wordmark · Contact · the email address · session readout. No demo link" \
+  "Footer one row"
 
 echo ""
 echo "  → Close overlay. Navigate to /services."
@@ -262,47 +240,31 @@ confirm "Same header + LiveStrip + footer wrap the services page" \
   "Chrome persists on /services"
 
 echo ""
-echo "  → Navigate to /about and /contact."
-confirm "Same editorial chrome wraps these routes (body content is Phase 8 styling, deferred, not a failure)" \
-  "Chrome persists on /about + /contact"
+echo "  → Navigate to /review and /contact. (/about folded into /contact in 16.2.)"
+confirm "Same editorial chrome wraps these routes" \
+  "Chrome persists on /review + /contact"
 
-# ── Scenario 7, Mobile sheet + demos scroll-snap ────
-section "Scenario 7, Mobile sheet nav + horizontal-scroll demos + demo routes still render"
-echo "  Exercises: D2 (MobileSheet), D5 (demos), D10 (demo routes untouched)"
+# ── Scenario 7, Mobile header + demo routes ────
+section "Scenario 7, Mobile header + demo routes"
+echo "  Exercises: D2 (chrome; MobileSheet and the Demos section are gone), D10"
 
 echo ""
 echo "  → Open browser DevTools → Device Mode → set viewport to ~375px width. Reload."
 
-confirm "Header collapses to hamburger + SessionPulse" \
-  "Mobile header collapse"
-
-echo ""
-echo "  → Tap the hamburger."
-confirm "MobileSheet slides in as a full-height menu with numbered editorial nav list (01 Home, 02 Services, 03 Demos, 04 About, 05 Contact)" \
-  "MobileSheet structure"
-
-echo ""
-echo "  → Close the sheet and scroll to the Demos section."
-confirm "Demo cards render as a horizontal-scroll track with snap points; a swipe-indicator bar below tracks scroll position" \
-  "Mobile demos scroll-snap + indicator"
-confirm "3 cards present: E-commerce (The Tuna Shop) · Subscription (Tuna Subscription) · Lead Gen (Tuna Partnerships)" \
-  "3 demo cards visible"
+confirm "Header is one row: 'Start with a review' at the left, SessionPulse at the right, no hamburger" \
+  "Mobile header"
 
 verify "/demo/ecommerce returns 200" \
   "curl -sI --max-time 5 ${BASE_URL}/demo/ecommerce | grep -q '200'"
-verify "/demo/subscription returns 200" \
-  "curl -sI --max-time 5 ${BASE_URL}/demo/subscription | grep -q '200'"
-verify "/demo/leadgen returns 200" \
-  "curl -sI --max-time 5 ${BASE_URL}/demo/leadgen | grep -q '200'"
+verify "/demo/subscription redirects permanently to /" \
+  "curl -sI --max-time 5 ${BASE_URL}/demo/subscription | grep -qiE '^location: (${BASE_URL})?/\\s*$'"
+verify "/demo/leadgen redirects permanently to /" \
+  "curl -sI --max-time 5 ${BASE_URL}/demo/leadgen | grep -qiE '^location: (${BASE_URL})?/\\s*$'"
 
 echo ""
-echo "  → Tap each demo card in turn and confirm each demo route renders without errors."
+echo "  → Open ${BASE_URL}/demo/ecommerce."
 confirm "/demo/ecommerce renders (styling does not match editorial chrome, expected, scope-deferred)" \
   "Ecommerce demo renders"
-confirm "/demo/subscription renders" \
-  "Subscription demo renders"
-confirm "/demo/leadgen renders" \
-  "Leadgen demo renders"
 
 echo ""
 echo "  → Switch browser back to desktop viewport for remaining scenarios."
@@ -330,7 +292,7 @@ confirm "Ambient bubbles return on /; overlay still reachable" \
 
 # ── Edge-1, prefers-reduced-motion ──────────────────
 section "Edge-1, prefers-reduced-motion respected"
-echo "  Exercises: D1 (accent flip), D4 (pipeline motion), D9 (boot + CRT)"
+echo "  Exercises: D1 (accent flip), D9 (boot + CRT)"
 
 echo ""
 echo "  → Enable reduced motion:"
@@ -338,8 +300,6 @@ echo "    macOS: System Settings → Accessibility → Display → Reduce Motion
 echo "    DevTools: Rendering panel → Emulate CSS media feature prefers-reduced-motion: reduce"
 echo "  → Hard-reload ${BASE_URL}/"
 
-confirm "Pipeline packet motion is paused / not animating; active-stage indicator does NOT cycle" \
-  "Pipeline motion paused"
 confirm "Scroll-reveal animations disabled (content appears immediately on scroll)" \
   "Scroll reveals disabled"
 
@@ -360,7 +320,7 @@ echo "  → Disable reduced motion before continuing."
 
 # ── Edge-2, close-then-reopen state reset ───────────
 section "Edge-2, Close-then-reopen lands on tab-level, not stale drill-down"
-echo "  Exercises: D9 (state reset), D2 (footer deep-links), D10"
+echo "  Exercises: D9 (state reset), D10"
 
 echo ""
 echo "  → Open overlay. Click Timeline tab. Click into any event row (drill into event detail)."
@@ -370,8 +330,9 @@ confirm "Overlay reopens on tab-level Timeline view, NOT stuck on the previous e
   "selectedEvent cleared on close"
 
 echo ""
-echo "  → Switch to Dashboards tab. Close. Reopen from the footer's 'Consent state' deep link."
-confirm "Overlay opens on the Consent tab, not Dashboards (stale), not Timeline (default)" \
+echo "  → Switch to the Consent tab. Close. On the homepage, reopen from the proof section's 'Open the overlay' button."
+echo "    (15.4 removed the footer's deep links.)"
+confirm "Overlay opens on the Timeline tab, not Consent (stale), not Overview (default)" \
   "Tab-hint overrides stale viewMode"
 
 echo ""

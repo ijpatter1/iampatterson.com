@@ -7,8 +7,8 @@
 #   D2 overlay restructure (3 tabs, Overview default)
 #   D3 Overview tab (new)
 #   D4 Session State data model (backs the Overview tab; tab-scoped sessionStorage)
-#   D5 pipeline section progressive bleed-through reveal
-#   D6 Homepage Demos section rebuild (single ecommerce surface)
+#   D5 pipeline section progressive bleed-through reveal (deleted in 15.4)
+#   D6 Homepage Demos section rebuild (deleted in 15.4)
 #   D7 subscription + leadgen demo removal + permanent redirects (308)
 #   D8 contact form session-state ride-along (shipped with Phase 10 transport stub)
 #   D9 Nav & Overview analytics (matches ARCHITECTURE.md:490 label)
@@ -125,11 +125,11 @@ verify_redirect_location() {
   local label="$3"
   local actual
   actual=$(curl -s -o /dev/null -w "%{redirect_url}" --max-redirs 0 "$url" || echo "")
-  if [[ "$actual" == *"$expected_location"* ]]; then
+  if [[ "$actual" == "$expected_location" ]]; then
     echo "  ✓ $label ($actual)"
     ((PASS++))
   else
-    echo "  ✗ $label, expected URL containing '$expected_location', got '$actual'"
+    echo "  ✗ $label, expected '$expected_location', got '$actual'"
     ((FAIL++))
     FAILED_SCENARIOS+=("$CURRENT_SCENARIO: $label (expected '$expected_location', got '$actual')")
   fi
@@ -162,6 +162,7 @@ setup \
 do_step "1.1, Load $BASE_URL/ in the fresh tab."
 expect \
   "No conventional nav links in the header (no Home/Services/About/Contact/Demos)." \
+  "The header's one link is 'Start with a review' (added in 15.4)." \
   "SessionPulse visible adjacent to brand wordmark. Pulse is animating." \
   "'ses <6-char> · N evt' legible inside the pulse surface."
 confirm "Header has no conventional nav links, SessionPulse is the only nav affordance"
@@ -198,7 +199,7 @@ expect \
   "16-cell ASCII coverage bar + chip grid showing 20 event-type chips." \
   "Ecommerce funnel: PRODUCT_VIEW [  ] / ADD_TO_CART [  ] / CHECKOUT [  ] / PURCHASE [  ]." \
   "Consent summary (three rows)." \
-  "Portal section: > SERVICES / > ABOUT / > CONTACT."
+  "Portal section: > SERVICES / > CONTACT (the About portal left in 16.2)."
 confirm "All Overview sections render (header, coverage, funnel, consent, portals)"
 
 do_step "1.7, Click '> SERVICES' in the portal section."
@@ -243,18 +244,7 @@ expect \
   "No pulse ring animation. Fades after ~6 seconds."
 confirm "NavHint is static text, not an animated ring"
 
-do_step "3.2, Scroll slowly through the pipeline section."
-expect \
-  "Bleed layers render STATICALLY, no scanline drift, phosphor breathing, flicker bursts, RGB sweep, peak jitter." \
-  "Tier class still changes on scroll (warm/hot/peak visible as static color/intensity shifts)." \
-  "Stage rotation does NOT advance, the active stage is frozen on stage 01."
-confirm "Pipeline section has no moving effects but still shows bleed layers and tier shifts"
-
-do_step "3.3, At peak bleed, observe the 'See your session' CTA."
-expect "CTA flips to solid amber fill at peak but does NOT jitter or animate halo growth."
-confirm "'See your session' CTA flips amber at peak but does not jitter"
-
-do_step "3.4, Click SessionPulse, observe Overview tab."
+do_step "3.2, Click SessionPulse, observe Overview tab."
 expect "Coverage numerals render IMMEDIATELY, no typewriter/typing animation."
 confirm "Overview coverage numbers appear immediately, no typewriter effect"
 
@@ -262,59 +252,16 @@ confirm "Overview coverage numbers appear immediately, no typewriter effect"
 # SCENARIO 4, Pipeline bleed-through reveal (Flow A)
 # Deliverables: D5, D1, D2, D3, D9
 
-scenario "4, Pipeline bleed-through reveal (Flow A, 'came to see the stack')" \
-  "Scroll-anchored ramp peaks at footnote, tiers cross at thresholds, CTA amber-crest is timed to section end"
-
-setup \
-  "Disable prefers-reduced-motion (DevTools emulation OFF or OS setting OFF)." \
-  "Desktop viewport. Fresh tab or cleared sessionStorage."
-
-do_step "4.1, Load $BASE_URL/. Scroll from top slowly, watching pipeline section as it enters viewport."
-do_step "4.2, As the section TOP crosses ~25% into viewport:"
-expect "First visible bleed onset. Faint scanlines at section edges. Persimmon still dominant."
-confirm "Bleed onset is subtle at entry, persimmon still dominant"
-
-do_step "4.3, Continue scrolling until section is near-centered."
-expect \
-  "Tier crosses to 'warm' (class on section mutates, inspect via DevTools Elements)." \
-  "Phosphor bloom visible from the bottom." \
-  "Flicker bursts start firing (random short brightness pulses)." \
-  "Stage rotation advances 'is-hot' stage every ~1800ms."
-confirm "Warm tier: phosphor bloom + flicker bursts + stage rotation all active"
-
-do_step "4.4, Scroll until ~2/3 of section has scrolled past viewport bottom."
-expect \
-  "Tier crosses to 'hot'." \
-  "RGB chromatic-aberration band sweeps top→bottom visibly (~2.8s loop)." \
-  "'See your session' CTA border warmed, halo grown, icon rotated partway." \
-  "'flip →' suffix text has begun fading in (starts ~bleed 0.55)."
-confirm "Hot tier: RGB sweep visible + CTA border/halo/icon couple to --bleed"
-
-do_step "4.5, Scroll to the footnote at the bottom of the section."
-expect \
-  "Tier is 'peak'. Active-stage numeral has flipped persimmon → amber." \
-  "Schematic has sub-pixel jitter." \
-  "CTA is solid amber fill + jittering. 'flip →' suffix fully visible."
-confirm "Peak: active numeral flips amber + schematic jitters + CTA solid amber + 'flip →' visible"
-
-do_step "4.6, Click 'See your session' at peak."
-expect \
-  "Overlay opens to Overview." \
-  "DevTools Console: 'click_cta' fires with cta_location: 'pipeline_see_your_session'."
-confirm "'See your session' click fires click_cta with pipeline_see_your_session location"
-
-do_step "4.7, Close overlay (backdrop click). Scroll back up past the section."
-expect \
-  "Bleed ramp REVERSES smoothly, no visual snap, no lingering amber cast above viewport." \
-  "Tier classes revert cleanly."
-confirm "Scrolling back up smoothly reverses the ramp"
+scenario "4, Pipeline bleed-through reveal (retired in 15.4)" \
+  "The homepage's pipeline section and its bleed reveal were deleted in 15.4"
+skip_scenario "the pipeline section no longer exists"
 
 # ────────────────────────────────────────────────────────────────────────
 # SCENARIO 5, permanent redirect (308) from removed demo (automated + visual)
 # Deliverables: D7, D6
 
 scenario "5, Visitor arrives via permanent redirect from a removed demo" \
-  "D7 redirects resolve from removed routes + deep-links; D6 rebuild banner surfaces"
+  "D7 redirects resolve from removed routes + deep-links; since 15.4 they land on the plain homepage"
 
 setup \
   "No browser setup needed for automated checks; manual verification follows."
@@ -325,36 +272,22 @@ echo "  AUTOMATED:"
 # signal to search engines, stricter semantics (spec comment in
 # `next.config.mjs`). Some CDNs rewrite 308 → 301 at the edge; either
 # way search engines re-index. UAT contract: expect 308 from the origin.
+# 15.4 deleted the Demos section and its rebuild banner, so the redirects
+# go to / with no ?rebuild= flag and no #demos anchor.
 verify_http "$BASE_URL/demo/subscription" "308" "GET /demo/subscription → 308"
-verify_redirect_location "$BASE_URL/demo/subscription" "rebuild=subscription" "  → redirects to ?rebuild=subscription"
+verify_redirect_location "$BASE_URL/demo/subscription" "$BASE_URL/" "  → redirects to /"
 verify_http "$BASE_URL/demo/subscription/anything/deep" "308" "GET /demo/subscription/:path* → 308 (deep-link wildcard)"
-verify_redirect_location "$BASE_URL/demo/subscription/anything/deep" "rebuild=subscription" "  → deep-link also redirects to ?rebuild=subscription"
+verify_redirect_location "$BASE_URL/demo/subscription/anything/deep" "$BASE_URL/" "  → deep-link also redirects to /"
 verify_http "$BASE_URL/demo/leadgen" "308" "GET /demo/leadgen → 308"
-verify_redirect_location "$BASE_URL/demo/leadgen" "rebuild=leadgen" "  → redirects to ?rebuild=leadgen"
+verify_redirect_location "$BASE_URL/demo/leadgen" "$BASE_URL/" "  → redirects to /"
 verify_http "$BASE_URL/demo/leadgen/thanks" "308" "GET /demo/leadgen/:path* → 308 (deep-link wildcard)"
 echo ""
 
-do_step "5.1, In a fresh browser tab with cleared sessionStorage, navigate directly to $BASE_URL/demo/subscription."
+do_step "5.1, In a fresh browser tab, navigate directly to $BASE_URL/demo/subscription."
 expect \
-  "Final URL: /?rebuild=subscription#demos. Page scrolls to Demos section." \
-  "Rebuild banner visible with copy mentioning 'subscription' (e.g. 'The subscription demo is being rebuilt…')."
-confirm "Subscription-label rebuild banner surfaces with correct copy"
-
-do_step "5.2, Dismiss the banner via the × control."
-expect "Banner hides. DevTools Application → Session Storage shows a per-label dismissal key."
-confirm "Banner dismisses AND sessionStorage records dismissal for 'subscription' label"
-
-do_step "5.3, Navigate to $BASE_URL/demo/subscription/account/settings (deep-link)."
-expect "Redirects to /?rebuild=subscription#demos. Banner does NOT reappear (dismissal persisted)."
-confirm "Deep-link redirect works AND banner stays dismissed per-label"
-
-do_step "5.4, Navigate to $BASE_URL/demo/leadgen/thanks."
-expect "Redirects to /?rebuild=leadgen#demos. Rebuild banner DOES appear with leadgen-specific copy."
-confirm "Leadgen-label banner appears independently (per-label sessionStorage gate)"
-
-do_step "5.5, From the Demos section, click 'Enter the demo →'."
-expect "Routes to /demo/ecommerce. Ecommerce demo loads (unchanged from 9B, 9E does not modify it)."
-confirm "Ecommerce demo still works end-to-end"
+  "Final URL: / with no query string and no #demos anchor." \
+  "The homepage hero renders at the top; no rebuild banner."
+confirm "Removed-demo link lands on the plain homepage"
 
 # ────────────────────────────────────────────────────────────────────────
 # SCENARIO 6, Coverage milestone thresholds
@@ -520,7 +453,7 @@ confirm "Banner action propagates to snapshot"
 # Deliverables: D1, D2, D3, D5, D6
 
 scenario "11, Mobile-viewport visitor navigates the pivot [mobile]" \
-  "Mobile layout for header, overlay, pipeline schematic, and Demos section"
+  "Mobile layout for header and overlay (the pipeline and Demos sections left in 15.4)"
 
 setup \
   "DevTools → device mode → iPhone 12 or similar (<768px)." \
@@ -540,15 +473,9 @@ do_step "11.3, Tap SessionPulse."
 expect "Overlay opens to Overview. Tab bar usable at mobile width. Chip grid, funnel, portals all legible; chips wrap gracefully."
 confirm "Overview tab fully usable at mobile width (no clipping)"
 
-do_step "11.4, Close overlay. Scroll into pipeline section."
-expect "Schematic: 2-column layout (numeral 40px + body). Readouts collapse below each stage; expand via max-height only when is-hot. Bleed layers visible."
-confirm "Pipeline schematic uses 2-column mobile layout with is-hot-gated readouts"
-
-do_step "11.5, Scroll into Demos section."
-expect \
-  "Single full-width section (NO horizontal-scroll track, NO swipe-hint bars)." \
-  "Eyebrow, serif headline, paragraphs, CTA, terminal preview stacked vertically and legible."
-confirm "Demos section is single full-width block (not horizontal scroll track)"
+do_step "11.4, Close overlay."
+expect "Header is one row: 'Start with a review' at the left, SessionPulse at the right (15.4)."
+confirm "The header review link and SessionPulse share one row on mobile"
 
 # ────────────────────────────────────────────────────────────────────────
 # SCENARIO 12, Desktop hover + session_pulse_hover debounce
@@ -614,32 +541,25 @@ confirm "Firing a nav-analytics event flips its chip amber"
 # Deliverables: D1, D2, D3, D4, D5, D6, D7, D8, D9
 
 scenario "14, Full persona run (Flow B, 'came for the dashboards')" \
-  "Full end-to-end: enters via removed demo redirect, scrolls hero → pipeline → demos, completes ecommerce, sees elevated coverage + threshold CTA + D8 ride-along"
+  "Full end-to-end: enters via removed demo redirect, opens the overlay from the hero, completes ecommerce, sees elevated coverage + threshold CTA + D8 ride-along"
 
 setup "Fresh tab, cleared sessionStorage."
 
 do_step "14.1, Enter via $BASE_URL/demo/subscription (stale inbound link)."
-expect "308 redirect to /?rebuild=subscription#demos. Rebuild banner visible at Demos section."
-confirm "Stale inbound link redirects + rebuild banner appears"
+expect "308 redirect to /. The homepage hero renders; no rebuild banner (15.4)."
+confirm "Stale inbound link redirects to the homepage"
 
-do_step "14.2, Dismiss banner. Scroll UP to the hero."
-expect "Pipeline section renders above Demos. Scrolling up, bleed ramp reverses cleanly."
-confirm "Scroll-up reverses pipeline bleed cleanly"
-
-do_step "14.3, From hero, scroll DOWN through pipeline section (full Scenario 4 experience)."
-expect "Full bleed reveal: warm → hot → peak with CTA amber crest at footnote."
-confirm "Full pipeline reveal plays end-to-end"
-
-do_step "14.4, Click 'See your session' at peak. Overlay opens."
+do_step "14.2, Scroll down the homepage, then back up to the hero."
+do_step "14.3, Click 'See your session' in the hero. Overlay opens."
 expect "Overview shows fired events already (page_view, scroll_depth, at least) as amber chips."
-confirm "Overview accurately reflects events fired during pipeline scroll"
+confirm "Overview accurately reflects events fired while scrolling"
 
-do_step "14.5, Close overlay. Click 'Enter the demo →' in Demos section."
-expect "Routes to /demo/ecommerce. Ecommerce demo is 9B implementation (unchanged in 9E)."
+do_step "14.4, Close overlay. Navigate to $BASE_URL/demo/ecommerce (15.4 removed the homepage's demo link)."
+expect "Ecommerce demo is 9B implementation (unchanged in 9E)."
 confirm "Ecommerce demo still works end-to-end (9E does not break 9B)"
 
-do_step "14.6, Complete the demo through /demo/ecommerce/confirmation."
-do_step "14.7, Return to homepage. Open Overview tab."
+do_step "14.5, Complete the demo through /demo/ecommerce/confirmation."
+do_step "14.6, Return to homepage. Open Overview tab."
 expect \
   "Coverage jumped substantially." \
   "Ecommerce funnel: all four stages [OK]. Percentage 100%." \
@@ -647,24 +567,24 @@ expect \
   "Threshold-gated contact CTA is visible."
 confirm "Post-demo Overview: 100% funnel + elevated coverage + threshold CTA visible"
 
-do_step "14.8, Click threshold-gated contact CTA. Arrive at /contact."
+do_step "14.7, Click threshold-gated contact CTA. Arrive at /contact."
 expect \
   "Contact page renders." \
   "D8 ride-along block visible below the message textarea: checkbox labeled 'Share my session state with this message' + human-readable summary."
 confirm "D8 ride-along block is visible on contact page"
 
-do_step "14.9, Inspect the D8 summary copy (marketing should be granted from Cookiebot acceptance)."
+do_step "14.8, Inspect the D8 summary copy (marketing should be granted from Cookiebot acceptance)."
 expect \
   "Checkbox is CHECKED by default (marketing granted)." \
   "Summary reads: 'You've triggered X of 20 event types, completed 100% of the ecommerce demo, and visited N pages. Your consent state and session ID will ride along.'"
 confirm "D8 checkbox checked + summary shows concrete payload + 'will ride along'"
 
-do_step "14.10, Inspect the hidden session_state field. DevTools Elements → find input[name='session_state']."
+do_step "14.9, Inspect the hidden session_state field. DevTools Elements → find input[name='session_state']."
 expect \
   "Hidden input present. value attribute is JSON with session_id, event_types_triggered, event_types_total=20, pages_visited, consent object."
 confirm "Hidden session_state field serialized with correct projection shape"
 
-do_step "14.11, Uncheck the checkbox. Re-inspect Elements."
+do_step "14.10, Uncheck the checkbox. Re-inspect Elements."
 expect \
   "Summary copy flips to 'Session state will not be included with this message. Check the box above to share it.'" \
   "input[name='session_state'] is REMOVED from DOM (not just hidden or disabled)."
