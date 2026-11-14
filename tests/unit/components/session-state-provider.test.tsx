@@ -11,7 +11,13 @@
 import { render, renderHook, act } from '@testing-library/react';
 import type { ReactNode } from 'react';
 
+jest.mock('@/hooks/useLiveEvents', () => ({
+  useLiveEvents: () => ({ events: [], source: 'dataLayer', stream: 'off' }),
+}));
+
 import { SessionStateProvider, useSessionState } from '@/components/session-state-provider';
+import { useSessionReadout } from '@/hooks/useSessionReadout';
+import { setSessionCookie } from '@/lib/events/session';
 import { DATA_LAYER_EVENT_NAMES } from '@/lib/events/schema';
 import { SESSION_STATE_STORAGE_KEY, loadSessionState } from '@/lib/session-state/storage';
 
@@ -510,5 +516,74 @@ describe('SessionStateProvider', () => {
       </SessionStateProvider>,
     );
     expect(getByText('hello')).toBeInTheDocument();
+  });
+
+  // The session cookie can change while the page is open (30 minutes idle,
+  // another tab, or the 2026-11-14 Cookiebot reset). The stream follows it,
+  // so the session state must too: the header, the overlay's overview and the
+  // contact ride-along all name `session_id`, and the header must not name
+  // the old session above the new session's rows.
+  describe('when the session cookie changes', () => {
+    function Header() {
+      const { shortId } = useSessionReadout();
+      const state = useSessionState();
+      return (
+        <p>
+          <span data-testid="short-id">{shortId}</span>
+          <span data-testid="state-id">{state?.session_id}</span>
+        </p>
+      );
+    }
+
+    afterEach(() => {
+      document.cookie = '_iap_sid=; Path=/; Max-Age=0';
+    });
+
+    it('takes the new ID, so the header names the new session', () => {
+      jest.useFakeTimers();
+      setSessionCookie('aaaaaaaa-first1');
+      const { getByTestId } = render(
+        <SessionStateProvider>
+          <Header />
+        </SessionStateProvider>,
+      );
+      expect(getByTestId('short-id')).toHaveTextContent('first1');
+
+      act(() => setSessionCookie('bbbbbbbb-second'));
+
+      expect(getByTestId('short-id')).toHaveTextContent('second');
+      expect(getByTestId('state-id')).toHaveTextContent('bbbbbbbb-second');
+      expect(loadSessionState()?.session_id).toBe('bbbbbbbb-second');
+    });
+
+    // The same rule as a reload after the cookie rotated
+    // (`reconcileRehydrated`): the tab's counts and coverage carry over and
+    // only the ID changes. Milestones already fired are not fired again.
+    it("keeps the tab's event counts and coverage, as a reload after a rotation does", () => {
+      jest.useFakeTimers();
+      setSessionCookie('aaaaaaaa-first1');
+      const { result } = renderHook(() => useSessionState(), { wrapper: Wrapper });
+      act(() => {
+        window.dataLayer.push(makeDataLayerEntry({ event: 'click_cta' }));
+        jest.advanceTimersByTime(500);
+      });
+      expect(result.current!.events_fired.click_cta).toBe(1);
+
+      act(() => setSessionCookie('bbbbbbbb-second'));
+
+      expect(result.current!.session_id).toBe('bbbbbbbb-second');
+      expect(result.current!.events_fired.click_cta).toBe(1);
+      expect(result.current!.event_type_coverage.fired).toContain('click_cta');
+    });
+
+    it('ignores a deleted cookie', () => {
+      setSessionCookie('aaaaaaaa-first1');
+      const { result } = renderHook(() => useSessionState(), { wrapper: Wrapper });
+      document.cookie = '_iap_sid=; Path=/; Max-Age=0';
+      act(() => {
+        window.dispatchEvent(new Event('focus'));
+      });
+      expect(result.current!.session_id).toBe('aaaaaaaa-first1');
+    });
   });
 });

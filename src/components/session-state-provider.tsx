@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 
-import { getSessionId } from '@/lib/events/session';
+import { getSessionId, readSessionCookie, subscribeSessionCookie } from '@/lib/events/session';
 import { getCurrentConsent, trackCoverageMilestone } from '@/lib/events/track';
 import {
   createInitialSessionState,
@@ -76,6 +76,27 @@ export function SessionStateProvider({ children }: { children: ReactNode }) {
     if (initial !== loaded) saveSessionState(initial);
     setReady(true);
   }, []);
+
+  // Follow the session cookie, as the live stream does (`useEventStream`):
+  // the header, the overlay's overview and the contact ride-along all name
+  // `session_id`, and must not name the old session above the new session's
+  // rows. The cookie changes after 30 minutes idle or from another tab. The
+  // rule is the one a reload after a rotation already applies
+  // (`reconcileRehydrated`): the tab's counts and coverage carry over and
+  // only the ID changes. A deleted cookie is ignored until the next ID.
+  useEffect(() => {
+    if (!ready) return;
+    return subscribeSessionCookie(() => {
+      const next = readSessionCookie();
+      if (!next) return;
+      setState((prev) => {
+        if (!prev || prev.session_id === next) return prev;
+        const reconciled = reconcileRehydrated(prev, next);
+        saveSessionState(reconciled);
+        return reconciled;
+      });
+    });
+  }, [ready]);
 
   // Emit coverage_milestone events for newly-appearing entries. Ref-based de-dup
   // handles strict-mode double-invocation and any future state-path that could
