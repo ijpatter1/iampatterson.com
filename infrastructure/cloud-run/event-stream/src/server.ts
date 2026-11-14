@@ -62,7 +62,8 @@ app.get('/events', (req, res) => {
 
   req.on('close', () => {
     clearInterval(heartbeat);
-    manager.remove(sessionId);
+    // Only this response: another tab on the same session may still be open.
+    manager.remove(sessionId, res);
   });
 });
 
