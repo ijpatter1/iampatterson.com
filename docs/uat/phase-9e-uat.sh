@@ -219,7 +219,7 @@ scenario "2, Returning-session visitor sees no hint" \
 setup \
   "Continue from Scenario 1 (hint already fired, sessionStorage key set). Do NOT clear storage."
 
-do_step "2.1, Navigate to /services then back to / via a footer link."
+do_step "2.1, Navigate to /services (typed URL), then back to / via the 'Back to homepage' bar."
 expect "No NavHint after 3s idle on /. No 'nav_hint_shown' event."
 confirm "Same-tab re-visit does NOT re-show the hint"
 
@@ -610,7 +610,7 @@ expect \
   "No 'nav_hint_dismissed' fires, dismissal only fires when hint rendered."
 confirm "Later idle does not fire hint; no nav_hint_dismissed without nav_hint_shown"
 
-do_step "15.4, Navigate to /services via footer link, then back to / via footer Home link."
+do_step "15.4, Navigate to /services (typed URL), then back to / via the 'Back to homepage' bar."
 expect "No hint on return to / (sessionStorage gate may or may not be set; behavior is homepage-entry-scoped anyway)."
 confirm "Return to / in same tab does not re-fire hint"
 

@@ -231,8 +231,13 @@ confirm "Sticky LiveStrip ticker sits directly below the header with fields: SES
   "LiveStrip fields"
 confirm "LiveStrip session suffix matches the one shown in SessionPulse (6-char match)" \
   "LiveStrip/SessionPulse session-id parity"
-confirm "Footer: one row (15.4): Patterson. wordmark · Contact · the email address · session readout. No demo link" \
+confirm "Footer: one mono row (15.4): © 2026 I am Patterson · ian@iampatterson.com · Contact · Session: Overview · Live event stream · Consent state · Built on Next.js · GTM · sGTM · BigQuery · Dataform. No demo link" \
   "Footer one row"
+
+echo ""
+echo "  → Click each of the footer's Session buttons in turn (Overview, Live event stream, Consent state), closing the overlay between them."
+confirm "Each opens the overlay already on its matching tab (Overview / Timeline / Consent), no extra click needed" \
+  "Footer Session buttons open their tabs"
 
 echo ""
 echo "  → Close overlay. Navigate to /services."
@@ -320,7 +325,7 @@ echo "  → Disable reduced motion before continuing."
 
 # ── Edge-2, close-then-reopen state reset ───────────
 section "Edge-2, Close-then-reopen lands on tab-level, not stale drill-down"
-echo "  Exercises: D9 (state reset), D10"
+echo "  Exercises: D9 (state reset), D2 (footer Session buttons), D10"
 
 echo ""
 echo "  → Open overlay. Click Timeline tab. Click into any event row (drill into event detail)."
@@ -330,8 +335,7 @@ confirm "Overlay reopens on tab-level Timeline view, NOT stuck on the previous e
   "selectedEvent cleared on close"
 
 echo ""
-echo "  → Switch to the Consent tab. Close. On the homepage, reopen from the proof section's 'Open the overlay' button."
-echo "    (15.4 removed the footer's deep links.)"
+echo "  → Switch to the Consent tab. Close. Reopen from the footer's 'Live event stream' button."
 confirm "Overlay opens on the Timeline tab, not Consent (stale), not Overview (default)" \
   "Tab-hint overrides stale viewMode"
 
