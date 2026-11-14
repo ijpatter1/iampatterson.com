@@ -87,6 +87,12 @@ export const PRINCIPLES = {
   ] satisfies Principle[],
 } as const;
 
+/** /contact/thanks: its own metadata, so it never borrows the contact page's. */
+export const THANKS_METADATA = {
+  title: 'Message sent',
+  description: 'Thanks for reaching out. I reply within 24 hours.',
+} as const;
+
 export const CONTACT_METADATA = {
   title: 'Contact',
   description: `Marketing data, measurement and AI for in-house marketing teams. Tell me where your numbers don't add up, or book the review, from ${REVIEW_PRICE}.`,

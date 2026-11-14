@@ -4,7 +4,7 @@
 import { render, screen } from '@testing-library/react';
 
 import ContactThanksPage, { metadata } from '@/app/contact/thanks/page';
-import { CONTACT_COPY } from '@/lib/content/contact';
+import { CONTACT_COPY, THANKS_METADATA } from '@/lib/content/contact';
 
 describe('ContactThanksPage', () => {
   it('renders a confirmation heading', () => {
@@ -17,7 +17,24 @@ describe('ContactThanksPage', () => {
   it("repeats the contact page's response promise", () => {
     render(<ContactThanksPage />);
     expect(screen.getByText(CONTACT_COPY.response)).toBeInTheDocument();
-    expect(String(metadata.description)).toMatch(/reply within 24 hours/i);
+    expect(metadata.description).toBe(THANKS_METADATA.description);
+  });
+
+  // The page sits inside /contact's layout. Without its own metadata, a shared
+  // link to it would carry /contact's card and canonical.
+  it("carries its own share card and canonical, not /contact's, and stays out of search", () => {
+    const url = 'https://iampatterson.com/contact/thanks';
+    expect(metadata.openGraph).toMatchObject({
+      title: THANKS_METADATA.title,
+      description: THANKS_METADATA.description,
+      url,
+    });
+    expect(metadata.twitter).toMatchObject({
+      title: THANKS_METADATA.title,
+      description: THANKS_METADATA.description,
+    });
+    expect(metadata.alternates?.canonical).toBe(url);
+    expect(metadata.robots).toMatchObject({ index: false });
   });
 
   it('links back to the homepage', () => {
