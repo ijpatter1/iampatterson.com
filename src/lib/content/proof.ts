@@ -2,7 +2,9 @@
  * Proof section and panel copy. Most strings are verbatim from the handoff
  * bundle's copy.md. Not from the bundle: `streamDropped`, which Ian signed on
  * 2026-11-03 together with `notConnected`; `blockedReason` and `regionLabel`,
- * written for the panel; and `rowsLabel`, pending Ian's sign-off.
+ * written for the panel; and `rowsLabel`, which Ian signed on 2026-11-14. On
+ * 2026-11-14 Ian also accepted `streamDropped` showing while the stream is
+ * failing, not only once it has given up.
  */
 export const PROOF = {
   eyebrow: 'Proof',

@@ -1028,12 +1028,14 @@ describe('useEventStream routine reconnect vs failing stream (15.7)', () => {
     });
   });
 
-  // The stream service keeps a set of connections per session, one per tab,
-  // and sends each of the session's events to all of them (connections.ts).
-  // So two tabs on one session are two healthy streams: neither ends the
-  // other, and neither may be reported as failing.
-  describe('two tabs on one session', () => {
-    it('keeps both tabs connected and delivering, never failing', () => {
+  // This test pushes the event into every mock itself, so it says nothing
+  // about the server. It claims only that two hook instances on one session
+  // are independent: each holds its own connection and buffer, and neither
+  // goes `failing`. The evidence that the server keeps both tabs' connections
+  // and delivers to each is the two-tab tests in
+  // infrastructure/cloud-run/event-stream/src/server.test.ts.
+  describe('two hook instances on one session', () => {
+    it('stay independent: each connected with its own buffer, never failing', () => {
       MockEventSource.script = (es) => {
         setTimeout(() => {
           if (!es.closed) es.simulateOpen();
