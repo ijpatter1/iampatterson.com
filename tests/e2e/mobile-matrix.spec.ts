@@ -183,22 +183,29 @@ test.describe('Phase 10d D1, mobile matrix', () => {
         44,
       );
 
-      // ── 3b. Header review link (15.4): 44px target, same row as the pulse
+      // ── 3b. Header review link (15.4): 44px target, same row as the pulse.
+      // Hidden on /review and /contact, where it would point back a step.
       const reviewLink = page.locator('header').getByRole('link', { name: HERO.primaryCta });
-      await expect(reviewLink, `${route.label}: header review link visible`).toBeVisible();
-      const reviewBox = await reviewLink.boundingBox();
-      expect(reviewBox, `${route.label}: review link boundingBox readable`).not.toBeNull();
-      expect(reviewBox!.height, `${route.label} review link height >= 44px`).toBeGreaterThanOrEqual(
-        44,
-      );
-      expect(
-        Math.abs(reviewBox!.y - pulseBox!.y),
-        `${route.label} on ${mobileLabel}: review link shares the pulse's row (no wrap)`,
-      ).toBeLessThanOrEqual(8);
-      expect(
-        reviewBox!.x + reviewBox!.width,
-        `${route.label} on ${mobileLabel}: review link inside the viewport`,
-      ).toBeLessThanOrEqual(vp.width + 1);
+      const routePath = new URL(route.path, 'http://localhost').pathname;
+      if (routePath === '/review' || routePath === '/contact') {
+        await expect(reviewLink, `${route.label}: no header review link`).toHaveCount(0);
+      } else {
+        await expect(reviewLink, `${route.label}: header review link visible`).toBeVisible();
+        const reviewBox = await reviewLink.boundingBox();
+        expect(reviewBox, `${route.label}: review link boundingBox readable`).not.toBeNull();
+        expect(
+          reviewBox!.height,
+          `${route.label} review link height >= 44px`,
+        ).toBeGreaterThanOrEqual(44);
+        expect(
+          Math.abs(reviewBox!.y - pulseBox!.y),
+          `${route.label} on ${mobileLabel}: review link shares the pulse's row (no wrap)`,
+        ).toBeLessThanOrEqual(8);
+        expect(
+          reviewBox!.x + reviewBox!.width,
+          `${route.label} on ${mobileLabel}: review link inside the viewport`,
+        ).toBeLessThanOrEqual(vp.width + 1);
+      }
 
       // Capture the at-rest screenshot before opening the overlay.
       await captureScreenshot(page, testInfo, route.label, '01-at-rest');

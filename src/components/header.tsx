@@ -12,7 +12,7 @@ import { REVIEW_PAGE_HREF } from '@/lib/content/review';
 import { trackClickCta } from '@/lib/events/track';
 
 import { LiveStrip } from '@/components/chrome/live-strip';
-import { showHomeBar, showLiveStrip } from '@/lib/chrome/suppression';
+import { showHomeBar, showLiveStrip, showReviewLink } from '@/lib/chrome/suppression';
 
 export function Header() {
   const [scrolled, setScrolled] = useState(false);
@@ -59,18 +59,20 @@ export function Header() {
             </Link>
             {isHomepage && <NavHint sessionPulseRef={sessionPulseRef} />}
           </span>
-          {/* 15.4: the way to the review, on every page, in the homepage
-              call to action's words. First on mobile so the pulse keeps the
-              top-right corner; after the pulse, at the far end, from md up.
-              Kept compact and unwrapped so the row fits a 375px screen
-              beside the pulse and the hero keeps its fold. */}
-          <Link
-            href={REVIEW_PAGE_HREF}
-            onClick={() => trackClickCta(HERO.primaryCta, 'header_review')}
-            className="order-first mr-auto inline-flex min-h-[44px] items-center whitespace-nowrap text-sm font-semibold text-ink underline decoration-rule underline-offset-4 transition-colors hover:decoration-ink md:order-none md:ml-auto md:mr-0"
-          >
-            {HERO.primaryCta}
-          </Link>
+          {/* 15.4: the way to the review, in the homepage call to action's
+              words, except on /review and /contact. First on mobile so the
+              pulse keeps the top-right corner; after the pulse, at the far
+              end, from md up. Kept compact and unwrapped so the row fits a
+              375px screen beside the pulse and the hero keeps its fold. */}
+          {showReviewLink(pathname) && (
+            <Link
+              href={REVIEW_PAGE_HREF}
+              onClick={() => trackClickCta(HERO.primaryCta, 'header_review')}
+              className="order-first mr-auto inline-flex min-h-[44px] items-center whitespace-nowrap text-sm font-semibold text-ink underline decoration-rule underline-offset-4 transition-colors hover:decoration-ink md:order-none md:ml-auto md:mr-0"
+            >
+              {HERO.primaryCta}
+            </Link>
+          )}
         </div>
       </header>
       {showLiveStrip(pathname) && <LiveStrip />}

@@ -12,6 +12,7 @@ import {
   showAmbientBubbles,
   showHomeBar,
   showLiveStrip,
+  showReviewLink,
   showSiteFooter,
 } from '@/lib/chrome/suppression';
 
@@ -57,4 +58,19 @@ describe('showLiveStrip', () => {
   it('hides on /claudish — a scrolling marquee under the app bar breaks the clone', () => {
     expect(showLiveStrip('/claudish')).toBe(false);
   });
+});
+
+// 15.4: the header's review link. On /review it would link to the page
+// itself, and on /contact it would send a visitor who is already booking back
+// a step.
+describe('showReviewLink', () => {
+  it.each(['/review', '/contact'])('hides on %s', (p) => {
+    expect(showReviewLink(p)).toBe(false);
+  });
+  it.each(['/', '/services', '/contact/thanks', '/demo/ecommerce', '/claudish'])(
+    'shows on %s',
+    (p) => {
+      expect(showReviewLink(p)).toBe(true);
+    },
+  );
 });

@@ -46,3 +46,12 @@ export function showHomeBar(pathname: string): boolean {
 export function showLiveStrip(pathname: string): boolean {
   return !pathname.startsWith(CLAUDISH);
 }
+
+/**
+ * The header's review link (15.4). Hidden on /review, where it would link to
+ * the page itself, and on /contact, where the visitor is already booking and
+ * it would send them back a step.
+ */
+export function showReviewLink(pathname: string): boolean {
+  return pathname !== '/review' && pathname !== '/contact';
+}

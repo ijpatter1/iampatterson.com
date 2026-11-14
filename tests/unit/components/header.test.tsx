@@ -135,14 +135,23 @@ describe('Header, post-9E-D1 nav pivot', () => {
   // 15.4: the review is the site's one offer, so every page carries a way to
   // it in the header. Its words are the homepage's signed call to action,
   // imported rather than retyped, so the two can't drift apart.
-  it('links to the review page with the homepage call to action, on every route', () => {
-    for (const path of ['/', '/contact', '/services', '/demo/ecommerce']) {
+  it('links to the review page with the homepage call to action, on the other routes', () => {
+    for (const path of ['/', '/services', '/contact/thanks', '/demo/ecommerce']) {
       mockPathname = path;
       const { unmount } = renderHeader();
       const link = screen.getByRole('link', { name: HERO.primaryCta });
       expect(link).toHaveAttribute('href', REVIEW_PAGE_HREF);
       unmount();
     }
+  });
+
+  // On /review the link would point at the page itself; on /contact the
+  // visitor is already booking, and the link would send them back a step.
+  it.each(['/review', '/contact'])('hides the review link on %s, and keeps the pulse', (path) => {
+    mockPathname = path;
+    renderHeader();
+    expect(screen.queryByRole('link', { name: HERO.primaryCta })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /open your session/i })).toBeInTheDocument();
   });
 
   it('fires one click_cta with the header location when the review link is clicked', async () => {
