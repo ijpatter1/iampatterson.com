@@ -16,8 +16,10 @@ export interface UseLiveEventsReturn {
    * State of the stream connection itself, whichever source is active. `off`
    * means no stream is configured. A reader uses this to tell "data-layer
    * events because the stream is down" from "data-layer events by design".
+   * `reconnecting` is routine; `failing` is a stream still retrying that is
+   * not working (see `useEventStream`).
    */
-  stream: 'off' | 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
+  stream: 'off' | 'connecting' | 'connected' | 'reconnecting' | 'failing' | 'disconnected';
 }
 
 export interface UseLiveEventsOptions {
