@@ -736,7 +736,7 @@ confirm "_iap_sid present and _iap_aid never written, from first load through th
 # Edge case A2 — a leftover _iap_aid is expired on load
 # ────────────────────────────────────────────────────────────────────────
 scenario "A2. [edge][devtools] Leftover _iap_aid — a decliner, or a visitor who never chose, loses it on load" \
-  "Production minted _iap_aid for every visitor until 2026-11-14; cookiebot-consent.tsx + initConsentState(resolved) + CookiebotOnLoad"
+  "Production minted _iap_aid for every visitor until 2026-11-14; cookiebot-consent.tsx + initConsentState(resolved) + CookiebotOnDialogInit"
 
 setup \
   "Fresh incognito window" \
@@ -754,7 +754,7 @@ expect \
 
 do_step "Delete the CookieConsent cookie (the visitor has never chosen), plant the leftover again as above, hard-reload, and do not choose in the banner."
 expect \
-  "'_iap_aid' is gone after ~2 seconds: with no answer there is no consent (CookiebotOnLoad without a response)"
+  "'_iap_aid' is gone after ~2 seconds: with no answer there is no consent (hasResponse false, then CookiebotOnDialogInit; CookiebotOnLoad never fires for this visitor)"
 
 confirm "A returning decliner's leftover _iap_aid was expired on load?"
 confirm "A never-chosen visitor's leftover _iap_aid was expired on load?"

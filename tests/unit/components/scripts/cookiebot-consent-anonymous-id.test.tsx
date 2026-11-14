@@ -13,7 +13,10 @@ import { getCurrentConsent, initConsentState, trackPageView } from '@/lib/events
 // resolved: measured in production on 2026-11-14, a reload with a stored
 // choice shows `window.Cookiebot` at ~15ms with no answer (`hasResponse` not
 // true, statistics undefined), then at ~180ms CookiebotOnLoad together with
-// CookiebotOnAccept or CookiebotOnDecline, with `hasResponse === true`.
+// CookiebotOnAccept or CookiebotOnDecline, with `hasResponse === true`. For a
+// visitor who has never chosen, CookiebotOnLoad never fires: `hasResponse`
+// goes from undefined to false at ~170-230ms, then CookiebotOnDialogInit
+// fires, then CookiebotOnDialogDisplay (~430-700ms).
 
 type CookiebotStub = {
   hasResponse?: boolean;
@@ -65,9 +68,9 @@ describe('CookiebotConsentListener and the _iap_aid leftover', () => {
     expect(lastEvent().anonymous_id).toBe('stored-id');
   });
 
-  it('does nothing to the cookie while Cookiebot has not resolved', () => {
+  it('does nothing to the cookie while Cookiebot has not resolved (hasResponse undefined)', () => {
     document.cookie = '_iap_aid=stored-id; Path=/';
-    setCookiebot({ hasResponse: false, consent: { statistics: false } });
+    setCookiebot({ consent: { statistics: false } });
     render(<CookiebotConsentListener />);
     expect(readAid()).toBe('stored-id');
   });
@@ -79,11 +82,10 @@ describe('CookiebotConsentListener and the _iap_aid leftover', () => {
     expect(readAid()).toBeNull();
   });
 
-  // CookiebotOnLoad without an answer only cleans up the cookie. It records
-  // no consent and sends no gtag update: the consent state stays whatever
-  // Cookiebot reported, so an implied-consent region is never forced to
-  // denied.
-  describe('CookiebotOnLoad for a visitor who has never chosen', () => {
+  // The never-chosen cleanup only expires the cookie. It records no consent
+  // and sends no gtag update: the consent state stays whatever Cookiebot
+  // reported, so an implied-consent region is never forced to denied.
+  describe('a visitor who has never chosen (measured sequence, no CookiebotOnLoad)', () => {
     function captureGtag(): unknown[][] {
       const calls: unknown[][] = [];
       (window as unknown as { gtag: (...args: unknown[]) => void }).gtag = (...args) => {
@@ -91,8 +93,12 @@ describe('CookiebotConsentListener and the _iap_aid leftover', () => {
       };
       return calls;
     }
+    const NEVER_CHOSEN: CookiebotStub = {
+      hasResponse: false,
+      consent: { statistics: false, marketing: true, preferences: true },
+    };
 
-    it('expires a leftover without touching consent or gtag', () => {
+    it('expires a leftover on CookiebotOnDialogInit, without touching consent or gtag', () => {
       document.cookie = '_iap_aid=left-over; Path=/';
       setCookiebot({ consent: { statistics: false, marketing: true, preferences: true } });
       render(<CookiebotConsentListener />);
@@ -100,16 +106,25 @@ describe('CookiebotConsentListener and the _iap_aid leftover', () => {
       const before = getCurrentConsent();
       const gtagCalls = captureGtag();
 
-      setCookiebot({
-        hasResponse: false,
-        consent: { statistics: false, marketing: true, preferences: true },
-      });
-      fire('CookiebotOnLoad');
+      setCookiebot(NEVER_CHOSEN);
+      expect(readAid()).toBe('left-over');
+      fire('CookiebotOnDialogInit');
       expect(readAid()).toBeNull();
       expect(gtagCalls).toEqual([]);
       expect(getCurrentConsent()).toEqual(before);
       act(() => trackPageView('/'));
       expect(lastEvent().anonymous_id).toBe('');
+    });
+
+    it('expires a leftover on mount when hasResponse is already false', () => {
+      document.cookie = '_iap_aid=left-over; Path=/';
+      setCookiebot(NEVER_CHOSEN);
+      const gtagCallsBefore = captureGtag();
+      render(<CookiebotConsentListener />);
+      expect(readAid()).toBeNull();
+      // Mount's own initConsentState bridge is unchanged; the cleanup adds no
+      // gtag call of its own beyond it.
+      expect(gtagCallsBefore.filter((c) => c[0] === 'consent')).toHaveLength(1);
     });
 
     it('keeps the cookie where Cookiebot reports statistics granted without an answer', () => {
@@ -120,14 +135,21 @@ describe('CookiebotConsentListener and the _iap_aid leftover', () => {
       const gtagCalls = captureGtag();
 
       setCookiebot({ hasResponse: false, consent: { statistics: true, marketing: false } });
-      fire('CookiebotOnLoad');
+      fire('CookiebotOnDialogInit');
       expect(readAid()).toBe('implied-region-id');
       expect(gtagCalls).toEqual([]);
       expect(getCurrentConsent()).toEqual(before);
     });
+
+    it('keeps the cookie on mount where Cookiebot reports statistics granted without an answer', () => {
+      document.cookie = '_iap_aid=implied-region-id; Path=/';
+      setCookiebot({ hasResponse: false, consent: { statistics: true } });
+      render(<CookiebotConsentListener />);
+      expect(readAid()).toBe('implied-region-id');
+    });
   });
 
-  it('leaves the cookie to the accept or decline event when CookiebotOnLoad has an answer', () => {
+  it('leaves a stored decline to CookiebotOnDecline when CookiebotOnLoad has an answer', () => {
     document.cookie = '_iap_aid=stored-id; Path=/';
     setCookiebot(UNRESOLVED);
     render(<CookiebotConsentListener />);

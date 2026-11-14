@@ -192,32 +192,39 @@ describe('CheckoutForm (Phase 9F D8)', () => {
     expect(shownProducts).toBe(`"${sent.products}"`);
   });
 
-  // events_raw stores the raw utm_source parameter, so the preview shows the
-  // one in the visitor's URL, not the demo taxonomy's classified source.
-  it('shows the raw utm_source from the URL', () => {
+  // A real-site row never carries utm_* (measured in BigQuery 2026-11-14:
+  // nothing in the tag setup sends them), so the preview shows NULL even when
+  // the visitor's URL carries them.
+  it('shows utm_source and utm_campaign as NULL even when the URL carries them', () => {
     mockSearchParams = new URLSearchParams('utm_source=facebook&utm_campaign=spring_launch');
     renderCheckout();
-    expect(previewCell('utm_source')).toBe('"facebook"');
-    expect(previewCell('utm_campaign')).toBe('"spring_launch"');
-  });
-
-  // Small print, wording by Ian on 2026-11-14.
-  it('says the utm values are examples when the URL had no utm_campaign', () => {
-    renderCheckout();
-    const sidebar = document.querySelector('aside[data-live-sidebar]');
-    expect(sidebar?.textContent).toContain(
-      'utm_* and client_id are example values. Your URL had no utm_campaign.',
-    );
-  });
-
-  it('says only client_id is an example when the URL carried a utm_campaign', () => {
-    mockSearchParams = new URLSearchParams('utm_campaign=spring_launch');
-    renderCheckout();
-    const sidebar = document.querySelector('aside[data-live-sidebar]');
-    expect(sidebar?.textContent).toContain(
-      'client_id is an example value. The other visitor-scoped columns reflect your real session.',
-    );
     expect(previewCell('utm_source')).toBe('NULL');
+    expect(previewCell('utm_campaign')).toBe('NULL');
+  });
+
+  it('shows page_referrer as NULL when the visitor arrived with no referrer', () => {
+    // jsdom's document.referrer is ''.
+    renderCheckout();
+    expect(previewCell('page_referrer')).toBe('NULL');
+  });
+
+  // Small print, one line in all cases (Ian, 2026-11-14).
+  it.each([
+    ['without utm parameters', ''],
+    ['with utm parameters', 'utm_source=facebook&utm_campaign=spring_launch'],
+  ])('the small print says only that client_id is an example value, %s', (_l, query) => {
+    mockSearchParams = new URLSearchParams(query);
+    renderCheckout();
+    const sidebar = document.querySelector('aside[data-live-sidebar]');
+    expect(sidebar?.textContent).toContain('client_id is an example value.');
+    expect(sidebar?.textContent).not.toMatch(/utm_\* and client_id|visitor-scoped columns/);
+  });
+
+  it('titles the sidebar for the purchase row it shows', () => {
+    renderCheckout();
+    const sidebar = document.querySelector('aside[data-live-sidebar]');
+    expect(sidebar?.textContent).toContain('Warehouse write · purchase');
+    expect(sidebar?.textContent).not.toContain('Warehouse write · begin_checkout');
   });
 
   it('renders an order summary column with items, subtotal, total, no-kill disclaimer', () => {

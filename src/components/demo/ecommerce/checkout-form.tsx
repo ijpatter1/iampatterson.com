@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 import { trackBeginCheckout, trackPurchase } from '@/lib/events/track';
 import { useScrollToTopOnMount } from '@/hooks/useScrollToTopOnMount';
@@ -19,7 +19,6 @@ import {
   RAW_EVENTS_COLUMN_COUNT,
   diagnosticLinesForConsent,
 } from '@/lib/demo/reveal/warehouse-write';
-import { resolveUtmMeta } from '@/lib/demo/reveal/campaign-taxonomy';
 
 // Client-only metadata (URL, referrer) for the
 // BQ row preview in LiveSidebar. Read once on first client render via
@@ -84,7 +83,6 @@ function getClientMetaServerSnapshot(): ClientMeta {
 export function CheckoutForm() {
   const { items, total, itemCount, clearCart } = useCart();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { push } = useToast();
   const session = useSessionContext();
 
@@ -93,16 +91,11 @@ export function CheckoutForm() {
   // inherited from /cart or wherever the visitor came from.
   useScrollToTopOnMount();
 
-  // Derive URL + browser-derivable values to thread into the BQ row
-  // preview so the warehouse-write sidebar stops rendering hardcoded
-  // utm / page / referrer values as if they were the visitor's.
-  // Pulled on client post-mount via state so SSR stays consistent.
-  const utmMeta = useMemo(
-    () => resolveUtmMeta({ utm_campaign: searchParams?.get('utm_campaign') }),
-    [searchParams],
-  );
-  // events_raw stores the raw utm_source parameter, so the preview shows it.
-  const utmSource = searchParams?.get('utm_source') ?? '';
+  // Derive browser-derivable values to thread into the BQ row preview so
+  // the warehouse-write sidebar stops rendering hardcoded page / referrer
+  // values as if they were the visitor's. Pulled on client post-mount via
+  // state so SSR stays consistent. utm_* are not threaded: a real-site row
+  // never carries them, so the preview shows NULL.
   const { pageLocation, pageReferrer } = useSyncExternalStore(
     subscribeClientMeta,
     getClientMetaSnapshot,
@@ -363,7 +356,7 @@ export function CheckoutForm() {
 
           <LiveSidebar
             route="checkout"
-            title="Warehouse write · begin_checkout"
+            title="Warehouse write · purchase"
             tag="UNDER · BIGQUERY WRITE"
           >
             <WarehouseWriteReadout
@@ -382,9 +375,6 @@ export function CheckoutForm() {
                   session.events_in_session > 0 ? session.consent_marketing : undefined,
                 pageLocation: pageLocation || undefined,
                 pageReferrer: pageReferrer || undefined,
-                utmCampaign: utmMeta.value,
-                utmIsLive: utmMeta.isLive,
-                utmSource,
               }}
             />
           </LiveSidebar>
