@@ -143,9 +143,9 @@ function recordConsent(
  * - Not granted, once Cookiebot has a resolved answer: expire it. That is
  *   every `trackConsentUpdate` (the visitor's decline or withdrawal, or
  *   Cookiebot's decline event for a stored choice), and `initConsentState`
- *   called with `resolved` (a stored answer already in place, or a visitor
- *   Cookiebot has loaded for who has never chosen). Production minted the
- *   cookie for every visitor until 2026-11-14, so leftovers exist.
+ *   called with `resolved` (a stored answer already in place). Production
+ *   minted the cookie for every visitor until 2026-11-14, so leftovers exist.
+ *   A visitor who has never chosen is handled by expireAnonymousIdLeftover.
  * - Not granted, before Cookiebot has resolved: leave it. On a reload
  *   initConsentState runs at ~15ms with no answer yet (measured 2026-11-14);
  *   the stored choice arrives ~180ms later. Expiring there would delete a
@@ -200,6 +200,20 @@ function bridgeToGtagConsent(analytics: boolean, marketing: boolean, preferences
 }
 
 /**
+ * Expire a leftover `_iap_aid`, and do nothing else: no consent is recorded
+ * and no gtag update is sent. For CookiebotOnLoad without an answer (a visitor
+ * who has never chosen, where Cookiebot does not report statistics granted):
+ * production minted the cookie for every visitor until 2026-11-14. A no-op
+ * while this module holds analytics consent, so it can never remove a
+ * consented ID.
+ */
+export function expireAnonymousIdLeftover(): void {
+  if (typeof document === 'undefined' || currentConsent.consent_analytics) return;
+  clearAnonymousIdCookie();
+  consentedAnonymousId = '';
+}
+
+/**
  * Initialize consent state from Cookiebot (call on page load for returning
  * visitors whose consent choice is already stored). Also bridges to gtag so
  * GTM Consent Mode v2 sees the returning-visitor state instead of staying
@@ -211,9 +225,8 @@ function bridgeToGtagConsent(analytics: boolean, marketing: boolean, preferences
  * change this session; the gtag bridge is the only side effect.
  *
  * `resolved` is true only when Cookiebot has a resolved answer
- * (`Cookiebot.hasResponse === true`, or CookiebotOnLoad for a visitor who
- * has never chosen). Only then may an analytics-false state expire a
- * leftover `_iap_aid`; see applyAnonymousIdConsent.
+ * (`Cookiebot.hasResponse === true`). Only then may an analytics-false state
+ * expire a leftover `_iap_aid`; see applyAnonymousIdConsent.
  */
 export function initConsentState(
   analytics: boolean,

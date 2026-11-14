@@ -5,6 +5,7 @@ import {
   FULL_PAGE_DIAGNOSTIC_LINES,
   diagnosticLinesForConsent,
 } from '@/lib/demo/reveal/warehouse-write';
+import { trackPurchase, trackSessionPulseHover } from '@/lib/events/track';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -40,12 +41,55 @@ describe('warehouse-write, BQ row preview', () => {
     expect(keys).not.toContain('anonymous_id');
   });
 
+  // The checkout presents this as the row the purchase event writes, so it
+  // must be a purchase row: event_name 'purchase', and every column specific
+  // to the event is one trackPurchase actually sends. The keys are read from
+  // the real function's data-layer push, not from a hand-written list.
+  describe('a true purchase row', () => {
+    // Columns GA4 or sGTM fill in, not the data-layer event itself.
+    const PIPELINE_ADDED = new Set([
+      'event_name',
+      'received_timestamp',
+      'client_id',
+      'page_location',
+      'page_referrer',
+      'utm_source',
+      'utm_campaign',
+    ]);
+    function pushedKeys(fire: () => void): Set<string> {
+      window.dataLayer = [];
+      document.cookie = '_iap_sid=test-session; Path=/';
+      fire();
+      return new Set(Object.keys(window.dataLayer[0] as object));
+    }
+
+    it("pins event_name to 'purchase'", () => {
+      expect(BQ_ROW_COLUMNS.find((c) => c.k === 'event_name')?.v).toBe('"purchase"');
+    });
+
+    it('shows only event-specific columns that trackPurchase sends', () => {
+      const baseKeys = pushedKeys(() => trackSessionPulseHover());
+      const purchaseKeys = pushedKeys(() =>
+        trackPurchase({ order_id: 'ORD-1', order_total: 1, item_count: 1, products: '[]' }),
+      );
+      const eventSpecific = BQ_ROW_COLUMNS.map((c) => c.k).filter(
+        (k) => !baseKeys.has(k) && !PIPELINE_ADDED.has(k),
+      );
+      expect(eventSpecific.length).toBeGreaterThan(0);
+      expect(eventSpecific.filter((k) => !purchaseKeys.has(k))).toEqual([]);
+      // And the preview leaves none of the purchase's own columns out.
+      const purchaseSpecific = [...purchaseKeys].filter((k) => !baseKeys.has(k) && k !== 'event');
+      expect(eventSpecific.sort()).toEqual(purchaseSpecific.sort());
+    });
+  });
+
   it('includes the expected core columns', () => {
     const keys = BQ_ROW_COLUMNS.map((c) => c.k);
     expect(keys).toContain('event_name');
     expect(keys).toContain('timestamp');
     expect(keys).toContain('session_id');
-    expect(keys).toContain('cart_total');
+    expect(keys).toContain('order_id');
+    expect(keys).toContain('order_total');
     expect(keys).toContain('item_count');
     expect(keys).toContain('products');
     expect(keys).toContain('utm_source');
@@ -62,9 +106,15 @@ describe('warehouse-write, BQ row preview', () => {
 });
 
 describe('bqRowForCart', () => {
-  it('substitutes cart_total / item_count / products with visitor cart state', () => {
-    const rows = bqRowForCart({ total: 52.5, itemCount: 3, products: CART_PRODUCTS });
-    expect(rows.find((c) => c.k === 'cart_total')?.v).toBe('52.50');
+  it('substitutes order_id / order_total / item_count / products with the order the form will submit', () => {
+    const rows = bqRowForCart({
+      total: 52.5,
+      itemCount: 3,
+      products: CART_PRODUCTS,
+      orderId: 'ORD-LIVE123',
+    });
+    expect(rows.find((c) => c.k === 'order_id')?.v).toBe('"ORD-LIVE123"');
+    expect(rows.find((c) => c.k === 'order_total')?.v).toBe('52.50');
     expect(rows.find((c) => c.k === 'item_count')?.v).toBe('3');
     // products is a STRING column holding the cart as JSON, as the purchase
     // event sends it.
@@ -145,7 +195,9 @@ describe('bqRowForCart', () => {
       );
     });
 
-    it('substitutes utm_campaign / utm_source when utmIsLive=true', () => {
+    // events_raw stores the raw utm_source parameter (e.g. "facebook"), not
+    // the demo taxonomy's classified source, so the preview shows the raw one.
+    it('shows the raw utm_source from the URL when the URL carried a utm_campaign', () => {
       const rows = bqRowForCart({
         total: 0,
         itemCount: 0,
@@ -153,11 +205,23 @@ describe('bqRowForCart', () => {
         live: {
           utmIsLive: true,
           utmCampaign: 'google_brand_tuna',
-          utmSource: 'Google',
+          utmSource: 'facebook',
         },
       });
       expect(rows.find((c) => c.k === 'utm_campaign')?.v).toBe('"google_brand_tuna"');
-      expect(rows.find((c) => c.k === 'utm_source')?.v).toBe('"Google"');
+      expect(rows.find((c) => c.k === 'utm_source')?.v).toBe('"facebook"');
+    });
+
+    it('shows utm_source as NULL when the URL had a utm_campaign but no utm_source', () => {
+      // The other utm values are real, so the small print does not call them
+      // examples; a missing parameter is a NULL column, not a seed.
+      const rows = bqRowForCart({
+        total: 0,
+        itemCount: 0,
+        products: CART_PRODUCTS,
+        live: { utmIsLive: true, utmCampaign: 'google_brand_tuna', utmSource: '' },
+      });
+      expect(rows.find((c) => c.k === 'utm_source')?.v).toBe('NULL');
     });
 
     it('leaves utm_* as seed when utmIsLive=false (honest about example data)', () => {
@@ -168,7 +232,7 @@ describe('bqRowForCart', () => {
         live: {
           utmIsLive: false,
           utmCampaign: 'meta_prospecting_lal_tuna_q1', // seed value
-          utmSource: 'Meta',
+          utmSource: 'facebook',
         },
       });
       // Seed row values preserve (unchanged from BQ_ROW_COLUMNS defaults).

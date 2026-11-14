@@ -8,8 +8,8 @@ import {
 
 /**
  * Warehouse-write Tier 2 readout, children of `LiveSidebar` on the
- * checkout page. Renders the row preview being written to BigQuery with
- * cart-reactive fields (`cart_total`, `item_count`, `products`) updated
+ * checkout page. Renders the purchase row the form will write to BigQuery,
+ * with order fields (`order_id`, `order_total`, `item_count`, `products`) updated
  * live as the visitor modifies cart state. When live session context is
  * supplied, `session_id`, `timestamp`, `received_timestamp`, and the
  * two consent flags also substitute with the visitor's real values
@@ -19,15 +19,18 @@ export function WarehouseWriteReadout({
   total,
   itemCount,
   products,
+  orderId,
   live,
 }: {
   total: number;
   itemCount: number;
   /** The cart as JSON, as the purchase event sends it. */
   products: string;
+  /** The order_id the form will submit. */
+  orderId?: string;
   live?: LiveCheckoutContext;
 }) {
-  const cols = bqRowForCart({ total, itemCount, products, live });
+  const cols = bqRowForCart({ total, itemCount, products, orderId, live });
   const utmIsExample = live?.utmIsLive === false;
   return (
     <div className="flex flex-col gap-3">
@@ -40,8 +43,8 @@ export function WarehouseWriteReadout({
         purchase event fires. {cols.length} of {RAW_EVENTS_COLUMN_COUNT} columns shown.{' '}
         <span className="text-[#9E8A6B]">
           {utmIsExample
-            ? 'utm_* / client_id are example seeds, no utm_campaign in your url.'
-            : 'client_id is an example seed. The other visitor-scoped columns reflect your real session.'}
+            ? 'utm_* and client_id are example values. Your URL had no utm_campaign.'
+            : 'client_id is an example value. The other visitor-scoped columns reflect your real session.'}
         </span>
       </p>
 

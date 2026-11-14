@@ -1,8 +1,10 @@
 /**
  * BigQuery row preview for Phase 9F checkout `LiveSidebar` (D8).
  *
- * 15 representative columns from `iampatterson_raw.events_raw`, the subset
- * most relevant to checkout. Every column shown exists in
+ * The purchase row the checkout form will write to
+ * `iampatterson_raw.events_raw`: 16 representative columns. Every
+ * event-specific column is one `trackPurchase` sends, and every column shown
+ * exists in
  * `infrastructure/bigquery/schema.json` with the type shown, and the stated
  * table width is the schema's; tests/unit/lib/demo/reveal/warehouse-write.test.ts
  * pins both. Pre-9E `WarehouseWriteUnderside` salvage destination.
@@ -13,7 +15,9 @@
  * `cart_total`, `cart_item_count` → `item_count`, `items` → `products`), five
  * the table does not have were dropped (`currency`, `channel_classified`,
  * `geo_country`, `device_category`, `ingested_at`), and the consent flags
- * show as BOOL, as stored.
+ * show as BOOL, as stored. The row then became a true purchase row
+ * (`event_name` 'purchase', `order_id` and `order_total` in place of
+ * `cart_total`), and `utm_source` shows the raw URL parameter.
  */
 
 export interface BQColumn {
@@ -35,7 +39,7 @@ const SEED_PRODUCTS =
   '[{"product_id":"tuna-plush-classic","product_name":"Tuna Plush","price":26,"quantity":1}]';
 
 export const BQ_ROW_COLUMNS: BQColumn[] = [
-  { k: 'event_name', v: '"begin_checkout"', type: 'STRING' },
+  { k: 'event_name', v: '"purchase"', type: 'STRING' },
   { k: 'timestamp', v: '"2024-04-19T14:25:28.942Z"', type: 'STRING' },
   { k: 'received_timestamp', v: '1713536728942', type: 'INT64' },
   { k: 'session_id', v: '"ses_x9b2jk3q"', type: 'STRING' },
@@ -43,7 +47,8 @@ export const BQ_ROW_COLUMNS: BQColumn[] = [
   { k: 'page_location', v: '".../checkout"', type: 'STRING' },
   { k: 'page_path', v: '"/demo/ecommerce/checkout"', type: 'STRING' },
   { k: 'page_referrer', v: '".../cart"', type: 'STRING' },
-  { k: 'cart_total', v: '84.00', type: 'FLOAT64' },
+  { k: 'order_id', v: '"ORD-LX3K9Q2A"', type: 'STRING' },
+  { k: 'order_total', v: '84.00', type: 'FLOAT64' },
   { k: 'item_count', v: '3', type: 'INT64' },
   { k: 'products', v: `"${SEED_PRODUCTS}"`, type: 'STRING' },
   { k: 'utm_source', v: '"meta"', type: 'STRING' },
@@ -69,14 +74,14 @@ export interface LiveCheckoutContext {
   utmCampaign?: string;
   /** Whether utmCampaign came from the visitor's URL (vs fallback seed). */
   utmIsLive?: boolean;
-  /** Classified UTM source, Meta / Google / TikTok / Email / Unknown. */
+  /** The raw utm_source URL parameter, as events_raw stores it ('' when absent). */
   utmSource?: string;
 }
 
 /**
- * Substitute `cart_total` / `item_count` / `products` rows with the
- * visitor's current cart state so the preview is specific. `products` is the
- * cart as JSON, as the purchase event sends it. When live session context is
+ * Substitute `order_id` / `order_total` / `item_count` / `products` with the
+ * order the form will submit, the same values `trackPurchase` sends, so the
+ * preview is specific. `products` is the cart as JSON. When live session context is
  * supplied, also substitutes `session_id`, `timestamp`, `received_timestamp`,
  * and the two consent flags with the visitor's real values (UAT r1 items
  * 11 + 13).
@@ -85,6 +90,8 @@ export function bqRowForCart(params: {
   total: number;
   itemCount: number;
   products: string;
+  /** The order_id the form will submit. */
+  orderId?: string;
   live?: LiveCheckoutContext;
 }): BQColumn[] {
   const sid =
@@ -111,7 +118,8 @@ export function bqRowForCart(params: {
   const utmLive = params.live?.utmIsLive === true;
 
   return BQ_ROW_COLUMNS.map((c) => {
-    if (c.k === 'cart_total') return { ...c, v: params.total.toFixed(2) };
+    if (c.k === 'order_id' && params.orderId) return { ...c, v: `"${params.orderId}"` };
+    if (c.k === 'order_total') return { ...c, v: params.total.toFixed(2) };
     if (c.k === 'item_count') return { ...c, v: String(params.itemCount) };
     if (c.k === 'products' && params.products) return { ...c, v: `"${params.products}"` };
     if (c.k === 'session_id' && sid) return { ...c, v: `"${sid.slice(0, 8)}…"` };
@@ -131,8 +139,10 @@ export function bqRowForCart(params: {
     if (c.k === 'utm_campaign' && utmLive && params.live?.utmCampaign) {
       return { ...c, v: `"${params.live.utmCampaign}"` };
     }
-    if (c.k === 'utm_source' && utmLive && params.live?.utmSource) {
-      return { ...c, v: `"${params.live.utmSource}"` };
+    // Raw parameter, or NULL when the URL had none: with a live utm_campaign
+    // the utm values are real, so a missing one is a NULL column, not a seed.
+    if (c.k === 'utm_source' && utmLive) {
+      return { ...c, v: params.live?.utmSource ? `"${params.live.utmSource}"` : 'NULL' };
     }
     return c;
   });

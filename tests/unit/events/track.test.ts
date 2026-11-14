@@ -12,6 +12,8 @@ import {
   trackWebVital,
   trackPageEngagement,
   initConsentState,
+  expireAnonymousIdLeftover,
+  getCurrentConsent,
 } from '@/lib/events/track';
 import * as trackModule from '@/lib/events/track';
 import * as anonymousIdModule from '@/lib/identity/anonymous-id';
@@ -571,6 +573,27 @@ describe('anonymous_id follows analytics consent', () => {
   // arrives ~180ms later with CookiebotOnLoad and OnAccept/OnDecline.
   // Expiring before Cookiebot resolves would delete a consenting visitor's ID
   // and mint a new one when CookiebotOnAccept follows.
+  // The narrow cleanup CookiebotOnLoad uses for a visitor who has never
+  // chosen: it expires a leftover and does nothing else.
+  describe('expireAnonymousIdLeftover', () => {
+    it('expires a leftover without changing consent state', () => {
+      cookieDescriptor.set!.call(document, '_iap_aid=left-over; Path=/');
+      const before = getCurrentConsent();
+      expireAnonymousIdLeftover();
+      expect(readAid()).toBeNull();
+      expect(getCurrentConsent()).toEqual(before);
+    });
+
+    it('never expires the cookie while this module holds analytics consent', () => {
+      initConsentState(true, false, false, true);
+      const id = readAid();
+      expireAnonymousIdLeftover();
+      expect(readAid()).toBe(id);
+      trackPageView('/');
+      expect(lastEvent().anonymous_id).toBe(id);
+    });
+  });
+
   it("keeps a consenting returning visitor's ID through an unresolved init", () => {
     cookieDescriptor.set!.call(document, '_iap_aid=original-id; Path=/');
     initConsentState(false, false, false, false);
@@ -711,6 +734,7 @@ describe('anonymous_id follows analytics consent', () => {
     // The full list, so a writer cannot arrive under any name.
     expect(Object.keys(trackModule).sort()).toEqual(
       [
+        'expireAnonymousIdLeftover',
         'getCurrentConsent',
         'initConsentState',
         'trackAddToCart',

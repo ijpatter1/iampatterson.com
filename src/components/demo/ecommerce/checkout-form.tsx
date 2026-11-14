@@ -19,7 +19,7 @@ import {
   RAW_EVENTS_COLUMN_COUNT,
   diagnosticLinesForConsent,
 } from '@/lib/demo/reveal/warehouse-write';
-import { classifyUtm, resolveUtmMeta } from '@/lib/demo/reveal/campaign-taxonomy';
+import { resolveUtmMeta } from '@/lib/demo/reveal/campaign-taxonomy';
 
 // Client-only metadata (URL, referrer) for the
 // BQ row preview in LiveSidebar. Read once on first client render via
@@ -101,7 +101,8 @@ export function CheckoutForm() {
     () => resolveUtmMeta({ utm_campaign: searchParams?.get('utm_campaign') }),
     [searchParams],
   );
-  const utmClassification = useMemo(() => classifyUtm(utmMeta.value), [utmMeta.value]);
+  // events_raw stores the raw utm_source parameter, so the preview shows it.
+  const utmSource = searchParams?.get('utm_source') ?? '';
   const { pageLocation, pageReferrer } = useSyncExternalStore(
     subscribeClientMeta,
     getClientMetaSnapshot,
@@ -141,6 +142,8 @@ export function CheckoutForm() {
   // subtle regen bug the React-Compiler purity rule surfaced.
   const [orderId] = useState(() => `ORD-${Date.now().toString(36).toUpperCase()}`);
   const orderParams = useMemo(() => ({ orderId, total, itemCount }), [orderId, total, itemCount]);
+  // The cart as JSON: the same string the preview shows and trackPurchase sends.
+  const cartProducts = useMemo(() => productsJson(items), [items]);
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -149,7 +152,7 @@ export function CheckoutForm() {
       order_id: orderParams.orderId,
       order_total: total,
       item_count: itemCount,
-      products: productsJson(items),
+      products: cartProducts,
     });
     setStep('diagnostic');
   }
@@ -366,7 +369,8 @@ export function CheckoutForm() {
             <WarehouseWriteReadout
               total={total}
               itemCount={itemCount}
-              products={productsJson(items)}
+              products={cartProducts}
+              orderId={orderId}
               live={{
                 sessionId: session.session_id,
                 eventTimestamp: session.last_event_at || undefined,
@@ -380,7 +384,7 @@ export function CheckoutForm() {
                 pageReferrer: pageReferrer || undefined,
                 utmCampaign: utmMeta.value,
                 utmIsLive: utmMeta.isLive,
-                utmSource: utmClassification.source,
+                utmSource,
               }}
             />
           </LiveSidebar>

@@ -168,17 +168,56 @@ describe('CheckoutForm (Phase 9F D8)', () => {
     expect(sidebar?.textContent).toContain('iampatterson_raw.events_raw');
     // The table's real width (infrastructure/bigquery/schema.json) and only
     // columns that exist in it; no seed for a column the table lacks.
-    expect(sidebar?.textContent).toMatch(/15 of 77 columns/i);
+    expect(sidebar?.textContent).toMatch(/16 of 77 columns/i);
     expect(sidebar?.textContent).not.toMatch(/geo_country/);
-    expect(document.body.textContent).toMatch(/15 of the 77 real columns/);
+    expect(document.body.textContent).toMatch(/16 of the 77 real columns/);
   });
 
-  it('warehouse-write sidebar reflects visitor cart total + item count', () => {
+  // The preview is the purchase row the form will write: the same order_id,
+  // order_total, item_count and products that trackPurchase sends on submit.
+  it('warehouse-write sidebar shows the purchase row the form will submit', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     renderCheckout();
-    expect(previewCell('cart_total')).toBe('26.00');
+    expect(previewCell('event_name')).toBe('"purchase"');
+    expect(previewCell('order_total')).toBe('26.00');
     expect(previewCell('item_count')).toBe('1');
     // products: the cart as JSON, the string the purchase event sends.
     expect(previewCell('products')).toContain('"product_id":"tuna-plush-classic"');
+    const shownOrderId = previewCell('order_id');
+    const shownProducts = previewCell('products');
+
+    await user.click(screen.getByRole('button', { name: /place order/i }));
+    const sent = mockPurchase.mock.calls[0][0] as { order_id: string; products: string };
+    expect(shownOrderId).toBe(`"${sent.order_id}"`);
+    expect(shownProducts).toBe(`"${sent.products}"`);
+  });
+
+  // events_raw stores the raw utm_source parameter, so the preview shows the
+  // one in the visitor's URL, not the demo taxonomy's classified source.
+  it('shows the raw utm_source from the URL', () => {
+    mockSearchParams = new URLSearchParams('utm_source=facebook&utm_campaign=spring_launch');
+    renderCheckout();
+    expect(previewCell('utm_source')).toBe('"facebook"');
+    expect(previewCell('utm_campaign')).toBe('"spring_launch"');
+  });
+
+  // Small print, wording by Ian on 2026-11-14.
+  it('says the utm values are examples when the URL had no utm_campaign', () => {
+    renderCheckout();
+    const sidebar = document.querySelector('aside[data-live-sidebar]');
+    expect(sidebar?.textContent).toContain(
+      'utm_* and client_id are example values. Your URL had no utm_campaign.',
+    );
+  });
+
+  it('says only client_id is an example when the URL carried a utm_campaign', () => {
+    mockSearchParams = new URLSearchParams('utm_campaign=spring_launch');
+    renderCheckout();
+    const sidebar = document.querySelector('aside[data-live-sidebar]');
+    expect(sidebar?.textContent).toContain(
+      'client_id is an example value. The other visitor-scoped columns reflect your real session.',
+    );
+    expect(previewCell('utm_source')).toBe('NULL');
   });
 
   it('renders an order summary column with items, subtotal, total, no-kill disclaimer', () => {

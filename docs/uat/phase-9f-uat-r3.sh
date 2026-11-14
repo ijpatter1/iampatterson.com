@@ -222,8 +222,8 @@ expect \
 do_step "Click 'Checkout'."
 expect \
   "begin_checkout toast fires" \
-  "Warehouse-write sidebar shows 15 of 77 columns preview with real iampatterson_raw.events_raw destination; every column shown exists in infrastructure/bigquery/schema.json (corrected 2026-11-14)" \
-  "Cart-reactive columns (cart_total, item_count, products) update live when editing cart from another tab (skip if no time)"
+  "Warehouse-write sidebar shows 16 of 77 columns preview with real iampatterson_raw.events_raw destination; it is the purchase row (event_name purchase) and every column shown exists in infrastructure/bigquery/schema.json (corrected 2026-11-14)" \
+  "Cart-reactive columns (order_total, item_count, products) update live when editing cart from another tab (skip if no time)"
 
 do_step "Fill form and submit."
 expect \

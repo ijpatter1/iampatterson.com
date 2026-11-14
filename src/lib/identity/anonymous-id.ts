@@ -8,11 +8,13 @@
  *
  * Consent: the cookie is classified Statistics in Cookiebot (Ian, 2026-11-14),
  * so it exists only while analytics consent is granted. This module is
- * read-only on purpose. The only writer is `applyAnonymousIdConsent` in
- * `src/lib/events/track.ts`, which holds the honored analytics consent: a
- * grant mints the cookie (or reuses and refreshes the one already there), and
- * an explicit decline or withdrawal expires it (never the init path, which can
- * see Cookiebot's default before a stored grant resolves). No export here can
+ * read-only on purpose. The writers live in `src/lib/events/track.ts`, which
+ * holds the honored analytics consent. A grant mints the cookie (or reuses
+ * and refreshes the one already there). Without analytics consent it is
+ * expired only once Cookiebot has a resolved answer: a decline or withdrawal
+ * event, or the init path when `Cookiebot.hasResponse === true`, never
+ * Cookiebot's unresolved default at page load. For a visitor who has never
+ * chosen, `expireAnonymousIdLeftover` expires a leftover. No export here can
  * write it, so no caller can mint the ID without consent. A visitor who
  * declines, or has not chosen yet, carries no year-long identifier, and
  * events carry ''.
