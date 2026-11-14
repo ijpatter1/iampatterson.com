@@ -138,7 +138,8 @@ export interface ClickNavEvent extends BaseEvent {
 /**
  * Closed enum of `cta_location` values for `click_cta` emissions. Every call
  * to action has its own value, so two buttons on one page can be told apart
- * in the click data.
+ * in the click data. The footer's three Session links share `footer_session`,
+ * as they always have; `cta_text` tells them apart.
  *
  * Nav-adjacent values name their affordance (`session_pulse`, `portal_*`);
  * page values name their page and place (`hero_review`, `review_page_top`).
@@ -146,7 +147,8 @@ export interface ClickNavEvent extends BaseEvent {
  *
  * 15.4 removed the values whose calls to action were deleted: `hero` (the old
  * hero, split into `hero_review` and `hero_session`), `final_cta`,
- * `demo_card_ecommerce` and `pipeline_see_your_session`.
+ * `demo_card_ecommerce` and `pipeline_see_your_session`, plus `review` and
+ * `proof`, which preview deploys emitted before 15.4 split them.
  * Rows already in BigQuery keep them; `infrastructure/bigquery/schema.json`
  * documents both sets.
  */

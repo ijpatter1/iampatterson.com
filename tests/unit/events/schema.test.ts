@@ -133,9 +133,30 @@ describe('Event schema types', () => {
     expect(Object.keys(all)).toHaveLength(23);
 
     // The schema checklist: the BigQuery column says what the values are.
+    // Whole tokens, so `hero` can't pass on the strength of `hero_review`.
     const column = bigQueryColumns.find((c) => c.name === 'cta_location')!;
+    const [current, retired] = column.description.split('Older rows');
+    const tokens = (text: string) => new Set(text.match(/[a-z0-9_]+/g) ?? []);
+    const currentTokens = tokens(current);
     for (const value of Object.keys(all)) {
-      expect([value, column.description.includes(value)]).toEqual([value, true]);
+      expect([value, currentTokens.has(value)]).toEqual([value, true]);
+    }
+    // And the retired values are documented as retired, also whole tokens.
+    // Preview deploys emitted `review` and `proof` before 15.4 split them.
+    const retiredTokens = tokens(retired ?? '');
+    for (const value of [
+      'hero',
+      'final_cta',
+      'demo_card_ecommerce',
+      'pipeline_see_your_session',
+      'review',
+      'proof',
+    ]) {
+      expect([value, retiredTokens.has(value), currentTokens.has(value)]).toEqual([
+        value,
+        true,
+        false,
+      ]);
     }
   });
 
