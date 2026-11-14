@@ -78,37 +78,63 @@ describe('ConnectionManager', () => {
     });
   });
 
-  // A client that keeps opening connections and never closes them (a bug, or
-  // a page left open in many tabs) would otherwise grow one session's set,
-  // and the server's memory and open sockets, without limit.
+  // A visitor with more tabs than the cap must not set off a ring: if a new
+  // connection ended the oldest, that tab (still alive) would reconnect and
+  // end the next, and the tabs would keep cutting each other off. So the
+  // newest is refused and the connections already open are left alone.
   describe('the per-session cap', () => {
-    it(`ends the oldest connection when a session would exceed ${MAX_CONNECTIONS_PER_SESSION}`, () => {
-      const responses = Array.from({ length: MAX_CONNECTIONS_PER_SESSION + 1 }, mockResponse);
-      responses.forEach((res) => manager.add('sess-1', res));
+    function fill(sessionId: string): Response[] {
+      const responses = Array.from({ length: MAX_CONNECTIONS_PER_SESSION }, mockResponse);
+      responses.forEach((res) => expect(manager.add(sessionId, res)).toBe(true));
+      return responses;
+    }
 
-      const [oldest, ...rest] = responses;
-      expect(oldest.end).toHaveBeenCalled();
-      rest.forEach((res) => expect(res.end).not.toHaveBeenCalled());
-      expect([...(manager.get('sess-1') ?? [])]).toEqual(rest);
+    it(`refuses a connection beyond ${MAX_CONNECTIONS_PER_SESSION}, and the open ones keep receiving`, () => {
+      const open = fill('sess-1');
+      const extra = mockResponse();
+      expect(manager.add('sess-1', extra)).toBe(false);
+
+      expect([...(manager.get('sess-1') ?? [])]).toEqual(open);
       expect(manager.size).toBe(MAX_CONNECTIONS_PER_SESSION);
-
       manager.send('sess-1', { event_name: 'page_view' });
-      expect(oldest.write).not.toHaveBeenCalled();
-      rest.forEach((res) => expect(res.write).toHaveBeenCalled());
+      open.forEach((res) => expect(res.write).toHaveBeenCalled());
+      expect(extra.write).not.toHaveBeenCalled();
     });
 
-    // The ended response's close handler still runs later and removes it;
-    // that must not disturb the others.
-    it("treats the ended connection's later close as a no-op", () => {
-      const responses = Array.from({ length: MAX_CONNECTIONS_PER_SESSION + 1 }, mockResponse);
-      responses.forEach((res) => manager.add('sess-1', res));
-      manager.remove('sess-1', responses[0]);
-      expect(manager.size).toBe(MAX_CONNECTIONS_PER_SESSION);
+    it('never ends an open connection, however many are refused', () => {
+      const open = fill('sess-1');
+      for (let i = 0; i < 20; i++) manager.add('sess-1', mockResponse());
+      open.forEach((res) => expect(res.end).not.toHaveBeenCalled());
+    });
+
+    it('accepts a new connection once one of the open ones closes', () => {
+      const open = fill('sess-1');
+      expect(manager.add('sess-1', mockResponse())).toBe(false);
+      manager.remove('sess-1', open[0]);
+      const next = mockResponse();
+      expect(manager.add('sess-1', next)).toBe(true);
+      expect(manager.get('sess-1')?.has(next)).toBe(true);
+    });
+
+    it('is per session: another session is not affected', () => {
+      fill('sess-1');
+      expect(manager.add('sess-2', mockResponse())).toBe(true);
     });
 
     it('is five', () => {
       expect(MAX_CONNECTIONS_PER_SESSION).toBe(5);
     });
+  });
+
+  // /health reports size; a response added twice is still one connection.
+  it('counts a response added twice once', () => {
+    const res = mockResponse();
+    manager.add('sess-1', res);
+    manager.add('sess-1', res);
+    expect(manager.size).toBe(1);
+    manager.remove('sess-1', res);
+    expect(manager.size).toBe(0);
+    expect(manager.get('sess-1')).toBeUndefined();
   });
 
   describe('send', () => {

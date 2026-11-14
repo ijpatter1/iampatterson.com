@@ -1,4 +1,5 @@
 import http from 'http';
+import { MAX_CONNECTIONS_PER_SESSION } from './connections';
 import { app, manager } from './server';
 
 let server: http.Server;
@@ -207,5 +208,33 @@ describe('two tabs on one session', () => {
     tabB.controller.abort();
     await waitForConnections(before);
     expect(manager.get('two-tabs-close')).toBeUndefined();
+  });
+  // Above the cap the newest request is refused. Ending the oldest instead
+  // would start a ring: that tab is alive, reconnects, and ends the next.
+  it(`refuses a connection beyond ${MAX_CONNECTIONS_PER_SESSION} with 429, leaving the open ones receiving`, async () => {
+    const before = manager.size;
+    const open: OpenStream[] = [];
+    for (let i = 0; i < MAX_CONNECTIONS_PER_SESSION; i++) {
+      const tab = await openStream('many-tabs');
+      await tab.waitFor('"type":"connected"');
+      open.push(tab);
+    }
+    await waitForConnections(before + MAX_CONNECTIONS_PER_SESSION);
+
+    const refused = await fetch(`${baseUrl}/events?session_id=many-tabs`);
+    expect(refused.status).toBe(429);
+    await refused.text();
+    expect(manager.size).toBe(before + MAX_CONNECTIONS_PER_SESSION);
+
+    expect(await push({ session_id: 'many-tabs', event_name: 'scroll_depth' })).toBe(true);
+    for (const tab of open) {
+      await expect(tab.waitFor('scroll_depth')).resolves.toContain('scroll_depth');
+    }
+
+    // Once one tab closes, a new one is accepted.
+    open[0].controller.abort();
+    await waitForConnections(before + MAX_CONNECTIONS_PER_SESSION - 1);
+    const next = await openStream('many-tabs');
+    await expect(next.waitFor('"type":"connected"')).resolves.toContain('connected');
   });
 });
