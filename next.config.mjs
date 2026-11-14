@@ -7,16 +7,15 @@ const nextConfig = {
   async redirects() {
     // Phase 9E deliverable 7 removed the subscription and leadgen demos; 308
     // permanent redirects catch old LinkedIn links, handoff references and
-    // search-indexed URLs, and the `:path*` glob catches deep links into child
-    // routes. 15.4 deleted the homepage's Demos section and its rebuild
-    // banner, so they now land on the homepage itself.
+    // search-indexed URLs. 15.4 deleted the homepage's Demos section and its
+    // rebuild banner, so they now land on the homepage itself.
     return [
       // 16.2: the about page folds into /contact.
       { source: '/about', destination: '/contact', permanent: true },
+      // `:path*` matches zero or more segments, so each rule covers the bare
+      // URL too.
       { source: '/demo/subscription/:path*', destination: '/', permanent: true },
-      { source: '/demo/subscription', destination: '/', permanent: true },
       { source: '/demo/leadgen/:path*', destination: '/', permanent: true },
-      { source: '/demo/leadgen', destination: '/', permanent: true },
     ];
   },
 };
