@@ -17,7 +17,12 @@ describe('ContactThanksPage', () => {
   it("repeats the contact page's response promise", () => {
     render(<ContactThanksPage />);
     expect(screen.getByText(CONTACT_COPY.response)).toBeInTheDocument();
-    expect(metadata.description).toBe(THANKS_METADATA.description);
+    // The search snippet and share card carry the same promise: the
+    // response's first sentence. A change to the promise fails here until
+    // the description follows it.
+    const promise = CONTACT_COPY.response.match(/^[^.]+\./)![0];
+    expect(promise).toMatch(/reply/i);
+    expect(metadata.description).toContain(promise);
   });
 
   // The page sits inside /contact's layout. Without its own metadata, a shared
