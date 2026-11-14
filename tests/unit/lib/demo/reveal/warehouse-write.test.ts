@@ -4,10 +4,43 @@ import {
   FULL_PAGE_DIAGNOSTIC_LINES,
   diagnosticLinesForConsent,
 } from '@/lib/demo/reveal/warehouse-write';
+import * as fs from 'fs';
+import * as path from 'path';
+
+const schema: { name: string }[] = JSON.parse(
+  fs.readFileSync(path.join(process.cwd(), 'infrastructure/bigquery/schema.json'), 'utf-8'),
+);
 
 describe('warehouse-write, BQ row preview', () => {
-  it('exposes 21 representative columns from the ~51-col raw schema', () => {
-    expect(BQ_ROW_COLUMNS).toHaveLength(21);
+  it('exposes 20 representative columns from the raw schema', () => {
+    expect(BQ_ROW_COLUMNS).toHaveLength(20);
+  });
+
+  // The preview claims to show the row that lands in events_raw, so a column
+  // it shows should exist there. user_pseudo_id did not (nothing forwards
+  // `_iap_aid` to BigQuery) and was dropped on 2026-11-14, Ian's call;
+  // forwarding the ID is later work. The columns below are also not in
+  // schema.json; they were reported to Ian on 2026-11-14 rather than changed
+  // here. The list is pinned exactly, so a new invented column fails, and so
+  // does fixing one without updating this list.
+  it('shows only columns that exist in infrastructure/bigquery/schema.json, apart from the reported ones', () => {
+    const KNOWN_NOT_IN_SCHEMA_REPORTED_2026_11_14 = [
+      'event_timestamp',
+      'cart_value',
+      'cart_item_count',
+      'currency',
+      'items',
+      'channel_classified',
+      'geo_country',
+      'device_category',
+      'ingested_at',
+    ];
+    const schemaColumns = new Set(schema.map((f) => f.name));
+    const shown = bqRowForCart({ total: 0, itemCount: 0, uniqueItems: 0 }).map((c) => c.k);
+    expect(shown.filter((k) => !schemaColumns.has(k))).toEqual(
+      KNOWN_NOT_IN_SCHEMA_REPORTED_2026_11_14,
+    );
+    expect(shown).not.toContain('user_pseudo_id');
   });
 
   it('includes the expected core columns', () => {
@@ -82,42 +115,6 @@ describe('bqRowForCart', () => {
       });
       expect(rows.find((c) => c.k === 'consent_analytics')?.v).toBe('"granted"');
       expect(rows.find((c) => c.k === 'consent_marketing')?.v).toBe('"denied"');
-    });
-
-    // Phase 10d D7: user_pseudo_id (the ~equivalent of GA4's anonymous client id)
-    // substitutes from the visitor's `_iap_aid` cookie when present, instead of
-    // showing seed `NULL`. Truncated to first 8 chars + ellipsis to keep the
-    // sidebar narrow (same convention as session_id).
-    it('substitutes user_pseudo_id with the real anonymous_id (truncated 8 chars + ellipsis)', () => {
-      const rows = bqRowForCart({
-        total: 0,
-        itemCount: 0,
-        uniqueItems: 0,
-        live: { anonymousId: 'aid12345-6789-4def-8abc-feedfacefeed' },
-      });
-      expect(rows.find((c) => c.k === 'user_pseudo_id')?.v).toBe('"aid12345…"');
-    });
-
-    it('user_pseudo_id falls back to NULL seed when no anonymous_id is supplied', () => {
-      const rows = bqRowForCart({
-        total: 0,
-        itemCount: 0,
-        uniqueItems: 0,
-        live: { sessionId: 'x'.repeat(36) },
-      });
-      expect(rows.find((c) => c.k === 'user_pseudo_id')?.v).toBe('NULL');
-    });
-
-    it('user_pseudo_id falls back to NULL seed when anonymousId is empty string', () => {
-      // SSR / pre-mount paths return '' from getAnonymousId; treat that as
-      // "not yet known" rather than substituting an empty quoted string.
-      const rows = bqRowForCart({
-        total: 0,
-        itemCount: 0,
-        uniqueItems: 0,
-        live: { anonymousId: '' },
-      });
-      expect(rows.find((c) => c.k === 'user_pseudo_id')?.v).toBe('NULL');
     });
 
     it('consent columns fall back to seed when no live consent is supplied', () => {

@@ -17,7 +17,7 @@ export const STORAGE_CATEGORIES: readonly CategoryDef[] = [
   {
     id: 'app-identity',
     label: 'app identity',
-    description: 'first-party keys this site mints to identify the visitor or session',
+    description: "first-party keys this site sets for your session and the demo's state",
   },
   {
     id: 'analytics',

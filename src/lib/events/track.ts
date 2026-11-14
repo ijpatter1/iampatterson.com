@@ -28,21 +28,41 @@ let currentConsent = {
 
 /**
  * `_iap_aid`, the 365-day visitor ID, is a Statistics cookie (Ian,
- * 2026-11-14): it exists only while analytics consent is granted. These two
- * writers are private to this module and called only from `recordConsent`, so
- * nothing can mint the ID without the visitor's consent. See
- * `src/lib/identity/anonymous-id.ts`.
+ * 2026-11-14): it exists only while analytics consent is granted. These
+ * writers are private to this module and called only from
+ * `applyAnonymousIdConsent`, so nothing can mint the ID without the visitor's
+ * consent. See `src/lib/identity/anonymous-id.ts`.
  */
 function anonymousIdCookie(value: string, maxAge: number): string {
   const secure = globalThis.location?.protocol === 'https:' ? '; Secure' : '';
   return `${ANONYMOUS_ID_COOKIE_NAME}=${encodeURIComponent(value)}; Path=/; SameSite=Lax; Max-Age=${maxAge}${secure}`;
 }
 
-/** Mint the cookie, or reuse the one already there, and refresh its expiry. */
+/**
+ * A new random ID, or '' where the browser cannot make one: `randomUUID` is
+ * missing outside secure contexts, and a throw here must not stop consent.
+ */
+function newAnonymousId(): string {
+  try {
+    return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : '';
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Mint the cookie, or reuse the one already there, and refresh its expiry.
+ * Returns the ID only if the cookie actually holds it afterwards: when the
+ * browser refuses the write, or no ID can be made, it returns '' so no event
+ * carries an ID the visitor's browser does not have.
+ */
 function ensureAnonymousIdCookie(): string {
-  const id = readAnonymousIdCookie() || crypto.randomUUID();
+  const id = readAnonymousIdCookie() || newAnonymousId();
+  if (!id) return '';
   document.cookie = anonymousIdCookie(id, ANONYMOUS_ID_MAX_AGE);
-  return id;
+  return readAnonymousIdCookie() === id ? id : '';
 }
 
 /**
@@ -54,7 +74,11 @@ function clearAnonymousIdCookie(): void {
   document.cookie = anonymousIdCookie('', 0);
 }
 
-/** The ID while analytics consent is granted, '' otherwise. Set in recordConsent. */
+/**
+ * The ID while analytics consent is granted, '' otherwise: the one source for
+ * events and for `getConsentedAnonymousId`. Cleared in recordConsent, set in
+ * applyAnonymousIdConsent.
+ */
 let consentedAnonymousId = '';
 const consentListeners = new Set<() => void>();
 
@@ -93,19 +117,46 @@ function recordConsent(
     consent_marketing: honorGlobalPrivacyControl(marketing),
     consent_preferences: preferences,
   };
-  // The one place `_iap_aid` is written. A grant mints it (or reuses it),
-  // including for a returning visitor whose silent initConsentState pushes no
-  // event; a decline or withdrawal expires it.
+  // Without analytics, no event carries an ID from here on, including the
+  // consent_update about to be pushed for a withdrawal.
+  if (!currentConsent.consent_analytics) consentedAnonymousId = '';
+  return currentConsent;
+}
+
+/**
+ * The one place `_iap_aid` is written, run after the consent has reached
+ * Google (the gtag update, and the consent_update push for a choice), so
+ * nothing here can hold that up.
+ *
+ * - Granted: mint the cookie, or reuse and refresh the one already there,
+ *   including for a returning visitor whose silent initConsentState pushes no
+ *   event.
+ * - Not granted, on an explicit choice (`trackConsentUpdate`: the visitor's
+ *   decline or withdrawal, or Cookiebot's decline event for a stored choice):
+ *   expire it.
+ * - Not granted, on the init path: leave it. initConsentState can run on mount
+ *   with Cookiebot's all-false default before a stored grant resolves;
+ *   expiring there would delete a consenting visitor's ID and mint a new one
+ *   when CookiebotOnAccept follows.
+ *
+ * Then subscribers are told, each in its own try/catch so one broken
+ * subscriber cannot stop the others.
+ */
+function applyAnonymousIdConsent(explicitChoice: boolean): void {
   if (typeof document !== 'undefined') {
     if (currentConsent.consent_analytics) {
       consentedAnonymousId = ensureAnonymousIdCookie();
-    } else {
+    } else if (explicitChoice) {
       clearAnonymousIdCookie();
-      consentedAnonymousId = '';
     }
   }
-  consentListeners.forEach((listener) => listener());
-  return currentConsent;
+  consentListeners.forEach((listener) => {
+    try {
+      listener();
+    } catch (error) {
+      console.error('[track] consent subscriber failed:', error);
+    }
+  });
 }
 
 /**
@@ -190,6 +241,7 @@ export function initConsentState(
     honored.consent_marketing,
     honored.consent_preferences,
   );
+  applyAnonymousIdConsent(false);
 }
 
 /**
@@ -222,8 +274,8 @@ function baseFields(): {
     timestamp: new Date().toISOString(),
     session_id: sid,
     iap_session_id: sid,
-    // Read only, and empty without analytics consent: see recordConsent.
-    anonymous_id: currentConsent.consent_analytics ? (readAnonymousIdCookie() ?? '') : '',
+    // Read only, and empty without analytics consent: see applyAnonymousIdConsent.
+    anonymous_id: consentedAnonymousId,
     page_path: window.location.pathname,
     page_title: document.title,
     ...currentConsent,
@@ -285,6 +337,7 @@ export function trackConsentUpdate(
     ...baseFields(),
     event: 'consent_update',
   });
+  applyAnonymousIdConsent(true);
 }
 
 // --- E-commerce demo tracking (Phase 6) ---

@@ -222,7 +222,7 @@ expect \
 do_step "Click 'Checkout'."
 expect \
   "begin_checkout toast fires" \
-  "Warehouse-write sidebar shows 21 of 51 columns preview with real iampatterson_raw.events_raw destination" \
+  "Warehouse-write sidebar shows 20 of 51 columns preview (21 before user_pseudo_id was dropped on 2026-11-14) with real iampatterson_raw.events_raw destination" \
   "Cart-reactive columns (cart_value, items) update live when editing cart from another tab (skip if no time)"
 
 do_step "Fill form and submit."

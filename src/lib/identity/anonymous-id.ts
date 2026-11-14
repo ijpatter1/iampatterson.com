@@ -8,18 +8,20 @@
  *
  * Consent: the cookie is classified Statistics in Cookiebot (Ian, 2026-11-14),
  * so it exists only while analytics consent is granted. This module is
- * read-only on purpose. The only writer is `recordConsent` in
+ * read-only on purpose. The only writer is `applyAnonymousIdConsent` in
  * `src/lib/events/track.ts`, which holds the honored analytics consent: a
  * grant mints the cookie (or reuses and refreshes the one already there), and
- * a decline or withdrawal expires it. No export here can write it, so no
- * caller can mint the ID without consent. A visitor who declines, or has not
- * chosen yet, carries no year-long identifier, and events carry ''.
+ * an explicit decline or withdrawal expires it (never the init path, which can
+ * see Cookiebot's default before a stored grant resolves). No export here can
+ * write it, so no caller can mint the ID without consent. A visitor who
+ * declines, or has not chosen yet, carries no year-long identifier, and
+ * events carry ''.
  *
  * Cookie properties (set in `track.ts`):
  * - Path: / (available on all routes)
  * - SameSite: Lax (sent on top-level navigations; not on cross-site)
- * - Max-Age: 31536000 (365 days; refreshed on each consent record, which runs
- *   on every page load for a visitor with a stored choice)
+ * - Max-Age: 31536000 (365 days; refreshed on each grant, which runs on every
+ *   page load for a visitor with a stored choice)
  * - Secure: only when on https origin (omitted on http://localhost dev)
  *
  * Categorized by `src/lib/identity/storage-categories.ts` as `analytics`, so

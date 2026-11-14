@@ -542,7 +542,7 @@ expect \
   "Storage inspector includes an 'App identity' group and an 'Analytics' group" \
   "_iap_aid row is visible in the Analytics group (a Statistics cookie since 2026-11-14)" \
   "Click-to-reveal works (initial truncated/masked, expands to full UUID)" \
-  "_iap_sid (Phase 2 session cookie) is also in the App identity group"
+  "_iap_sid (Phase 2 session cookie) is in the App identity group"
 
 do_step "Navigate to $BASE_URL/demo/ecommerce → click any product → 'Add to cart'."
 
@@ -553,27 +553,28 @@ expect \
   "Event row carries an anonymous_id field" \
   "anonymous_id matches the _iap_aid cookie value (or its truncated suffix)"
 
-do_step "Continue to /cart → /checkout → fill form → place order."
-do_step "On /confirmation, inspect the warehouse-write sidebar (BQ row preview)."
+do_step "Continue to /cart → /checkout. Do not place the order yet."
+do_step "On /checkout, tap 'see the stack ↓' and inspect the warehouse-write sidebar (BQ row preview)."
 expect \
-  "user_pseudo_id column shows a non-NULL value (a real anonymous id, not the seed NULL)" \
-  "Value matches the _iap_aid cookie (truncated as appropriate for display)"
+  "No user_pseudo_id column: dropped 2026-11-14, since events_raw has no such column and nothing forwards _iap_aid to BigQuery yet" \
+  "The _iap_aid value appears nowhere in the preview"
 
 do_step "Application tab → re-check _iap_aid value."
 expect \
-  "Cookie value unchanged across the funnel — same id from homepage to confirmation"
+  "Cookie value unchanged across the funnel — same id from homepage to checkout"
 
-do_step "Without reloading, run Cookiebot.renew() in the Console and decline Statistics."
+do_step "Still on /checkout, without reloading, run Cookiebot.renew() in the Console and decline Statistics."
 expect \
   "Application tab: '_iap_aid' is gone (the site expires it on withdrawal, not only Cookiebot)" \
   "SessionPulse → Consent tab inspector: no _iap_aid row in the Analytics group within ~1 second" \
+  "The warehouse-write preview still has no user_pseudo_id column" \
   "Click any link, then refresh the Application tab: '_iap_aid' has not come back"
 
 confirm "_iap_aid cookie has correct attributes (UUID v4, ≈365d Max-Age, SameSite=Lax)?"
 confirm "_iap_aid surfaces in the D9 storage inspector under Analytics?"
-confirm "Withdrawing Statistics removed _iap_aid at once, and it did not come back?"
 confirm "anonymous_id appears on event payloads in the Timeline?"
-confirm "Confirmation page BQ row preview shows the real anonymous id (not seed NULL)?"
+confirm "Checkout BQ row preview shows no user_pseudo_id column and no visitor ID?"
+confirm "Withdrawing Statistics removed _iap_aid at once, and it did not come back?"
 
 # ────────────────────────────────────────────────────────────────────────
 # Scenario 8 — D8 UX polish bundle
@@ -721,12 +722,12 @@ expect \
   "Analytics-category storage entries are absent or marked as denied" \
   "Marketing-category storage entries are absent" \
   "_iap_sid (app-identity) still present" \
-  "_iap_aid absent: a Statistics cookie, deleted by Cookiebot on decline and not minted again"
+  "_iap_aid absent: a Statistics cookie, never written without analytics consent"
 
 confirm "Consent UI honestly reflects the denial (× glyph + persimmon for declined categories)?"
 confirm "Timeline routing shows 'Blocked' destinations after consent denial?"
 confirm "Network tab confirms zero analytics / marketing pixels fired?"
-confirm "_iap_sid still present and _iap_aid absent after the denial?"
+confirm "_iap_sid present and _iap_aid never written, from first load through the denial?"
 
 # ────────────────────────────────────────────────────────────────────────
 # Edge case B — full ecommerce funnel sweep with all D8/D9 tokens visible

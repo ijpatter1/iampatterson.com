@@ -6,6 +6,7 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { CheckoutForm } from '@/components/demo/ecommerce/checkout-form';
+import * as trackModule from '@/lib/events/track';
 import { CartProvider, useCart } from '@/components/demo/ecommerce/cart-context';
 import { ToastProvider } from '@/components/demo/reveal/toast-provider';
 
@@ -19,18 +20,12 @@ jest.mock('next/navigation', () => ({
 
 const mockBeginCheckout = jest.fn();
 const mockPurchase = jest.fn();
-// The consent-change store from track.ts: the ID while analytics consent is
-// granted, '' otherwise, and the listeners it notifies on a consent change.
-let mockConsentedAnonymousId = '';
-const consentListeners = new Set<() => void>();
+// The real track.ts, consent store included; only the two event calls this
+// component makes are stubbed, so the tests can see them.
 jest.mock('@/lib/events/track', () => ({
+  ...jest.requireActual('@/lib/events/track'),
   trackBeginCheckout: (...a: unknown[]) => mockBeginCheckout(...a),
   trackPurchase: (...a: unknown[]) => mockPurchase(...a),
-  getConsentedAnonymousId: () => mockConsentedAnonymousId,
-  subscribeConsent: (listener: () => void) => {
-    consentListeners.add(listener);
-    return () => consentListeners.delete(listener);
-  },
 }));
 
 const mockSession = jest.fn();
@@ -163,7 +158,7 @@ describe('CheckoutForm (Phase 9F D8)', () => {
     const sidebar = document.querySelector('aside[data-live-sidebar]');
     expect(sidebar).not.toBeNull();
     expect(sidebar?.textContent).toContain('iampatterson_raw.events_raw');
-    expect(sidebar?.textContent).toMatch(/21 of 51 columns/i);
+    expect(sidebar?.textContent).toMatch(/20 of 51 columns/i);
   });
 
   it('warehouse-write sidebar reflects visitor cart total + item count', () => {
@@ -367,77 +362,48 @@ describe('CheckoutForm (Phase 9F D8)', () => {
     });
   });
 
-  // `_iap_aid` is classified Statistics in Cookiebot (Ian, 2026-11-14). The
-  // warehouse-write preview shows it as user_pseudo_id, so it follows the same
-  // rule as the events: a visitor without analytics consent has no year-long
-  // ID shown, minted or refreshed by this page, and a choice made on this page
-  // shows straight away.
-  describe('user_pseudo_id follows analytics consent', () => {
-    const pseudoIdCell = () => {
-      const keyCell = Array.from(document.querySelectorAll('aside[data-live-sidebar] span')).find(
-        (el) => el.textContent === 'user_pseudo_id',
-      );
-      return keyCell?.nextElementSibling?.textContent;
-    };
-    let aidWrites: string[];
-    const cookieDescriptor = Object.getOwnPropertyDescriptor(Document.prototype, 'cookie')!;
-
-    beforeEach(() => {
+  // The preview shows the row that lands in events_raw. Nothing forwards
+  // `_iap_aid` to BigQuery, so the preview had no honest place for it: the
+  // user_pseudo_id column was dropped on 2026-11-14 (Ian's call). Even with
+  // analytics granted through the real consent store, the visitor's ID does
+  // not appear, and the page writes no `_iap_aid` of its own.
+  describe('no visitor ID in the warehouse-write preview', () => {
+    afterEach(() => {
+      act(() => {
+        trackModule.initConsentState(false, false, false);
+      });
       document.cookie = '_iap_aid=; Max-Age=0; Path=/';
-      aidWrites = [];
+    });
+
+    it('shows no user_pseudo_id column and no ID, even with analytics granted', () => {
+      document.cookie = '_iap_aid=aid12345-6789-4def-8abc-feedfacefeed; Path=/';
+      act(() => {
+        trackModule.initConsentState(true, false, false);
+      });
+      expect(trackModule.getConsentedAnonymousId()).toBe('aid12345-6789-4def-8abc-feedfacefeed');
+      renderCheckout();
+      const sidebar = document.querySelector('aside[data-live-sidebar]');
+      expect(sidebar?.textContent).not.toContain('user_pseudo_id');
+      expect(sidebar?.textContent).not.toContain('aid12345');
+    });
+
+    it('writes no _iap_aid cookie while analytics consent is not granted', () => {
+      const writes: string[] = [];
+      const descriptor = Object.getOwnPropertyDescriptor(Document.prototype, 'cookie')!;
       Object.defineProperty(document, 'cookie', {
         configurable: true,
-        get: () => cookieDescriptor.get!.call(document),
+        get: () => descriptor.get!.call(document),
         set: (v: string) => {
-          if (v.startsWith('_iap_aid=')) aidWrites.push(v);
-          cookieDescriptor.set!.call(document, v);
+          if (v.startsWith('_iap_aid=')) writes.push(v);
+          descriptor.set!.call(document, v);
         },
       });
-    });
-    afterEach(() => {
-      delete (document as unknown as { cookie?: string }).cookie;
-      document.cookie = '_iap_aid=; Max-Age=0; Path=/';
-      mockConsentedAnonymousId = '';
-    });
-
-    it('shows NULL and writes no cookie while analytics consent is not granted', () => {
-      renderCheckout();
-      expect(pseudoIdCell()).toBe('NULL');
-      expect(aidWrites).toEqual([]);
-    });
-
-    it('does not show a cookie left from an earlier grant once analytics is declined', () => {
-      document.cookie = '_iap_aid=aid12345-6789-4def-8abc-feedfacefeed; Path=/';
-      aidWrites.length = 0;
-      renderCheckout();
-      expect(pseudoIdCell()).toBe('NULL');
-      expect(aidWrites).toEqual([]);
-    });
-
-    it("shows the visitor's own ID while analytics consent is granted", () => {
-      mockConsentedAnonymousId = 'aid12345-6789-4def-8abc-feedfacefeed';
-      renderCheckout();
-      expect(pseudoIdCell()).toBe('"aid12345…"');
-    });
-
-    it('shows the ID as soon as the visitor grants analytics on this page', () => {
-      renderCheckout();
-      expect(pseudoIdCell()).toBe('NULL');
-      act(() => {
-        mockConsentedAnonymousId = 'aid12345-6789-4def-8abc-feedfacefeed';
-        consentListeners.forEach((l) => l());
-      });
-      expect(pseudoIdCell()).toBe('"aid12345…"');
-    });
-
-    it('drops the ID as soon as the visitor withdraws analytics on this page', () => {
-      mockConsentedAnonymousId = 'aid12345-6789-4def-8abc-feedfacefeed';
-      renderCheckout();
-      act(() => {
-        mockConsentedAnonymousId = '';
-        consentListeners.forEach((l) => l());
-      });
-      expect(pseudoIdCell()).toBe('NULL');
+      try {
+        renderCheckout();
+        expect(writes).toEqual([]);
+      } finally {
+        delete (document as unknown as { cookie?: string }).cookie;
+      }
     });
   });
 

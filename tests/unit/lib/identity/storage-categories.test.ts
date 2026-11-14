@@ -20,6 +20,23 @@ describe('storage-categories', () => {
     });
   });
 
+  // Visitor-facing copy, signed by Ian on 2026-11-14. The analytics group now
+  // holds the site's own visitor ID, and app identity no longer does, so both
+  // descriptions say what is actually in them.
+  describe('signed descriptions', () => {
+    const description = (id: string) => STORAGE_CATEGORIES.find((c) => c.id === id)?.description;
+    it('analytics names the visitor ID alongside GA4, sGTM and Google Ads', () => {
+      expect(description('analytics')).toBe(
+        "first-party measurement cookies: this site's visitor ID, and those set by GA4, sGTM, and Google Ads",
+      );
+    });
+    it('app identity covers the session and the demo state, not the visitor', () => {
+      expect(description('app-identity')).toBe(
+        "first-party keys this site sets for your session and the demo's state",
+      );
+    });
+  });
+
   // `_iap_aid` (D7 anonymous id) is a Statistics cookie in Cookiebot (Ian,
   // 2026-11-14), written only with analytics consent. The inspector groups it
   // with the measurement cookies it is consented alongside, not with the

@@ -4,12 +4,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'reac
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-import {
-  getConsentedAnonymousId,
-  subscribeConsent,
-  trackBeginCheckout,
-  trackPurchase,
-} from '@/lib/events/track';
+import { trackBeginCheckout, trackPurchase } from '@/lib/events/track';
 import { useScrollToTopOnMount } from '@/hooks/useScrollToTopOnMount';
 import { useCart } from './cart-context';
 import { useToast } from '@/components/demo/reveal/toast-provider';
@@ -74,17 +69,6 @@ function getClientMetaServerSnapshot(): ClientMeta {
   return EMPTY_CLIENT_META;
 }
 
-// Phase 10d D7: the visitor's real `_iap_aid`, shown in the preview's
-// user_pseudo_id column. The preview is illustrative: nothing writes this ID
-// to BigQuery today (the raw table has no such column and the Pub/Sub
-// template does not forward it). The cookie is a Statistics cookie (Ian,
-// 2026-11-14), so the store in `track.ts` holds it only while analytics
-// consent is granted and notifies on every consent change: a grant or a
-// withdrawal on this page re-renders the preview. Read-only here.
-function getAnonymousIdServerSnapshot(): string {
-  return '';
-}
-
 /**
  * Phase 9F D8, checkout page content.
  *
@@ -120,11 +104,6 @@ export function CheckoutForm() {
     subscribeClientMeta,
     getClientMetaSnapshot,
     getClientMetaServerSnapshot,
-  );
-  const anonymousId = useSyncExternalStore(
-    subscribeConsent,
-    getConsentedAnonymousId,
-    getAnonymousIdServerSnapshot,
   );
   const toastedRef = useRef(false);
   const checkoutFiredRef = useRef(false);
@@ -222,7 +201,7 @@ export function CheckoutForm() {
       <WalkthroughBlurb route="checkout">
         The checkout form. A <span className="font-mono">begin_checkout</span> event already fired
         and landed in BigQuery. Tap <em className="not-italic">see the stack ↓</em> to preview the
-        row that will be inserted when you submit: 21 of the 51 real columns, with live values from
+        row that will be inserted when you submit: 20 of the 51 real columns, with live values from
         your session where we have them.
       </WalkthroughBlurb>
 
@@ -395,7 +374,6 @@ export function CheckoutForm() {
               uniqueItems={items.length}
               live={{
                 sessionId: session.session_id,
-                anonymousId: anonymousId || undefined,
                 eventTimestamp: session.last_event_at || undefined,
                 // Consent flags only substitute once at least one event
                 // has landed, before that we don't know the real state.

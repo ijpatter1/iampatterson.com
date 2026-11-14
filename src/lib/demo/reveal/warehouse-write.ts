@@ -1,10 +1,14 @@
 /**
  * BigQuery row preview for Phase 9F checkout `LiveSidebar` (D8).
  *
- * Mirrors the prototype's BQ_ROW_COLUMNS list, 21 representative columns
+ * Mirrors the prototype's BQ_ROW_COLUMNS list, 20 representative columns
  * from the full ~51-column `iampatterson_raw.events_raw` schema (the subset
  * most relevant to checkout). Pre-9E `WarehouseWriteUnderside` salvage
  * destination.
+ *
+ * `user_pseudo_id` was dropped on 2026-11-14 (Ian's call): events_raw has no
+ * such column and nothing forwards the `_iap_aid` visitor ID to BigQuery yet.
+ * Forwarding it is later work.
  */
 
 export interface BQColumn {
@@ -19,7 +23,6 @@ export const BQ_ROW_COLUMNS: BQColumn[] = [
   { k: 'received_timestamp', v: '1713536728942', type: 'INT64' },
   { k: 'session_id', v: '"ses_x9b2jk3q"', type: 'STRING' },
   { k: 'client_id', v: '"GA1.1.4821…"', type: 'STRING' },
-  { k: 'user_pseudo_id', v: 'NULL', type: 'STRING' },
   { k: 'page_location', v: '".../checkout"', type: 'STRING' },
   { k: 'page_path', v: '"/demo/ecommerce/checkout"', type: 'STRING' },
   { k: 'page_referrer', v: '".../cart"', type: 'STRING' },
@@ -40,9 +43,6 @@ export const BQ_ROW_COLUMNS: BQColumn[] = [
 export interface LiveCheckoutContext {
   /** Real _iap_sid session id. */
   sessionId?: string;
-  /** Real _iap_aid anonymous id (Phase 10d D7). Empty string treated as
-   *  "not yet known" — substitution falls back to the NULL seed. */
-  anonymousId?: string;
   /** ISO timestamp of the most recent live event. */
   eventTimestamp?: string;
   /** Whether analytics consent has been granted in the real consent state. */
@@ -80,8 +80,6 @@ export function bqRowForCart(params: {
 }): BQColumn[] {
   const sid =
     params.live?.sessionId && params.live.sessionId.length > 0 ? params.live.sessionId : null;
-  const aid =
-    params.live?.anonymousId && params.live.anonymousId.length > 0 ? params.live.anonymousId : null;
   const ts =
     params.live?.eventTimestamp && params.live.eventTimestamp.length > 0
       ? params.live.eventTimestamp
@@ -108,7 +106,6 @@ export function bqRowForCart(params: {
     if (c.k === 'cart_item_count') return { ...c, v: String(params.itemCount) };
     if (c.k === 'items') return { ...c, v: `ARRAY<STRUCT>(${params.uniqueItems})` };
     if (c.k === 'session_id' && sid) return { ...c, v: `"${sid.slice(0, 8)}…"` };
-    if (c.k === 'user_pseudo_id' && aid) return { ...c, v: `"${aid.slice(0, 8)}…"` };
     if (c.k === 'event_timestamp' && ts) return { ...c, v: `"${ts}"` };
     if (c.k === 'received_timestamp' && ts) {
       const ms = Date.parse(ts);
