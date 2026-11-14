@@ -1,8 +1,16 @@
 'use client';
 
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from 'react';
 
-import { getSessionId } from '@/lib/events/session';
+import { getKnownSessionId, getSessionId, subscribeSessionCookie } from '@/lib/events/session';
 import { getCurrentConsent, trackCoverageMilestone } from '@/lib/events/track';
 import {
   createInitialSessionState,
@@ -17,6 +25,10 @@ import type { SessionState } from '@/lib/session-state/types';
 const SessionStateContext = createContext<SessionState | null>(null);
 
 const POLL_INTERVAL_MS = 400;
+
+function getServerSessionSnapshot(): string | null {
+  return null;
+}
 
 // A prior F8 iteration eager-loaded the persisted blob via
 // `useState(initialLoad)` to eliminate the "Warming up…" flash on
@@ -76,6 +88,34 @@ export function SessionStateProvider({ children }: { children: ReactNode }) {
     if (initial !== loaded) saveSessionState(initial);
     setReady(true);
   }, []);
+
+  // Follow the session, as the live stream does (`useEventStream`): both
+  // read `getKnownSessionId`, so they always name the same session. The
+  // header, the overlay's overview and the contact ride-along all name
+  // `session_id`, and must not name the old session above the new session's
+  // rows. The session changes after 30 minutes idle or from another tab. The
+  // readout counts the tab's activity, so counts and coverage carry over, as
+  // a reload after a rotation already does (`reconcileRehydrated`); but
+  // `started_at` is the current session's start, so it restarts now. A
+  // deleted cookie keeps the last session.
+  const knownSession = useSyncExternalStore(
+    subscribeSessionCookie,
+    getKnownSessionId,
+    getServerSessionSnapshot,
+  );
+  useEffect(() => {
+    if (!ready || !knownSession) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- external-signal sync: the session cookie changed
+    setState((prev) => {
+      if (!prev || prev.session_id === knownSession) return prev;
+      const next = {
+        ...reconcileRehydrated(prev, knownSession),
+        started_at: new Date().toISOString(),
+      };
+      saveSessionState(next);
+      return next;
+    });
+  }, [ready, knownSession]);
 
   // Emit coverage_milestone events for newly-appearing entries. Ref-based de-dup
   // handles strict-mode double-invocation and any future state-path that could

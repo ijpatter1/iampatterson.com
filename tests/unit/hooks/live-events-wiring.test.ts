@@ -5,9 +5,10 @@
  * Two bugs are guarded here, and both only reproduce where
  * NEXT_PUBLIC_EVENT_STREAM_URL is set, which is production.
  *
- * 1. One connection per session. The stream service keeps a single connection
- *    for a session and ends the previous one when another arrives. Two
- *    components that each open the stream take the feed from each other. So
+ * 1. One connection per page. The stream service keeps a connection per tab
+ *    for each session, up to a cap, and ends the oldest beyond it. Components
+ *    that each open the stream multiply the connections per tab and, across
+ *    a few tabs, pass the cap and end each other. So
  *    `useLiveEventsSource` (and `useEventStream` under it) may be called only
  *    by `LiveEventsProvider`; everything else reads the shared result through
  *    `useLiveEvents()`.
