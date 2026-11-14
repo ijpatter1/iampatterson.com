@@ -5,8 +5,9 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { Footer } from '@/components/footer';
-import { OverlayProvider } from '@/components/overlay/overlay-context';
+import { OverlayProvider, useOverlay } from '@/components/overlay/overlay-context';
 import { CONTACT_EMAIL } from '@/lib/content/contact';
+import { PRACTICE_NAME } from '@/lib/seo/site';
 
 jest.mock('@/lib/events/track', () => ({
   trackClickNav: jest.fn(),
@@ -19,88 +20,128 @@ const { trackClickNav, trackClickCta } = require('@/lib/events/track') as {
   trackClickCta: jest.Mock;
 };
 
+function Probe() {
+  const { isOpen, pendingTab } = useOverlay();
+  return <span data-testid="overlay-status">{isOpen ? `open:${pendingTab}` : 'closed'}</span>;
+}
+
 function renderFooter() {
   return render(
     <OverlayProvider>
       <Footer />
+      <Probe />
     </OverlayProvider>,
   );
 }
 
-// 15.4: the footer collapses to one row. The site sells one thing, the
-// review, and the header already carries the way to it, so the footer keeps
-// only the wordmark, the contact page, the address and the session readout.
+const footer = () => screen.getByRole('contentinfo');
+
+// 15.4: one row, as copy.md §Footer and the bundle corrections set it out:
+// the copyright, the address, Contact, the Session links and the stack line.
 describe('Footer, one row (15.4)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  // The footer has its own Contact link now, so the wordmark goes home, as
-  // a wordmark conventionally does.
-  it('links the wordmark home and records it as navigation, not a call to action', async () => {
-    const user = userEvent.setup();
+  // The practice was renamed in 15.9; the copyright reads the one constant.
+  it('carries the copyright in the practice name', () => {
     renderFooter();
-    const wordmark = screen.getByRole('link', { name: /^patterson\s*\.?$/i });
-    expect(wordmark).toHaveAttribute('href', '/');
-    await user.click(wordmark);
-    expect(trackClickNav).toHaveBeenCalledWith('Patterson', '/');
-    expect(trackClickCta).not.toHaveBeenCalled();
+    expect(within(footer()).getByText(`© 2026 ${PRACTICE_NAME}`)).toBeInTheDocument();
+    expect(footer().textContent).not.toMatch(/Patterson Consulting/);
   });
 
-  // A heading in the footer would sit outside every page's outline (on
-  // /contact/thanks it jumped from h1 to h4).
-  it('has no headings', () => {
+  it('shows the contact address and fires one click_cta with the footer email location', async () => {
+    const user = userEvent.setup();
     renderFooter();
-    expect(within(screen.getByRole('contentinfo')).queryAllByRole('heading')).toHaveLength(0);
+    const email = within(footer()).getByRole('link', { name: CONTACT_EMAIL });
+    expect(email).toHaveAttribute('href', `mailto:${CONTACT_EMAIL}`);
+    email.addEventListener('click', (e) => e.preventDefault());
+    await user.click(email);
+    expect(trackClickCta).toHaveBeenCalledTimes(1);
+    expect(trackClickCta).toHaveBeenCalledWith(CONTACT_EMAIL, 'footer_email');
+    expect(trackClickNav).not.toHaveBeenCalled();
   });
 
   it('links to /contact and fires one click_cta with the footer contact location', async () => {
     const user = userEvent.setup();
     renderFooter();
-    const contact = screen.getByRole('link', { name: /^contact$/i });
+    const contact = within(footer()).getByRole('link', { name: /^contact$/i });
     expect(contact).toHaveAttribute('href', '/contact');
+    contact.addEventListener('click', (e) => e.preventDefault());
     await user.click(contact);
     expect(trackClickCta).toHaveBeenCalledTimes(1);
     expect(trackClickCta).toHaveBeenCalledWith('Contact', 'footer_contact');
     expect(trackClickNav).not.toHaveBeenCalled();
   });
 
-  it('shows the contact address and fires one click_cta with the footer email location', async () => {
+  // Each Session label opens the overlay on its own tab, as the old footer's
+  // Session column did, and reports it under footer_session.
+  it.each([
+    ['Overview', 'overview'],
+    ['Live event stream', 'timeline'],
+    ['Consent state', 'consent'],
+  ])('opens the overlay on the matching tab from "%s"', async (label, tab) => {
     const user = userEvent.setup();
     renderFooter();
-    const email = screen.getByRole('link', { name: CONTACT_EMAIL });
-    expect(email).toHaveAttribute('href', `mailto:${CONTACT_EMAIL}`);
-    await user.click(email);
+    expect(screen.getByTestId('overlay-status')).toHaveTextContent('closed');
+    await user.click(within(footer()).getByRole('button', { name: label }));
+    expect(screen.getByTestId('overlay-status')).toHaveTextContent(`open:${tab}`);
     expect(trackClickCta).toHaveBeenCalledTimes(1);
-    expect(trackClickCta).toHaveBeenCalledWith(CONTACT_EMAIL, 'footer_email');
+    expect(trackClickCta).toHaveBeenCalledWith(label, 'footer_session');
   });
 
-  // The readout stays display-only: the header's pulse is the one that opens
-  // the overlay.
-  it('keeps the session readout, display-only', () => {
+  it('labels the Session links and carries the stack line', () => {
     renderFooter();
-    const footer = screen.getByRole('contentinfo');
-    expect(within(footer).getByText(/evt/)).toBeInTheDocument();
-    expect(within(footer).queryByRole('button')).not.toBeInTheDocument();
+    expect(footer().textContent).toMatch(/Session:\s*Overview · Live event stream · Consent state/);
+    expect(
+      within(footer()).getByText('Built on Next.js · GTM · sGTM · BigQuery · Dataform'),
+    ).toBeInTheDocument();
   });
 
-  it('has exactly three links, each with a 44px target', () => {
+  // The items, in copy.md's order, in one mono 10px row. The Session links
+  // replace the old display-only readout, and the wordmark isn't in the row.
+  it('lays the items out in order in one mono 10px row', () => {
     renderFooter();
-    const links = within(screen.getByRole('contentinfo')).getAllByRole('link');
-    expect(links).toHaveLength(3);
-    for (const link of links) expect(link.className).toMatch(/min-h-\[44px\]/);
+    const row = footer().querySelector('[data-footer-row]')!;
+    expect(row.className).toMatch(/font-mono/);
+    expect(row.className).toMatch(/text-\[10px\]/);
+    const text = row.textContent!;
+    const order = [
+      `© 2026 ${PRACTICE_NAME}`,
+      CONTACT_EMAIL,
+      'Contact',
+      'Session:',
+      'Built on Next.js',
+    ].map((s) => text.indexOf(s));
+    for (const i of order) expect(i).toBeGreaterThanOrEqual(0);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    expect(text).not.toMatch(/evt/);
   });
 
-  // The Pages and Demos columns go: no demo link, no services link, and no
-  // copy from the old positioning.
-  it('drops the old columns, the demo link and the old tagline', () => {
+  it('gives every link and button a 44px target', () => {
     renderFooter();
-    const footer = screen.getByRole('contentinfo');
-    expect(within(footer).queryByRole('link', { name: /tuna shop/i })).not.toBeInTheDocument();
-    expect(within(footer).queryByRole('link', { name: /^services$/i })).not.toBeInTheDocument();
-    expect(footer.querySelector('a[href^="/demo"]')).toBeNull();
-    expect(footer.textContent).not.toMatch(
-      /tier|measurement infrastructure|demo|tuna shop|metabase/i,
+    const targets = [
+      ...within(footer()).getAllByRole('link'),
+      ...within(footer()).getAllByRole('button'),
+    ];
+    expect(targets).toHaveLength(5);
+    for (const t of targets) expect(t.className).toMatch(/min-h-\[44px\]/);
+  });
+
+  // A heading in the footer would sit outside every page's outline.
+  it('has no headings', () => {
+    renderFooter();
+    expect(within(footer()).queryAllByRole('heading')).toHaveLength(0);
+  });
+
+  // The Pages and Demos columns stay gone: no demo link, no services link, and
+  // none of the old offer's words.
+  it('has no demo or services link and none of the old positioning', () => {
+    renderFooter();
+    expect(footer().querySelector('a[href^="/demo"]')).toBeNull();
+    expect(footer().querySelector('a[href="/services"]')).toBeNull();
+    expect(footer().textContent).not.toMatch(
+      /\btiers?\b|measurement infrastructure|\bdemos?\b|tuna shop|metabase/i,
     );
   });
 });

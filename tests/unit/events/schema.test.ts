@@ -123,13 +123,14 @@ describe('Event schema types', () => {
       contact_email: true,
       footer_contact: true,
       footer_email: true,
+      footer_session: true,
       services_closer: true,
       services_tier_01: true,
       services_tier_02: true,
       services_tier_03: true,
       services_tier_04: true,
     };
-    expect(Object.keys(all)).toHaveLength(22);
+    expect(Object.keys(all)).toHaveLength(23);
 
     // The schema checklist: the BigQuery column says what the values are.
     const column = bigQueryColumns.find((c) => c.name === 'cta_location')!;
@@ -148,7 +149,6 @@ describe('Event schema types', () => {
       | 'final_cta'
       | 'demo_card_ecommerce'
       | 'pipeline_see_your_session'
-      | 'footer_session'
       | 'review'
       | 'proof'
     >;

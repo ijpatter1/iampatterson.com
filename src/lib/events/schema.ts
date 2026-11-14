@@ -146,7 +146,7 @@ export interface ClickNavEvent extends BaseEvent {
  *
  * 15.4 removed the values whose calls to action were deleted: `hero` (the old
  * hero, split into `hero_review` and `hero_session`), `final_cta`,
- * `demo_card_ecommerce`, `pipeline_see_your_session` and `footer_session`.
+ * `demo_card_ecommerce` and `pipeline_see_your_session`.
  * Rows already in BigQuery keep them; `infrastructure/bigquery/schema.json`
  * documents both sets.
  */
@@ -169,9 +169,10 @@ export type CtaLocation =
   | 'review_page_bottom'
   | 'contact_review_link'
   | 'contact_email'
-  // The footer (15.4)
+  // The footer (15.4); footer_session is the three Session links, as before
   | 'footer_contact'
   | 'footer_email'
+  | 'footer_session'
   // /services, until 16.1 deletes the page
   | 'services_closer'
   | `services_tier_${'01' | '02' | '03' | '04'}`;

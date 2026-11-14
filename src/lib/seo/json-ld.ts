@@ -15,10 +15,10 @@
  * relationship cleanly.
  */
 
-import { SITE_DESCRIPTION } from './site';
+import { PRACTICE_NAME, SITE_DESCRIPTION } from './site';
 
 const SITE_URL = 'https://iampatterson.com';
-const ORG_NAME = 'I am Patterson';
+const ORG_NAME = PRACTICE_NAME;
 const PERSON_NAME = 'Ian Patterson';
 
 export function organizationJsonLd(): Record<string, unknown> {
