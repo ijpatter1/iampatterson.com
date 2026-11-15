@@ -62,25 +62,33 @@ UTC midnight. If you want it back sooner, the daily allowance is an environment
 variable, and raising it is a deliberate spending decision:
 
 ```bash
-# from infrastructure/cloud-run/claudish-proxy/
-MODEL_ID_CONFIRMED=1 bash setup.sh
+# from the repo root: the serving image with only the allowance changed
+bash scripts/deploy-cloud-run.sh set-env claudish-proxy DAILY_BUDGET_USD=<new figure> --promote
 ```
 
 **If it is misbehaving — bad output, a runaway, anything you want stopped now —
 use the kill switch.** This forces cache-only immediately:
 
 ```bash
-gcloud run services update claudish-proxy --project=iampatterson \
-  --region=us-central1 --update-env-vars KILL_SWITCH=on
+# from the repo root
+bash scripts/deploy-cloud-run.sh kill-switch claudish-proxy on
 ```
+
+It ends with `✓ <revision> serves 100% with KILL_SWITCH=on`. Anything else
+means the switch is not on: read the message, which names the revision and the
+command to finish by hand. Do not set the switch with a bare
+`gcloud run services update`. Traffic is pinned to a named revision, so that
+creates a revision that serves 0% and spending carries on (found 2026-11-15).
 
 The switch survives deploys, which is the point: a redeploy in the middle of an
 incident must not quietly re-enable the thing you just turned off. Turn it back
-off the same way with `KILL_SWITCH=off`, and remember that you must, because
+off with `kill-switch claudish-proxy off`, and remember that you must, because
 nothing will do it for you.
 
 **If a bad revision is the cause**, roll back with
-`scripts/deploy-cloud-run.sh promote claudish-proxy <revision>`.
+`scripts/deploy-cloud-run.sh promote claudish-proxy <revision>`. Env lives on
+each revision, so a rollback restores that revision's `KILL_SWITCH` (and
+`LANES`). If the switch was on, run it again after the rollback.
 
 ## Before you call it fixed: the golden gate
 

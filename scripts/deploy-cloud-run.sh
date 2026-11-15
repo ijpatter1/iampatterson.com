@@ -18,8 +18,22 @@
 #   promote <service> <revision>
 #           routes all traffic to a revision already built, then checks health
 #           (identity token when the service is private).
+#   set-env <service> KEY=VALUE [KEY=VALUE...] [--promote] [--allow-drift]
+#           an env change that reaches traffic: builds a no-traffic revision on
+#           the SERVING revision's image digest with only those keys changed,
+#           diffs it (anything else that moved is drift), and with --promote
+#           routes traffic to that exact revision and confirms it serves the values.
+#   kill-switch <service> on|off [--allow-drift]
+#           set-env KILL_SWITCH=on|off --promote, for incidents.
 #
-# Env is never rewritten here: the live values are the contract.
+# Why set-env exists (2026-11-15): promote pins traffic to a named revision, so
+# a bare `gcloud run services update --update-env-vars` afterwards creates a
+# revision that serves 0% and the change never takes effect. Routing to LATEST
+# is no fix: LATEST can be an unpromoted `deploy` revision nobody reviewed.
+#
+# deploy never writes env: the live values are the contract. Only set-env does,
+# and only the keys it is given. Env lives on each revision, so promoting an
+# older revision restores that revision's env (KILL_SWITCH included).
 # Env: PROJECT (iampatterson), REGION (us-central1), HEALTH_PATH (/health), DIFF_DIR
 # ═══════════════════════════════════════════════════════════════════════
 set -euo pipefail
@@ -114,6 +128,90 @@ health_check() { # health_check <service> <revision-for-the-message> <before-rev
   fi
 }
 
+
+# Like diff_revisions, but for an env change on the same image: the digest
+# must NOT move, and the only env keys that may change are the requested ones,
+# to the requested values. Prints the diff; exit 0 only on exactly that.
+diff_env_change() { # diff_env_change <before.json> <after.json> KEY=VALUE...
+  python3 - "$@" <<'PYEOF'
+import json, sys
+a, b = (json.load(open(p)) for p in sys.argv[1:3])
+want = dict(kv.split("=", 1) for kv in sys.argv[3:])
+bad = 0
+if a.get("imageDigest") != b.get("imageDigest"):
+    bad += 1; print(f"  image digest moved: {a.get('imageDigest', '')[:19]}… -> {b.get('imageDigest', '')[:19]}… (unexpected)")
+else:
+    print(f"  image digest: {a.get('imageDigest', '')[:19]}… (unchanged, as expected)")
+for k in sorted((set(a) | set(b)) - {"imageDigest", "env"}):
+    if a.get(k) != b.get(k):
+        bad += 1; print(f"  {k}: {a.get(k)!r} -> {b.get(k)!r} (unexpected)")
+for ek in sorted(set(a["env"]) | set(b["env"])):
+    before, after = a["env"].get(ek), b["env"].get(ek)
+    if ek in want:
+        ok = after == want[ek]
+        if before != after or not ok:
+            print(f"  env.{ek}: {before!r} -> {after!r}" + ("" if ok else f" (expected {want[ek]!r})"))
+        if not ok: bad += 1
+    elif before != after:
+        bad += 1; print(f"  env.{ek}: {before!r} -> {after!r} (unexpected)")
+print(f"  {bad} unexpected change(s)" + ("" if bad == 0 else " — review before promoting"))
+sys.exit(0 if bad == 0 else 1)
+PYEOF
+}
+
+set_env() { # set_env <service> <promote 0|1> <allow-drift 0|1> KEY=VALUE...
+  local svc="$1" promote="$2" allow="$3"; shift 3
+  [ "$#" -gt 0 ] || { echo "❌ set-env needs at least one KEY=VALUE" >&2; exit 1; }
+  local kv joined=""
+  for kv in "$@"; do
+    case "$kv" in *=*) ;; *) echo "❌ not KEY=VALUE: $kv" >&2; exit 1;; esac
+    case "$kv" in *@*) echo "❌ '@' is the env delimiter here and cannot appear in a value: $kv" >&2; exit 1;; esac
+    joined="${joined:+$joined@}$kv"
+  done
+  local before image after tmp rc=0
+  before=$(serving_revision "$svc" 2>/dev/null || true)
+  [ -n "$before" ] || { echo "❌ no serving revision found for $svc (are the gcloud credentials valid?)" >&2; exit 1; }
+  image=$(gcloud run revisions describe "$before" --project="$PROJECT" --region="$REGION" --format='value(spec.containers[0].image)')
+  case "$image" in *@sha256:*) ;; *) echo "❌ serving revision $before has no pinned image digest ($image); not building on it" >&2; exit 1;; esac
+  echo "═══ $svc: set $* on the serving image (no traffic); serving revision $before ═══"
+  # --image pins the code to what serves now: the service template may hold a
+  # newer, unpromoted build, and an env change must not ship it.
+  gcloud run deploy "$svc" --image "$image" --project="$PROJECT" --region="$REGION" \
+    --update-env-vars="^@^$joined" --no-traffic --quiet
+  after=$(gcloud run services describe "$svc" --project="$PROJECT" --region="$REGION" --format='value(status.latestCreatedRevisionName)')
+  echo "new revision (no traffic): $after"
+  mkdir -p "$DIFF_DIR"; tmp=$(mktemp -d)
+  if ! snapshot_revision "$before" > "$tmp/before.json" || ! snapshot_revision "$after" > "$tmp/after.json"; then
+    echo "❌ could not snapshot $before or $after; not promoting. Investigate, then promote by hand:" >&2
+    echo "  scripts/deploy-cloud-run.sh promote $svc $after" >&2; rm -rf "$tmp"; exit 2
+  fi
+  { echo "# $svc: $before -> $after, set $* ($(date -u +%Y-%m-%dT%H:%M:%SZ))"; diff_env_change "$tmp/before.json" "$tmp/after.json" "$@"; } \
+    | tee "$DIFF_DIR/$after.diff" || true
+  diff_env_change "$tmp/before.json" "$tmp/after.json" "$@" >/dev/null || rc=$?
+  echo "diff written: $DIFF_DIR/$after.diff"
+  if [ "$promote" != "1" ]; then
+    rm -rf "$tmp"; echo ""; echo "Stopped before traffic. Promote this exact revision with:"; echo "  scripts/deploy-cloud-run.sh promote $svc $after"; exit 0
+  fi
+  if [ "$rc" != "0" ] && [ "$allow" != "1" ]; then
+    rm -rf "$tmp"
+    echo "❌ more changed than the requested env; not promoting. Review the diff, then re-run with --allow-drift or promote by hand:" >&2
+    echo "  scripts/deploy-cloud-run.sh promote $svc $after" >&2; exit 2
+  fi
+  echo "═══ promote: all traffic to $after ═══"
+  gcloud run services update-traffic "$svc" --project="$PROJECT" --region="$REGION" --to-revisions="$after=100" --quiet
+  health_check "$svc" "$after" "$before"
+  # Confirm what now serves, by name and by value: the check the bare
+  # `services update` kill switch never had.
+  local now; now=$(serving_revision "$svc" 2>/dev/null || true)
+  if [ "$now" != "$after" ] || ! snapshot_revision "$now" > "$tmp/now.json" \
+     || ! python3 -c 'import json,sys; e=json.load(open(sys.argv[1]))["env"]; sys.exit(0 if all(e.get(k)==v for k,v in (x.split("=",1) for x in sys.argv[2:])) else 1)' "$tmp/now.json" "$@"; then
+    rm -rf "$tmp"; echo "✗ serving revision is ${now:-unknown}, not $after carrying $*; check traffic by hand" >&2; exit 3
+  fi
+  rm -rf "$tmp"
+  echo "✓ $now serves 100% with $*"
+  echo "  To undo: scripts/deploy-cloud-run.sh set-env $svc <KEY=previous value> --promote (or promote $before, which restores ALL of its env)"
+}
+
 case "$CMD" in
   diff)
     SERVICE="${1:?service}"; A="${2:?revision a}"; B="${3:?revision b}"
@@ -163,5 +261,17 @@ case "$CMD" in
     gcloud run services update-traffic "$SERVICE" --project="$PROJECT" --region="$REGION" --to-revisions="$AFTER=100" --quiet
     health_check "$SERVICE" "$AFTER" "$BEFORE"
     ;;
-  *) echo "usage: deploy-cloud-run.sh deploy <service> <src> [--promote] [--allow-drift] | diff <service> <a> <b> | promote <service> <revision>" >&2; exit 1;;
+  set-env)
+    SERVICE="${1:?service}"; shift
+    PROMOTE=0; ALLOW_DRIFT=0; PAIRS=()
+    for a in "$@"; do case "$a" in --promote) PROMOTE=1;; --allow-drift) ALLOW_DRIFT=1;; -*) echo "❌ unknown flag $a" >&2; exit 1;; *) PAIRS+=("$a");; esac; done
+    set_env "$SERVICE" "$PROMOTE" "$ALLOW_DRIFT" ${PAIRS[@]+"${PAIRS[@]}"}
+    ;;
+  kill-switch)
+    SERVICE="${1:?service}"; KS="${2:?on|off}"; ALLOW_DRIFT=0
+    case "$KS" in on|off) ;; *) echo "❌ kill-switch takes on or off, not $KS" >&2; exit 1;; esac
+    [ "${3:-}" = "--allow-drift" ] && ALLOW_DRIFT=1
+    set_env "$SERVICE" 1 "$ALLOW_DRIFT" "KILL_SWITCH=$KS"
+    ;;
+  *) echo "usage: deploy-cloud-run.sh deploy <service> <src> [--promote] [--allow-drift] | diff <service> <a> <b> | promote <service> <revision> | set-env <service> KEY=VALUE... [--promote] [--allow-drift] | kill-switch <service> on|off [--allow-drift]" >&2; exit 1;;
 esac

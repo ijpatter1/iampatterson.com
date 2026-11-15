@@ -35,7 +35,8 @@ describe('scripts/deploy-cloud-run.sh', () => {
     // documented deploy path — promoted a revision whose diff had never been
     // computed, which is the one thing the gate exists to prevent.
     expect(script).toContain('DIFF_RC=$?');
-    const gate = script.slice(script.indexOf('DIFF_RC=$?'), script.indexOf('promote: all traffic'));
+    const from = script.indexOf('DIFF_RC=$?');
+    const gate = script.slice(from, script.indexOf('promote: all traffic', from));
     expect(gate).toContain('[ "$DIFF_RC" = "2" ]');
     expect(gate).toContain('--allow-drift does not apply');
     expect(gate.indexOf('"$DIFF_RC" = "2"')).toBeLessThan(gate.indexOf('ALLOW_DRIFT'));
@@ -62,9 +63,25 @@ describe('scripts/deploy-cloud-run.sh', () => {
     expect(script).not.toContain('--to-latest');
   });
 
-  it('never rewrites the service env (the live values are the contract)', () => {
+  it('never rewrites the service env on deploy (the live values are the contract)', () => {
+    const deployBranch = script.slice(script.indexOf('\n  deploy)'), script.indexOf('\n  set-env)'));
+    expect(deployBranch.length).toBeGreaterThan(0);
+    expect(deployBranch).not.toContain('--set-env-vars');
+    expect(deployBranch).not.toContain('--update-env-vars');
     expect(script).not.toContain('--set-env-vars');
-    expect(script).not.toContain('--update-env-vars');
+  });
+
+  it('writes env only in set_env, merging the requested keys onto the serving image', () => {
+    // set-env exists because a bare `services update --update-env-vars` after a
+    // promote makes a 0%-traffic revision (2026-11-15). It is the one writer.
+    const writers = script.split('\n').filter((l) => l.includes('--update-env-vars') && !l.trim().startsWith('#'));
+    expect(writers).toHaveLength(1);
+    const fn = script.slice(script.indexOf('set_env() {'), script.indexOf('\n}\n', script.indexOf('set_env() {')));
+    expect(fn).toContain('--update-env-vars');
+    expect(fn).toContain('--image "$image"');
+    expect(fn).toContain('--no-traffic');
+    const code = script.split('\n').filter((l) => !l.trim().startsWith('#')).join('\n');
+    expect(code).not.toMatch(/LATEST|--to-latest/);
   });
 
   it('names the project on every gcloud call', () => {
