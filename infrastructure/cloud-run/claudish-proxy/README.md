@@ -54,7 +54,10 @@ bash scripts/deploy-cloud-run.sh kill-switch claudish-proxy on
 It builds a revision on the serving image with `KILL_SWITCH=on` and no
 traffic, checks that nothing else changed, moves all traffic to that exact
 revision, and confirms the serving revision carries `KILL_SWITCH=on`. The
-page shows the verbatim capacity line; cache hits still serve. Turn it off
+page shows the verbatim capacity line. The response cache is in each
+instance's memory, and the switch starts a new revision with empty caches,
+so at first even repeated translations get the capacity line (measured
+2026-11-15). Turn it off
 with `kill-switch claudish-proxy off`, and remember that you must, because
 nothing will do it for you.
 

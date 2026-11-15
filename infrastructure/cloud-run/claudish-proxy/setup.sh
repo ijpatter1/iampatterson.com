@@ -105,8 +105,11 @@ echo "── Step 5: Deploy (source-deploy, buildpacks) ──"
 # and a hotfix deploy would silently reset KILL_SWITCH mid-incident (review
 # batch 1, 2026-09-03). The kill switch is never written here: it is only ever
 # set by `scripts/deploy-cloud-run.sh kill-switch`, and it survives every deploy.
+# Named revision: deploy-cloud-run.sh set-env pins a name on the template, and
+# a deploy that let gcloud reuse it would collide (2026-11-15).
 run gcloud run deploy "${SERVICE}" \
   --source . \
+  --revision-suffix="setup-$(date -u +%m%d%H%M%S)" \
   --project="${PROJECT}" \
   --region="${REGION}" \
   --port=8080 \

@@ -276,7 +276,11 @@ case "$CMD" in
     BEFORE=$(serving_revision "$SERVICE" 2>/dev/null || true)
     [ -n "$BEFORE" ] || { echo "❌ no serving revision found for $SERVICE (does the service exist? are the gcloud credentials valid?)" >&2; exit 1; }
     echo "═══ $SERVICE: deploy from $SRC (no traffic); serving revision $BEFORE ═══"
-    gcloud run deploy "$SERVICE" --source "$SRC" --project="$PROJECT" --region="$REGION" --no-traffic --quiet
+    # Name the revision: set-env pins a name on the service template
+    # (--revision-suffix), and a deploy that left gcloud to reuse the
+    # template's name would collide with it. Measured 2026-11-15.
+    gcloud run deploy "$SERVICE" --source "$SRC" --project="$PROJECT" --region="$REGION" --no-traffic --quiet \
+      --revision-suffix="src-$(date -u +%m%d%H%M%S)"
     AFTER=$(gcloud run services describe "$SERVICE" --project="$PROJECT" --region="$REGION" --format='value(status.latestCreatedRevisionName)')
     echo "new revision (no traffic): $AFTER"
     mkdir -p "$DIFF_DIR"
