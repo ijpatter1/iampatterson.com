@@ -13,7 +13,10 @@ describe('Phase 10d D4 — SEO', () => {
       const mod = await import('@/app/layout');
       const metadata = (mod as unknown as { metadata: Metadata }).metadata;
       expect(metadata.metadataBase).toBeDefined();
-      expect(metadata.metadataBase?.toString()).toBe('https://iampatterson.com/');
+      // www, not the apex: production redirects the apex to www, and
+      // LinkedIn's crawler does not follow a redirect for a share image,
+      // so an apex og:image left every LinkedIn preview blank (2026-11-15).
+      expect(metadata.metadataBase?.toString()).toBe('https://www.iampatterson.com/');
     });
 
     it('exports openGraph with site_name + locale + type=website', async () => {
@@ -81,7 +84,7 @@ describe('Phase 10d D4 — SEO', () => {
       expect(org['@context']).toBe('https://schema.org');
       expect(org['@type']).toBe('Organization');
       expect(org.name).toBe('I am Patterson');
-      expect(org.url).toBe('https://iampatterson.com');
+      expect(org.url).toBe('https://www.iampatterson.com');
       // Founder must be a real Person sub-object, not just truthy.
       // A future edit that flips `founder` to a bare string or `{}`
       // would pass `toBeDefined` but break Google's Knowledge Graph
@@ -112,7 +115,7 @@ describe('Phase 10d D4 — SEO', () => {
       expect(person['@context']).toBe('https://schema.org');
       expect(person['@type']).toBe('Person');
       expect(person.name).toBe('Ian Patterson');
-      expect(person.url).toBe('https://iampatterson.com');
+      expect(person.url).toBe('https://www.iampatterson.com');
       expect(person.jobTitle).toBeTruthy();
       expect(JSON.stringify(person)).not.toMatch(
         /Patterson Consulting|measurement infrastructure/i,
@@ -174,12 +177,12 @@ describe('Phase 10d D4 — SEO', () => {
       // can't silently slip past the test (mirrors the product-URL
       // tightness fix-pack applied at line 111-114 below).
       const expectedStatic = [
-        'https://iampatterson.com',
-        'https://iampatterson.com/contact',
-        'https://iampatterson.com/review',
-        'https://iampatterson.com/demo',
-        'https://iampatterson.com/demo/ecommerce',
-        'https://iampatterson.com/claudish',
+        'https://www.iampatterson.com',
+        'https://www.iampatterson.com/contact',
+        'https://www.iampatterson.com/review',
+        'https://www.iampatterson.com/demo',
+        'https://www.iampatterson.com/demo/ecommerce',
+        'https://www.iampatterson.com/claudish',
       ];
       const staticUrls = urls.filter((u) => !/\/demo\/ecommerce\/[a-z0-9-]+$/.test(u));
       expect(staticUrls.length).toBe(expectedStatic.length);
@@ -194,14 +197,14 @@ describe('Phase 10d D4 — SEO', () => {
       const productUrls = urls.filter((u) => /\/demo\/ecommerce\/[a-z0-9-]+$/.test(u));
       expect(productUrls.length).toBe(products.length);
       for (const p of products) {
-        expect(urls).toContain(`https://iampatterson.com/demo/ecommerce/${p.id}`);
+        expect(urls).toContain(`https://www.iampatterson.com/demo/ecommerce/${p.id}`);
       }
 
       // Non-canonical exclusions
-      expect(urls).not.toContain('https://iampatterson.com/demo/ecommerce/cart');
-      expect(urls).not.toContain('https://iampatterson.com/demo/ecommerce/checkout');
-      expect(urls).not.toContain('https://iampatterson.com/demo/ecommerce/confirmation');
-      expect(urls).not.toContain('https://iampatterson.com/contact/thanks');
+      expect(urls).not.toContain('https://www.iampatterson.com/demo/ecommerce/cart');
+      expect(urls).not.toContain('https://www.iampatterson.com/demo/ecommerce/checkout');
+      expect(urls).not.toContain('https://www.iampatterson.com/demo/ecommerce/confirmation');
+      expect(urls).not.toContain('https://www.iampatterson.com/contact/thanks');
     });
   });
 
@@ -227,7 +230,7 @@ describe('Phase 10d D4 — SEO', () => {
     it('exposes the sitemap URL', async () => {
       const robots = (await import('@/app/robots')).default;
       const result = (robots as () => MetadataRoute.Robots)();
-      expect(result.sitemap).toBe('https://iampatterson.com/sitemap.xml');
+      expect(result.sitemap).toBe('https://www.iampatterson.com/sitemap.xml');
     });
   });
 });

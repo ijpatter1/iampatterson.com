@@ -27,6 +27,6 @@ export default function robots(): MetadataRoute.Robots {
         ],
       },
     ],
-    sitemap: 'https://iampatterson.com/sitemap.xml',
+    sitemap: 'https://www.iampatterson.com/sitemap.xml',
   };
 }

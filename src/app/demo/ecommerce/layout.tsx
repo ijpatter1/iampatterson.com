@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: TITLE,
     description: DESCRIPTION,
-    url: 'https://iampatterson.com/demo/ecommerce',
+    url: 'https://www.iampatterson.com/demo/ecommerce',
     type: 'website',
   },
   twitter: {
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     description: DESCRIPTION,
   },
   alternates: {
-    canonical: 'https://iampatterson.com/demo/ecommerce',
+    canonical: 'https://www.iampatterson.com/demo/ecommerce',
   },
 };
 

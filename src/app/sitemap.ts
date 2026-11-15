@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next';
 
 import { products } from '@/lib/demo/products';
 
-const SITE_URL = 'https://iampatterson.com';
+const SITE_URL = 'https://www.iampatterson.com';
 
 /**
  * Phase 10d D4 — sitemap.

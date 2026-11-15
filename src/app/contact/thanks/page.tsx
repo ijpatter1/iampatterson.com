@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { BODY_CLASSES, LABEL_CLASSES, PAGE_TITLE_CLASSES } from '@/components/home/section';
 import { CONTACT_COPY, THANKS_METADATA } from '@/lib/content/contact';
 
-const THANKS_URL = 'https://iampatterson.com/contact/thanks';
+const THANKS_URL = 'https://www.iampatterson.com/contact/thanks';
 
 // Its own title, description, share card and canonical, so nothing inherits
 // from /contact's layout; and kept out of search, like robots.ts asks.

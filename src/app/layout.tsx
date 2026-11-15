@@ -25,14 +25,14 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://iampatterson.com'),
+  metadataBase: new URL('https://www.iampatterson.com'),
   title: {
     default: 'I am Patterson · Marketing data, measurement and AI',
     template: '%s | I am Patterson',
   },
   description: SITE_DESCRIPTION,
   applicationName: 'I am Patterson',
-  authors: [{ name: 'Ian Patterson', url: 'https://iampatterson.com' }],
+  authors: [{ name: 'Ian Patterson', url: 'https://www.iampatterson.com' }],
   creator: 'Ian Patterson',
   publisher: 'I am Patterson',
   keywords: [
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://iampatterson.com',
+    url: 'https://www.iampatterson.com',
     siteName: 'I am Patterson',
     title: 'I am Patterson · Marketing data, measurement and AI',
     description: SITE_DESCRIPTION,
@@ -68,7 +68,7 @@ export const metadata: Metadata = {
     images: ['/opengraph-image'],
   },
   alternates: {
-    canonical: 'https://iampatterson.com',
+    canonical: 'https://www.iampatterson.com',
   },
 };
 
