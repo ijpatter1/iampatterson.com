@@ -18,8 +18,8 @@ promoted before Metabase was confirmed serving it, `metabase-00006-zzk` then
 failed its startup probe, and every embed returned 400 for about eleven minutes
 even though Cloud Run behaved exactly as described above. The rule that follows:
 move the side you can roll back last, and never promote the second half until
-the first is verified serving. `infrastructure/metabase/README.md` carries the
-rotation sequence in that order.
+the first is verified serving. Metabase was retired in [18.3]; the rule is
+general.
 
 ## Diagnose
 

@@ -29,8 +29,6 @@ describe('runtime identities hold the roles 13.4 gave them', () => {
   it.each([
     ['claudish_proxy_aiplatform', 'claudish-proxy', 'roles/aiplatform.user'],
     ['data_gen_runtime_bigquery_job', 'data-gen-runtime', 'roles/bigquery.jobUser'],
-    ['metabase_runtime_cloudsql', 'metabase-runtime', 'roles/cloudsql.client'],
-    ['metabase_bigquery_job', 'metabase-bigquery', 'roles/bigquery.jobUser'],
   ])('%s grants %s the role it needs', (key, account, role) => {
     const entry = iam.locals[0].runtime_project_roles[key];
     expect(entry.member).toContain(`${account}@iampatterson.iam.gserviceaccount.com`);
@@ -65,12 +63,7 @@ describe('IAM resources are additive, everywhere in the root', () => {
     // These grants already exist live. An import that is not declared would
     // mean Terraform creating a duplicate binding on first apply.
     const imports = read('imports-iam.tf');
-    for (const key of [
-      'claudish_proxy_aiplatform',
-      'data_gen_runtime_bigquery_job',
-      'metabase_runtime_cloudsql',
-      'metabase_bigquery_job',
-    ]) {
+    for (const key of ['claudish_proxy_aiplatform', 'data_gen_runtime_bigquery_job']) {
       expect(imports).toContain(`google_project_iam_member.runtime["${key}"]`);
     }
   });

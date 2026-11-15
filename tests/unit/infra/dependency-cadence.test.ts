@@ -260,7 +260,6 @@ describe('docs/runbook/dependency-cadence.md', () => {
       'Next.js and React',
       'Cloud Run base images',
       'gtm-cloud-image',
-      'Metabase',
       'Security advisories',
       // Added 2026-09-12 with the compile job. Before it, this surface had no
       // check that could fail and no row saying who watched it.
@@ -271,10 +270,9 @@ describe('docs/runbook/dependency-cadence.md', () => {
     }
   });
 
-  it('keeps the Metabase baseline at the live version, and points at the existing release-notes gate', () => {
-    // v0.59.6 was exploited through CVE-2026-72898; production moved to v0.59.31 on 2026-09-11.
-    expect(cadence).toContain('Baseline **v0.59.31**');
-    expect(cadence).toContain('infrastructure/metabase/upgrade.sh');
+  it('carries no Metabase row, since [18.3] retired it', () => {
+    expect(cadence).not.toMatch(/^\| Metabase \|/m);
+    expect(cadence).not.toContain('infrastructure/metabase/');
   });
 
   it('carries the monthly platform-notices step and the reason it exists', () => {
@@ -297,11 +295,12 @@ describe('docs/runbook/dependency-cadence.md', () => {
     expect(cadence).toMatch(/\*\*Run `npm outdated`\*\*/);
   });
 
-  it('names the two surfaces no bot watches', () => {
-    // Both are pinned images consumed by Cloud Run services, which Dependabot
-    // does not see. If either stops being hand-checked it rots invisibly.
+  it('names the one surface no bot watches', () => {
+    // A pinned image consumed by a Cloud Run service, which Dependabot does not
+    // see. If it stops being hand-checked it rots invisibly. Metabase was the
+    // second until [18.3] retired it.
     const unwatched = cadence.match(/\*\*Nobody\. Check it by hand\.\*\*/g) ?? [];
-    expect(unwatched).toHaveLength(2);
+    expect(unwatched).toHaveLength(1);
   });
 
   it('records the measured baseline rather than describing the process in the abstract', () => {

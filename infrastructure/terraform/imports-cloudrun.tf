@@ -13,11 +13,6 @@ import {
 }
 
 import {
-  to = google_cloud_run_v2_service.metabase
-  id = "projects/iampatterson/locations/us-central1/services/metabase"
-}
-
-import {
   to = google_cloud_run_v2_service.sgtm
   id = "projects/iampatterson/locations/us-central1/services/sgtm"
 }

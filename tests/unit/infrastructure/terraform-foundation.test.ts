@@ -69,7 +69,8 @@ describe('Phase 11 D9 — Terraform foundation', () => {
       // Five when this was written in June 2026. 13.4 added five: claudish_proxy,
       // which predated the phase and was never declared, and the four *-runtime
       // accounts that moved sgtm, sgtm-preview, event-stream and data-generator
-      // off the default compute account. The list stays exact rather than
+      // off the default compute account. [18.3] removed metabase_runtime and
+      // metabase_bigquery with Metabase. The list stays exact rather than
       // becoming a subset check — an account appearing here that nobody declared
       // deliberately is exactly what this assertion is for.
       expect(Object.keys(serviceAccounts).sort()).toEqual([
@@ -78,8 +79,6 @@ describe('Phase 11 D9 — Terraform foundation', () => {
         'data_gen_runtime',
         'data_gen_scheduler',
         'event_stream_runtime',
-        'metabase_bigquery',
-        'metabase_runtime',
         'sgtm_preview_runtime',
         'sgtm_runtime',
         'stape_sgtm',
@@ -87,8 +86,6 @@ describe('Phase 11 D9 — Terraform foundation', () => {
     });
 
     it.each([
-      ['metabase_runtime', 'metabase-runtime'],
-      ['metabase_bigquery', 'metabase-bigquery'],
       ['data_gen_scheduler', 'data-gen-scheduler'],
       ['stape_sgtm', 'stape-sgtm'],
       ['claude_code_sandbox', 'claude-code-sandbox'],

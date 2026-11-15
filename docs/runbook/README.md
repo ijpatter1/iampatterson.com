@@ -21,7 +21,7 @@ plus one per uptime check in `uptime.json`.
 
 | Alert | Entry |
 | --- | --- |
-| Cloud Run 5xx: more than 10 in 5 minutes on any service | **read `service_name` first** → [sGTM](sgtm-not-responding.md) · [event-stream](event-pipeline-backlog.md) · [claudish-proxy](claudish-proxy-over-budget.md) · [data-generator](data-generator-stuck.md) · [metabase](uptime-check-failing.md) |
+| Cloud Run 5xx: more than 10 in 5 minutes on any service | **read `service_name` first** → [sGTM](sgtm-not-responding.md) · [event-stream](event-pipeline-backlog.md) · [claudish-proxy](claudish-proxy-over-budget.md) · [data-generator](data-generator-stuck.md) |
 | Cloud Run instance aborts: 'no available instance' on any service | **read `service_name` first** → [sGTM](sgtm-not-responding.md) · [data-generator](data-generator-stuck.md) · others as above |
 | Cloud Run container failed to start or crash-looped | [a revision that will not start](revision-will-not-start.md) |
 | Pub/Sub backlog on iampatterson-events-push: oldest unacked message older than 5 minutes | [event pipeline backlog](event-pipeline-backlog.md) |
@@ -63,7 +63,6 @@ Things that go wrong without anything watching for them.
 | An automated check cannot read a Vercel preview | [preview protection](preview-protection.md) |
 | Scheduled maintenance: the sGTM container image | [updating the sGTM image](sgtm-image-update.md) |
 | Scheduled maintenance: dependencies | [dependency cadence](dependency-cadence.md) |
-| Someone needs access to Metabase, or everyone is getting 403 | [Metabase access](metabase-access.md) |
 | An infrastructure apply broke something visible | [an apply damaged production](infra-apply-damaged-production.md) |
 
 ## Things to know before you start

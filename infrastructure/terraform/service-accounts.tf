@@ -33,16 +33,6 @@ locals {
       display_name = "data-gen-runtime"
       description  = "data-generator runtime, BigQuery writer (13.4)"
     }
-    metabase_runtime = {
-      account_id   = "metabase-runtime"
-      display_name = "Metabase Cloud Run runtime"
-      description  = null
-    }
-    metabase_bigquery = {
-      account_id   = "metabase-bigquery"
-      display_name = "Metabase BigQuery reader"
-      description  = null
-    }
     data_gen_scheduler = {
       account_id   = "data-gen-scheduler"
       display_name = "Cloud Scheduler → Data Generator"

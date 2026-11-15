@@ -1,11 +1,10 @@
 # A public surface is down
 
-**Alerts that lead here:** the uptime check `site-www`
-(`https://www.iampatterson.com/`), and a Cloud Run 5xx on `metabase`.
+**Alert that leads here:** the uptime check `site-www`
+(`https://www.iampatterson.com/`).
 
-The `metabase-lb` uptime check on `https://bi.iampatterson.com/` was removed by
-[18.10], one step before [18.3] destroys Metabase. Its section below stays until
-then, for a 5xx on the service; [18.3] removes it.
+The `metabase-lb` check on `https://bi.iampatterson.com/` shared this entry until
+[18.10] removed it; [18.3] retired Metabase.
 
 ## `site-www` — the website itself
 
@@ -33,43 +32,10 @@ Vercel dashboard. This is a browser action; there is no CLI path configured in
 this project. If the build itself is failing, see
 [Vercel build failing](vercel-build-failing.md).
 
-## `metabase-lb` — the BI surface
-
-Metabase runs as a Cloud Run service reachable only through an HTTPS load
-balancer at `bi.iampatterson.com`, with Identity-Aware Proxy in front of it.
-
-**An important quirk:** an unauthenticated request to `bi.iampatterson.com` gets
-an IAP redirect, and the uptime check treats that as healthy. That is correct —
-it proves the load balancer, the certificate and IAP are all working. A failure
-here therefore means something structural, not a login problem.
-
-**Diagnose.** Work outward from the service:
-
-```bash
-gcloud run services describe metabase --project=iampatterson --region=us-central1 \
-  --format='value(status.conditions[0].message, status.traffic[0].revisionName)'
-
-gcloud compute backend-services get-health metabase-backend --global --project=iampatterson
-
-gcloud compute ssl-certificates list --project=iampatterson \
-  --format='value(name, managed.status, managed.domainStatus)'
-```
-
-The three usual causes, in order of likelihood: the Cloud Run service is down,
-the backend has no healthy instances, or the managed certificate has a problem —
-for which see [certificate renewal failure](certificate-renewal-failure.md).
-
-**Fix.** If Metabase itself is down, it is an ordinary Cloud Run service and
-[a revision that will not start](revision-will-not-start.md) applies. If the load
-balancer topology is wrong, it is described in
-`infrastructure/terraform/metabase-lb.tf` and `terraform plan` will show any
-drift between what is declared and what exists.
-
 ## How you know it worked
 
 ```bash
-curl -s -o /dev/null -w 'site:     %{http_code}\n' https://www.iampatterson.com/
-curl -s -o /dev/null -w 'metabase: %{http_code}\n' https://bi.iampatterson.com/
+curl -s -o /dev/null -w 'site: %{http_code}\n' https://www.iampatterson.com/
 ```
 
 The uptime check runs on its own schedule and the alert closes by itself once two
