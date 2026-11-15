@@ -35,7 +35,7 @@
 #   D9 — Browser storage inspector (cookies + localStorage +
 #        sessionStorage in overlay; categorized read-only view)
 #
-# 13 scenarios: 9 deliverable-aligned + 3 edge cases + 1 regression sweep.
+# 14 scenarios: 9 deliverable-aligned + 4 edge cases + 1 regression sweep.
 #   Scenarios marked [auto] run without operator interaction.
 #   Scenarios marked [devtools] require DevTools observation.
 #   Scenarios marked [prod] require BASE_URL pointing at production.
@@ -254,8 +254,8 @@ verify "D6 load-test runner is executable + report exists" \
 verify "D7 anonymous-id helper defines _iap_aid cookie name" \
   "grep -qE \"ANONYMOUS_ID_COOKIE_NAME = '_iap_aid'\" src/lib/identity/anonymous-id.ts"
 
-verify "D9 storage-categories include app-identity classifier for _iap_aid" \
-  "grep -q \"category: 'app-identity'\" src/lib/identity/storage-categories.ts && grep -qE '_iap_aid' src/lib/identity/storage-categories.ts"
+verify "D9 storage-categories classify _iap_aid as analytics (a Statistics cookie since 2026-11-14)" \
+  "grep -qF \"category: 'analytics', match: /^_iap_aid\" src/lib/identity/storage-categories.ts"
 
 echo "  Baseline complete. Begin visitor scenarios:"
 echo ""
@@ -524,7 +524,11 @@ do_step "Clear all cookies for the origin."
 do_step "Navigate to $BASE_URL/"
 open_url "$BASE_URL/"
 
-do_step "Wait ~2 seconds for cookies to mint, then refresh the Application tab."
+do_step "Before choosing in the Cookiebot banner, refresh the Application tab."
+expect \
+  "No '_iap_aid' cookie: it is a Statistics cookie, written only with analytics consent (2026-11-14)"
+
+do_step "Allow Statistics in the Cookiebot banner ('Allow all'), wait ~2 seconds, then refresh the Application tab."
 expect \
   "Cookie '_iap_aid' exists" \
   "Value is a UUID v4 (8-4-4-4-12 hex pattern)" \
@@ -533,12 +537,16 @@ expect \
   "On https: Secure flag set; on localhost: Secure may be unset (acceptable)" \
   "Path=/"
 
+do_step "Note the _iap_aid value. Hard-reload the page (Cmd+Shift+R / Ctrl+Shift+R), wait ~2 seconds, then refresh the Application tab."
+expect \
+  "_iap_aid value unchanged: the stored grant keeps the same ID across a reload (Cookiebot resolves the stored choice ~180ms after load; nothing expires the cookie before then)"
+
 do_step "Open SessionPulse → Consent tab."
 expect \
-  "Storage inspector includes an 'App identity' group" \
-  "_iap_aid row is visible in the App identity group" \
+  "Storage inspector includes an 'App identity' group and an 'Analytics' group" \
+  "_iap_aid row is visible in the Analytics group (a Statistics cookie since 2026-11-14)" \
   "Click-to-reveal works (initial truncated/masked, expands to full UUID)" \
-  "_iap_sid (Phase 2 session cookie) is also in the App identity group"
+  "_iap_sid (Phase 2 session cookie) is in the App identity group"
 
 do_step "Navigate to $BASE_URL/demo/ecommerce → click any product → 'Add to cart'."
 
@@ -549,20 +557,29 @@ expect \
   "Event row carries an anonymous_id field" \
   "anonymous_id matches the _iap_aid cookie value (or its truncated suffix)"
 
-do_step "Continue to /cart → /checkout → fill form → place order."
-do_step "On /confirmation, inspect the warehouse-write sidebar (BQ row preview)."
+do_step "Continue to /cart → /checkout. Do not place the order yet."
+do_step "On /checkout, tap 'see the stack ↓' and inspect the warehouse-write sidebar (BQ row preview)."
 expect \
-  "user_pseudo_id column shows a non-NULL value (a real anonymous id, not the seed NULL)" \
-  "Value matches the _iap_aid cookie (truncated as appropriate for display)"
+  "No user_pseudo_id column: dropped 2026-11-14, since events_raw has no such column and nothing forwards _iap_aid to BigQuery yet" \
+  "The _iap_aid value appears nowhere in the preview"
 
 do_step "Application tab → re-check _iap_aid value."
 expect \
-  "Cookie value unchanged across the funnel — same id from homepage to confirmation"
+  "Cookie value unchanged across the funnel — same id from homepage to checkout"
+
+do_step "Still on /checkout, without reloading, run Cookiebot.renew() in the Console and decline Statistics."
+expect \
+  "Application tab: '_iap_aid' is gone (the site expires it on withdrawal, not only Cookiebot)" \
+  "SessionPulse → Consent tab inspector: no _iap_aid row in the Analytics group within ~1 second" \
+  "The warehouse-write preview still has no user_pseudo_id column" \
+  "Click any link, then refresh the Application tab: '_iap_aid' has not come back"
 
 confirm "_iap_aid cookie has correct attributes (UUID v4, ≈365d Max-Age, SameSite=Lax)?"
-confirm "_iap_aid surfaces in the D9 storage inspector under App identity?"
+confirm "_iap_aid value unchanged across a hard reload?"
+confirm "_iap_aid surfaces in the D9 storage inspector under Analytics?"
 confirm "anonymous_id appears on event payloads in the Timeline?"
-confirm "Confirmation page BQ row preview shows the real anonymous id (not seed NULL)?"
+confirm "Checkout BQ row preview shows no user_pseudo_id column and no visitor ID?"
+confirm "Withdrawing Statistics removed _iap_aid at once, and it did not come back?"
 
 # ────────────────────────────────────────────────────────────────────────
 # Scenario 8 — D8 UX polish bundle
@@ -637,12 +654,12 @@ do_step "Open SessionPulse → Overview tab."
 expect \
   "Storage summary chips per category visible" \
   "Categories include at minimum: app-identity, cmp (Cookiebot), analytics" \
-  "Each chip shows a count (e.g. 'app-identity · 2 keys')"
+  "Each chip shows a count of its keys (e.g. 'app identity · 2 keys'); _iap_aid counts under analytics, and only when Statistics is allowed"
 
 do_step "Switch to Consent tab → scroll to the storage inspector section."
 expect \
   "Per-key inspector with category groupings" \
-  "_iap_aid + _iap_sid both visible under app-identity" \
+  "_iap_sid visible under app-identity; _iap_aid visible under analytics only if Statistics is allowed" \
   "CookieConsent (Cookiebot) cookie visible under cmp" \
   "Click-to-reveal: clicking a row expands to show the full value" \
   "Cookie expiry / domain / path show 'not readable from document.cookie' footnote"
@@ -666,7 +683,7 @@ expect \
   "Any new keys (e.g. cart state, last-viewed product) appear in their categories"
 
 confirm "Overview shows category chips with counts?"
-confirm "Consent inspector shows _iap_aid + _iap_sid in app-identity with click-to-reveal?"
+confirm "Consent inspector shows _iap_sid in app-identity (and _iap_aid in analytics only with Statistics allowed), with click-to-reveal?"
 confirm "Live updates: adding a localStorage key reflects within 1s without overlay reopen?"
 confirm "Cookie expiry/domain/path narrowing is shown as a footnote (no fabricated metadata)?"
 
@@ -709,12 +726,40 @@ do_step "Switch back to Consent tab → storage inspector."
 expect \
   "Analytics-category storage entries are absent or marked as denied" \
   "Marketing-category storage entries are absent" \
-  "_iap_aid + _iap_sid (necessary / app-identity) still present"
+  "_iap_sid (app-identity) still present" \
+  "_iap_aid absent: a Statistics cookie, never written without analytics consent"
 
 confirm "Consent UI honestly reflects the denial (× glyph + persimmon for declined categories)?"
 confirm "Timeline routing shows 'Blocked' destinations after consent denial?"
 confirm "Network tab confirms zero analytics / marketing pixels fired?"
-confirm "Necessary cookies (_iap_aid, _iap_sid) still present despite denial of other categories?"
+confirm "_iap_sid present and _iap_aid never written, from first load through the denial?"
+
+# ────────────────────────────────────────────────────────────────────────
+# Edge case A2 — a leftover _iap_aid is expired on load
+# ────────────────────────────────────────────────────────────────────────
+scenario "A2. [edge][devtools] Leftover _iap_aid — a decliner, or a visitor who never chose, loses it on load" \
+  "Production minted _iap_aid for every visitor until 2026-11-14; cookiebot-consent.tsx + initConsentState(resolved) + CookiebotOnDialogInit"
+
+setup \
+  "Fresh incognito window" \
+  "DevTools → Application tab + Console open"
+
+do_step "Navigate to $BASE_URL/ and click 'Reject all' / 'Decline' in the Cookiebot banner."
+open_url "$BASE_URL/"
+
+do_step "In the Console, plant a leftover: document.cookie = '_iap_aid=leftover-before-2026-11-14; Path=/; Max-Age=31536000'"
+
+do_step "Hard-reload the page, wait ~2 seconds, then refresh the Application tab."
+expect \
+  "'_iap_aid' is gone: a returning decliner loses the leftover once Cookiebot resolves the stored decline" \
+  "SessionPulse → Timeline: events carry no anonymous_id"
+
+do_step "Delete the CookieConsent cookie (the visitor has never chosen), plant the leftover again as above, hard-reload, and do not choose in the banner."
+expect \
+  "'_iap_aid' is gone after ~2 seconds: with no answer there is no consent (hasResponse false, then CookiebotOnDialogInit; CookiebotOnLoad never fires for this visitor)"
+
+confirm "A returning decliner's leftover _iap_aid was expired on load?"
+confirm "A never-chosen visitor's leftover _iap_aid was expired on load?"
 
 # ────────────────────────────────────────────────────────────────────────
 # Edge case B — full ecommerce funnel sweep with all D8/D9 tokens visible

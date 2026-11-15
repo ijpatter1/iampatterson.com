@@ -23,10 +23,57 @@ export const SESSION_COOKIE_MAX_AGE = 1800;
 // the hook module so EVERY path that writes the cookie participates.
 const cookieChangeListeners = new Set<() => void>();
 
+// The session ID this tab last wrote or announced. Changes are detected
+// against this, not against the cookie jar: another tab shares the jar, so
+// when it rotates the session, this tab's next write carries the jar's
+// already-new value and a jar comparison would never notify.
+let lastKnownSessionId: string | null = null;
+
+/**
+ * The session this tab knows: its last-known ID, or the cookie's value if it
+ * has none yet. The one snapshot the live stream and the session state both
+ * read through `useSyncExternalStore`, so they always name the same session.
+ * It is sticky: a deleted cookie keeps the last ID until the next one is
+ * written. It changes only with a notify (a write here, or the jar re-check
+ * on visibility and focus), so a visible but unfocused window learns of a
+ * change made in another tab only on focus or on its own next write.
+ */
+export function getKnownSessionId(): string | null {
+  if (lastKnownSessionId === null) lastKnownSessionId = readSessionCookie();
+  return lastKnownSessionId;
+}
+
+/** Test-only: forget this tab's last-known ID, so tests do not depend on order. */
+export function _resetKnownSessionIdForTests(): void {
+  lastKnownSessionId = null;
+}
+
+// Another tab's rotation writes the jar without reaching this tab's
+// listeners. Re-check when the tab is shown or focused, which is when the
+// visitor comes back to it.
+function syncFromJar(): void {
+  const current = readSessionCookie();
+  if (!current || current === lastKnownSessionId) return;
+  lastKnownSessionId = current;
+  notifySessionCookieChange();
+}
+
+function onVisibilityChange(): void {
+  if (document.visibilityState === 'visible') syncFromJar();
+}
+
 export function subscribeSessionCookie(callback: () => void): () => void {
+  if (cookieChangeListeners.size === 0 && typeof window !== 'undefined') {
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('focus', syncFromJar);
+  }
   cookieChangeListeners.add(callback);
   return () => {
     cookieChangeListeners.delete(callback);
+    if (cookieChangeListeners.size === 0 && typeof window !== 'undefined') {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('focus', syncFromJar);
+    }
   };
 }
 
@@ -47,12 +94,18 @@ export function _getSessionCookieListenerCountForTests(): number {
  * 20-event session for identical values. `useSyncExternalStore` would
  * bail via `Object.is`, but "writer fired" should not blur into "value
  * changed" at the source.
+ *
+ * "Changed" is against `lastKnownSessionId`, this tab's own record, so a
+ * rotation made in another tab is announced here on this tab's next write.
+ * The first write in a tab notifies once even when the jar already held the
+ * value; subscribers compare values, so that costs nothing.
  */
 export function setSessionCookie(id: string): void {
   if (typeof document === 'undefined') return;
-  const previous = readSessionCookie();
+  const previous = lastKnownSessionId;
   const secure = globalThis.location?.protocol === 'https:' ? '; Secure' : '';
   document.cookie = `${SESSION_COOKIE_NAME}=${encodeURIComponent(id)}; Path=/; SameSite=Lax; Max-Age=${SESSION_COOKIE_MAX_AGE}${secure}`;
+  lastKnownSessionId = id;
   if (previous !== id) notifySessionCookieChange();
 }
 

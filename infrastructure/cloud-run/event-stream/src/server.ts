@@ -44,6 +44,17 @@ app.get('/events', (req, res) => {
   const origin = req.headers.origin ?? '';
   const allowOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
 
+  // Registered before the headers go out, so a session already at
+  // MAX_CONNECTIONS_PER_SESSION is refused without touching its open
+  // connections (see connections.ts). 429: the limit is this client's.
+  if (!manager.add(sessionId, res)) {
+    res
+      .status(429)
+      .set('Access-Control-Allow-Origin', allowOrigin)
+      .json({ error: 'too many connections for this session' });
+    return;
+  }
+
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
@@ -53,8 +64,6 @@ app.get('/events', (req, res) => {
 
   res.write(`data: ${JSON.stringify({ type: 'connected', session_id: sessionId })}\n\n`);
 
-  manager.add(sessionId, res);
-
   // Keepalive to prevent Cloud Run / load balancer idle timeout
   const heartbeat = setInterval(() => {
     res.write(': keepalive\n\n');
@@ -62,7 +71,8 @@ app.get('/events', (req, res) => {
 
   req.on('close', () => {
     clearInterval(heartbeat);
-    manager.remove(sessionId);
+    // Only this response: another tab on the same session may still be open.
+    manager.remove(sessionId, res);
   });
 });
 

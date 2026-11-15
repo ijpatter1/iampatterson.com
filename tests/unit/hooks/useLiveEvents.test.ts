@@ -7,6 +7,7 @@ import type { PipelineEvent } from '@/lib/events/pipeline-schema';
 
 let mockSseEvents: PipelineEvent[] = [];
 let mockDlEvents: PipelineEvent[] = [];
+let mockSessionId: string | null = 'sess-1';
 
 jest.mock('@/hooks/useEventStream', () => ({
   useEventStream: () => ({
@@ -14,6 +15,7 @@ jest.mock('@/hooks/useEventStream', () => ({
     events: mockSseEvents,
     error: null,
     clearEvents: jest.fn(),
+    sessionId: mockSessionId,
   }),
 }));
 
@@ -52,6 +54,7 @@ describe('useLiveEvents', () => {
   beforeEach(() => {
     mockSseEvents = [];
     mockDlEvents = [];
+    mockSessionId = 'sess-1';
     delete process.env.NEXT_PUBLIC_EVENT_STREAM_URL;
   });
 
@@ -187,6 +190,32 @@ describe('useLiveEvents', () => {
 
     const { result } = renderHook(() => useLiveEventsSource());
 
+    expect(result.current.source).toBe('sse');
+  });
+
+  // When the session changes (Cookiebot's consent reset, then a new ID), the
+  // stream reopens under the new session with an empty buffer. The latch was
+  // for the old session; holding it would show an empty stream panel while
+  // the data layer has the visitor's events, and would never fall back if the
+  // new session's stream fails.
+  it('releases the latch when the stream moves to a new session, until that session delivers', () => {
+    process.env.NEXT_PUBLIC_EVENT_STREAM_URL = 'https://stream.test';
+    mockDlEvents = [makeEvent('dl-1', 'page_view')];
+    mockSseEvents = [makeEvent('pipe-1', 'page_view')];
+    const { result, rerender } = renderHook(() => useLiveEventsSource());
+    expect(result.current.source).toBe('sse');
+
+    mockSessionId = 'sess-2';
+    mockSseEvents = [];
+    rerender();
+    expect(result.current.source).toBe('dataLayer');
+    expect(result.current.events.map((e) => e.pipeline_id)).toEqual(['dl-1']);
+
+    mockSseEvents = [makeEvent('pipe-2', 'click_cta')];
+    rerender();
+    expect(result.current.source).toBe('sse');
+    mockSseEvents = [];
+    rerender();
     expect(result.current.source).toBe('sse');
   });
 });

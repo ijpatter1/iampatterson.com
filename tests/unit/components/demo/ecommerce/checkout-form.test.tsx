@@ -6,6 +6,7 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { CheckoutForm } from '@/components/demo/ecommerce/checkout-form';
+import * as trackModule from '@/lib/events/track';
 import { CartProvider, useCart } from '@/components/demo/ecommerce/cart-context';
 import { ToastProvider } from '@/components/demo/reveal/toast-provider';
 
@@ -19,7 +20,10 @@ jest.mock('next/navigation', () => ({
 
 const mockBeginCheckout = jest.fn();
 const mockPurchase = jest.fn();
+// The real track.ts, consent store included; only the two event calls this
+// component makes are stubbed, so the tests can see them.
 jest.mock('@/lib/events/track', () => ({
+  ...jest.requireActual('@/lib/events/track'),
   trackBeginCheckout: (...a: unknown[]) => mockBeginCheckout(...a),
   trackPurchase: (...a: unknown[]) => mockPurchase(...a),
 }));
@@ -83,6 +87,14 @@ function CartMutator() {
       mutate cart
     </button>
   );
+}
+
+/** The value cell the warehouse-write preview shows for a column. */
+function previewCell(column: string): string | null | undefined {
+  const keyCell = Array.from(document.querySelectorAll('aside[data-live-sidebar] span')).find(
+    (el) => el.textContent === column,
+  );
+  return keyCell?.nextElementSibling?.textContent;
 }
 
 function renderCheckout(seeded = true) {
@@ -154,16 +166,65 @@ describe('CheckoutForm (Phase 9F D8)', () => {
     const sidebar = document.querySelector('aside[data-live-sidebar]');
     expect(sidebar).not.toBeNull();
     expect(sidebar?.textContent).toContain('iampatterson_raw.events_raw');
-    expect(sidebar?.textContent).toMatch(/21 of 51 columns/i);
+    // The table's real width (infrastructure/bigquery/schema.json) and only
+    // columns that exist in it; no seed for a column the table lacks.
+    expect(sidebar?.textContent).toMatch(/16 of 77 columns/i);
+    expect(sidebar?.textContent).not.toMatch(/geo_country/);
+    expect(document.body.textContent).toMatch(/16 of the 77 real columns/);
   });
 
-  it('warehouse-write sidebar reflects visitor cart total + item count', () => {
+  // The preview is the purchase row the form will write: the same order_id,
+  // order_total, item_count and products that trackPurchase sends on submit.
+  it('warehouse-write sidebar shows the purchase row the form will submit', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     renderCheckout();
-    const sidebar = document.querySelector('aside[data-live-sidebar]') as HTMLElement;
-    // cart_value row should carry 26.00
-    expect(sidebar.textContent).toContain('26.00');
-    // cart_item_count row should carry the count 1 (fields render as separate rows)
-    expect(sidebar.textContent).toMatch(/cart_item_count/);
+    expect(previewCell('event_name')).toBe('"purchase"');
+    expect(previewCell('order_total')).toBe('26.00');
+    expect(previewCell('item_count')).toBe('1');
+    // products: the cart as JSON, the string the purchase event sends.
+    expect(previewCell('products')).toContain('"product_id":"tuna-plush-classic"');
+    const shownOrderId = previewCell('order_id');
+    const shownProducts = previewCell('products');
+
+    await user.click(screen.getByRole('button', { name: /place order/i }));
+    const sent = mockPurchase.mock.calls[0][0] as { order_id: string; products: string };
+    expect(shownOrderId).toBe(`"${sent.order_id}"`);
+    expect(shownProducts).toBe(`"${sent.products}"`);
+  });
+
+  // A real-site row never carries utm_* (measured in BigQuery 2026-11-14:
+  // nothing in the tag setup sends them), so the preview shows NULL even when
+  // the visitor's URL carries them.
+  it('shows utm_source and utm_campaign as NULL even when the URL carries them', () => {
+    mockSearchParams = new URLSearchParams('utm_source=facebook&utm_campaign=spring_launch');
+    renderCheckout();
+    expect(previewCell('utm_source')).toBe('NULL');
+    expect(previewCell('utm_campaign')).toBe('NULL');
+  });
+
+  it('shows page_referrer as NULL when the visitor arrived with no referrer', () => {
+    // jsdom's document.referrer is ''.
+    renderCheckout();
+    expect(previewCell('page_referrer')).toBe('NULL');
+  });
+
+  // Small print, one line in all cases (Ian, 2026-11-14).
+  it.each([
+    ['without utm parameters', ''],
+    ['with utm parameters', 'utm_source=facebook&utm_campaign=spring_launch'],
+  ])('the small print says only that client_id is an example value, %s', (_l, query) => {
+    mockSearchParams = new URLSearchParams(query);
+    renderCheckout();
+    const sidebar = document.querySelector('aside[data-live-sidebar]');
+    expect(sidebar?.textContent).toContain('client_id is an example value.');
+    expect(sidebar?.textContent).not.toMatch(/utm_\* and client_id|visitor-scoped columns/);
+  });
+
+  it('titles the sidebar for the purchase row it shows', () => {
+    renderCheckout();
+    const sidebar = document.querySelector('aside[data-live-sidebar]');
+    expect(sidebar?.textContent).toContain('Warehouse write · purchase');
+    expect(sidebar?.textContent).not.toContain('Warehouse write · begin_checkout');
   });
 
   it('renders an order summary column with items, subtotal, total, no-kill disclaimer', () => {
@@ -324,15 +385,14 @@ describe('CheckoutForm (Phase 9F D8)', () => {
       expect(sidebar?.textContent).toMatch(/abc12345…/);
     });
 
-    it('substitutes event_timestamp with the real last-event ISO', () => {
+    it('substitutes timestamp with the real last-event ISO', () => {
       const iso = '2026-04-21T18:15:02.000Z';
       mockSession.mockReturnValue({
         ...DEFAULT_SESSION,
         last_event_at: iso,
       });
       renderCheckout();
-      const sidebar = document.querySelector('aside[data-live-sidebar]');
-      expect(sidebar?.textContent).toContain(iso);
+      expect(previewCell('timestamp')).toBe(`"${iso}"`);
     });
 
     it('substitutes consent flags once events have flowed', () => {
@@ -343,18 +403,60 @@ describe('CheckoutForm (Phase 9F D8)', () => {
         consent_marketing: true,
       });
       renderCheckout();
-      const sidebar = document.querySelector('aside[data-live-sidebar]');
-      // Both should read granted when events carry both flags granted.
-      const grantedMatches = (sidebar?.textContent ?? '').match(/granted/g) ?? [];
-      expect(grantedMatches.length).toBeGreaterThanOrEqual(2);
+      // BOOL columns, as events_raw stores them.
+      expect(previewCell('consent_analytics')).toBe('true');
+      expect(previewCell('consent_marketing')).toBe('true');
     });
 
     it('falls back to seed consent values when no events have flowed yet', () => {
       renderCheckout();
+      // Seed has analytics granted, marketing declined.
+      expect(previewCell('consent_analytics')).toBe('true');
+      expect(previewCell('consent_marketing')).toBe('false');
+    });
+  });
+
+  // The preview shows the row that lands in events_raw. Nothing forwards
+  // `_iap_aid` to BigQuery, so the preview had no honest place for it: the
+  // user_pseudo_id column was dropped on 2026-11-14 (Ian's call). Even with
+  // analytics granted through the real consent store, the visitor's ID does
+  // not appear, and the page writes no `_iap_aid` of its own.
+  describe('no visitor ID in the warehouse-write preview', () => {
+    afterEach(() => {
+      act(() => {
+        trackModule.initConsentState(false, false, false);
+      });
+      document.cookie = '_iap_aid=; Max-Age=0; Path=/';
+    });
+
+    it('shows no user_pseudo_id column and no ID, even with analytics granted', () => {
+      document.cookie = '_iap_aid=aid12345-6789-4def-8abc-feedfacefeed; Path=/';
+      act(() => {
+        trackModule.initConsentState(true, false, false);
+      });
+      renderCheckout();
       const sidebar = document.querySelector('aside[data-live-sidebar]');
-      // Seed has analytics=granted, marketing=denied.
-      expect(sidebar?.textContent).toMatch(/granted/);
-      expect(sidebar?.textContent).toMatch(/denied/);
+      expect(sidebar?.textContent).not.toContain('user_pseudo_id');
+      expect(sidebar?.textContent).not.toContain('aid12345');
+    });
+
+    it('writes no _iap_aid cookie while analytics consent is not granted', () => {
+      const writes: string[] = [];
+      const descriptor = Object.getOwnPropertyDescriptor(Document.prototype, 'cookie')!;
+      Object.defineProperty(document, 'cookie', {
+        configurable: true,
+        get: () => descriptor.get!.call(document),
+        set: (v: string) => {
+          if (v.startsWith('_iap_aid=')) writes.push(v);
+          descriptor.set!.call(document, v);
+        },
+      });
+      try {
+        renderCheckout();
+        expect(writes).toEqual([]);
+      } finally {
+        delete (document as unknown as { cookie?: string }).cookie;
+      }
     });
   });
 

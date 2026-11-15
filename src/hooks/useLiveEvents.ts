@@ -5,7 +5,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { PipelineEvent } from '@/lib/events/pipeline-schema';
 
 import { useDataLayerEvents } from './useDataLayerEvents';
-import { useEventStream } from './useEventStream';
+import { type ConnectionStatus, useEventStream } from './useEventStream';
 
 export interface UseLiveEventsReturn {
   /** Merged event stream: SSE when connected, dataLayer otherwise. */
@@ -16,8 +16,10 @@ export interface UseLiveEventsReturn {
    * State of the stream connection itself, whichever source is active. `off`
    * means no stream is configured. A reader uses this to tell "data-layer
    * events because the stream is down" from "data-layer events by design".
+   * `reconnecting` is routine; `failing` is a stream still retrying that is
+   * not working (see `useEventStream`).
    */
-  stream: 'off' | 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
+  stream: 'off' | ConnectionStatus;
 }
 
 export interface UseLiveEventsOptions {
@@ -60,24 +62,33 @@ export function useLiveEventsSource(options: UseLiveEventsOptions = {}): UseLive
   const eventStreamUrl = baseUrl.endsWith('/events') ? baseUrl : `${baseUrl}/events`;
   const sseEnabled = baseUrl.length > 0;
 
-  const { events: sseEvents, status: sseStatus } = useEventStream({
+  const {
+    events: sseEvents,
+    status: sseStatus,
+    sessionId: sseSession,
+  } = useEventStream({
     url: eventStreamUrl,
     enabled: sseEnabled,
   });
   const { events: dlEvents } = useDataLayerEvents();
 
-  // Sticky "has SSE ever delivered?" latch. Once flipped true, stays
-  // true for the session so the source doesn't flap back to dataLayer
-  // when the SSE buffer is later cleared (e.g. clearEvents from
-  // session-state reset). Converted from ref to state so the
-  // render-time read below doesn't trip `react-hooks/refs`.
-  const [sseEverDelivered, setSseEverDelivered] = useState(false);
+  // Sticky "has SSE delivered?" latch, held for the session the stream
+  // delivered on, so the source doesn't flap back to dataLayer when the SSE
+  // buffer is later cleared. When the stream moves to a new session (the
+  // session cookie changed, see `useEventStream`), the stream returns only
+  // the new session's events, none at first, and the latch no longer
+  // applies: the panel shows the browser's own events
+  // until the new session's stream delivers, rather than an empty stream
+  // panel. State, not a ref, so the render-time read below doesn't trip
+  // `react-hooks/refs`.
+  const [sseDeliveredSession, setSseDeliveredSession] = useState<string | null>(null);
   useEffect(() => {
-    if (sseEnabled && sseEvents.length > 0 && !sseEverDelivered) {
+    if (sseEnabled && sseEvents.length > 0 && sseSession && sseSession !== sseDeliveredSession) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- sticky latch (see comment above)
-      setSseEverDelivered(true);
+      setSseDeliveredSession(sseSession);
     }
-  }, [sseEnabled, sseEvents.length, sseEverDelivered]);
+  }, [sseEnabled, sseEvents.length, sseSession, sseDeliveredSession]);
+  const sseEverDelivered = sseDeliveredSession !== null && sseDeliveredSession === sseSession;
 
   // A decliner's events never reach the server, so SSE can only ever offer the
   // one exempt tag. Pin to the data layer rather than let that single event
@@ -95,10 +106,12 @@ export function useLiveEventsSource(options: UseLiveEventsOptions = {}): UseLive
 /**
  * The page's one live event source, provided by `LiveEventsProvider`.
  *
- * It is shared because the stream service keeps a single connection per
- * session: a second connection for the same session ends the first. Every
- * component that opened its own stream would take the feed away from the
- * others, so exactly one place opens it and everything else reads from here.
+ * It is shared so that a page holds one connection. The stream service keeps
+ * a connection per tab for each session, up to a cap, and ends the oldest
+ * beyond it (connections.ts). Components that each opened their own stream
+ * would multiply the connections per tab, and enough of them across a few
+ * tabs would pass the cap and end each other. So exactly one place opens it
+ * and everything else reads from here.
  */
 export const LiveEventsContext = createContext<UseLiveEventsReturn | null>(null);
 

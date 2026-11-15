@@ -12,7 +12,11 @@ import {
   trackWebVital,
   trackPageEngagement,
   initConsentState,
+  expireAnonymousIdLeftover,
+  getCurrentConsent,
 } from '@/lib/events/track';
+import * as trackModule from '@/lib/events/track';
+import * as anonymousIdModule from '@/lib/identity/anonymous-id';
 
 // Mock crypto.randomUUID for session ID
 Object.defineProperty(globalThis, 'crypto', {
@@ -36,29 +40,6 @@ describe('trackPageView', () => {
       page_referrer: '/about',
       session_id: 'test-session-id',
     });
-  });
-
-  // Phase 10d D7: every event carries `anonymous_id` from the `_iap_aid`
-  // first-party cookie alongside the session-scoped `session_id`. The base
-  // fields helper threads it through automatically, so this regression
-  // pin on page_view also covers every other tracker that uses baseFields().
-  it('threads anonymous_id from the _iap_aid cookie into the data-layer push', () => {
-    document.cookie = '_iap_aid=test-anon-uuid; Path=/';
-    trackPageView('/');
-    expect(window.dataLayer[0]).toMatchObject({
-      event: 'page_view',
-      anonymous_id: 'test-anon-uuid',
-    });
-  });
-
-  it('mints a fresh anonymous_id on first call when the _iap_aid cookie is empty', () => {
-    // Cookie cleared by beforeEach. The file-level crypto.randomUUID mock returns
-    // 'test-session-id' for every call, so the freshly-minted anonymous_id ends
-    // up as that same value — the assertion proves "mint happened" rather than
-    // pinning a real UUID format.
-    trackPageView('/');
-    const event = window.dataLayer[0] as { anonymous_id: string };
-    expect(event.anonymous_id).toBe('test-session-id');
   });
 });
 
@@ -506,5 +487,395 @@ describe('trackPageEngagement (Phase 10d D3)', () => {
     expect(
       (window.dataLayer as Array<{ engagement_seconds: number }>).map((e) => e.engagement_seconds),
     ).toEqual([15, 60, 180]);
+  });
+});
+
+// `_iap_aid` is the cross-session visitor ID: a random UUID in a first-party
+// cookie with a 365-day sliding expiry. Ian classified it Statistics in
+// Cookiebot on 2026-11-14, and Cookiebot statistics is the analytics consent
+// this module holds. A visitor who declines analytics, or has not chosen yet,
+// must carry no year-long ID: the site neither mints nor refreshes the cookie,
+// expires one that is there, and events carry an empty anonymous_id.
+describe('anonymous_id follows analytics consent', () => {
+  let aidWrites: string[];
+  const cookieDescriptor = Object.getOwnPropertyDescriptor(Document.prototype, 'cookie')!;
+  const readAid = () =>
+    document.cookie
+      .split('; ')
+      .find((c) => c.startsWith('_iap_aid='))
+      ?.slice('_iap_aid='.length) ?? null;
+  // A write that keeps or creates the cookie, as opposed to one expiring it.
+  const keepingWrites = () => aidWrites.filter((w) => !/Max-Age=0(;|$)/.test(w));
+  const expiringWrites = () => aidWrites.filter((w) => /Max-Age=0(;|$)/.test(w));
+  // Cookiebot removes a Statistics cookie when the visitor declines.
+  const cookiebotDeletes = () => {
+    cookieDescriptor.set!.call(document, '_iap_aid=; Max-Age=0; Path=/');
+  };
+  const lastEvent = () => window.dataLayer[window.dataLayer.length - 1] as { anonymous_id: string };
+
+  beforeEach(() => {
+    initConsentState(false, false, false);
+    cookiebotDeletes();
+    aidWrites = [];
+    Object.defineProperty(document, 'cookie', {
+      configurable: true,
+      get: () => cookieDescriptor.get!.call(document),
+      set: (v: string) => {
+        if (v.startsWith('_iap_aid=')) aidWrites.push(v);
+        cookieDescriptor.set!.call(document, v);
+      },
+    });
+  });
+  afterEach(() => {
+    delete (document as unknown as { cookie?: string }).cookie;
+    delete (navigator as unknown as { globalPrivacyControl?: unknown }).globalPrivacyControl;
+    initConsentState(false, false, false);
+  });
+
+  it('gives a visitor who has not chosen yet no ID and no cookie', () => {
+    // A fresh module: no banner choice has reached this page at all.
+    jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const fresh = require('@/lib/events/track') as typeof import('@/lib/events/track');
+      fresh.trackPageView('/');
+    });
+    expect(lastEvent().anonymous_id).toBe('');
+    expect(aidWrites).toEqual([]);
+    expect(readAid()).toBeNull();
+  });
+
+  it('gives a visitor who declines analytics no ID and no cookie', () => {
+    trackConsentUpdate(false, true, true);
+    trackPageView('/');
+    expect(window.dataLayer.map((e) => (e as { anonymous_id: string }).anonymous_id)).toEqual([
+      '',
+      '',
+    ]);
+    expect(keepingWrites()).toEqual([]);
+    expect(readAid()).toBeNull();
+  });
+
+  it('expires a cookie left from an earlier grant when the visitor declines', () => {
+    // Expiring it ourselves, rather than trusting Cookiebot to, means a
+    // decliner never keeps the year-long ID whatever Cookiebot does.
+    cookieDescriptor.set!.call(document, '_iap_aid=left-from-earlier; Path=/');
+    trackConsentUpdate(false, false, false);
+    expect(lastEvent().anonymous_id).toBe('');
+    expect(readAid()).toBeNull();
+    expect(keepingWrites()).toEqual([]);
+    expect(expiringWrites()).toHaveLength(1);
+    expect(expiringWrites()[0]).toContain('Path=/');
+  });
+
+  // initConsentState runs on mount with whatever Cookiebot reports. Measured in
+  // production (2026-11-14): at ~15ms Cookiebot exists with no resolved
+  // answer (`hasResponse` not true, statistics undefined); the stored choice
+  // arrives ~180ms later with CookiebotOnLoad and OnAccept/OnDecline.
+  // Expiring before Cookiebot resolves would delete a consenting visitor's ID
+  // and mint a new one when CookiebotOnAccept follows.
+  // The narrow cleanup CookiebotOnLoad uses for a visitor who has never
+  // chosen: it expires a leftover and does nothing else.
+  describe('expireAnonymousIdLeftover', () => {
+    it('expires a leftover without changing consent state', () => {
+      cookieDescriptor.set!.call(document, '_iap_aid=left-over; Path=/');
+      const before = getCurrentConsent();
+      expireAnonymousIdLeftover();
+      expect(readAid()).toBeNull();
+      expect(getCurrentConsent()).toEqual(before);
+    });
+
+    it('never expires the cookie while this module holds analytics consent', () => {
+      initConsentState(true, false, false, true);
+      const id = readAid();
+      expireAnonymousIdLeftover();
+      expect(readAid()).toBe(id);
+      trackPageView('/');
+      expect(lastEvent().anonymous_id).toBe(id);
+    });
+  });
+
+  it("keeps a consenting returning visitor's ID through an unresolved init", () => {
+    cookieDescriptor.set!.call(document, '_iap_aid=original-id; Path=/');
+    initConsentState(false, false, false, false);
+    expect(readAid()).toBe('original-id');
+    expect(aidWrites).toEqual([]);
+    trackPageView('/');
+    expect(lastEvent().anonymous_id).toBe('');
+
+    trackConsentUpdate(true, false, false);
+    trackPageView('/');
+    expect(readAid()).toBe('original-id');
+    expect(lastEvent().anonymous_id).toBe('original-id');
+  });
+
+  // Production minted `_iap_aid` for every visitor until 2026-11-14, so
+  // decliners carry leftovers. Once Cookiebot has a resolved answer and it
+  // declines analytics, the init path is as explicit as a decline event.
+  it('expires a leftover cookie on init once Cookiebot has a resolved decline', () => {
+    cookieDescriptor.set!.call(document, '_iap_aid=left-from-earlier; Path=/');
+    initConsentState(false, true, true, true);
+    expect(readAid()).toBeNull();
+    expect(keepingWrites()).toEqual([]);
+    expect(expiringWrites()).toHaveLength(1);
+  });
+
+  it('keeps an ID on a resolved init that grants analytics', () => {
+    cookieDescriptor.set!.call(document, '_iap_aid=stored-id; Path=/');
+    initConsentState(true, false, false, true);
+    trackPageView('/');
+    expect(readAid()).toBe('stored-id');
+    expect(lastEvent().anonymous_id).toBe('stored-id');
+  });
+
+  it("expires a returning decliner's stale cookie on the decline event after an unresolved init", () => {
+    cookieDescriptor.set!.call(document, '_iap_aid=left-from-earlier; Path=/');
+    initConsentState(false, true, true, false);
+    expect(readAid()).toBe('left-from-earlier');
+    // Cookiebot's loader fires CookiebotOnDecline for the stored choice.
+    trackConsentUpdate(false, true, true);
+    expect(readAid()).toBeNull();
+    expect(keepingWrites()).toEqual([]);
+  });
+
+  it('writes nothing on a decline when there is no cookie to expire', () => {
+    trackConsentUpdate(false, false, false);
+    expect(aidWrites).toEqual([]);
+  });
+
+  it('never mints the cookie again after a decline, whatever the visitor does next', () => {
+    trackConsentUpdate(false, false, false);
+    trackPageView('/');
+    trackClickNav('Services', '/services');
+    expect(lastEvent().anonymous_id).toBe('');
+    expect(keepingWrites()).toEqual([]);
+    expect(readAid()).toBeNull();
+  });
+
+  it('mints the cookie when analytics is granted and every later event carries it', () => {
+    trackConsentUpdate(true, false, false);
+    const minted = readAid();
+    expect(minted).toBeTruthy();
+    // The consent_update itself goes out before the ID is minted (consent
+    // reaches Google first), so it carries none.
+    expect(lastEvent().anonymous_id).toBe('');
+    trackPageView('/');
+    expect(lastEvent().anonymous_id).toBe(minted);
+  });
+
+  it('writes the cookie once per grant, with the 365-day first-party attributes', () => {
+    trackConsentUpdate(true, false, false);
+    expect(aidWrites).toHaveLength(1);
+    expect(aidWrites[0]).toContain('Path=/');
+    expect(aidWrites[0]).toContain('SameSite=Lax');
+    expect(aidWrites[0]).toContain(`Max-Age=${anonymousIdModule.ANONYMOUS_ID_MAX_AGE}`);
+  });
+
+  it('only reads the cookie on events: the grant is the one write', () => {
+    initConsentState(true, false, false);
+    aidWrites.length = 0;
+    trackPageView('/');
+    trackClickNav('Services', '/services');
+    expect(aidWrites).toEqual([]);
+    expect(lastEvent().anonymous_id).toBe(readAid());
+  });
+
+  it('mints the cookie for a returning visitor whose stored choice granted analytics', () => {
+    // initConsentState pushes no event, so the grant itself must mint.
+    initConsentState(true, false, false);
+    expect(readAid()).toBeTruthy();
+  });
+
+  it('reuses an ID the visitor already has when analytics is granted, refreshing its expiry', () => {
+    cookieDescriptor.set!.call(document, '_iap_aid=test-anon-uuid; Path=/');
+    initConsentState(true, false, false);
+    trackPageView('/');
+    expect(lastEvent().anonymous_id).toBe('test-anon-uuid');
+    expect(readAid()).toBe('test-anon-uuid');
+    expect(aidWrites).toHaveLength(1);
+    expect(aidWrites[0]).toContain(`Max-Age=${anonymousIdModule.ANONYMOUS_ID_MAX_AGE}`);
+  });
+
+  it('removes the cookie as soon as the visitor withdraws analytics, without a reload', () => {
+    trackConsentUpdate(true, true, true);
+    expect(readAid()).toBeTruthy();
+    trackConsentUpdate(false, false, false);
+    expect(readAid()).toBeNull();
+    expect(lastEvent().anonymous_id).toBe('');
+    trackPageView('/');
+    trackFormStart('contact');
+    expect(lastEvent().anonymous_id).toBe('');
+    expect(readAid()).toBeNull();
+  });
+
+  // Global Privacy Control overrides marketing only; analytics keeps following
+  // the banner. The ID follows the honored analytics choice, never marketing.
+  it('follows the honored analytics choice when Global Privacy Control is on', () => {
+    Object.defineProperty(navigator, 'globalPrivacyControl', { value: true, configurable: true });
+    trackConsentUpdate(false, true, false);
+    expect(lastEvent().anonymous_id).toBe('');
+    expect(keepingWrites()).toEqual([]);
+
+    trackConsentUpdate(true, true, true);
+    expect(lastEvent()).toMatchObject({ consent_marketing: false, consent_analytics: true });
+    trackPageView('/');
+    expect(lastEvent().anonymous_id).toBe(readAid());
+    expect(readAid()).toBeTruthy();
+  });
+
+  // No module offers a way to write the cookie: the only write path is a
+  // consent change through this module, so a future caller cannot mint the
+  // ID without the visitor's analytics consent.
+  it('exposes no function that writes the cookie', () => {
+    expect(Object.keys(anonymousIdModule).sort()).toEqual([
+      'ANONYMOUS_ID_COOKIE_NAME',
+      'ANONYMOUS_ID_MAX_AGE',
+      'readAnonymousIdCookie',
+    ]);
+    // The full list, so a writer cannot arrive under any name.
+    expect(Object.keys(trackModule).sort()).toEqual(
+      [
+        'expireAnonymousIdLeftover',
+        'getCurrentConsent',
+        'initConsentState',
+        'trackAddToCart',
+        'trackBeginCheckout',
+        'trackClaudishDetected',
+        'trackClaudishRate',
+        'trackClaudishShare',
+        'trackClaudishTranslate',
+        'trackClickCta',
+        'trackClickNav',
+        'trackConsentTabView',
+        'trackConsentUpdate',
+        'trackCoverageMilestone',
+        'trackFormComplete',
+        'trackFormFieldFocus',
+        'trackFormStart',
+        'trackFormSubmit',
+        'trackLeadQualify',
+        'trackNavHintDismissed',
+        'trackNavHintShown',
+        'trackOverviewTabView',
+        'trackPageEngagement',
+        'trackPageView',
+        'trackPlanSelect',
+        'trackPortalClick',
+        'trackProductView',
+        'trackPurchase',
+        'trackRemoveFromCart',
+        'trackScrollDepth',
+        'trackSessionPulseHover',
+        'trackTimelineTabView',
+        'trackTrialSignup',
+        'trackWebVital',
+      ].sort(),
+    );
+  });
+
+  // A stale tab: the ID this tab established is emitted only while the
+  // cookie still holds it. When another tab withdraws and the cookie is gone,
+  // or the cookie now holds something else, this tab's events carry ''.
+  describe('a tab whose cookie changed underneath it', () => {
+    it('keeps carrying the ID while the cookie still holds it', () => {
+      trackConsentUpdate(true, false, false);
+      const minted = readAid();
+      trackPageView('/');
+      trackClickNav('Services', '/services');
+      expect(lastEvent().anonymous_id).toBe(minted);
+    });
+
+    it('carries no ID once another tab has withdrawn and the cookie is gone', () => {
+      trackConsentUpdate(true, false, false);
+      cookieDescriptor.set!.call(document, '_iap_aid=; Max-Age=0; Path=/');
+      trackPageView('/');
+      expect(lastEvent().anonymous_id).toBe('');
+    });
+
+    it('carries neither its old ID nor a foreign one when the cookie now differs', () => {
+      trackConsentUpdate(true, false, false);
+      const minted = readAid();
+      cookieDescriptor.set!.call(document, '_iap_aid=planted-elsewhere; Path=/');
+      trackPageView('/');
+      expect(lastEvent().anonymous_id).toBe('');
+      expect(lastEvent().anonymous_id).not.toBe(minted);
+    });
+  });
+
+  it('holds no ID when the browser refuses the cookie write, so no phantom ID is used', () => {
+    Object.defineProperty(document, 'cookie', {
+      configurable: true,
+      get: () => cookieDescriptor.get!.call(document),
+      set: (v: string) => {
+        if (!v.startsWith('_iap_aid=')) cookieDescriptor.set!.call(document, v);
+      },
+    });
+    trackConsentUpdate(true, false, false);
+    trackPageView('/');
+    expect(lastEvent().anonymous_id).toBe('');
+  });
+
+  // Consent reaches Google first: the gtag update and the consent_update push
+  // happen before the ID is minted, so a browser without crypto.randomUUID
+  // cannot stop them.
+  describe('consent reaches Google first', () => {
+    let gtagCalls: unknown[][];
+    beforeEach(() => {
+      gtagCalls = [];
+      (window as unknown as { gtag: (...args: unknown[]) => void }).gtag = (...args) => {
+        gtagCalls.push(args);
+      };
+    });
+    afterEach(() => {
+      delete (window as unknown as { gtag?: unknown }).gtag;
+    });
+    const consentUpdated = () => gtagCalls.some((c) => c[0] === 'consent' && c[1] === 'update');
+    const pushedConsentUpdate = () =>
+      window.dataLayer.some((e) => (e as { event?: string }).event === 'consent_update');
+
+    it('updates gtag and pushes consent_update before minting the ID', () => {
+      let stateAtWrite: { gtag: boolean; pushed: boolean } | null = null;
+      Object.defineProperty(document, 'cookie', {
+        configurable: true,
+        get: () => cookieDescriptor.get!.call(document),
+        set: (v: string) => {
+          if (v.startsWith('_iap_aid=') && stateAtWrite === null) {
+            stateAtWrite = { gtag: consentUpdated(), pushed: pushedConsentUpdate() };
+          }
+          cookieDescriptor.set!.call(document, v);
+        },
+      });
+      trackConsentUpdate(true, false, false);
+      expect(stateAtWrite).toEqual({ gtag: true, pushed: true });
+    });
+
+    it.each([
+      ['is missing', undefined],
+      [
+        'throws',
+        () => {
+          throw new Error('insecure context');
+        },
+      ],
+    ])('still updates gtag and pushes when crypto.randomUUID %s, and holds no ID', (_l, impl) => {
+      // session.ts mints `_iap_sid` with randomUUID too and is out of scope
+      // here, so the session is already established.
+      cookieDescriptor.set!.call(document, '_iap_sid=existing-session; Path=/');
+      const original = Object.getOwnPropertyDescriptor(globalThis.crypto, 'randomUUID');
+      Object.defineProperty(globalThis.crypto, 'randomUUID', {
+        configurable: true,
+        writable: true,
+        value: impl,
+      });
+      try {
+        expect(() => trackConsentUpdate(true, false, false)).not.toThrow();
+        expect(consentUpdated()).toBe(true);
+        expect(pushedConsentUpdate()).toBe(true);
+        expect(readAid()).toBeNull();
+        trackPageView('/');
+        expect(lastEvent().anonymous_id).toBe('');
+      } finally {
+        if (original) Object.defineProperty(globalThis.crypto, 'randomUUID', original);
+      }
+    });
   });
 });

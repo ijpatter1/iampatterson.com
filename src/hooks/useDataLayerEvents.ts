@@ -113,6 +113,8 @@ function extractParameters(
   const params: Record<string, string | number | boolean> = {};
   for (const [key, value] of Object.entries(entry)) {
     if (skip.has(key)) continue;
+    // No ID without analytics consent: an empty row would say nothing.
+    if (key === 'anonymous_id' && value === '') continue;
     if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
       params[key] = value;
     }

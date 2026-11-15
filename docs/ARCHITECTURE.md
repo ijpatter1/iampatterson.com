@@ -218,6 +218,9 @@ What that costs, recorded rather than discovered later:
    - Updates the module-level `currentConsent` snapshot used by every subsequent data-layer push (so under-the-hood routing shows the post-update consent state)
    - **Calls `window.gtag('consent', 'update', { ... })`** with the explicit Cookiebot→gtag mapping below — this is the bridge that ungates GTM tags for the granted categories
    - Then pushes a `consent_update` event to the data layer. The order matters: GTM judges the tags on an event against the consent state in force when it reaches that entry, so the event's own tags see the new choice
+   - Then writes or expires the `_iap_aid` cookie (see "`_iap_aid` consent" below)
+
+   On mount it also calls `initConsentState` with Cookiebot's `consent` and `hasResponse`, and, on mount and on `CookiebotOnDialogInit`, when Cookiebot has no answer (`hasResponse === false`, strictly) and does not report statistics granted, it calls `expireAnonymousIdLeftover`, which expires a leftover `_iap_aid` and records no consent and sends no gtag update.
 6. Tags in GTM that require consent now read the updated state and either fire or stay gated
 
 **Cookiebot → gtag('consent', 'update') signal mapping:**
@@ -225,7 +228,7 @@ What that costs, recorded rather than discovered later:
 | Cookiebot Category | gtag Signal(s) | Controls |
 |---|---|---|
 | Necessary | (always granted; not bridged) | sGTM base event routing |
-| Statistics | `analytics_storage` | GA4, BigQuery event sink |
+| Statistics | `analytics_storage` | GA4, BigQuery event sink, the `_iap_aid` visitor ID |
 | Marketing | `ad_storage`, `ad_user_data`, `ad_personalization` | Meta CAPI, Google Ads (simulated) |
 | Preferences | `functionality_storage`, `personalization_storage` | Personalization features |
 | (no Cookiebot mapping) | `security_storage` | Always granted; covers fraud-prevention / security-essential storage that doesn't carry tracking |
@@ -332,6 +335,10 @@ A lightweight Node.js service on Cloud Run that:
 3. When a message arrives, routes it to the matching session's connection
 4. Handles connection lifecycle (open, close, reconnect)
 
+**Connections per session (15.7).** The map holds a set of SSE responses for each session, one per open tab (`infrastructure/cloud-run/event-stream/src/connections.ts`). Each of the session's events is written to every response in the set, so two tabs on one session both receive it. A request's close handler removes only its own response, and the session's key goes when its set is empty. A session holds at most `MAX_CONNECTIONS_PER_SESSION` (5) connections. A sixth request is refused with HTTP 429 and the five open connections are left alone; ending the oldest instead would set off a ring, since that tab is alive and would reconnect and end the next. A visitor with six or more tabs on the site gets the live stream in five of them. Each tab beyond five is refused on every retry and its proof panel shows the stream note; it stays that way after another tab closes, until it is reloaded or the browser comes back online. The cap bounds one session's set, not the total: the client picks the session ID, so it can open more connections under other IDs. There is no global cap; that is recorded as debt alongside the unauthenticated push endpoint. `/health` reports `connections` as the number of open responses across all sessions, which before this change was also the number of sessions. The design depends on one instance: `max_instance_count = 1` in `infrastructure/terraform/cloud-run.tf`, because the session map is in memory and a Pub/Sub push must reach the instance the session's tabs are connected to. Each open tab holds one of that instance's 80 request slots (`max_instance_request_concurrency`), which the Pub/Sub pushes share.
+
+Before 15.7, a new connection for a session ended the old one, and the old request's close handler then removed the session's entry, which was by then the new connection. With two tabs, the newer tab stayed open and received nothing.
+
 ### Client-Side Hook
 
 A React hook (`useEventStream`) that:
@@ -339,6 +346,39 @@ A React hook (`useEventStream`) that:
 2. Establishes a WebSocket or SSE connection to the Cloud Run service
 3. Maintains an in-memory event buffer (most recent N events)
 4. Exposes the buffer and connection status to consuming components
+
+**Connection status (15.7).** The hook reports one of five statuses. Readers decide whether to say the stream is down with `isStreamDown()`, exported from the hook; the proof panel's stream note shows only when it returns true.
+
+- `connecting`: the first connection is under way. An enabled stream also starts here, before its first attempt, so the first render shows no note.
+- `connected`: a connection is open.
+- `reconnecting`: a routine reconnect. Cloud Run ends each stream after an hour and the hook reopens it after a one-second backoff. Not a failure.
+- `failing`: still retrying, but the stream is not working. Down.
+- `disconnected`: given up after `maxRetries` (default 5), or not started because the stream is disabled or there is no session cookie yet. Down.
+
+The thresholds are named constants in `src/hooks/useEventStream.ts`:
+
+- A stream with no open connection for 15 seconds (`STREAM_FAILING_AFTER_MS`) is failing, whether the attempts error or hang. The clock starts when the stream goes down and only an open stops it. When it runs out on an attempt that has neither opened nor errored, the hook closes that attempt and retries.
+- Three drops of an opened connection within 60 seconds (`STREAM_LOOP_DROPS`, `STREAM_LOOP_WINDOW_MS`) are a loop, and the stream is failing. The hourly reconnects never meet in the window. A loop slower than about one drop every 30 seconds is not flagged.
+- Within a loop, an open does not reset the retry count, so the backoff grows and the hook reaches `disconnected` after `maxRetries`. A reopen keeps the status `failing`, so the note does not flicker. A connection that stays open for 10 seconds (`STREAM_SETTLE_MS`) ends the loop: the status returns to `connected`, and the drop history and retry count are cleared.
+- A browser `online` event restarts the connection only when the hook has given up (`disconnected` after its retries ran out). A stream that is still trying, whether connecting, open or failing in backoff, keeps its attempt, backoff and loop history.
+- Two tabs on one session are two healthy connections (see the service above), so neither reports `failing`.
+
+**The stream follows the session cookie.** `useEventStream` and `SessionStateProvider` both read one snapshot, `getKnownSessionId()` in `src/lib/events/session.ts` (this tab's last-known session ID, or the cookie's value before it has one), through `useSyncExternalStore`, so the stream and the session state always name the same session. When the session changes, it changes in the same render that closes the connection opened under the old ID and opens one under the new ID. This is a new stream, not a drop: in that render the hook already reports `connecting` with no error, so a replaced stream's `failing` or `disconnected` note is neither shown nor announced, and the loop history, the retry count and `failing` start over. The buffer records the session its events belong to and is returned only for the current session, and a message whose `session_id` is not the connection's session is dropped, so the old session's rows never mix with the new session's. `useLiveEvents` holds its "stream has delivered" latch per session, so until the new session's stream delivers, the panel shows the browser's own data-layer events rather than an empty stream panel.
+
+What counts as a change:
+
+- `setSessionCookie` notifies when the value differs from this tab's own last-known value, not from the cookie jar. Another tab shares the jar, so a rotation made there is announced in this tab on its next write (the next event's `getSessionId()`).
+- `session.ts` also re-checks the jar when the tab becomes visible or gains focus, and notifies if it holds a value this tab has not seen.
+- Same-value writes (the max-age refresh on every event) never reconnect.
+- A deleted cookie is not a change: the stream keeps its last session until the site writes the next ID, including when the connect effect re-runs while the cookie is missing.
+- Known limit: a window that is visible but not focused learns of a change made in another tab only on focus or on its own next write.
+- A hook that started with no cookie opens its stream when one is written.
+
+`SessionStateProvider` follows the same session, so the session header (LiveStrip and the proof panel), the overlay's overview and the contact ride-along name the new session. The readout counts the tab's activity: event counts and coverage carry over, as a reload after a rotation already does (`reconcileRehydrated`). `started_at` is the current session's start: it restarts at the moment of the change, so the overview's "Started" is true for the new session.
+
+Accepted limit: the event that mints a new session can reach the service before the new stream connects, and the service has no replay, so the new session's first event may be missing from the stream. It shows from the data layer until the new session's stream delivers.
+
+Why: on 2026-11-14, a first visit's "Allow all" made Cookiebot delete `_iap_sid` (its consent reset, `resetForCookieTable` in `uc.js`, because its scan had filed the cookie as Unclassified). The site's next `getSessionId()` minted a new ID and every later event went out under it, while the open page's stream stayed on the old ID and received nothing more until a reload. Ian reclassified `_iap_sid` as Necessary in Cookiebot on 2026-11-14, and production confirmed it survives "Allow all". The session still changes after 30 minutes idle, and another tab can change it, which is why the stream and the session state follow the cookie.
 
 ---
 
@@ -678,7 +718,7 @@ src/components/overlay/
 └── consent/storage-inspector.tsx # per-category collapsible list, per-row truncate-on-long
 ```
 
-**Categorization.** First-party app keys (`_iap_aid` from D7, `_iap_sid`, `iampatterson.*`), first-party analytics (`_ga`, `_ga_*`, sGTM FPID/FPLC), CMP (Cookiebot), third-party (everything else), uncategorized fallback. The regex classifier resolves each key once on read; new known keys are added as one-line entries in `storage-categories.ts`.
+**Categorization.** First-party app keys (`_iap_sid`, `iampatterson.*`), first-party analytics (`_iap_aid` from D7, under analytics since it became a Statistics cookie on 2026-11-14; `_ga`, `_ga_*`, sGTM FPID/FPLC), CMP (Cookiebot), third-party (everything else), uncategorized fallback. The regex classifier resolves each key once on read; new known keys are added as one-line entries in `storage-categories.ts`.
 
 **Live-subscription model.** The inspector reads the cookie jar + localStorage + sessionStorage on a 1s tick **only while the overlay is open** (the `overlayOpen` context stops the tick when closed, so there's zero cost on closed-overlay sessions). Cross-tab localStorage writes also flow through the native `storage` event for same-second response without waiting for the next tick. Same-tab `localStorage.setItem` calls don't fire `storage` events (documented platform quirk), so the polling tick covers that case. Monkey-patching `localStorage.setItem` globally was considered and rejected: the global side-effect surface risks breaking consumer code (Cookiebot, GTM both write to localStorage), and the 1s cadence is fast enough for "live" feel.
 
@@ -686,7 +726,9 @@ src/components/overlay/
 
 **Cookie metadata limitation.** `document.cookie` exposes only `name=value` pairs to JavaScript. Cookie expiry, domain, path, Secure, and SameSite metadata are NOT readable for cookies set by other tags. Cookie Store API would expose this but is Chrome-only and not yet in Safari/Firefox stable; the inspector defers Cookie-Store-API enhancement as a follow-up, surfacing the limitation as a footnote in the meantime. This itself is a moment of "make the invisible visible" — visitors learn that JavaScript can't see all cookie state.
 
-**D7 dependency inversion.** Original D7 spec required a one-off `_iap_aid` surface in the Overview portals-and-state block. With D9 in place, D7 reduces to: mint the cookie, classify it under "App identity" via a one-line entry in `storage-categories.ts`, thread `anonymous_id` into `BaseEvent`/`buildBaseEvent`. The Overview chip + Consent row appear automatically because the inspector reads the cookie jar generically.
+**D7 dependency inversion.** Original D7 spec required a one-off `_iap_aid` surface in the Overview portals-and-state block. With D9 in place, D7 reduces to: mint the cookie, classify it under "App identity" via a one-line entry in `storage-categories.ts`, thread `anonymous_id` into `BaseEvent`/`buildBaseEvent`. The Overview chip + Consent row appear automatically because the inspector reads the cookie jar generically. (On 2026-11-14 the classification moved from "App identity" to analytics, when `_iap_aid` became a Statistics cookie; see below.)
+
+**`_iap_aid` consent (2026-11-14).** `_iap_aid` is a random UUID in a first-party cookie with a 365-day sliding expiry. Ian classified it Statistics in Cookiebot on 2026-11-14, so it exists only while analytics consent is granted. `track.ts` holds the honored analytics state (Global Privacy Control does not change analytics) and holds both writers: `applyAnonymousIdConsent`, the only one that mints, and `expireAnonymousIdLeftover`, which can only expire. `applyAnonymousIdConsent` runs after the consent has reached Google: after the gtag update, and for a choice after the `consent_update` push. On a grant it mints the cookie, or reuses and refreshes the one already there, so the expiry slides on every page load; the write is read back, and if the browser refused it, or `crypto.randomUUID` is unavailable, the site holds no ID. Without analytics it expires the cookie, but only once Cookiebot has a resolved answer: on every `trackConsentUpdate` (a decline or withdrawal, or Cookiebot's decline event for a stored choice), on the init path when `Cookiebot.hasResponse === true`, and, for a visitor who has never chosen (`hasResponse === false`), on mount and on `CookiebotOnDialogInit` unless Cookiebot reports statistics granted, through `expireAnonymousIdLeftover`, which touches only the cookie: no consent write, no gtag update, so an implied-consent region is never forced to denied. Production minted the cookie for every visitor until 2026-11-14, so leftovers exist. It never expires before Cookiebot resolves: measured in production on 2026-11-14 (Chromium and WebKit, reload with a stored choice), `window.Cookiebot` exists at ~15ms with no answer and the stored choice arrives at ~180ms with `CookiebotOnLoad` and `CookiebotOnAccept`/`CookiebotOnDecline`; expiring at 15ms would replace a consenting visitor's ID. `cookiebot-consent.tsx` reads `hasResponse` where it reads `Cookiebot.consent` and passes it through. `anonymous-id.ts` exports only the name, the max age and a reader, so no caller can mint the ID without consent. Events carry the ID this tab established, but only while the cookie still holds it: if another tab withdrew, or the cookie now holds a different ID, the event carries `''`. The `consent_update` for a grant is pushed before the mint, so it carries `''`; the one for a withdrawal carries `''` too. The storage inspector groups `_iap_aid` under analytics, and the Timeline's event detail leaves out an empty `anonymous_id`. Downstream, `anonymous_id` is not sent by the web container, not read by the sGTM Pub/Sub template, has no column in `infrastructure/bigquery/schema.json` and is used by no Dataform model, so it reaches no table; forwarding it to BigQuery is later work. The checkout's warehouse-write preview dropped its `user_pseudo_id` column for that reason (Ian's call), and on the same day became a true purchase row (`event_name` 'purchase'; every event-specific column one `trackPurchase` sends, read from its real push in a test) showing only columns that exist in `schema.json`, with their types, against the table's real width, with `utm_source` and `utm_campaign` always NULL (a real-site row never carries utm_*: nothing in the tag setup sends them, measured in BigQuery on 2026-11-14) and `page_referrer` NULL without a referrer; tests pin all of it. Known gap: a returning visitor who consented, whose first events fire before Cookiebot's stored choice resolves, gets `''` on those events; 15.8 (stored consent applied before GTM) owns it. For a visitor who has never chosen, measured in production on 2026-11-14 (Chromium and WebKit), `CookiebotOnLoad` never fires: `hasResponse` goes from undefined to false at ~170-230ms, then `CookiebotOnDialogInit` fires, then `CookiebotOnDialogDisplay` (~430-700ms).
 
 **What's deliberately unchanged.** Existing Overview portals-and-state block layout (a new section is appended), existing Consent destination chips + headers (a new section is appended below them), the `u-accept` / `u-deny` semantic-token palette from D8.j (the inspector reuses `u-accept` for newly-written-key highlight). The SSE pipeline + event schema are unchanged — the inspector is a new client-side surface with no event-pipeline integration; it doesn't push events of its own (read-only by design also means observer-only — visitor watching their own storage shouldn't fire telemetry).
 

@@ -98,6 +98,25 @@ describe('useDataLayerEvents', () => {
     expect(event.routing).toHaveLength(5);
   });
 
+  // A visitor without analytics consent carries no `_iap_aid`, so their
+  // events have anonymous_id ''. The Timeline's event detail lists every
+  // parameter; an empty "anonymous_id" row there tells them nothing and reads
+  // like a broken field, so it is left out. A real ID still shows.
+  it('leaves an empty anonymous_id out of the parameters and keeps a real one', () => {
+    jest.useFakeTimers();
+    const { result } = renderHook(() => useDataLayerEvents());
+
+    act(() => {
+      window.dataLayer.push(makeDataLayerEntry({ anonymous_id: '', consent_analytics: false }));
+      window.dataLayer.push(makeDataLayerEntry({ event: 'click_cta', anonymous_id: 'aid-1234' }));
+      jest.advanceTimersByTime(500);
+    });
+
+    const byName = Object.fromEntries(result.current.events.map((e) => [e.event_name, e]));
+    expect(byName.page_view.parameters).not.toHaveProperty('anonymous_id');
+    expect(byName.click_cta.parameters).toHaveProperty('anonymous_id', 'aid-1234');
+  });
+
   it('ignores non-iap_source entries (e.g. gtm.js auto-events)', () => {
     jest.useFakeTimers();
     const { result } = renderHook(() => useDataLayerEvents());

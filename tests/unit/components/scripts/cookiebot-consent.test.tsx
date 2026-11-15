@@ -8,9 +8,10 @@ jest.mock('@/lib/events/track', () => ({
   initConsentState: jest.fn(),
 }));
 
-import { trackConsentUpdate } from '@/lib/events/track';
+import { initConsentState, trackConsentUpdate } from '@/lib/events/track';
 
 const mockTrackConsentUpdate = trackConsentUpdate as jest.Mock;
+const mockInitConsentState = initConsentState as jest.Mock;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -28,6 +29,9 @@ describe('CookiebotConsentListener', () => {
     render(<CookiebotConsentListener />);
     expect(addSpy).toHaveBeenCalledWith('CookiebotOnAccept', expect.any(Function));
     expect(addSpy).toHaveBeenCalledWith('CookiebotOnDecline', expect.any(Function));
+    // The never-chosen cleanup: CookiebotOnLoad never fires for that visitor.
+    expect(addSpy).toHaveBeenCalledWith('CookiebotOnDialogInit', expect.any(Function));
+    expect(addSpy).not.toHaveBeenCalledWith('CookiebotOnLoad', expect.any(Function));
     addSpy.mockRestore();
   });
 
@@ -54,6 +58,26 @@ describe('CookiebotConsentListener', () => {
       window.dispatchEvent(new Event('CookiebotOnDecline'));
     });
     expect(mockTrackConsentUpdate).toHaveBeenCalledWith(false, false, false);
+  });
+
+  // `hasResponse` says whether Cookiebot has resolved the visitor's answer.
+  // It is read where `Cookiebot.consent` is read and passed through, so the
+  // init path can tell a resolved decline from Cookiebot's unresolved default.
+  it('passes Cookiebot.hasResponse through to initConsentState on mount', () => {
+    const CookiebotConsentListener = getComponent();
+    (window as Record<string, unknown>).Cookiebot = {
+      hasResponse: true,
+      consent: { statistics: false, marketing: true, preferences: false },
+    };
+    render(<CookiebotConsentListener />);
+    expect(mockInitConsentState).toHaveBeenCalledWith(false, true, false, true);
+  });
+
+  it('treats a missing hasResponse on mount as unresolved', () => {
+    const CookiebotConsentListener = getComponent();
+    (window as Record<string, unknown>).Cookiebot = { consent: {} };
+    render(<CookiebotConsentListener />);
+    expect(mockInitConsentState).toHaveBeenCalledWith(undefined, undefined, undefined, false);
   });
 
   it('does not fire when Cookiebot global is absent', () => {
@@ -83,6 +107,7 @@ describe('CookiebotConsentListener', () => {
     unmount();
     expect(removeSpy).toHaveBeenCalledWith('CookiebotOnAccept', expect.any(Function));
     expect(removeSpy).toHaveBeenCalledWith('CookiebotOnDecline', expect.any(Function));
+    expect(removeSpy).toHaveBeenCalledWith('CookiebotOnDialogInit', expect.any(Function));
     removeSpy.mockRestore();
   });
 });
