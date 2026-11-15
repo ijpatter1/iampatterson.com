@@ -234,3 +234,31 @@ describe('Phase 10d D4 — SEO', () => {
     });
   });
 });
+
+describe('site origin', () => {
+  // Production serves www and redirects the apex, so an apex URL in a
+  // canonical, Open Graph or sitemap entry points at a redirect: LinkedIn
+  // drops a share image behind one (2026-11-15). The origin is a literal in
+  // several layouts, so a route copied from an old branch could bring the
+  // apex back with every metadata pin still green; this catches it.
+  it('no file under src/ names the apex origin', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fs = require('node:fs') as typeof import('node:fs');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const path = require('node:path') as typeof import('node:path');
+    const offenders: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) walk(full);
+        else if (/\.(ts|tsx|js|mjs)$/.test(entry.name)) {
+          if (fs.readFileSync(full, 'utf8').includes('https://iampatterson.com')) {
+            offenders.push(path.relative(process.cwd(), full));
+          }
+        }
+      }
+    };
+    walk(path.join(process.cwd(), 'src'));
+    expect(offenders).toEqual([]);
+  });
+});
