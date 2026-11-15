@@ -160,3 +160,51 @@ describe('STORED_CONSENT_UPDATE_JS, the inline update ahead of GTM', () => {
     },
   );
 });
+
+// The two writers of Consent Mode for one cookie: the inline script ahead of
+// GTM and the track.ts bridge after it. Every call, exactly: the six signals
+// and ads_data_redaction, with and without Global Privacy Control.
+describe('the inline script and the track.ts bridge send identical gtag calls', () => {
+  afterEach(() => {
+    delete (navigator as unknown as { globalPrivacyControl?: unknown }).globalPrivacyControl;
+    delete (window as unknown as { gtag?: unknown }).gtag;
+  });
+
+  const combos: [boolean, boolean, boolean, boolean][] = [];
+  for (const statistics of [true, false])
+    for (const marketing of [true, false])
+      for (const preferences of [true, false])
+        for (const gpc of [false, true]) combos.push([statistics, marketing, preferences, gpc]);
+
+  it.each(combos)(
+    'statistics=%s marketing=%s preferences=%s gpc=%s',
+    (statistics, marketing, preferences, gpc) => {
+      const header = `CookieConsent=${cookieValue({ statistics, marketing, preferences })}`;
+      const inline: unknown[][] = [];
+      new Function('document', 'navigator', 'gtag', STORED_CONSENT_UPDATE_JS)(
+        { cookie: header },
+        gpc ? { globalPrivacyControl: true } : {},
+        (...a: unknown[]) => inline.push(a),
+      );
+
+      if (gpc) {
+        Object.defineProperty(navigator, 'globalPrivacyControl', {
+          value: true,
+          configurable: true,
+        });
+      }
+      const bridged: unknown[][] = [];
+      (window as unknown as { gtag: (...a: unknown[]) => void }).gtag = (...a) => bridged.push(a);
+      window.dataLayer = [];
+      let track!: typeof import('@/lib/events/track');
+      jest.isolateModules(() => {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        track = require('@/lib/events/track');
+      });
+      const stored = readStoredConsent(header)!;
+      track.trackConsentUpdate(stored.analytics, stored.marketing, stored.preferences);
+
+      expect(inline).toEqual(bridged);
+    },
+  );
+});

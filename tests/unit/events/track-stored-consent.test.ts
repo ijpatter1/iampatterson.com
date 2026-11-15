@@ -132,9 +132,18 @@ describe('events before Cookiebot resolves a stored choice', () => {
     expect(readAid()).toBeNull();
   });
 
-  it('report the stored consent to readers of the snapshot before any event', () => {
+  // getCurrentConsent is a pure read: the listener's mount and the first
+  // event apply the stored choice, not a reader of the snapshot.
+  it('leave getCurrentConsent a pure read that reports the stored consent once applied', () => {
     document.cookie = `CookieConsent=${GRANT_ALL}; Path=/`;
     const track = loadTrack();
+    expect(track.getCurrentConsent()).toEqual({
+      consent_analytics: false,
+      consent_marketing: false,
+      consent_preferences: false,
+    });
+    expect(readAid()).toBeNull();
+    track.applyStoredConsent();
     expect(track.getCurrentConsent()).toEqual({
       consent_analytics: true,
       consent_marketing: true,
@@ -142,7 +151,8 @@ describe('events before Cookiebot resolves a stored choice', () => {
     });
   });
 
-  // The never-chosen cleanup (expireAnonymousIdLeftover) owns this visitor.
+  // Cookiebot's own answer (hasResponse false, or its resolved choice) owns
+  // this visitor's leftover; see the listener's tests.
   it('leave a visitor with no stored choice on the defaults, without touching the cookie', () => {
     document.cookie = '_iap_aid=left-over; Path=/';
     const track = loadTrack();
@@ -169,5 +179,166 @@ describe('events before Cookiebot resolves a stored choice', () => {
     document.cookie = `CookieConsent=${GRANT_ALL}; Path=/`;
     track.trackPageView('');
     expect(events()[1].consent_analytics).toBe(false);
+  });
+});
+
+// The stub the consent-defaults script defines: every gtag call lands in the
+// data layer, which is how GTM, and the bridge's check below, see it.
+function realGtag() {
+  (window as unknown as { gtag: (...a: unknown[]) => void }).gtag = function (...a: unknown[]) {
+    gtagCalls.push(a);
+    // eslint-disable-next-line prefer-rest-params
+    window.dataLayer.push(arguments as unknown as Record<string, unknown>);
+  };
+}
+const gtagConsentUpdates = () => gtagCalls.filter((c) => c[0] === 'consent' && c[1] === 'update');
+
+describe('a silent record sends Consent Mode only what is not already in force', () => {
+  const ALL_GRANTED = {
+    analytics_storage: 'granted',
+    ad_storage: 'granted',
+    ad_user_data: 'granted',
+    ad_personalization: 'granted',
+    functionality_storage: 'granted',
+    personalization_storage: 'granted',
+  };
+
+  // Cookiebot's replay of the stored choice the inline script already sent.
+  it('skips the bridge when the same consent is already in force', () => {
+    realGtag();
+    (window as unknown as { gtag: (...a: unknown[]) => void }).gtag(
+      'consent',
+      'update',
+      ALL_GRANTED,
+    );
+    gtagCalls.length = 0;
+    const track = loadTrack();
+    track.initConsentState(true, true, true, true);
+    expect(gtagCalls).toEqual([]);
+  });
+
+  it('bridges when what is in force differs', () => {
+    realGtag();
+    (window as unknown as { gtag: (...a: unknown[]) => void }).gtag(
+      'consent',
+      'update',
+      ALL_GRANTED,
+    );
+    gtagCalls.length = 0;
+    const track = loadTrack();
+    track.initConsentState(false, false, false, true);
+    expect(gtagConsentUpdates()).toEqual([
+      ['consent', 'update', expect.objectContaining({ analytics_storage: 'denied' })],
+    ]);
+  });
+
+  // The in-force check uses its own copy of the bridge's mapping; this pins
+  // the two together. After the bridge sends a state, recording the same
+  // state sends nothing, and recording any other state sends an update.
+  const states: [boolean, boolean, boolean][] = [];
+  for (const a of [true, false])
+    for (const m of [true, false]) for (const p of [true, false]) states.push([a, m, p]);
+  it.each(states)(
+    'agrees with the bridge for analytics=%s marketing=%s preferences=%s',
+    (a, m, p) => {
+      realGtag();
+      const track = loadTrack();
+      track.trackConsentUpdate(a, m, p);
+      gtagCalls.length = 0;
+      track.initConsentState(a, m, p, true);
+      expect(gtagCalls).toEqual([]);
+      track.initConsentState(!a, m, p, true);
+      expect(gtagConsentUpdates()).toHaveLength(1);
+    },
+  );
+
+  // A choice is always sent, whatever is in force.
+  it('always bridges a choice the visitor makes', () => {
+    realGtag();
+    (window as unknown as { gtag: (...a: unknown[]) => void }).gtag(
+      'consent',
+      'update',
+      ALL_GRANTED,
+    );
+    gtagCalls.length = 0;
+    const track = loadTrack();
+    track.trackConsentUpdate(true, true, true);
+    expect(gtagConsentUpdates()).toHaveLength(1);
+  });
+});
+
+// 15.8: a first-time visitor's landing page_view is pushed while consent is
+// denied, and GTM blocks its tag. When the visitor then grants analytics in
+// the banner, the page is sent again, once per page load. Measured before
+// this on localhost (2026-11-15): the only hit after Allow all was
+// consent_update.
+describe('the page_view a grant in the banner sends again', () => {
+  const pageViews = () =>
+    events().filter((e) => e.event === 'page_view') as (Pushed & {
+      page_referrer: string;
+      page_path: string;
+    })[];
+
+  it('re-pushes the page, with its referrer, after consent_update and with the new ID', () => {
+    const track = loadTrack();
+    track.trackPageView('https://www.linkedin.com/');
+    track.trackConsentUpdate(true, false, false, true);
+    expect(events().map((e) => e.event)).toEqual(['page_view', 'consent_update', 'page_view']);
+    expect(pageViews()[1]).toEqual(
+      expect.objectContaining({
+        consent_analytics: true,
+        anonymous_id: 'minted-id',
+        page_referrer: 'https://www.linkedin.com/',
+        page_path: window.location.pathname,
+      }),
+    );
+  });
+
+  it('re-pushes it once per page load', () => {
+    const track = loadTrack();
+    track.trackPageView('');
+    track.trackConsentUpdate(true, false, false, true);
+    track.trackConsentUpdate(false, false, false, true);
+    track.trackConsentUpdate(true, false, false, true);
+    expect(pageViews()).toHaveLength(2);
+  });
+
+  it('does not re-push for a choice that is not a banner submission', () => {
+    const track = loadTrack();
+    track.trackPageView('');
+    track.trackConsentUpdate(true, false, false);
+    expect(pageViews()).toHaveLength(1);
+  });
+
+  it('does not re-push when the submission leaves analytics denied', () => {
+    const track = loadTrack();
+    track.trackPageView('');
+    track.trackConsentUpdate(false, true, true, true);
+    expect(pageViews()).toHaveLength(1);
+  });
+
+  it('does not re-push a page_view that was already sent with analytics granted', () => {
+    document.cookie = `CookieConsent=${GRANT_ALL}; Path=/`;
+    const track = loadTrack();
+    track.trackPageView('');
+    track.trackConsentUpdate(false, false, false, true);
+    track.trackConsentUpdate(true, true, true, true);
+    expect(pageViews()).toHaveLength(1);
+  });
+
+  it('re-pushes the current page with the previous path after a client-side navigation', () => {
+    const track = loadTrack();
+    const start = window.location.pathname;
+    track.trackPageView('');
+    window.history.pushState({}, '', '/review');
+    try {
+      track.trackPageView(start);
+      track.trackConsentUpdate(true, false, false, true);
+      expect(pageViews()[2]).toEqual(
+        expect.objectContaining({ page_path: '/review', page_referrer: start }),
+      );
+    } finally {
+      window.history.pushState({}, '', start);
+    }
   });
 });

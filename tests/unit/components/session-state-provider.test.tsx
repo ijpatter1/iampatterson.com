@@ -453,6 +453,66 @@ describe('SessionStateProvider', () => {
     }
   });
 
+  // 15.8: Cookiebot's replay of a stored choice is recorded silently (no
+  // consent_update), and can land after the first tick, for instance when the
+  // stored cookie could not be read ahead of it. The snapshot, and the UI
+  // gated on it, must follow without waiting for some later event.
+  it('follows a silent consent record made after the first poll tick', () => {
+    jest.useFakeTimers();
+    const { initConsentState } =
+      jest.requireActual<typeof import('@/lib/events/track')>('@/lib/events/track');
+    const { result } = renderHook(() => useSessionState(), { wrapper: Wrapper });
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
+    expect(result.current!.consent_snapshot.analytics).toBe('denied');
+
+    initConsentState(true, true, false, true);
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
+    try {
+      expect(result.current!.consent_snapshot).toEqual({
+        analytics: 'granted',
+        marketing: 'granted',
+        preferences: 'denied',
+      });
+      expect(window.dataLayer.some((e) => e.event === 'consent_update')).toBe(false);
+    } finally {
+      initConsentState(false, false, false);
+    }
+  });
+
+  // An event pushed before the record carries the old consent; the tick that
+  // reads both must end on the consent in force, not the event's.
+  it('ends a tick on the current consent when an older event is read in the same tick', () => {
+    jest.useFakeTimers();
+    const { initConsentState } =
+      jest.requireActual<typeof import('@/lib/events/track')>('@/lib/events/track');
+    const { result } = renderHook(() => useSessionState(), { wrapper: Wrapper });
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
+    window.dataLayer.push(
+      makeDataLayerEntry({
+        event: 'click_cta',
+        consent_analytics: false,
+        consent_marketing: false,
+        consent_preferences: false,
+      }),
+    );
+    initConsentState(true, false, true, true);
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
+    try {
+      expect(result.current!.consent_snapshot.analytics).toBe('granted');
+      expect(result.current!.events_fired.click_cta).toBe(1);
+    } finally {
+      initConsentState(false, false, false);
+    }
+  });
+
   it('re-seeds consent_snapshot on the first poll tick if Cookiebot arrived after mount (Pass 2 m5)', () => {
     jest.useFakeTimers();
     const { initConsentState } =

@@ -36,8 +36,8 @@ let storedConsentRead = false;
 /**
  * `_iap_aid`, the 365-day visitor ID, is a Statistics cookie (Ian,
  * 2026-11-14): it exists only while analytics consent is granted. These
- * writers are private to this module. Only `applyAnonymousIdConsent` mints,
- * on a grant; `expireAnonymousIdLeftover` can only expire. So nothing can mint
+ * writers are private to this module and run only from
+ * `applyAnonymousIdConsent`, which mints only on a grant. So nothing can mint
  * the ID without the visitor's consent. See `src/lib/identity/anonymous-id.ts`.
  */
 function anonymousIdCookie(value: string, maxAge: number): string {
@@ -144,8 +144,7 @@ function recordConsent(
 }
 
 /**
- * One of the two places `_iap_aid` is written; the other is
- * expireAnonymousIdLeftover, which only expires it. Runs after the consent
+ * The one place `_iap_aid` is written. Runs after the consent
  * has reached Google (the gtag update, and the consent_update push for a
  * choice), so nothing here can hold that up.
  *
@@ -155,9 +154,10 @@ function recordConsent(
  * - Not granted, once Cookiebot has a resolved answer: expire it. That is
  *   every `trackConsentUpdate` (the visitor's decline or withdrawal, or
  *   Cookiebot's decline event for a stored choice), and `initConsentState`
- *   called with `resolved` (a stored answer already in place). Production
- *   minted the cookie for every visitor until 2026-11-14, so leftovers exist.
- *   A visitor who has never chosen is handled by expireAnonymousIdLeftover.
+ *   called with `resolved` (a stored answer already in place, or Cookiebot's
+ *   answer with `hasResponse === false` for a visitor who has never chosen),
+ *   and applyStoredConsent for a stored decline. Production minted the cookie
+ *   for every visitor until 2026-11-14, so leftovers exist.
  * - Not granted, before Cookiebot has resolved: leave it. On a reload
  *   initConsentState runs at ~15ms with no answer yet (measured 2026-11-14);
  *   the stored choice arrives ~180ms later. Expiring there would delete a
@@ -179,8 +179,8 @@ function applyAnonymousIdConsent(resolved: boolean): void {
  * page_view and the first scroll and web-vital events can fire inside that
  * window. Without this they carried the denied defaults and no visitor ID.
  *
- * Runs once per page load, on the first event or consent read (and from the
- * listener's mount), and never after Cookiebot has answered: recordConsent
+ * Runs once per page load, from the listener's mount or before the first
+ * event, whichever comes first, and never after Cookiebot has answered: recordConsent
  * marks it done. A choice made in another tab later is not picked up here,
  * because this tab's tags do not have it either.
  *
@@ -191,8 +191,8 @@ function applyAnonymousIdConsent(resolved: boolean): void {
  *
  * A stored choice is a resolved answer, so a stored decline expires a
  * leftover `_iap_aid` here; until 15.8 that rode the reload's
- * `consent_update`. No stored choice: nothing happens, and the never-chosen
- * cleanup (`expireAnonymousIdLeftover`) owns the leftover.
+ * `consent_update`. No stored choice: nothing happens, and Cookiebot's own
+ * answer owns the leftover (the listener records `hasResponse === false`).
  */
 export function applyStoredConsent(): void {
   if (storedConsentRead || typeof document === 'undefined') return;
@@ -243,26 +243,51 @@ function bridgeToGtagConsent(analytics: boolean, marketing: boolean, preferences
 }
 
 /**
- * Expire a leftover `_iap_aid`, and do nothing else: no consent is recorded
- * and no gtag update is sent. For a visitor Cookiebot reports as never chosen
- * (`hasResponse === false`, on mount or CookiebotOnDialogInit) where it does
- * not report statistics granted: production minted the cookie for every
- * visitor until 2026-11-14. A no-op
- * while this module holds analytics consent, so it can never remove a
- * consented ID.
+ * The Consent Mode state the page has sent so far: every `gtag('consent',
+ * 'default' | 'update', …)` call in the data layer, in order, later ones
+ * winning. Read from the data layer rather than remembered here, so it counts
+ * the inline script's stored-consent update and nothing this module only
+ * assumes was sent. Each writer sets `ads_data_redaction` from marketing, so
+ * the six signals cover it.
  */
-export function expireAnonymousIdLeftover(): void {
-  if (typeof document === 'undefined' || currentConsent.consent_analytics) return;
-  clearAnonymousIdCookie();
-  consentedAnonymousId = '';
+function consentInForce(): Record<string, unknown> {
+  const state: Record<string, unknown> = {};
+  for (const entry of window.dataLayer ?? []) {
+    const e = entry as Record<number, unknown> | null;
+    if (!e || typeof e !== 'object' || e[0] !== 'consent') continue;
+    if ((e[1] === 'default' || e[1] === 'update') && e[2] && typeof e[2] === 'object') {
+      Object.assign(state, e[2]);
+    }
+  }
+  return state;
 }
 
 /**
- * Initialize consent state from Cookiebot's resolved answer on page load: at
- * mount if it has already resolved, or when it replays a stored choice
- * (`Cookiebot.changed === false`, 15.8). Also bridges to gtag so
- * GTM Consent Mode v2 sees the returning-visitor state instead of staying
- * on the denied defaults forever.
+ * Whether Consent Mode already has what the bridge would send for these
+ * choices: the same mapping as bridgeToGtagConsent, which a test checks
+ * against the bridge's own calls.
+ */
+function alreadyInForce(analytics: boolean, marketing: boolean, preferences: boolean): boolean {
+  const inForce = consentInForce();
+  const yn = (b: boolean) => (b ? 'granted' : 'denied');
+  return (
+    inForce.analytics_storage === yn(analytics) &&
+    inForce.ad_storage === yn(marketing) &&
+    inForce.ad_user_data === yn(marketing) &&
+    inForce.ad_personalization === yn(marketing) &&
+    inForce.functionality_storage === yn(preferences) &&
+    inForce.personalization_storage === yn(preferences)
+  );
+}
+
+/**
+ * Record consent Cookiebot reports without the visitor choosing on this page:
+ * its resolved answer at mount, its replay of a stored choice
+ * (`Cookiebot.changed === false`), and its answer when it has none
+ * (`hasResponse === false`: a visitor who has never chosen, a stored choice it
+ * rejected, or implied consent in an opt-out region) (15.8). Bridges to gtag
+ * only when Consent Mode does not already have this state: the replay of a
+ * choice the inline script sent ahead of GTM sends nothing.
  *
  * Silent vs trackConsentUpdate — does NOT push a `consent_update` data-
  * layer event. The under-the-hood Timeline shouldn't show a "consent
@@ -280,11 +305,8 @@ export function initConsentState(
   resolved = false,
 ): void {
   const honored = recordConsent(analytics, marketing, preferences);
-  bridgeToGtagConsent(
-    honored.consent_analytics,
-    honored.consent_marketing,
-    honored.consent_preferences,
-  );
+  const { consent_analytics: a, consent_marketing: m, consent_preferences: p } = honored;
+  if (!alreadyInForce(a, m, p)) bridgeToGtagConsent(a, m, p);
   applyAnonymousIdConsent(resolved);
 }
 
@@ -297,7 +319,6 @@ export function getCurrentConsent(): {
   consent_marketing: boolean;
   consent_preferences: boolean;
 } {
-  applyStoredConsent();
   return { ...currentConsent };
 }
 
@@ -328,7 +349,34 @@ function baseFields(): {
   };
 }
 
+/**
+ * This page's page_view, if it was pushed while analytics was denied, and
+ * whether one has been sent again on this page load. See
+ * resendPageViewAfterGrant.
+ */
+let deniedPageView: { path: string; referrer: string } | null = null;
+let pageViewResent = false;
+
 export function trackPageView(referrer: string): void {
+  const fields = baseFields();
+  pushEvent({ ...fields, event: 'page_view', page_referrer: referrer });
+  deniedPageView = fields.consent_analytics ? null : { path: fields.page_path, referrer };
+}
+
+/**
+ * A first-time visitor's landing page_view is pushed while consent is denied,
+ * and GTM blocks its tag; GTM does not fire it again on a later grant
+ * (measured on localhost, 2026-11-15). When the visitor grants analytics in
+ * the banner on that page, the page is pushed again, with the referrer it was
+ * pushed with (the document's on the landing page, the previous path after a
+ * client-side navigation), once per page load (15.8).
+ */
+function resendPageViewAfterGrant(): void {
+  if (pageViewResent || !deniedPageView) return;
+  if (deniedPageView.path !== window.location.pathname) return;
+  pageViewResent = true;
+  const { referrer } = deniedPageView;
+  deniedPageView = null;
   pushEvent({ ...baseFields(), event: 'page_view', page_referrer: referrer });
 }
 
@@ -366,11 +414,19 @@ export function trackScrollDepth(percentage: number, pixels: number): void {
   });
 }
 
+/**
+ * A choice: pushes `consent_update`. `submitted` is true when Cookiebot reports
+ * the visitor submitted the banner on this page (`Cookiebot.changed === true`);
+ * a submission that takes analytics from denied to granted sends this page's
+ * blocked page_view again (resendPageViewAfterGrant).
+ */
 export function trackConsentUpdate(
   analytics: boolean,
   marketing: boolean,
   preferences: boolean,
+  submitted = false,
 ): void {
+  const hadAnalytics = currentConsent.consent_analytics;
   const honored = recordConsent(analytics, marketing, preferences);
   // The consent update is queued first: GTM judges the tags on the
   // consent_update event against the state in force when it reaches it.
@@ -384,6 +440,7 @@ export function trackConsentUpdate(
     event: 'consent_update',
   });
   applyAnonymousIdConsent(true);
+  if (submitted && !hadAnalytics && currentConsent.consent_analytics) resendPageViewAfterGrant();
 }
 
 // --- E-commerce demo tracking (Phase 6) ---

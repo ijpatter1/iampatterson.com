@@ -7,7 +7,6 @@ jest.mock('@/lib/events/track', () => ({
   trackConsentUpdate: jest.fn(),
   initConsentState: jest.fn(),
   applyStoredConsent: jest.fn(),
-  expireAnonymousIdLeftover: jest.fn(),
 }));
 
 import { applyStoredConsent, initConsentState, trackConsentUpdate } from '@/lib/events/track';
@@ -52,7 +51,8 @@ describe('CookiebotConsentListener', () => {
     act(() => {
       window.dispatchEvent(new Event('CookiebotOnAccept'));
     });
-    expect(mockTrackConsentUpdate).toHaveBeenCalledWith(true, false, true);
+    // `true`: a banner submission, which may send the blocked page_view again.
+    expect(mockTrackConsentUpdate).toHaveBeenCalledWith(true, false, true, true);
   });
 
   it('fires trackConsentUpdate when the visitor declines', () => {
@@ -66,7 +66,7 @@ describe('CookiebotConsentListener', () => {
     act(() => {
       window.dispatchEvent(new Event('CookiebotOnDecline'));
     });
-    expect(mockTrackConsentUpdate).toHaveBeenCalledWith(false, false, false);
+    expect(mockTrackConsentUpdate).toHaveBeenCalledWith(false, false, false, true);
   });
 
   // `hasResponse` says whether Cookiebot has resolved the visitor's answer.
@@ -135,7 +135,41 @@ describe('CookiebotConsentListener', () => {
     act(() => {
       window.dispatchEvent(new Event('CookiebotOnAccept'));
     });
-    expect(mockTrackConsentUpdate).toHaveBeenCalledWith(true, false, false);
+    // Not known to be a submission, so no page_view is sent again.
+    expect(mockTrackConsentUpdate).toHaveBeenCalledWith(true, false, false, false);
+  });
+
+  // 15.8: with no answer, Cookiebot's reported consent is authoritative over
+  // the stored cookie (a rejected or renewed cookie, or implied consent).
+  it.each([
+    ['on mount', false],
+    ['on CookiebotOnDialogInit', true],
+  ])('records what Cookiebot reports when hasResponse is false, %s', (_label, later) => {
+    const CookiebotConsentListener = getComponent();
+    const reported = {
+      hasResponse: false,
+      consent: { statistics: true, marketing: false, preferences: true },
+    };
+    (window as unknown as Record<string, unknown>).Cookiebot = later ? { consent: {} } : reported;
+    render(<CookiebotConsentListener />);
+    if (later) {
+      expect(mockInitConsentState).not.toHaveBeenCalled();
+      (window as unknown as Record<string, unknown>).Cookiebot = reported;
+      act(() => {
+        window.dispatchEvent(new Event('CookiebotOnDialogInit'));
+      });
+    }
+    expect(mockInitConsentState).toHaveBeenCalledWith(true, false, true, true);
+  });
+
+  it('records nothing on CookiebotOnDialogInit while hasResponse is undefined', () => {
+    const CookiebotConsentListener = getComponent();
+    (window as unknown as Record<string, unknown>).Cookiebot = { consent: { statistics: true } };
+    render(<CookiebotConsentListener />);
+    act(() => {
+      window.dispatchEvent(new Event('CookiebotOnDialogInit'));
+    });
+    expect(mockInitConsentState).not.toHaveBeenCalled();
   });
 
   it('does not fire when Cookiebot global is absent', () => {

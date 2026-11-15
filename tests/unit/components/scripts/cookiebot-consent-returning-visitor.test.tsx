@@ -185,3 +185,113 @@ describe('a returning visitor who declined', () => {
     expect(readAid()).toBe('minted-id');
   });
 });
+
+// The page as it really runs: the gtag stub writes to the data layer, the
+// defaults are in it, and the inline script has sent the stored choice.
+function pageScriptsRan() {
+  const gtag = function (...a: unknown[]) {
+    gtagCalls.push(a);
+    // eslint-disable-next-line prefer-rest-params
+    window.dataLayer.push(arguments as unknown as Record<string, unknown>);
+  };
+  (window as unknown as { gtag: typeof gtag }).gtag = gtag;
+  gtag('consent', 'default', {
+    analytics_storage: 'denied',
+    ad_storage: 'denied',
+    ad_user_data: 'denied',
+    ad_personalization: 'denied',
+    functionality_storage: 'denied',
+    personalization_storage: 'denied',
+  });
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { STORED_CONSENT_UPDATE_JS } = require('@/lib/events/stored-consent');
+  new Function('gtag', STORED_CONSENT_UPDATE_JS)(gtag);
+  gtagCalls.length = 0;
+}
+
+describe("Cookiebot's replay of a stored choice already in force", () => {
+  it('sends Consent Mode nothing more', () => {
+    document.cookie = `CookieConsent=${storedChoice(true, true, true)}; Path=/`;
+    pageScriptsRan();
+    loadPage();
+    cookiebotResolves({ statistics: true, marketing: true, preferences: true });
+    expect(gtagCalls).toEqual([]);
+  });
+});
+
+// Cookiebot is authoritative once it reports, even with no answer: a stored
+// grant it rejects (an invalid cookie, or consent it asks to renew) is
+// withdrawn.
+describe('a stored grant Cookiebot reports no answer for', () => {
+  it('is withdrawn: denied to Consent Mode, denied on events, ID expired', () => {
+    document.cookie = `CookieConsent=${storedChoice(true, true, true)}; Path=/`;
+    document.cookie = '_iap_aid=returning-id; Path=/';
+    pageScriptsRan();
+    loadPage();
+    setCookiebot({
+      hasResponse: false,
+      consent: { statistics: false, marketing: false, preferences: false },
+    });
+    rtl.act(() => {
+      window.dispatchEvent(new Event('CookiebotOnDialogInit'));
+    });
+    expect(deniedGtagUpdates()).toHaveLength(1);
+    expect(readAid()).toBeNull();
+    rtl.act(() => track.trackPageView(''));
+    expect(pushed().at(-1)).toEqual(
+      expect.objectContaining({ consent_analytics: false, anonymous_id: '' }),
+    );
+    expect(consentUpdates()).toEqual([]);
+  });
+});
+
+// 15.8 acceptance: a page_view hit on every landing page once analytics is
+// granted, including the page where a first-time visitor grants. Measured
+// never-chosen sequence: hasResponse undefined at mount, false by
+// CookiebotOnDialogInit, then the submission with changed true.
+describe('a first-time visitor who allows analytics on the landing page', () => {
+  function firstVisit() {
+    pageScriptsRan();
+    loadPage();
+    rtl.act(() => track.trackPageView('https://www.linkedin.com/'));
+    setCookiebot({
+      hasResponse: false,
+      consent: { statistics: false, marketing: false, preferences: false },
+    });
+    rtl.act(() => {
+      window.dispatchEvent(new Event('CookiebotOnDialogInit'));
+      window.dispatchEvent(new Event('CookiebotOnDialogDisplay'));
+    });
+  }
+  type PageView = Pushed & { page_referrer?: string; page_path?: string };
+
+  it('gets the landing page_view again, after consent_update, with its referrer and the new ID', () => {
+    firstVisit();
+    cookiebotResolves({ statistics: true, marketing: true, preferences: true }, true);
+    const events = pushed() as PageView[];
+    expect(events.map((e) => e.event)).toEqual(['page_view', 'consent_update', 'page_view']);
+    expect(events[0]).toEqual(expect.objectContaining({ consent_analytics: false }));
+    expect(events[2]).toEqual(
+      expect.objectContaining({
+        consent_analytics: true,
+        anonymous_id: 'minted-id',
+        page_referrer: 'https://www.linkedin.com/',
+      }),
+    );
+  });
+
+  it('gets no second page_view when the visitor declines', () => {
+    firstVisit();
+    cookiebotResolves({ statistics: false, marketing: false, preferences: false }, true);
+    expect(pushed().map((e) => e.event)).toEqual(['page_view', 'consent_update']);
+  });
+
+  it('gets no second page_view for a returning visitor whose stored grant was replayed', () => {
+    document.cookie = `CookieConsent=${storedChoice(true, true, true)}; Path=/`;
+    pageScriptsRan();
+    loadPage();
+    rtl.act(() => track.trackPageView(''));
+    cookiebotResolves({ statistics: true, marketing: true, preferences: true });
+    expect(pushed().map((e) => e.event)).toEqual(['page_view']);
+  });
+});

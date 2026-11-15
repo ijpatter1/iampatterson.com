@@ -24,6 +24,17 @@ beforeEach(() => {
   mockUsePathname.mockReturnValue('/');
 });
 
+/** jsdom has no Navigation Timing; stand in the one entry the tracker reads. */
+function stubNavigationType(type: string): () => void {
+  Object.defineProperty(performance, 'getEntriesByType', {
+    configurable: true,
+    value: (entryType: string) => (entryType === 'navigation' ? [{ type }] : []),
+  });
+  return () => {
+    delete (performance as unknown as { getEntriesByType?: unknown }).getEntriesByType;
+  };
+}
+
 describe('RouteTracker', () => {
   // 15.8: the landing page needs its own page_view. `GA4 - Config` has
   // send_page_view off (page views come from app code), so before 15.8 a
@@ -39,6 +50,38 @@ describe('RouteTracker', () => {
       expect(mockTrackPageView).toHaveBeenCalledTimes(1);
       expect(mockTrackPageView).toHaveBeenCalledWith('https://www.linkedin.com/');
     } finally {
+      delete (document as unknown as { referrer?: string }).referrer;
+    }
+  });
+
+  // A hard reload keeps the original document.referrer. Sending it again
+  // would credit the external source with a second landing.
+  it('sends an empty referrer on a reload', () => {
+    Object.defineProperty(document, 'referrer', {
+      value: 'https://www.linkedin.com/',
+      configurable: true,
+    });
+    const restore = stubNavigationType('reload');
+    try {
+      render(<RouteTracker />);
+      expect(mockTrackPageView).toHaveBeenCalledWith('');
+    } finally {
+      restore();
+      delete (document as unknown as { referrer?: string }).referrer;
+    }
+  });
+
+  it('keeps the referrer on a first navigation to the site', () => {
+    Object.defineProperty(document, 'referrer', {
+      value: 'https://www.linkedin.com/',
+      configurable: true,
+    });
+    const restore = stubNavigationType('navigate');
+    try {
+      render(<RouteTracker />);
+      expect(mockTrackPageView).toHaveBeenCalledWith('https://www.linkedin.com/');
+    } finally {
+      restore();
       delete (document as unknown as { referrer?: string }).referrer;
     }
   });
