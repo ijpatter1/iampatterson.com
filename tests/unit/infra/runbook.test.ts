@@ -57,7 +57,7 @@ describe('13.5 — every alert leads somewhere', () => {
 
   it('every alert row resolves to at least one entry that exists', () => {
     const rows = alertRows();
-    expect(rows.length).toBeGreaterThanOrEqual(16);
+    expect(rows.length).toBeGreaterThanOrEqual(15);
     for (const r of rows) {
       expect(r.targets.length).toBeGreaterThan(0);
       for (const t of r.targets) {
@@ -66,9 +66,10 @@ describe('13.5 — every alert leads somewhere', () => {
     }
   });
 
-  it('covers all sixteen alerts: eleven policies plus one per uptime check', () => {
+  it('covers all fifteen alerts: eleven policies plus one per uptime check', () => {
     expect(policies).toHaveLength(11);
-    expect(checks).toHaveLength(5);
+    // Four since [18.10] removed metabase-lb ahead of Metabase's retirement.
+    expect(checks).toHaveLength(4);
     // Backticks are markdown formatting, not wording, so normalise them away —
     // but compare the whole display name, because a prefix match is how the
     // previous version let a row drift from what the alert email says.

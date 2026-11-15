@@ -34,14 +34,5 @@
     "periodSeconds": 300,
     "timeoutSeconds": 10,
     "alert": true
-  },
-  {
-    "displayName": "metabase-lb",
-    "host": "bi.iampatterson.com",
-    "path": "/",
-    "acceptedStatusClasses": ["STATUS_CLASS_2XX", "STATUS_CLASS_3XX"],
-    "periodSeconds": 300,
-    "timeoutSeconds": 10,
-    "alert": true
   }
 ]

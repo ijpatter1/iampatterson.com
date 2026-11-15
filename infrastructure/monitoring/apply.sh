@@ -8,7 +8,9 @@
 # against project iampatterson through the Monitoring and Logging REST APIs,
 # idempotent by display name. Only one path deletes anything — rehearse-dashboard,
 # which rebuilds from the spec immediately after — so a check whose host changed
-# (an immutable field) is reported for a hand recreate rather than replaced.
+# (an immutable field) is reported for a hand recreate rather than replaced, and
+# a live uptime check or `Uptime:` policy the spec no longer names is reported as
+# REMOVE with the command that deletes it, for a person to run ([18.10]).
 #
 #   apply.sh [--dry-run] apply     plan (create / update / unchanged), then apply unless --dry-run
 #   apply.sh verify                 latest uptime results per check, the log-based metrics, the retention
@@ -373,7 +375,16 @@ def reconcile_checks():
         else:
             act("check", "unchanged", c["displayName"])
         if cur: out[c["displayName"]] = cur["name"]
+    # Walking the spec cannot see a check the spec dropped, so look for those
+    # too. Reported, never deleted: its policy must go first (below).
+    named = {c["displayName"] for c in checks_spec}
+    for name, cur in sorted(live.items()):
+        if name not in named:
+            act("check", "REMOVE", name, f"no longer in uptime.json; after its policy, delete by hand: {delete_cmd('uptime', cur['name'])}")
     return out
+
+def delete_cmd(group, resource):
+    return f"gcloud monitoring {group} delete {resource}"
 
 def desired_policy(c, check_name, channel_names):
     check_id = check_name.split("/")[-1]
@@ -412,6 +423,10 @@ def reconcile_policies(check_names, channel_names):
             if not DRY: call("PATCH", f"https://monitoring.googleapis.com/v3/{cur['name']}", {**want, "name": cur["name"]}, {"updateMask": "conditions,notificationChannels,alertStrategy,documentation,enabled"})
         else:
             act("policy", "unchanged", want["displayName"])
+    wanted = {f"Uptime: {c['displayName']}" for c in checks_spec if c.get("alert")}
+    for name, cur in sorted(live.items()):
+        if name.startswith("Uptime: ") and name not in wanted:
+            act("policy", "REMOVE", name, f"its check is no longer in uptime.json; delete by hand, before the check: {delete_cmd('policies', cur['name'])}")
 
 def series(check_id, minutes):
     end = datetime.now(timezone.utc); start = end - timedelta(minutes=minutes)

@@ -25,9 +25,12 @@ describe('Phase 11 D9 — Cloud SQL', () => {
       inst = tf.resource.google_sql_database_instance.metabase_app_db[0];
     });
 
-    it('runs Postgres 15 with terraform deletion protection on', () => {
+    it('runs Postgres 15 with terraform deletion protection lifted for [18.3] to destroy it', () => {
+      // [18.10]: Terraform refuses to destroy a protected instance, and the
+      // apply runs on merge, so the protection comes off one merge before the
+      // block is deleted.
       expect(inst.database_version).toBe('POSTGRES_15');
-      expect(inst.deletion_protection).toBe(true);
+      expect(inst.deletion_protection).toBe(false);
     });
 
     it('is private-IP only — no public IPv4 (security boundary)', () => {

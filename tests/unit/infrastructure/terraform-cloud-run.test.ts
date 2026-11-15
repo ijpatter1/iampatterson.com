@@ -15,7 +15,14 @@ import path from 'node:path';
 const TF_DIR = path.join(process.cwd(), 'infrastructure', 'terraform');
 const read = (file: string): string => readFileSync(path.join(TF_DIR, file), 'utf8');
 
-const SERVICES = ['event_stream', 'data_generator', 'sgtm', 'sgtm_preview', 'metabase', 'claudish_proxy'];
+const SERVICES = [
+  'event_stream',
+  'data_generator',
+  'sgtm',
+  'sgtm_preview',
+  'metabase',
+  'claudish_proxy',
+];
 const SOURCE_DEPLOY = ['event_stream', 'data_generator', 'claudish_proxy'];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -128,8 +135,18 @@ describe('Phase 11 D9 — Cloud Run services', () => {
   });
 
   describe('deploy-safety contract', () => {
-    it.each(SERVICES)('%s enables deletion protection', (name) => {
+    // [18.10] lifts protection on metabase alone. The apply runs on merge, and
+    // Terraform refuses to destroy a protected resource, so retiring a service
+    // takes two merges: this one, then [18.3] deleting the block. Every other
+    // service keeps the guard.
+    const PROTECTED = SERVICES.filter((name) => name !== 'metabase');
+
+    it.each(PROTECTED)('%s enables deletion protection', (name) => {
       expect(svc[name][0].deletion_protection).toBe(true);
+    });
+
+    it('lifts deletion protection on metabase only, so [18.3] can destroy it', () => {
+      expect(svc.metabase[0].deletion_protection).toBe(false);
     });
 
     it.each(SERVICES)(
