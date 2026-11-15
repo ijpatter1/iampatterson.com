@@ -64,7 +64,10 @@ describe('scripts/deploy-cloud-run.sh', () => {
   });
 
   it('never rewrites the service env on deploy (the live values are the contract)', () => {
-    const deployBranch = script.slice(script.indexOf('\n  deploy)'), script.indexOf('\n  set-env)'));
+    const deployBranch = script.slice(
+      script.indexOf('\n  deploy)'),
+      script.indexOf('\n  set-env)'),
+    );
     expect(deployBranch.length).toBeGreaterThan(0);
     expect(deployBranch).not.toContain('--set-env-vars');
     expect(deployBranch).not.toContain('--update-env-vars');
@@ -74,18 +77,28 @@ describe('scripts/deploy-cloud-run.sh', () => {
   it('writes env only in set_env, merging the requested keys onto the serving image', () => {
     // set-env exists because a bare `services update --update-env-vars` after a
     // promote makes a 0%-traffic revision (2026-11-15). It is the one writer.
-    const writers = script.split('\n').filter((l) => l.includes('--update-env-vars') && !l.trim().startsWith('#'));
+    const writers = script
+      .split('\n')
+      .filter((l) => l.includes('--update-env-vars') && !l.trim().startsWith('#'));
     expect(writers).toHaveLength(1);
-    const fn = script.slice(script.indexOf('set_env() {'), script.indexOf('\n}\n', script.indexOf('set_env() {')));
+    const fn = script.slice(
+      script.indexOf('set_env() {'),
+      script.indexOf('\n}\n', script.indexOf('set_env() {')),
+    );
     expect(fn).toContain('--update-env-vars');
     expect(fn).toContain('--image "$image"');
     expect(fn).toContain('--no-traffic');
-    const code = script.split('\n').filter((l) => !l.trim().startsWith('#')).join('\n');
+    const code = script
+      .split('\n')
+      .filter((l) => !l.trim().startsWith('#'))
+      .join('\n');
     expect(code).not.toMatch(/LATEST|--to-latest/);
   });
 
   it('names the project on every gcloud call', () => {
-    const calls = script.split('\n').filter((l) => /\bgcloud\s+run\b/.test(l) && !l.trim().startsWith('#'));
+    const calls = script
+      .split('\n')
+      .filter((l) => /\bgcloud\s+run\b/.test(l) && !l.trim().startsWith('#'));
     expect(calls.length).toBeGreaterThan(0);
     for (const call of calls) expect(call).toContain('--project');
   });

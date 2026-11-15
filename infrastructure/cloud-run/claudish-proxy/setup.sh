@@ -136,7 +136,10 @@ BUILT="$(gcloud run services describe "${SERVICE}" --project="${PROJECT}" --regi
 SERVING="$(gcloud run services describe "${SERVICE}" --project="${PROJECT}" --region="${REGION}" --format=json \
   | python3 -c 'import json,sys; t=[x for x in json.load(sys.stdin)["status"].get("traffic",[]) if x.get("percent")]; print(t[0]["revisionName"] if len(t)==1 else ",".join(x["revisionName"] for x in t))')"
 echo ""
-if [ "${SERVING}" = "${BUILT}" ]; then
+if [ -z "${SERVING}" ]; then
+  echo "═══ Built ${BUILT}; could not read which revision serves. Check before trusting this deploy: ═══"
+  echo "  gcloud run services describe ${SERVICE} --project=${PROJECT} --region=${REGION} --format='value(status.traffic)'"
+elif [ "${SERVING}" = "${BUILT}" ]; then
   echo "═══ Deployed: ${BUILT} serves 100% ═══"
 else
   echo "═══ Built ${BUILT}, but it serves 0%: traffic is pinned to ${SERVING} ═══"

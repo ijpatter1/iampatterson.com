@@ -122,8 +122,12 @@ health_check() { # health_check <service> <revision-for-the-message> <before-rev
   if [ "$code" = "200" ]; then
     echo "✓ ${url}${HEALTH_PATH} -> 200 on $2 ($via)"
   else
-    echo "✗ ${url}${HEALTH_PATH} -> $code on $2; roll back with:" >&2
-    echo "  gcloud run services update-traffic $1 --project=$PROJECT --region=$REGION --to-revisions=$3=100" >&2
+    if [ "${4:-}" = "no-rollback-hint" ]; then
+      echo "✗ ${url}${HEALTH_PATH} -> $code on $2" >&2
+    else
+      echo "✗ ${url}${HEALTH_PATH} -> $code on $2; roll back with:" >&2
+      echo "  gcloud run services update-traffic $1 --project=$PROJECT --region=$REGION --to-revisions=$3=100" >&2
+    fi
     return 1
   fi
 }
@@ -145,7 +149,7 @@ else:
 for k in sorted((set(a) | set(b)) - {"imageDigest", "env"}):
     if a.get(k) != b.get(k):
         bad += 1; print(f"  {k}: {a.get(k)!r} -> {b.get(k)!r} (unexpected)")
-for ek in sorted(set(a["env"]) | set(b["env"])):
+for ek in sorted(set(a["env"]) | set(b["env"]) | set(want)):
     before, after = a["env"].get(ek), b["env"].get(ek)
     if ek in want:
         ok = after == want[ek]
@@ -155,42 +159,75 @@ for ek in sorted(set(a["env"]) | set(b["env"])):
     elif before != after:
         bad += 1; print(f"  env.{ek}: {before!r} -> {after!r} (unexpected)")
 print(f"  {bad} unexpected change(s)" + ("" if bad == 0 else " — review before promoting"))
-sys.exit(0 if bad == 0 else 1)
+# A moved digest means the revision is not the one this run built on the
+# serving image: never something --allow-drift may wave through.
+sys.exit(2 if a.get("imageDigest") != b.get("imageDigest") else 0 if bad == 0 else 1)
 PYEOF
 }
 
 set_env() { # set_env <service> <promote 0|1> <allow-drift 0|1> KEY=VALUE...
   local svc="$1" promote="$2" allow="$3"; shift 3
   [ "$#" -gt 0 ] || { echo "❌ set-env needs at least one KEY=VALUE" >&2; exit 1; }
-  local kv joined=""
+  local kv
   for kv in "$@"; do
     case "$kv" in *=*) ;; *) echo "❌ not KEY=VALUE: $kv" >&2; exit 1;; esac
     case "$kv" in *@*) echo "❌ '@' is the env delimiter here and cannot appear in a value: $kv" >&2; exit 1;; esac
-    joined="${joined:+$joined@}$kv"
   done
-  local before image after tmp rc=0
+  local before image after tmp suffix flags rc=0 hc=0
   before=$(serving_revision "$svc" 2>/dev/null || true)
   [ -n "$before" ] || { echo "❌ no serving revision found for $svc (are the gcloud credentials valid?)" >&2; exit 1; }
   image=$(gcloud run revisions describe "$before" --project="$PROJECT" --region="$REGION" --format='value(spec.containers[0].image)')
   case "$image" in *@sha256:*) ;; *) echo "❌ serving revision $before has no pinned image digest ($image); not building on it" >&2; exit 1;; esac
+  tmp=$(mktemp -d)
+  # `gcloud run deploy` merges env into the service TEMPLATE, which after a
+  # rollback (or any unpromoted revision) differs from what serves. Rebase the
+  # template's plain env onto the serving revision's, then apply the request:
+  # the new revision's env is the serving env plus exactly these keys. Secret
+  # references are left alone and show up in the diff if they differ.
+  if ! gcloud run services describe "$svc" --project="$PROJECT" --region="$REGION" --format=json > "$tmp/service.json" \
+     || ! gcloud run revisions describe "$before" --project="$PROJECT" --region="$REGION" --format=json > "$tmp/serving.json"; then
+    rm -rf "$tmp"; echo "❌ could not read the service or $before; nothing changed" >&2; exit 1
+  fi
+  flags=$(python3 - "$tmp/service.json" "$tmp/serving.json" "$@" <<'PYEOF'
+import json, sys
+plain = lambda c: {e["name"]: e["value"] for e in c.get("env", []) if "value" in e}
+tmpl = plain(json.load(open(sys.argv[1]))["spec"]["template"]["spec"]["containers"][0])
+serving = plain(json.load(open(sys.argv[2]))["spec"]["containers"][0])
+want = dict(kv.split("=", 1) for kv in sys.argv[3:])
+target = {**serving, **want}
+update = {k: v for k, v in target.items() if tmpl.get(k) != v}
+remove = [k for k in tmpl if k not in target]
+if any("@" in v for v in update.values()):
+    sys.exit("an env value on the serving revision contains '@'; set it by hand")
+print("--update-env-vars=^@^" + "@".join(f"{k}={v}" for k, v in update.items()) if update else "")
+if remove: print("--remove-env-vars=" + ",".join(remove))
+PYEOF
+  ) || { rm -rf "$tmp"; echo "❌ could not compute the env change; nothing changed" >&2; exit 1; }
+  # A fixed suffix names the revision up front: latestCreatedRevisionName can
+  # name someone else's revision, or an old one if nothing new was created.
+  suffix="env-$(date -u +%m%d%H%M%S)"; after="$svc-$suffix"
   echo "═══ $svc: set $* on the serving image (no traffic); serving revision $before ═══"
-  # --image pins the code to what serves now: the service template may hold a
-  # newer, unpromoted build, and an env change must not ship it.
+  # --image pins the code to what serves now: the template may hold a newer,
+  # unpromoted build, and an env change must not ship it.
+  local args=()
+  while IFS= read -r line; do [ -n "$line" ] && args+=("$line"); done <<< "$flags"
   gcloud run deploy "$svc" --image "$image" --project="$PROJECT" --region="$REGION" \
-    --update-env-vars="^@^$joined" --no-traffic --quiet
-  after=$(gcloud run services describe "$svc" --project="$PROJECT" --region="$REGION" --format='value(status.latestCreatedRevisionName)')
+    --revision-suffix="$suffix" ${args[@]+"${args[@]}"} --no-traffic --quiet
   echo "new revision (no traffic): $after"
-  mkdir -p "$DIFF_DIR"; tmp=$(mktemp -d)
+  mkdir -p "$DIFF_DIR"
   if ! snapshot_revision "$before" > "$tmp/before.json" || ! snapshot_revision "$after" > "$tmp/after.json"; then
     echo "❌ could not snapshot $before or $after; not promoting. Investigate, then promote by hand:" >&2
     echo "  scripts/deploy-cloud-run.sh promote $svc $after" >&2; rm -rf "$tmp"; exit 2
   fi
   { echo "# $svc: $before -> $after, set $* ($(date -u +%Y-%m-%dT%H:%M:%SZ))"; diff_env_change "$tmp/before.json" "$tmp/after.json" "$@"; } \
-    | tee "$DIFF_DIR/$after.diff" || true
-  diff_env_change "$tmp/before.json" "$tmp/after.json" "$@" >/dev/null || rc=$?
+    | tee "$DIFF_DIR/$after.diff" || rc=$?
   echo "diff written: $DIFF_DIR/$after.diff"
   if [ "$promote" != "1" ]; then
     rm -rf "$tmp"; echo ""; echo "Stopped before traffic. Promote this exact revision with:"; echo "  scripts/deploy-cloud-run.sh promote $svc $after"; exit 0
+  fi
+  if [ "$rc" = "2" ]; then
+    rm -rf "$tmp"
+    echo "❌ the new revision does not run the serving image; not promoting, and --allow-drift does not apply. Run the command again." >&2; exit 2
   fi
   if [ "$rc" != "0" ] && [ "$allow" != "1" ]; then
     rm -rf "$tmp"
@@ -199,7 +236,9 @@ set_env() { # set_env <service> <promote 0|1> <allow-drift 0|1> KEY=VALUE...
   fi
   echo "═══ promote: all traffic to $after ═══"
   gcloud run services update-traffic "$svc" --project="$PROJECT" --region="$REGION" --to-revisions="$after=100" --quiet
-  health_check "$svc" "$after" "$before"
+  # A failed probe must not stop the check of what serves, and must not
+  # suggest routing back to $before: for the kill switch that undoes it.
+  health_check "$svc" "$after" "$before" no-rollback-hint || hc=$?
   # Confirm what now serves, by name and by value: the check the bare
   # `services update` kill switch never had.
   local now; now=$(serving_revision "$svc" 2>/dev/null || true)
@@ -209,7 +248,11 @@ set_env() { # set_env <service> <promote 0|1> <allow-drift 0|1> KEY=VALUE...
   fi
   rm -rf "$tmp"
   echo "✓ $now serves 100% with $*"
-  echo "  To undo: scripts/deploy-cloud-run.sh set-env $svc <KEY=previous value> --promote (or promote $before, which restores ALL of its env)"
+  if [ "$hc" != "0" ]; then
+    echo "⚠ but its health probe failed. It IS serving with the new env; do not route back to $before unless you mean to undo the change." >&2
+    exit 4
+  fi
+  echo "  To undo: scripts/deploy-cloud-run.sh set-env $svc <KEY=previous value> --promote (promoting $before also restores ALL of its env)"
 }
 
 case "$CMD" in
@@ -270,7 +313,8 @@ case "$CMD" in
   kill-switch)
     SERVICE="${1:?service}"; KS="${2:?on|off}"; ALLOW_DRIFT=0
     case "$KS" in on|off) ;; *) echo "❌ kill-switch takes on or off, not $KS" >&2; exit 1;; esac
-    [ "${3:-}" = "--allow-drift" ] && ALLOW_DRIFT=1
+    shift 2
+    for a in "$@"; do case "$a" in --allow-drift) ALLOW_DRIFT=1;; *) echo "❌ kill-switch takes only --allow-drift, not $a" >&2; exit 1;; esac; done
     set_env "$SERVICE" 1 "$ALLOW_DRIFT" "KILL_SWITCH=$KS"
     ;;
   *) echo "usage: deploy-cloud-run.sh deploy <service> <src> [--promote] [--allow-drift] | diff <service> <a> <b> | promote <service> <revision> | set-env <service> KEY=VALUE... [--promote] [--allow-drift] | kill-switch <service> on|off [--allow-drift]" >&2; exit 1;;

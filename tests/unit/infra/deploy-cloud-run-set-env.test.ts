@@ -18,73 +18,66 @@ const repoRoot = path.join(__dirname, '..', '..', '..');
 const scriptPath = path.join(repoRoot, 'scripts', 'deploy-cloud-run.sh');
 
 const BEFORE = 'svc-00001-aaa';
-const AFTER = 'svc-00002-bbb';
+/** set-env names its revision `<service>-env-<MMDDhhmmss>`. */
+const AFTER = /^svc-env-\d{10}$/;
 const A = 'a'.repeat(64);
-const B = 'b'.repeat(64);
 
-const revision = (digest: string, killSwitch: string, maxScale = '3') =>
-  JSON.stringify({
-    metadata: {
-      annotations: {
-        'autoscaling.knative.dev/minScale': '1',
-        'autoscaling.knative.dev/maxScale': maxScale,
-        'run.googleapis.com/execution-environment': 'gen2',
-      },
-    },
-    spec: {
-      serviceAccountName: 'svc@iampatterson.iam.gserviceaccount.com',
-      containerConcurrency: 80,
-      timeoutSeconds: 60,
-      containers: [
-        {
-          image: `us-docker.pkg.dev/iampatterson/svc@sha256:${digest}`,
-          env: [
-            { name: 'KILL_SWITCH', value: killSwitch },
-            { name: 'LANES', value: 'anthropic-api,cache-only' },
-          ],
-          resources: { limits: { cpu: '1', memory: '512Mi' } },
-        },
-      ],
-    },
-  });
-
-type Mode = 'clean' | 'drift' | 'digest' | 'snapfail' | 'unpinned' | 'stuck';
+type Mode = 'clean' | 'drift' | 'digest' | 'snapfail' | 'unpinned' | 'stuck' | 'dropenv';
 
 /**
- * MODE: clean (only KILL_SWITCH moves), drift (the template also moved
- * maxScale), digest (the new revision runs another image), snapfail (the new
- * revision cannot be described), unpinned (the serving image has no digest),
- * stuck (update-traffic "succeeds" but traffic stays where it was).
+ * A Python gcloud. It keeps state like the real one, where it matters:
+ * - the serving revision (moved only by update-traffic, unless MODE=stuck);
+ * - the service template's env (KILL_SWITCH=off, LANES=TEMPLATE_LANES), which
+ *   after a rollback differs from the serving revision's env;
+ * - the new revision's env = template env + the deploy's --update-env-vars
+ *   - its --remove-env-vars, as `gcloud run deploy` does. So a test proves the
+ *   requested value reached the revision, not just that the flag was passed.
+ * MODE: clean; drift (the template also moved maxScale); digest (the new
+ * revision runs another image); snapfail (it can't be described); unpinned
+ * (the serving image has no digest); stuck (traffic never moves); dropenv
+ * (the deploy's env flags don't land on the revision).
  */
-const STUB = `#!/bin/bash
-set -u
-ARGS="$*"
-echo "$ARGS" >> "\${STATE}/calls"
-case "$ARGS" in
-  *"services describe"*"format=json"*)
-    echo "{\\"status\\":{\\"traffic\\":[{\\"percent\\":100,\\"revisionName\\":\\"$(cat "\${STATE}/serving")\\"}]}}" ;;
-  *"services describe"*latestCreatedRevisionName*) echo "${AFTER}" ;;
-  *"services describe"*status.url*) echo "https://svc.example" ;;
-  *"revisions describe"*"spec.containers[0].image"*)
-    if [ "\${MODE}" = "unpinned" ]; then echo "us-docker.pkg.dev/iampatterson/svc:latest"
-    else echo "us-docker.pkg.dev/iampatterson/svc@sha256:${A}"; fi ;;
-  *"revisions describe"*"${BEFORE}"*) echo '${revision(A, 'off')}' ;;
-  *"revisions describe"*"${AFTER}"*)
-    case "\${MODE}" in
-      snapfail) echo "boom" >&2; exit 1 ;;
-      drift) echo '${revision(A, 'on', '5')}' ;;
-      digest) echo '${revision(B, 'on')}' ;;
-      *) echo '${revision(A, 'on')}' ;;
-    esac ;;
-  *"run deploy"*) : ;;
-  *"update-traffic"*)
-    if [ "\${MODE}" != "stuck" ]; then
-      rev=$(echo "$ARGS" | sed -E 's/.*--to-revisions=([^= ]+)=100.*/\\1/'); echo "$rev" > "\${STATE}/serving"
-    fi
-    echo "traffic moved" ;;
-  *"print-identity-token"*) echo "token" ;;
-  *) : ;;
-esac
+const STUB = `#!/usr/bin/env python3
+import json, os, re, sys
+args = " ".join(sys.argv[1:]); st = os.environ["STATE"]; mode = os.environ.get("MODE", "clean")
+open(f"{st}/calls", "a").write(args + "\\n")
+A, B = "a" * 64, "b" * 64
+def rev(digest, env, max_scale="3"):
+    return json.dumps({"metadata": {"annotations": {"autoscaling.knative.dev/minScale": "1",
+        "autoscaling.knative.dev/maxScale": max_scale, "run.googleapis.com/execution-environment": "gen2"}},
+        "spec": {"serviceAccountName": "svc@iampatterson.iam.gserviceaccount.com", "containerConcurrency": 80,
+        "timeoutSeconds": 60, "containers": [{"image": f"us-docker.pkg.dev/iampatterson/svc@sha256:{digest}",
+        "env": [{"name": k, "value": v} for k, v in env.items()],
+        "resources": {"limits": {"cpu": "1", "memory": "512Mi"}}}]}})
+serving_env = {"KILL_SWITCH": os.environ.get("SERVING_KILL_SWITCH", "off"), "LANES": "anthropic-api,cache-only"}
+template_env = {"KILL_SWITCH": "off", "LANES": os.environ.get("TEMPLATE_LANES", "anthropic-api,cache-only")}
+serving = open(f"{st}/serving").read().strip()
+if "services describe" in args and "format=json" in args:
+    print(json.dumps({"status": {"traffic": [{"percent": 100, "revisionName": serving}]},
+        "spec": {"template": {"spec": {"containers": [{"env": [{"name": k, "value": v} for k, v in template_env.items()]}]}}}}))
+elif "services describe" in args and "status.url" in args:
+    print("https://svc.example")
+elif "revisions describe" in args and "spec.containers[0].image" in args:
+    print("us-docker.pkg.dev/iampatterson/svc:latest" if mode == "unpinned" else f"us-docker.pkg.dev/iampatterson/svc@sha256:{A}")
+elif "revisions describe" in args and "${BEFORE}" in args:
+    print(rev(A, serving_env))
+elif "revisions describe" in args and "svc-env-" in args:
+    if mode == "snapfail": sys.stderr.write("boom\\n"); sys.exit(1)
+    env = json.load(open(f"{st}/after_env"))
+    print(rev(B if mode == "digest" else A, env, "5" if mode == "drift" else "3"))
+elif "run deploy" in args:
+    env = dict(template_env)
+    m = re.search(r"--update-env-vars=\\^@\\^(\\S*)", args)
+    if m and mode != "dropenv": env.update(kv.split("=", 1) for kv in m.group(1).split("@") if kv)
+    m = re.search(r"--remove-env-vars=(\\S+)", args)
+    if m: [env.pop(k, None) for k in m.group(1).split(",")]
+    json.dump(env, open(f"{st}/after_env", "w"))
+elif "update-traffic" in args:
+    if mode != "stuck":
+        open(f"{st}/serving", "w").write(re.search(r"--to-revisions=(\\S+)=100", args).group(1))
+    print("traffic moved")
+elif "print-identity-token" in args:
+    print("token")
 `;
 
 interface Run {
@@ -94,7 +87,7 @@ interface Run {
   serving: string;
 }
 
-function run(mode: Mode, args: string[]): Run {
+function run(mode: Mode, args: string[], extraEnv: Record<string, string> = {}): Run {
   const dir = mkdtempSync(path.join(tmpdir(), 'set-env-harness-'));
   const bin = path.join(dir, 'bin');
   const state = path.join(dir, 'state');
@@ -104,7 +97,7 @@ function run(mode: Mode, args: string[]): Run {
   writeFileSync(path.join(state, 'calls'), '');
   for (const name of ['gcloud', 'curl']) {
     const file = path.join(bin, name);
-    writeFileSync(file, name === 'gcloud' ? STUB : '#!/bin/bash\necho 200\n');
+    writeFileSync(file, name === 'gcloud' ? STUB : '#!/bin/bash\necho "${HEALTH:-200}"\n');
     chmodSync(file, 0o755);
   }
   let status = 0;
@@ -120,6 +113,7 @@ function run(mode: Mode, args: string[]): Run {
         MODE: mode,
         STATE: state,
         DIFF_DIR: path.join(dir, 'diffs'),
+        ...extraEnv,
       },
     });
   } catch (e) {
@@ -144,19 +138,23 @@ describe('kill-switch: the switch reaches traffic', () => {
     expect(deploy).toContain(`--image us-docker.pkg.dev/iampatterson/svc@sha256:${A}`);
     expect(deploy).toContain('--no-traffic');
     expect(deploy).toContain('--update-env-vars=^@^KILL_SWITCH=on');
+    expect(deploy).toMatch(/--revision-suffix=env-\d{10}/);
     expect(deploy).not.toContain('--source');
   });
 
   it('ends with the new revision serving 100%, confirmed by name and value', () => {
     const r = run('clean', ['kill-switch', 'svc', 'on']);
     expect(r.status).toBe(0);
-    expect(r.serving).toBe(AFTER);
-    expect(r.calls.some((c) => c.includes(`--to-revisions=${AFTER}=100`))).toBe(true);
-    expect(r.out).toContain(`✓ ${AFTER} serves 100% with KILL_SWITCH=on`);
+    expect(r.serving).toMatch(AFTER);
+    expect(r.calls.some((c) => new RegExp(`--to-revisions=${r.serving}=100`).test(c))).toBe(true);
+    expect(r.out).toContain(`✓ ${r.serving} serves 100% with KILL_SWITCH=on`);
   });
 
-  it('never routes traffic to LATEST', () => {
-    const r = run('clean', ['kill-switch', 'svc', 'off']);
+  it('turns a switch that is on off, and never routes traffic to LATEST', () => {
+    const r = run('clean', ['kill-switch', 'svc', 'off'], { SERVING_KILL_SWITCH: 'on' });
+    expect(r.status).toBe(0);
+    expect(r.serving).toMatch(AFTER);
+    expect(r.out).toContain('serves 100% with KILL_SWITCH=off');
     expect(r.calls.join('\n')).not.toMatch(/LATEST|--to-latest/);
   });
 
@@ -175,10 +173,23 @@ describe('kill-switch: the switch reaches traffic', () => {
     expect(r.serving).toBe(BEFORE);
   });
 
+  it('never lets --allow-drift promote a revision on another image', () => {
+    const r = run('digest', ['kill-switch', 'svc', 'on', '--allow-drift']);
+    expect(r.status).toBe(2);
+    expect(r.out).toContain('--allow-drift does not apply');
+    expect(r.serving).toBe(BEFORE);
+  });
+
+  it('a requested key that is new lands on the revision and serves', () => {
+    const r = run('clean', ['set-env', 'svc', 'NEW_KEY=x', '--promote']);
+    expect(r.status).toBe(0);
+    expect(r.out).toContain('serves 100% with NEW_KEY=x');
+  });
+
   it('promotes drift only with --allow-drift', () => {
     const r = run('drift', ['kill-switch', 'svc', 'on', '--allow-drift']);
     expect(r.status).toBe(0);
-    expect(r.serving).toBe(AFTER);
+    expect(r.serving).toMatch(AFTER);
   });
 
   it('refuses when the new revision cannot be described, whatever --allow-drift says', () => {
@@ -199,11 +210,40 @@ describe('kill-switch: the switch reaches traffic', () => {
     // The original failure mode: the command "succeeds" and nothing changes.
     const r = run('stuck', ['kill-switch', 'svc', 'on']);
     expect(r.status).toBe(3);
-    expect(r.out).toContain(`serving revision is ${BEFORE}, not ${AFTER}`);
+    expect(r.out).toMatch(new RegExp(`serving revision is ${BEFORE}, not svc-env-\\d{10}`));
   });
 
   it('takes only on or off', () => {
     const r = run('clean', ['kill-switch', 'svc', 'yes']);
+    expect(r.status).toBe(1);
+    expect(r.calls.some((c) => c.includes('run deploy'))).toBe(false);
+  });
+});
+
+describe('kill-switch: the cases an incident brings', () => {
+  it('after a rollback, rebases the template env onto what serves, so the switch is not refused as drift', () => {
+    // After `promote <older revision>`, the template keeps the newer env. The new
+    // revision must carry the SERVING env plus KILL_SWITCH, not the template's.
+    const r = run('clean', ['kill-switch', 'svc', 'on'], {
+      TEMPLATE_LANES: 'vertex-global,vertex-regional,anthropic-api,cache-only',
+    });
+    const deploy = r.calls.find((c) => c.includes('run deploy'))!;
+    expect(deploy).toContain('LANES=anthropic-api,cache-only');
+    expect(r.status).toBe(0);
+    expect(r.serving).toMatch(AFTER);
+  });
+
+  it('when the health probe fails, still confirms what serves and never suggests routing back', () => {
+    const r = run('clean', ['kill-switch', 'svc', 'on'], { HEALTH: '503' });
+    expect(r.status).toBe(4);
+    expect(r.serving).toMatch(AFTER);
+    expect(r.out).toContain('serves 100% with KILL_SWITCH=on');
+    expect(r.out).toContain('do not route back');
+    expect(r.out).not.toContain('roll back with');
+  });
+
+  it('rejects any argument but --allow-drift', () => {
+    const r = run('clean', ['kill-switch', 'svc', 'on', '--alow-drift']);
     expect(r.status).toBe(1);
     expect(r.calls.some((c) => c.includes('run deploy'))).toBe(false);
   });
@@ -215,20 +255,27 @@ describe('set-env: an env change that is reviewed before it serves', () => {
     expect(r.status).toBe(0);
     expect(r.serving).toBe(BEFORE);
     expect(r.out).toContain('Stopped before traffic.');
-    expect(r.out).toContain(`promote svc ${AFTER}`);
+    expect(r.out).toMatch(/promote svc svc-env-\d{10}/);
     expect(r.out).toContain('0 unexpected change(s)');
   });
 
   it('flags a requested key that did not land at the requested value', () => {
-    const r = run('clean', [
+    const r = run('dropenv', [
       'set-env',
       'svc',
       'LANES=vertex-global,anthropic-api,cache-only',
       '--promote',
     ]);
-    // The stub's new revision keeps the old LANES, so the requested change did not land.
+    // dropenv: the deploy's env flags don't land, so the revision keeps the old LANES.
     expect(r.status).toBe(2);
     expect(r.out).toContain("expected 'vertex-global,anthropic-api,cache-only'");
+    expect(r.serving).toBe(BEFORE);
+  });
+
+  it('refuses to promote when a requested key is on neither revision', () => {
+    const r = run('dropenv', ['set-env', 'svc', 'NEW_KEY=x', '--promote']);
+    expect(r.status).toBe(2);
+    expect(r.out).toContain("env.NEW_KEY: None -> None (expected 'x')");
     expect(r.serving).toBe(BEFORE);
   });
 
