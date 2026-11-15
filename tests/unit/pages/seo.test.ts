@@ -252,7 +252,9 @@ describe('site origin', () => {
         const full = path.join(dir, entry.name);
         if (entry.isDirectory()) walk(full);
         else if (/\.(ts|tsx|js|mjs)$/.test(entry.name)) {
-          if (fs.readFileSync(full, 'utf8').includes('https://iampatterson.com')) {
+          // A regex, not String#includes: this scans source text for a
+          // literal; CodeQL reads includes() on a URL as host sanitization.
+          if (/https:\/\/iampatterson\.com/.test(fs.readFileSync(full, 'utf8'))) {
             offenders.push(path.relative(process.cwd(), full));
           }
         }
