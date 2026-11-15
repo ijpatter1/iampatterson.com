@@ -418,6 +418,24 @@ describe('refusal', () => {
     expect(deps.cache.size).toBe(0);
     expect(logLines.join('\n')).toContain('general_harms');
   });
+
+  // Haiku 5.5's classifiers can decline before any output: message_start,
+  // then a refusal stop with no text. No token frame, no failover to the
+  // next lane (same model, same verdict), nothing cached.
+  it('is terminal when the refusal arrives before any text', async () => {
+    const lane1 = fakeLane('anthropic-api', [
+      { kind: 'start' },
+      { kind: 'stop', stopReason: 'refusal', refusalCategory: 'cyber', usage: OK_USAGE },
+    ]);
+    const lane2 = fakeLane('vertex-global', []);
+    const deps = makeDeps([lane1, lane2]);
+    const ctx = stubReqRes(VALID_BODY);
+    await createTranslateHandler(deps)(ctx.req, ctx.res);
+    expect(ctx.frames().map((f) => f.type)).toEqual(['meta', 'refusal']);
+    expect(lane2.calls).toHaveLength(0);
+    expect(deps.cache.size).toBe(0);
+    expect(logLines.join('\n')).toContain('cyber');
+  });
 });
 
 describe('client abort', () => {
