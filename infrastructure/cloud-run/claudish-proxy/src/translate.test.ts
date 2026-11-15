@@ -11,7 +11,7 @@ import { EventEmitter } from 'node:events';
 
 import { BudgetTracker } from './budget';
 import { TranslationCache } from './cache';
-import { GEMINI_PRICES, INPUT_CAP, loadConfig } from './config';
+import { GEMINI_PRICES, INPUT_CAP, loadConfig, RESERVATION_USD } from './config';
 import { CircuitBreaker } from './lanes';
 import { setLogSink } from './log';
 import { RateLimiter } from './ratelimit';
@@ -111,7 +111,10 @@ function stubReqRes(body: unknown, headers: Record<string, string> = {}) {
   };
 }
 
-function makeDeps(lanes: LaneClient[], overrides: Partial<Parameters<typeof createTranslateHandler>[0]> = {}) {
+function makeDeps(
+  lanes: LaneClient[],
+  overrides: Partial<Parameters<typeof createTranslateHandler>[0]> = {},
+) {
   return {
     config: loadConfig({}),
     lanes,
@@ -195,7 +198,12 @@ describe('happy path', () => {
     ]);
     const deps = makeDeps([lane]);
     const handler = createTranslateHandler(deps);
-    await handler(...(() => { const c = stubReqRes(VALID_BODY); return [c.req, c.res] as const; })());
+    await handler(
+      ...(() => {
+        const c = stubReqRes(VALID_BODY);
+        return [c.req, c.res] as const;
+      })(),
+    );
     const second = stubReqRes(VALID_BODY);
     await handler(second.req, second.res);
     expect(lane.calls).toHaveLength(1);
@@ -233,7 +241,12 @@ describe('pre-stream rejections', () => {
 
   it('400s malformed input and 413s the cap', async () => {
     const handler = createTranslateHandler(makeDeps([fakeLane('vertex-global', [])]));
-    for (const body of [null, {}, { text: '', direction: 'en2cl' }, { text: 'x', direction: 'nope' }]) {
+    for (const body of [
+      null,
+      {},
+      { text: '', direction: 'en2cl' },
+      { text: 'x', direction: 'nope' },
+    ]) {
       const ctx = stubReqRes(body);
       await handler(ctx.req, ctx.res);
       expect(ctx.status()).toBe(400);
@@ -245,13 +258,16 @@ describe('pre-stream rejections', () => {
   });
 
   it('429s past the per-IP limit with Retry-After', async () => {
-    const deps = makeDeps([
-      fakeLane('vertex-global', [
-        { kind: 'start' },
-        { kind: 'text', text: 'y' },
-        { kind: 'stop', stopReason: 'end_turn', usage: OK_USAGE },
-      ]),
-    ], { limiter: new RateLimiter({ perMinute: 1, perHour: 10, perDay: 10 }) });
+    const deps = makeDeps(
+      [
+        fakeLane('vertex-global', [
+          { kind: 'start' },
+          { kind: 'text', text: 'y' },
+          { kind: 'stop', stopReason: 'end_turn', usage: OK_USAGE },
+        ]),
+      ],
+      { limiter: new RateLimiter({ perMinute: 1, perHour: 10, perDay: 10 }) },
+    );
     const handler = createTranslateHandler(deps);
     const first = stubReqRes(VALID_BODY);
     await handler(first.req, first.res);
@@ -351,7 +367,7 @@ describe('the ladder', () => {
     const boom = { kind: 'throw' as const, err: new Error('down') };
     const ctx = stubReqRes(VALID_BODY);
     await createTranslateHandler(
-      makeDeps([fakeLane('vertex-global', [boom]), fakeLane('anthropic-api', [boom])])
+      makeDeps([fakeLane('vertex-global', [boom]), fakeLane('anthropic-api', [boom])]),
     )(ctx.req, ctx.res);
     expect(ctx.status()).toBe(503);
     expect(ctx.json()).toEqual({ error: 'capacity' });
@@ -513,7 +529,7 @@ describe('CORS on pre-stream errors (CR2)', () => {
 
     const capped = stubReqRes(VALID_BODY);
     await createTranslateHandler(
-      makeDeps([fakeLane('vertex-global', [])], { budget: new BudgetTracker(23, true) })
+      makeDeps([fakeLane('vertex-global', [])], { budget: new BudgetTracker(23, true) }),
     )(capped.req, capped.res);
     expect(capped.status()).toBe(503);
     expect(capped.headers()['Access-Control-Allow-Origin']).toBeTruthy();
@@ -726,7 +742,10 @@ describe('review batch 1 (2026-09-03): gemini-loop failure paths', () => {
     // rejection -> process exit).
     const boom = { kind: 'throw' as const, err: new Error('down') };
     const deps = makeDeps([fakeLane('vertex-global', [boom]), fakeLane('anthropic-api', [boom])]);
-    deps.config = loadConfig({ CL2EN_ENGINE: 'gemini-loop', LANES: 'vertex-global,anthropic-api,cache-only' });
+    deps.config = loadConfig({
+      CL2EN_ENGINE: 'gemini-loop',
+      LANES: 'vertex-global,anthropic-api,cache-only',
+    });
     (deps as { geminiStream?: unknown }).geminiStream = geminiScript(['throw']);
     const ctx = stubReqRes({ text: 'v '.repeat(20), direction: 'cl2en' as const });
     await expect(createTranslateHandler(deps)(ctx.req, ctx.res)).resolves.toBeUndefined();
@@ -761,7 +780,11 @@ describe('review batch 2 (2026-09-03): per-attempt reservations, empty results, 
         const text = texts[Math.min(call++, texts.length - 1)];
         return (async function* () {
           if (text.length > 0) yield { kind: 'text', text } as const;
-          yield { kind: 'stop', usage: { inputTokens: 100, outputTokens: 20, cachedTokens: 0 }, finishReason: 'STOP' } as const;
+          yield {
+            kind: 'stop',
+            usage: { inputTokens: 100, outputTokens: 20, cachedTokens: 0 },
+            finishReason: 'STOP',
+          } as const;
         })();
       }) as never,
     };
@@ -777,8 +800,8 @@ describe('review batch 2 (2026-09-03): per-attempt reservations, empty results, 
 
   it('each retry holds its own reservation; with room for one, a convicted attempt 1 is served without a retry', async () => {
     // Finding 6: one Haiku-sized reservation used to cover up to eight
-    // Gemini attempts. Budget of $0.03 fits exactly one $0.022 reservation.
-    const { deps, s } = loopDepsWithBudget([LOUD, CLEAN], 0.03);
+    // Gemini attempts. A budget of 1.5 reservations fits exactly one.
+    const { deps, s } = loopDepsWithBudget([LOUD, CLEAN], RESERVATION_USD * 1.5);
     const ctx = stubReqRes({ text: 't '.repeat(20), direction: 'cl2en' as const });
     await createTranslateHandler(deps)(ctx.req, ctx.res);
     expect(s.calls()).toBe(1);
@@ -818,12 +841,20 @@ describe('review batch 2 (2026-09-03): per-attempt reservations, empty results, 
     const body = { text: 'echo me please', direction: 'en2cl' as const };
     const first = stubReqRes(body);
     await createTranslateHandler(deps)(first.req, first.res);
-    const streamed = first.frames().filter((f) => f.type === 'token').map((f) => String(f.t)).join('');
+    const streamed = first
+      .frames()
+      .filter((f) => f.type === 'token')
+      .map((f) => String(f.t))
+      .join('');
     expect(streamed).toBe('Hello there');
     const second = stubReqRes(body);
     await createTranslateHandler(deps)(second.req, second.res);
     expect(second.frames()[0]).toMatchObject({ cached: true });
-    const replayed = second.frames().filter((f) => f.type === 'token').map((f) => String(f.t)).join('');
+    const replayed = second
+      .frames()
+      .filter((f) => f.type === 'token')
+      .map((f) => String(f.t))
+      .join('');
     expect(replayed).toBe('Hello there');
   });
 });
@@ -837,14 +868,29 @@ describe('review batch 3 (2026-09-03): abort inside the loop settles at Gemini p
     deps.budget.reserve = () => {
       const r = real();
       if (!r) return r;
-      return { reconcile: r.reconcile, release: (...a: unknown[]) => { releases.push(a); (r.release as (...x: unknown[]) => void)(...a); } };
+      return {
+        reconcile: r.reconcile,
+        release: (...a: unknown[]) => {
+          releases.push(a);
+          (r.release as (...x: unknown[]) => void)(...a);
+        },
+      };
     };
-    (deps as { geminiStream?: unknown }).geminiStream = ((_c: unknown, _s: unknown, _t: unknown, signal: AbortSignal) =>
+    (deps as { geminiStream?: unknown }).geminiStream = ((
+      _c: unknown,
+      _s: unknown,
+      _t: unknown,
+      signal: AbortSignal,
+    ) =>
       (async function* () {
         await new Promise((r) => setTimeout(r, 30));
         if (signal.aborted) throw new Error('AbortError');
         yield { kind: 'text', text: 'late' } as const;
-        yield { kind: 'stop', usage: { inputTokens: 1, outputTokens: 1, cachedTokens: 0 }, finishReason: 'STOP' } as const;
+        yield {
+          kind: 'stop',
+          usage: { inputTokens: 1, outputTokens: 1, cachedTokens: 0 },
+          finishReason: 'STOP',
+        } as const;
       })()) as never;
     const ctx = stubReqRes({ text: 'p '.repeat(20), direction: 'cl2en' as const });
     const pending = createTranslateHandler(deps)(ctx.req, ctx.res);

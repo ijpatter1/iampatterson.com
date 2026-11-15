@@ -35,8 +35,9 @@ export function usageCostUsd(usage: Usage, prices: PriceTable = PRICES): number 
 export interface Reservation {
   /**
    * Replace the reservation with the actual cost (call exactly once).
-   * `prices` selects the lane's table — the Gemini loop is ~3-4x cheaper
-   * per token than the Haiku default and must not be over-counted.
+   * `prices` selects the lane's table. Since 20.1 the Gemini loop costs
+   * ~3-5x more per token than the Haiku 5.5 default, so pricing it at the
+   * default would under-count it.
    */
   reconcile(usage: Usage, prices?: PriceTable): void;
   /** Release with a partial estimate (abort path); `prices` selects the lane's table. */
@@ -54,7 +55,7 @@ export class BudgetTracker {
     private readonly dailyBudgetUsd: number,
     private killSwitchOn: boolean,
     private readonly onThreshold: (pct: number) => void = () => undefined,
-    now: number = Date.now()
+    now: number = Date.now(),
   ) {
     this.dayKey = BudgetTracker.utcDay(now);
   }
@@ -113,7 +114,8 @@ export class BudgetTracker {
     };
     return {
       reconcile: (usage: Usage, prices?: PriceTable) => settle(usageCostUsd(usage, prices)),
-      release: (partial?: Usage, prices?: PriceTable) => settle(partial ? usageCostUsd(partial, prices) : 0),
+      release: (partial?: Usage, prices?: PriceTable) =>
+        settle(partial ? usageCostUsd(partial, prices) : 0),
     };
   }
 
