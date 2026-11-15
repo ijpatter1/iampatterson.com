@@ -1,0 +1,4 @@
+# claudish-proxy: claudish-proxy-00034-vcv -> claudish-proxy-00035-z47 (2026-11-15T20:11:20Z)
+  image digest: sha256:f2299fc3d57f… -> sha256:f2299fc3d57f…
+  env.LANES: 'vertex-global,vertex-regional,anthropic-api,cache-only' -> 'anthropic-api,cache-only'
+  1 field(s) differ besides the digest — review before promoting
