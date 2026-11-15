@@ -3,12 +3,15 @@
  *
  * [18.3] Metabase is retired from the Terraform root.
  *
- * Terraform step two. [18.10] lifted deletion protection on the service and the
- * app database and was applied, so deleting the blocks here plans as destroys.
- * The plan on the pull request is the real proof and Ian approves it at the
- * `infra-production` gate; these pins hold the configuration to the shape that
- * plan depends on: no Metabase resource, import or grant left behind, and the
- * two Cloud SQL children forgotten rather than destroyed.
+ * Terraform step two. It depends on [18.10] having been merged and applied
+ * first: until `terraform state show` reports `deletion_protection = false` on
+ * the service and the app database instance, deleting the blocks here fails the
+ * apply instead of destroying them. That precondition is a step in the control
+ * plane's manual card, `docs/manual/task-2026-11-15-003.md`, and no test here
+ * can check it. The plan on the pull request is the real proof and Ian approves
+ * it at the `infra-production` gate; these pins hold the configuration to the
+ * shape that plan depends on: no Metabase resource, import or grant left
+ * behind, and the two Cloud SQL children forgotten rather than destroyed.
  */
 import { parse } from '@cdktf/hcl2json';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
@@ -103,6 +106,53 @@ describe('[18.3] the Metabase code and its runbook are gone', () => {
     '%s no longer exists',
     (p) => {
       expect(existsSync(path.join(ROOT, p))).toBe(false);
+    },
+  );
+});
+
+/**
+ * The site says no dashboard is live once Metabase is gone.
+ *
+ * The shop's order confirmation and warehouse-write diagnostics tag a dashboard
+ * step `[LIVE]`. That was true while Metabase ran behind IAP; after this
+ * change's apply there is no dashboard, so the claim would be false on the
+ * public site. The replacement wording is Ian's under the claims rules, so this
+ * test does not propose any: it is red until his copy lands, and that is the
+ * gate, on purpose.
+ */
+describe('[18.3] no visitor-facing copy claims a live dashboard', () => {
+  const SRC = path.join(ROOT, 'src');
+  const files = (dir: string): string[] =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+      e.isDirectory()
+        ? files(path.join(dir, e.name))
+        : /\.(tsx?|mdx?)$/.test(e.name)
+          ? [path.join(dir, e.name)]
+          : [],
+    );
+
+  it('reads src/, so an empty walk is not a silent pass', () => {
+    expect(files(SRC).length).toBeGreaterThan(20);
+  });
+
+  it('tags no dashboard step [LIVE]', () => {
+    const offenders: string[] = [];
+    for (const f of files(SRC)) {
+      readFileSync(f, 'utf8')
+        .split('\n')
+        .forEach((line, i) => {
+          if (/dashboard/i.test(line) && /\btag:\s*['"]LIVE['"]/.test(line))
+            offenders.push(`${path.relative(ROOT, f)}:${i + 1}: ${line.trim()}`);
+        });
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it.each(['dashboard KPIs reflect this order', 'dashboards · revenue KPI refreshing'])(
+    'no longer says "%s"',
+    (claim) => {
+      const hits = files(SRC).filter((f) => readFileSync(f, 'utf8').includes(claim));
+      expect(hits.map((f) => path.relative(ROOT, f))).toEqual([]);
     },
   );
 });
