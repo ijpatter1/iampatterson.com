@@ -72,7 +72,7 @@ export function NavHint({ sessionPulseRef }: NavHintProps) {
 
   useEffect(() => {
     // Homepage-entry-scoped: hint only fires on `/` per spec. A visitor
-    // entering at /services and later navigating to / sees it on that
+    // entering at /review and later navigating to / sees it on that
     // first homepage visit; subsequent homepage visits within the same
     // session are suppressed by the sessionStorage gate.
     if (pathname !== '/') return;

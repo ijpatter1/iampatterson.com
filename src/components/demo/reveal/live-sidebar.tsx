@@ -126,7 +126,7 @@ export function LiveSidebar({
       data-live-sidebar=""
       data-collapsed={collapsed ? 'true' : 'false'}
       data-route={route}
-      aria-label="Tier 2 instrumentation readout"
+      aria-label="Instrumentation readout"
       className={`relative flex flex-col overflow-hidden rounded border border-[#F3C769]/20 bg-[#0D0B09] font-mono text-xs text-[#EAD9BC] ${
         collapsed ? 'w-10 lg:w-8' : 'w-full lg:w-[360px]'
       } z-sidebar`}

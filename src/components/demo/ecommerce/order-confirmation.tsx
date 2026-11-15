@@ -138,7 +138,7 @@ export function OrderConfirmation({ orderId, orderTotal, itemCount }: OrderConfi
 
 /**
  * Confirmation-page closing beat, "Dashboards are not the payoff"
- * paragraph + services link + back-nav. Split out of `OrderConfirmation`
+ * paragraph + back-nav. Split out of `OrderConfirmation`
  * in UAT r2 item 20 so the page-level composition can render it AFTER
  * the `DashboardPayoff` Metabase embed (pre-r2 it rendered above,
  * putting the "dashboards are not the payoff" CTA in conflict with the

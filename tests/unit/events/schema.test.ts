@@ -39,7 +39,6 @@ const RETIRED_CTA_LOCATIONS = [
   'pipeline_see_your_session',
   'review',
   'proof',
-  'portal_services',
   'services_closer',
   'services_tier_01',
   'services_tier_02',

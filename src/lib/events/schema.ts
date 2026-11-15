@@ -153,7 +153,8 @@ export interface ClickNavEvent extends BaseEvent {
  * `demo_card_ecommerce` and `pipeline_see_your_session`, plus `review` and
  * `proof`, which preview deploys emitted before 15.4 split them. 16.1 removed
  * `portal_services`, `services_closer` and `services_tier_01` to `_04` with
- * the services page.
+ * the services page. `portal_services` was never emitted (the portals fire
+ * `portal_click`), so the BigQuery description doesn't list it as retired.
  * Rows already in BigQuery keep them; `infrastructure/bigquery/schema.json`
  * documents both sets.
  */

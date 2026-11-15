@@ -51,7 +51,7 @@ export interface PipelineEvent {
   event_name: string;
   /** Client-side ISO 8601 timestamp from the data layer push. */
   timestamp: string;
-  /** Page pathname (e.g., '/services'). */
+  /** Page pathname (e.g., '/review'). */
   page_path: string;
   /** Document title. */
   page_title: string;
