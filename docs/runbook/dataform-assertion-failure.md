@@ -109,8 +109,18 @@ reasoning is in the assertion's own comment.
 
 ## Fix
 
-If the data is wrong, follow the entry for whatever produced it — most often
-[data generator stuck](data-generator-stuck.md).
+If the data is wrong, find where real events stopped. Since 18.1 no remaining
+check reads the generator's rows, so a failure is never the generator. A
+freshness or real-session failure means either no real visitor reached
+BigQuery for the window, or sGTM stopped writing to BigQuery. To tell them
+apart:
+
+1. Visit `https://www.iampatterson.com`, allow analytics, and watch the
+   overlay: if your events appear there, the browser and sGTM are fine.
+2. Then query `events_raw` for rows with your session ID. Rows present: it
+   was a genuinely quiet spell. Overlay events but no rows: the server
+   container's BigQuery tag, or the `sgtm-runtime` account's BigQuery grants,
+   are broken.
 
 If the assertion is wrong, edit it under `infrastructure/dataform/definitions/`
 on `main` and let the sync action propagate it. **Do not edit the `dataform`
@@ -123,15 +133,16 @@ The next nightly run at 04:00 UTC completes SUCCEEDED. You do not have to wait
 for it — re-run the same invocation query above after triggering a workflow, or
 simply check the following morning.
 
-For reference, the corrected assertion first ran on 2026-09-05 and succeeded.
+For reference, the retuned checks (18.1, 2026-11-15) leave three assertions,
+none of which reads generator rows.
 
 ## Rehearsal
 
-Not rehearsed, and it cannot now be. Firing this alert on demand needs a failing
-Dataform action, and the one action that failed reliably is the one this project
-fixed. `infrastructure/monitoring/apply.sh rehearse-dataform` exists, checks for
-a recent failed invocation, finds none, and refuses rather than spending a
-production workflow run to manufacture a failure.
+Not rehearsed. Firing this alert on demand needs a failing Dataform action.
+`infrastructure/monitoring/apply.sh rehearse-dataform` checks for a recent
+failed invocation and, if there is one, re-runs `assert_source_freshness` alone
+to reproduce it; on a healthy site there is none, and it refuses rather than
+spending a production workflow run to manufacture a failure.
 
 The alert has fired for real, nightly, for a month before the fix. Its delivery
 path is not in doubt; what is missing is a staged firing, and manufacturing one

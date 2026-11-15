@@ -343,7 +343,8 @@ describe('Dataform assertions', () => {
 
   // event_timestamp prefers the browser's clock, so one visitor with a clock
   // set ahead keeps MAX(event_timestamp) in the future and the check green for
-  // as long as the skew lasts (the 10c future-date scrub removed 3,262 such
+  // as long as the skew lasts (the 10c future-date scrub, whose record left with
+  // infrastructure/bigquery/backfills/ in 18.1 and is in git history, removed 3,262 such
   // rows). received_at is sGTM's own clock: when the pipeline last delivered.
   test('assert_source_freshness measures arrival time, not the client clock', () => {
     expect(freshness()).toContain('MAX(received_at)');
