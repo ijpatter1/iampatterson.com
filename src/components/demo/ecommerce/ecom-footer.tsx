@@ -39,13 +39,6 @@ export function EcomFooter() {
             ← back to iampatterson.com
           </Link>
           <Link
-            href="/services"
-            onClick={() => trackClickNav('services', '/services')}
-            className="text-[var(--shop-warm-brown,#5C4A3D)]/70 hover:text-[var(--shop-terracotta,#C4703A)]"
-          >
-            services
-          </Link>
-          <Link
             href="/contact"
             onClick={() => trackClickNav('contact', '/contact')}
             className="text-[var(--shop-warm-brown,#5C4A3D)]/70 hover:text-[var(--shop-terracotta,#C4703A)]"

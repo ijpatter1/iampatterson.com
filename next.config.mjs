@@ -12,6 +12,8 @@ const nextConfig = {
     return [
       // 16.2: the about page folds into /contact.
       { source: '/about', destination: '/contact', permanent: true },
+      // 16.1: the services page is deleted; the homepage carries the offer.
+      { source: '/services', destination: '/', permanent: true },
       // `:path*` matches zero or more segments, so each rule covers the bare
       // URL too.
       { source: '/demo/subscription/:path*', destination: '/', permanent: true },

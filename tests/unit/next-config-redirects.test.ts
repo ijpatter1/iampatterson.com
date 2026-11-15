@@ -21,6 +21,16 @@ describe('next.config.mjs redirects (Phase 9E D7)', () => {
     );
   });
 
+  // 16.1 deleted the services page. Old links land on the homepage, which
+  // now carries the offer, permanently so search engines drop the old URL.
+  it('redirects `/services` permanently to `/`', async () => {
+    const redirects = await nextConfig.redirects?.();
+    const services = redirects!.find((r) => r.source === '/services');
+    expect(services).toEqual(
+      expect.objectContaining({ source: '/services', destination: '/', permanent: true }),
+    );
+  });
+
   // 15.4 deleted the Demos section and its rebuild banner, so `#demos` and
   // `?rebuild=` would point at nothing. No demo redirect may carry either.
   it('sends no demo redirect to the deleted Demos section or its rebuild banner', async () => {

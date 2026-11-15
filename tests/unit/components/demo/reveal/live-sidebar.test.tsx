@@ -24,6 +24,16 @@ describe('LiveSidebar', () => {
     expect(screen.getByText('readout content')).toBeInTheDocument();
   });
 
+  // 16.1 deleted the services tiers, so the landmark's name drops "Tier 2".
+  it('names the panel for screen readers without the deleted tier vocabulary', () => {
+    render(
+      <LiveSidebar route="test-route" title="t" tag="UNDER · TIER 2">
+        <div>x</div>
+      </LiveSidebar>,
+    );
+    expect(screen.getByRole('complementary')).toHaveAccessibleName('Instrumentation readout');
+  });
+
   it('renders the LIVE · streaming from sGTM footer when open', () => {
     render(
       <LiveSidebar route="test-route" title="t" tag="UNDER · TIER 2">

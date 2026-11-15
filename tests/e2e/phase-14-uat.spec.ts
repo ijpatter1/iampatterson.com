@@ -76,7 +76,7 @@ test.describe('Phase 14 [14.1] — the consent gate actually gates', () => {
 
     // Browse enough to generate the events that WOULD be sent under consent:
     // a page_view per route, scroll depth, and an engagement window.
-    for (const route of ['/', '/services', '/demo/ecommerce']) {
+    for (const route of ['/', '/demo/ecommerce']) {
       await page.goto(route);
       await page.mouse.wheel(0, 2000);
       await page.waitForTimeout(600);

@@ -172,54 +172,12 @@ confirm "Dashboards: editorial headline + italic accent on 'dashboards', 3 demo-
 echo ""
 echo "  → Close the overlay."
 
-# ── Scenario 5, Services page + scroll-spy ──────────
-section "Scenario 5, Homepage teaser hands off to Services page with sticky scroll-spy"
-echo "  Exercises: D6 (teaser + page), D1 (accent), D9 (overlay from closer), D10"
+# ── Scenario 5, /services redirects home ──────────
+# 16.1 deleted the services page and its tiers; old links land on the homepage.
+section "Scenario 5, /services redirects to the homepage (16.1)"
 
-verify "/services returns 200" \
-  "curl -sI --max-time 5 ${BASE_URL}/services | grep -q '200'"
-
-SERVICES_HTML="$(fetch "${BASE_URL}/services")"
-
-verify "Services hero copy 'End-to-end' present" \
-  "echo \"\${SERVICES_HTML}\" | grep -q 'End-to-end'"
-
-verify "All 4 tier titles present in services HTML" \
-  "echo \"\${SERVICES_HTML}\" | grep -q 'Measurement Foundation' && echo \"\${SERVICES_HTML}\" | grep -q 'Data Infrastructure' && echo \"\${SERVICES_HTML}\" | grep -q 'Business Intelligence' && echo \"\${SERVICES_HTML}\" | grep -qE 'Attribution (&|&amp;) Advanced'"
-
-verify "'Not sure where you' closer phrase present" \
-  "echo \"\${SERVICES_HTML}\" | grep -q 'Not sure where you'"
-
-echo ""
-echo "  → Navigate to /services. (15.4 deleted the homepage's services teaser.)"
-
-confirm "/services has a sticky tier-nav sidebar on desktop with 4 tier entries" \
-  "Sticky tier-nav"
-
-echo ""
-echo "  → Scroll down through /services slowly."
-confirm "Sticky nav highlights the active tier (scroll-spy), persimmon accent on the active entry" \
-  "Scroll-spy active highlight"
-
-echo ""
-echo "  → Click a different tier entry in the sidebar."
-confirm "Page scrolls to that tier's section; sidebar highlight updates to match" \
-  "Tier-nav click-to-scroll"
-confirm "Each tier section has numbered core/optional component lists + a tier-summary block with persimmon accent left-border" \
-  "Tier content structure"
-
-echo ""
-echo "  → Scroll to the bottom of /services."
-confirm "Closer section: 'Not sure where you'd start? Watch it run first.' with primary + ghost CTAs" \
-  "Services closer section"
-
-echo ""
-echo "  → Click the closer's primary CTA."
-confirm "Overlay boots with amber accent flip (same as Scenario 3); tab is Overview by default" \
-  "Closer CTA opens overlay"
-
-echo ""
-echo "  → Close the overlay."
+verify "/services lands on /" \
+  "curl -sSL --max-time 10 -o /dev/null -w '%{http_code} %{url_effective}' ${BASE_URL}/services | grep -qE '^200 https?://[^/]+/\$'"
 
 # ── Scenario 6, Editorial chrome on all consulting routes ──
 section "Scenario 6, Editorial chrome wraps every consulting route"
@@ -238,11 +196,6 @@ echo ""
 echo "  → Click each of the footer's Session buttons in turn (Overview, Live event stream, Consent state), closing the overlay between them."
 confirm "Each opens the overlay already on its matching tab (Overview / Timeline / Consent), no extra click needed" \
   "Footer Session buttons open their tabs"
-
-echo ""
-echo "  → Close overlay. Navigate to /services."
-confirm "Same header + LiveStrip + footer wrap the services page" \
-  "Chrome persists on /services"
 
 echo ""
 echo "  → Navigate to /review and /contact. (/about folded into /contact in 16.2.)"

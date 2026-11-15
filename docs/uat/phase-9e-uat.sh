@@ -152,7 +152,7 @@ echo ""
 # Deliverables: D1, D2, D3, D9
 
 scenario "1, Fresh visitor discovers nav through NavHint (Flow C)" \
-  "Core navigation hypothesis: visitor with no prior exposure reaches Services/Contact via SessionPulse + NavHint without a conventional nav bar"
+  "Core navigation hypothesis: visitor with no prior exposure reaches Contact via SessionPulse + NavHint without a conventional nav bar"
 
 setup \
   "Open an incognito window on desktop viewport (≥768px)." \
@@ -199,15 +199,15 @@ expect \
   "16-cell ASCII coverage bar + chip grid showing 20 event-type chips." \
   "Ecommerce funnel: PRODUCT_VIEW [  ] / ADD_TO_CART [  ] / CHECKOUT [  ] / PURCHASE [  ]." \
   "Consent summary (three rows)." \
-  "Portal section: > SERVICES / > CONTACT (the About portal left in 16.2)."
+  "Portal section: > CONTACT only (the About portal left in 16.2, the Services portal in 16.1)."
 confirm "All Overview sections render (header, coverage, funnel, consent, portals)"
 
-do_step "1.7, Click '> SERVICES' in the portal section."
+do_step "1.7, Click '> CONTACT' in the portal section."
 expect \
   "Overlay closes." \
-  "Browser routes to /services." \
-  "DevTools Console: 'portal_click' fires with destination: 'services'."
-confirm "Portal link closes overlay AND routes to /services AND fires portal_click"
+  "Browser routes to /contact." \
+  "DevTools Console: 'portal_click' fires with destination: 'contact'."
+confirm "Portal link closes overlay AND routes to /contact AND fires portal_click"
 
 # ────────────────────────────────────────────────────────────────────────
 # SCENARIO 2, Returning-session visitor sees no hint
@@ -219,7 +219,7 @@ scenario "2, Returning-session visitor sees no hint" \
 setup \
   "Continue from Scenario 1 (hint already fired, sessionStorage key set). Do NOT clear storage."
 
-do_step "2.1, Navigate to /services (typed URL), then back to / via the 'Back to homepage' bar."
+do_step "2.1, Navigate to /review (typed URL), then back to / via the 'Back to homepage' bar."
 expect "No NavHint after 3s idle on /. No 'nav_hint_shown' event."
 confirm "Same-tab re-visit does NOT re-show the hint"
 
@@ -610,7 +610,7 @@ expect \
   "No 'nav_hint_dismissed' fires, dismissal only fires when hint rendered."
 confirm "Later idle does not fire hint; no nav_hint_dismissed without nav_hint_shown"
 
-do_step "15.4, Navigate to /services (typed URL), then back to / via the 'Back to homepage' bar."
+do_step "15.4, Navigate to /review (typed URL), then back to / via the 'Back to homepage' bar."
 expect "No hint on return to / (sessionStorage gate may or may not be set; behavior is homepage-entry-scoped anyway)."
 confirm "Return to / in same tab does not re-fire hint"
 

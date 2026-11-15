@@ -414,8 +414,8 @@ verify "Homepage <head> includes JSON-LD Person schema" \
 verify "/contact <head> includes Twitter card metadata" \
   "curl -sf '$BASE_URL/contact' -o /tmp/contact.html && grep -qE 'name=\"twitter:card\"' /tmp/contact.html"
 
-verify "/services has its own canonical (per-route metadata layout)" \
-  "curl -sf '$BASE_URL/services' -o /tmp/services.html && grep -qE 'rel=\"canonical\"' /tmp/services.html && grep -qE '/services' /tmp/services.html"
+verify "/services lands on / (16.1 deleted the page)" \
+  "curl -sSL -o /dev/null -w '%{http_code} %{url_effective}' $BASE_URL/services | grep -qE '^200 https?://[^/]+/\$'"
 
 verify "/contact has its own openGraph metadata" \
   "curl -sf '$BASE_URL/contact' -o /tmp/contact.html && grep -qE 'property=\"og:title\"' /tmp/contact.html"
@@ -645,7 +645,7 @@ setup \
   "Fresh tab at $BASE_URL/" \
   "DevTools → Application tab open in another window for cross-checking"
 
-do_step "Navigate to $BASE_URL/, walk a bit (visit /services, return to /)."
+do_step "Navigate to $BASE_URL/, walk a bit (visit /review, return to /)."
 open_url "$BASE_URL/"
 
 do_step "Open SessionPulse → Overview tab."
@@ -835,7 +835,7 @@ setup "Fresh tab at $BASE_URL/"
 
 do_step "Open DevTools → Console (cleared). Hard-reload $BASE_URL/."
 
-do_step "Walk: / → /services → /review → /contact → /demo/ecommerce."
+do_step "Walk: / → /review → /contact → /demo/ecommerce."
 
 do_step "Open SessionPulse → cycle Overview / Timeline / Consent → close."
 

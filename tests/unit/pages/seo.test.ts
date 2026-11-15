@@ -55,7 +55,6 @@ describe('Phase 10d D4 — SEO', () => {
 
   describe('Per-route layout metadata', () => {
     const routes = [
-      { path: '@/app/services/layout', name: 'services' },
       { path: '@/app/contact/layout', name: 'contact' },
       { path: '@/app/review/layout', name: 'review' },
       { path: '@/app/demo/ecommerce/layout', name: 'ecommerce demo' },
@@ -170,13 +169,12 @@ describe('Phase 10d D4 — SEO', () => {
       const urls = entries.map((e) => e.url);
 
       // Canonical static inclusions (`/about` left with 16.2, which folds
-      // it into `/contact`). Tightened
+      // it into `/contact`; `/services` left with 16.1). Tightened
       // beyond `arrayContaining` so a future drop of e.g. `/demo`
       // can't silently slip past the test (mirrors the product-URL
       // tightness fix-pack applied at line 111-114 below).
       const expectedStatic = [
         'https://iampatterson.com',
-        'https://iampatterson.com/services',
         'https://iampatterson.com/contact',
         'https://iampatterson.com/review',
         'https://iampatterson.com/demo',

@@ -87,7 +87,7 @@
     "name": "cta_location",
     "type": "STRING",
     "mode": "NULLABLE",
-    "description": "CTA location on page (click_cta events). Current values (15.4): session_pulse, header_review, portal_services, portal_contact, contact_cta_threshold, hero_review, hero_session, how_we_work_link, how_we_work_review, proof_button, proof_panel, review_page_top, review_page_bottom, contact_review_link, contact_email, footer_contact, footer_email, footer_session, services_closer, services_tier_01, services_tier_02, services_tier_03, services_tier_04. Retired values, still in older rows: hero, final_cta, demo_card_ecommerce, pipeline_see_your_session, review, proof. 15.4 deleted the CTAs of the first four (hero was the old hero); preview deploys emitted review and proof before 15.4 split them."
+    "description": "CTA location on page (click_cta events). Current values (15.4): session_pulse, header_review, portal_contact, contact_cta_threshold, hero_review, hero_session, how_we_work_link, how_we_work_review, proof_button, proof_panel, review_page_top, review_page_bottom, contact_review_link, contact_email, footer_contact, footer_email, footer_session. Retired values, still in older rows: hero, final_cta, demo_card_ecommerce, pipeline_see_your_session, review, proof, services_closer, services_tier_01, services_tier_02, services_tier_03, services_tier_04. 15.4 deleted the CTAs of the first four (hero was the old hero); preview deploys emitted review and proof before 15.4 split them; 16.1 deleted the services page, which carried the last five."
   },
   {
     "name": "form_name",
@@ -321,7 +321,7 @@
     "name": "destination",
     "type": "STRING",
     "mode": "NULLABLE",
-    "description": "Portal link destination: services, about, contact (portal_click events, Phase 9E deliverable 9)"
+    "description": "Portal link destination (portal_click events, Phase 9E deliverable 9). Current values: contact. Retired values, still in older rows: services, about. 16.2 deleted the About portal and 16.1 the Services portal."
   },
   {
     "name": "threshold",

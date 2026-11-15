@@ -31,7 +31,7 @@ const bigQueryColumns = JSON.parse(
   readFileSync(join(__dirname, '../../../infrastructure/bigquery/schema.json'), 'utf8'),
 ) as { name: string; description: string }[];
 
-/** The values 15.4 retired, which older BigQuery rows still carry. */
+/** The values 15.4 and 16.1 retired, which older BigQuery rows still carry. */
 const RETIRED_CTA_LOCATIONS = [
   'hero',
   'final_cta',
@@ -39,6 +39,11 @@ const RETIRED_CTA_LOCATIONS = [
   'pipeline_see_your_session',
   'review',
   'proof',
+  'services_closer',
+  'services_tier_01',
+  'services_tier_02',
+  'services_tier_03',
+  'services_tier_04',
 ];
 
 const ctaDescription = () => bigQueryColumns.find((c) => c.name === 'cta_location')!.description;
@@ -139,7 +144,6 @@ describe('Event schema types', () => {
     const all: Record<CtaLocation, true> = {
       session_pulse: true,
       header_review: true,
-      portal_services: true,
       portal_contact: true,
       contact_cta_threshold: true,
       hero_review: true,
@@ -155,13 +159,8 @@ describe('Event schema types', () => {
       footer_contact: true,
       footer_email: true,
       footer_session: true,
-      services_closer: true,
-      services_tier_01: true,
-      services_tier_02: true,
-      services_tier_03: true,
-      services_tier_04: true,
     };
-    expect(Object.keys(all)).toHaveLength(23);
+    expect(Object.keys(all)).toHaveLength(17);
 
     // The schema checklist: the BigQuery column lists exactly the union.
     const { current, retired } = ctaLists(ctaDescription());
@@ -200,8 +199,8 @@ describe('Event schema types', () => {
     expect(retired).toEqual(['c_three']);
   });
 
-  // The values whose calls to action 15.4 deleted (and the two the phase 15
-  // rewrite used before 15.4 split them). Rows in BigQuery keep them, and the
+  // The values whose calls to action 15.4 and 16.1 deleted (and the two the
+  // phase 15 rewrite used before 15.4 split them). Rows in BigQuery keep them, and the
   // column description documents them, but no code may emit them again.
   it('CtaLocation no longer carries the deleted locations', () => {
     type Deleted = Extract<
@@ -212,6 +211,9 @@ describe('Event schema types', () => {
       | 'pipeline_see_your_session'
       | 'review'
       | 'proof'
+      | 'portal_services'
+      | 'services_closer'
+      | `services_tier_${'01' | '02' | '03' | '04'}`
     >;
     const none: [Deleted] extends [never] ? true : false = true;
     expect(none).toBe(true);
@@ -309,17 +311,18 @@ describe('Event schema types', () => {
     expect(byReselect.source).toBe('manual_select');
   });
 
-  it('defines PortalClickEvent with services and contact destinations (about left with 16.2)', () => {
-    const toServices: PortalClickEvent = {
+  it('defines PortalClickEvent with the contact destination only (about left with 16.2, services with 16.1)', () => {
+    const toContact: PortalClickEvent = {
       ...baseFields,
       event: 'portal_click',
-      destination: 'services',
+      destination: 'contact',
     };
     // @ts-expect-error the About portal is gone, so 'about' is not a destination
-    const toAbout: PortalClickEvent = { ...toServices, destination: 'about' };
+    const toAbout: PortalClickEvent = { ...toContact, destination: 'about' };
     void toAbout;
-    const toContact: PortalClickEvent = { ...toServices, destination: 'contact' };
-    expect(toServices.destination).toBe('services');
+    // @ts-expect-error the Services portal is gone, so 'services' is not a destination
+    const toServices: PortalClickEvent = { ...toContact, destination: 'services' };
+    void toServices;
     expect(toContact.destination).toBe('contact');
   });
 

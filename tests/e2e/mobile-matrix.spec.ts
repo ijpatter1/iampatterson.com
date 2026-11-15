@@ -6,7 +6,6 @@
  * matter for launch-prep:
  *
  *   /                              homepage hero, primary CTA above-fold
- *   /services                      tier deep-link targets
  *   /review                        the review page and its booking buttons
  *   /contact                       form
  *   /contact?intent=review         form, with the review heading
@@ -74,7 +73,6 @@ type RouteSpec = {
 
 const ROUTES: RouteSpec[] = [
   { path: '/', label: 'home', expectedH1: /count on/i, isHomepage: true },
-  { path: '/services', label: 'services', expectedH1: /./ },
   { path: '/review', label: 'review', expectedH1: /./ },
   { path: '/contact', label: 'contact', expectedH1: /./ },
   { path: '/contact?intent=review', label: 'contact-review', expectedH1: /book the review/i },

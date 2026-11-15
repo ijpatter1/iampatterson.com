@@ -136,11 +136,13 @@ describe('ConfirmationCloser (UAT r2 item 20 split)', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders the services link + back-to-shop and return-to-site nav', () => {
+  // /services was deleted in 16.1 and redirects home, so the closer no longer
+  // links to it; the shop and site links remain.
+  it('renders back-to-shop and return-to-site nav, and no link to the deleted /services', () => {
     render(<ConfirmationCloser />);
     const links = screen.getAllByRole('link');
     const hrefs = links.map((l) => l.getAttribute('href'));
-    expect(hrefs).toContain('/services');
+    expect(hrefs).not.toContain('/services');
     expect(hrefs).toContain('/demo/ecommerce');
     expect(hrefs).toContain('/');
   });

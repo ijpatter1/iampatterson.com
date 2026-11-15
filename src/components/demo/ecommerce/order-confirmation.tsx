@@ -138,7 +138,7 @@ export function OrderConfirmation({ orderId, orderTotal, itemCount }: OrderConfi
 
 /**
  * Confirmation-page closing beat, "Dashboards are not the payoff"
- * paragraph + services link + back-nav. Split out of `OrderConfirmation`
+ * paragraph + back-nav. Split out of `OrderConfirmation`
  * in UAT r2 item 20 so the page-level composition can render it AFTER
  * the `DashboardPayoff` Metabase embed (pre-r2 it rendered above,
  * putting the "dashboards are not the payoff" CTA in conflict with the
@@ -152,12 +152,6 @@ export function ConfirmationCloser() {
           Dashboards are not the payoff. Answers are. The mart layer is what makes the answers
           trustworthy.
         </p>
-        <Link
-          href="/services"
-          className="font-mono text-xs uppercase tracking-[0.12em] text-[var(--shop-terracotta,#C4703A)] hover:underline"
-        >
-          read about the services →
-        </Link>
       </section>
 
       <nav className="flex flex-wrap items-center gap-4 border-t border-[var(--shop-warm-brown,#5C4A3D)]/12 pt-6 text-sm">
