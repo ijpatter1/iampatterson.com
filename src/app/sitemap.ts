@@ -8,15 +8,14 @@ const SITE_URL = 'https://www.iampatterson.com';
  * Phase 10d D4 — sitemap.
  *
  * Includes the canonical user-facing routes that should be crawled +
- * indexed: home, review, contact, demo entry, ecommerce
- * landing + every product detail page in the catalog.
+ * indexed: home, review, contact, ecommerce landing + every product
+ * detail page in the catalog.
  *
  * Excludes session-scoped routes that have no value as standalone
  * search-results landing pages: cart, checkout, confirmation,
  * /contact/thanks. Those are also disallowed in `robots.ts`
- * (belt-and-suspenders). The `/demo/ecommerce/analytics` route is
- * also omitted — it's a Tier-3 internal-data view that depends on
- * session state and doesn't deep-link cleanly from search.
+ * (belt-and-suspenders). `/demo` and `/demo/ecommerce/analytics`
+ * were deleted in 17.1 and redirect to the shop, so neither is listed.
  */
 export default function sitemap(): MetadataRoute.Sitemap {
   const lastModified = new Date();
@@ -34,12 +33,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified,
       changeFrequency: 'monthly',
       priority: 0.7,
-    },
-    {
-      url: `${SITE_URL}/demo`,
-      lastModified,
-      changeFrequency: 'monthly',
-      priority: 0.5,
     },
     {
       url: `${SITE_URL}/demo/ecommerce`,

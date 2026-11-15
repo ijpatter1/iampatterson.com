@@ -49,12 +49,18 @@ describe('OrderConfirmation (Phase 9F D9)', () => {
     ).toBeInTheDocument();
   });
 
-  it('lead paragraph second sentence is sentence-cased (UAT r2 item 18)', () => {
-    renderConfirmation({ orderTotal: 47.5 });
-    expect(
-      screen.getByText(/The dashboard ops reads in the morning is what you/),
-    ).toBeInTheDocument();
-  });
+  // 17.1 removed the dashboard embed that sat below this paragraph. The lead
+  // must not send the visitor looking for a dashboard the page no longer has.
+  it.each([47.5, 0])(
+    'lead paragraph points at no dashboard on the page (total %s)',
+    (orderTotal) => {
+      const { container } = renderConfirmation({ orderTotal });
+      const lead = container.querySelector('section p');
+      expect(lead?.textContent).toMatch(/just landed in production BigQuery\.$/);
+      expect(container.textContent).not.toMatch(/revenue below/);
+      expect(container.textContent).not.toMatch(/what you.re looking at/);
+    },
+  );
 
   it('falls back to generic copy when orderTotal is 0 (zombie-state drift fix)', () => {
     renderConfirmation({ orderTotal: 0 });
@@ -69,8 +75,8 @@ describe('OrderConfirmation (Phase 9F D9)', () => {
 
   it('does NOT render the "Dashboards are not the payoff" closing beat (moved to ConfirmationCloser in UAT r2 item 20)', () => {
     const { container } = renderConfirmation();
-    // The closing beat lives in ConfirmationCloser now so the page can
-    // render it AFTER the DashboardPayoff embed.
+    // The closing beat lives in ConfirmationCloser, which the page renders
+    // last.
     expect(container.textContent).not.toMatch(/Dashboards are not the payoff/);
   });
 

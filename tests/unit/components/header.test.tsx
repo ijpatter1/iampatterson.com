@@ -106,7 +106,7 @@ describe('Header, post-9E-D1 nav pivot', () => {
     expect(screen.queryByTestId('home-bar')).not.toBeInTheDocument();
   });
 
-  it('does NOT render the home bar on demo routes, DemoFooterNav already provides back-nav (F8 eval Minor #10)', () => {
+  it('does NOT render the home bar on the shop, whose own nav and footer already lead back (F8 eval Minor #10)', () => {
     for (const path of [
       '/demo/ecommerce',
       '/demo/ecommerce/tuna-plush',

@@ -16,28 +16,29 @@
 import { REVIEW_PAGE_HREF } from '@/lib/content/review';
 
 const CLAUDISH = '/claudish';
+const SHOP = '/demo/ecommerce';
 
 export function showSiteFooter(pathname: string): boolean {
-  if (pathname.startsWith('/demo/ecommerce')) return false;
+  if (pathname.startsWith(SHOP)) return false;
   if (pathname.startsWith(CLAUDISH)) return false;
   return true;
 }
 
 export function showAmbientBubbles(pathname: string): boolean {
-  if (pathname.startsWith('/demo')) return false;
+  if (pathname.startsWith(SHOP)) return false;
   if (pathname.startsWith(CLAUDISH)) return false;
   return true;
 }
 
 /**
- * Moved verbatim from header.tsx (F8 eval Minor #10 rationale preserved):
- * demo routes ship their own back-nav affordances; stacking HomeBar
- * would triple the chrome. Note `/demo/` keeps its original trailing
- * slash, so bare /demo intentionally still shows the bar.
+ * Moved from header.tsx (F8 eval Minor #10 rationale preserved): the
+ * shop ships its own back-nav affordances; stacking HomeBar would triple
+ * the chrome. 17.1 deleted the /demo catalog, so the predicates name the
+ * shop rather than the /demo prefix.
  */
 export function showHomeBar(pathname: string): boolean {
   if (pathname === '/') return false;
-  if (pathname.startsWith('/demo/')) return false;
+  if (pathname.startsWith(SHOP)) return false;
   if (pathname.startsWith(CLAUDISH)) return false;
   return true;
 }

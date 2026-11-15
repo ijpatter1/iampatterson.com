@@ -3,20 +3,14 @@
  *
  * Phase 9F D9, integration test for the confirmation page Server Component.
  *
- * Guards the env → dashboard-signer → DashboardPayoff wiring so a typo in an
- * env var name, a dropped `&&` guard, or a mis-named prop fails loudly here
- * rather than silently breaking the deployed page. Replaces the pre-9F
- * three-iframe integration guards (`/embed/question/:jwt` × 3 + AOV caption
- * interpolation + `tier3-fallback` testid) with the single-dashboard-embed
- * variants (`/embed/dashboard/:jwt` × 1 + `view full dashboard` link +
- * zombie-state $total fallback per the doc spec).
+ * Numeric query params are sanitized at the page boundary so the order block
+ * can trust them. 17.1 removed the Metabase dashboard embed: the page no
+ * longer signs an embed URL or reads the embedding secret, so it renders the
+ * same with or without the old env vars, and points no visitor at the BI host.
  */
 import { render, screen } from '@testing-library/react';
 
 import ConfirmationPage from '@/app/demo/ecommerce/confirmation/page';
-
-const VALID_CONFIG = '{"dashboardId":2,"cardIds":{"funnel":40,"aov":41,"dailyRevenue":45}}';
-const VALID_SECRET = 'test-secret-0123456789abcdef0123456789abcdef';
 
 const ORIG_ENV = { ...process.env };
 
@@ -31,7 +25,7 @@ async function renderPage(searchParams: Record<string, string | string[] | undef
   return render(node);
 }
 
-describe('ConfirmationPage, env → dashboard-embed wiring', () => {
+describe('ConfirmationPage', () => {
   it('renders the order confirmation block with the search-param values', async () => {
     await renderPage({ order_id: 'demo-d9', total: '44.98', items: '2' });
     expect(screen.getByText(/order confirmed/i)).toBeInTheDocument();
@@ -40,47 +34,21 @@ describe('ConfirmationPage, env → dashboard-embed wiring', () => {
     expect(screen.getAllByText(/\$44\.98/).length).toBeGreaterThanOrEqual(1);
   });
 
-  it('mints ONE full-dashboard iframe URL when both env vars are present', async () => {
-    process.env.MB_EMBEDDING_SECRET_KEY = VALID_SECRET;
-    process.env.METABASE_EMBED_CONFIG = VALID_CONFIG;
-
-    const { container } = await renderPage({ order_id: 'demo-d9', total: '44.98', items: '2' });
-
-    const iframes = container.querySelectorAll('iframe');
-    expect(iframes).toHaveLength(1);
-    expect(iframes[0].getAttribute('src')).toMatch(
-      /^https:\/\/bi\.iampatterson\.com\/embed\/dashboard\//,
-    );
-  });
-
-  it('renders the visible fallback when MB_EMBEDDING_SECRET_KEY is missing', async () => {
-    delete process.env.MB_EMBEDDING_SECRET_KEY;
-    process.env.METABASE_EMBED_CONFIG = VALID_CONFIG;
+  // 17.1: Metabase is being retired and its embedding secret was exposed in
+  // the 2026-09 compromise. Even with the old env vars still set on a
+  // deployment, the page embeds nothing and links nowhere on the BI host.
+  it('embeds no dashboard and names no BI host, even with the old embed env vars set', async () => {
+    process.env.MB_EMBEDDING_SECRET_KEY = 'test-secret-0123456789abcdef0123456789abcdef';
+    process.env.METABASE_EMBED_CONFIG = '{"dashboardId":2}';
 
     const { container } = await renderPage({ order_id: 'demo-d9', total: '44.98', items: '2' });
 
     expect(container.querySelectorAll('iframe')).toHaveLength(0);
-    expect(
-      screen.getByText(/signing env vars aren't wired in this environment/i),
-    ).toBeInTheDocument();
-  });
-
-  it('renders the visible fallback when METABASE_EMBED_CONFIG is missing', async () => {
-    process.env.MB_EMBEDDING_SECRET_KEY = VALID_SECRET;
-    delete process.env.METABASE_EMBED_CONFIG;
-
-    const { container } = await renderPage({ order_id: 'demo-d9', total: '44.98', items: '2' });
-
-    expect(container.querySelectorAll('iframe')).toHaveLength(0);
-    expect(
-      screen.getByText(/signing env vars aren't wired in this environment/i),
-    ).toBeInTheDocument();
+    expect(container.innerHTML).not.toMatch(/bi\.iampatterson\.com|metabase/i);
+    expect(container.innerHTML).not.toContain('test-secret-0123456789abcdef');
   });
 
   it('normalizes duplicate query params (string[] searchParams) to the first value', async () => {
-    process.env.MB_EMBEDDING_SECRET_KEY = VALID_SECRET;
-    process.env.METABASE_EMBED_CONFIG = VALID_CONFIG;
-
     await renderPage({ order_id: ['demo-d9', 'second'], total: ['44.98', '99'], items: ['2'] });
 
     expect(screen.getByText(/demo-d9/)).toBeInTheDocument();
@@ -106,54 +74,9 @@ describe('ConfirmationPage, env → dashboard-embed wiring', () => {
     expect(screen.queryByText(/-100/)).toBeNull();
   });
 
-  it('does not leak MB_EMBEDDING_SECRET_KEY into the rendered HTML', async () => {
-    process.env.MB_EMBEDDING_SECRET_KEY = VALID_SECRET;
-    process.env.METABASE_EMBED_CONFIG = VALID_CONFIG;
-
-    const { container } = await renderPage({ order_id: 'demo-d9', total: '44.98', items: '2' });
-    expect(container.innerHTML).not.toContain(VALID_SECRET);
-  });
-
-  it('page container widens to max-w-[1200px] per the doc spec', async () => {
-    const { container } = await renderPage({ order_id: 'x', total: '10', items: '1' });
-    const main = container.querySelector('main');
-    expect(main?.className).toMatch(/max-w-\[1200px\]/);
-  });
-
-  // UAT r2 item 20, the dashboard was rendering AFTER the "Dashboards
-  // are not the payoff" CTA, which fought the payoff framing.
-  describe('UAT r2 item 20, dashboard lands before the closing beat', () => {
-    it('dashboard embed (iframe) appears before the closing beat in the DOM', async () => {
-      process.env.MB_EMBEDDING_SECRET_KEY = VALID_SECRET;
-      process.env.METABASE_EMBED_CONFIG = VALID_CONFIG;
-
-      const { container } = await renderPage({ order_id: 'demo-d9', total: '44.98', items: '2' });
-      const iframe = container.querySelector('iframe');
-      const closingBeat = Array.from(container.querySelectorAll('p')).find((p) =>
-        /Dashboards are not the payoff/.test(p.textContent ?? ''),
-      );
-      expect(iframe).not.toBeNull();
-      expect(closingBeat).toBeDefined();
-      // documentPosition FOLLOWING means the second arg comes AFTER the first.
-      const pos = iframe!.compareDocumentPosition(closingBeat as Node);
-      expect(pos & Node.DOCUMENT_POSITION_FOLLOWING).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-    });
-
-    it('even in the fallback path (no env), the closing beat still comes after the dashboard-payoff block', async () => {
-      delete process.env.MB_EMBEDDING_SECRET_KEY;
-      process.env.METABASE_EMBED_CONFIG = VALID_CONFIG;
-
-      const { container } = await renderPage({ order_id: 'demo-d9', total: '44.98', items: '2' });
-      const fallback = Array.from(container.querySelectorAll('p')).find((p) =>
-        /signing env vars aren't wired/i.test(p.textContent ?? ''),
-      );
-      const closingBeat = Array.from(container.querySelectorAll('p')).find((p) =>
-        /Dashboards are not the payoff/.test(p.textContent ?? ''),
-      );
-      expect(fallback).toBeDefined();
-      expect(closingBeat).toBeDefined();
-      const pos = fallback!.compareDocumentPosition(closingBeat as Node);
-      expect(pos & Node.DOCUMENT_POSITION_FOLLOWING).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-    });
+  it('still closes with the way back to the shop and the site', async () => {
+    await renderPage({ order_id: 'demo-d9', total: '44.98', items: '2' });
+    const hrefs = screen.getAllByRole('link').map((l) => l.getAttribute('href'));
+    expect(hrefs).toEqual(expect.arrayContaining(['/demo/ecommerce', '/']));
   });
 });

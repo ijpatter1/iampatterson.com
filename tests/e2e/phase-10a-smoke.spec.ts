@@ -5,8 +5,8 @@
  * `next start` (10/10 routes 200, SSR HTML content signatures verified,
  * server log clean) with a real-Chromium pass that exercises what
  * jsdom can't: React 19 hydration timing, Suspense boundaries, overlay
- * interaction, add-to-cart toast rendering, and the Metabase iframe
- * cold-load path on `/demo/ecommerce/confirmation`.
+ * interaction, add-to-cart toast rendering, and the confirmation page's
+ * Server Component on `/demo/ecommerce/confirmation`.
  *
  * Gated on `E2E_ENABLED=1` matching the ecommerce-sessionpulse spec
  * convention. Assumes the dev server is already running on port 3000
@@ -23,20 +23,15 @@
  *      the symptom would land here.
  *   3. Ecommerce listing → product → add-to-cart toast → cart → checkout
  *      → confirmation flow completes, toast animates in.
- *   4. Confirmation page renders the Metabase iframe (or env-gate
- *      fallback) — verifies the async-searchParams codemod landed
- *      cleanly and the Server Component resolves without error.
+ *   4. Confirmation page renders, with no dashboard embed since 17.1 —
+ *      verifies the async-searchParams codemod landed cleanly and the
+ *      Server Component resolves without error.
  *
  * Implementation notes:
  * - Overlay tabs are plain `<button>` with `aria-label`, not
  *   `role="tab"` — select via `getByRole('button', { name: /.../i })`.
  * - Toast event name is the raw dataLayer name (`add_to_cart`), not a
  *   humanised string.
- * - Confirmation-page `page.goto` must use `waitUntil: 'domcontentloaded'`
- *   because the `after()` hook fires a fetch to `bi.iampatterson.com`
- *   that in dev can hang `networkidle` well past the 30s test timeout.
- *   The D2 contract only requires the Server Component to render; the
- *   warmup deliberately doesn't block render.
  */
 import { test, expect, type ConsoleMessage } from '@playwright/test';
 
@@ -191,47 +186,26 @@ test.describe('Phase 10a D6 interactive smoke', () => {
     expect(errors).toEqual([]);
   });
 
-  test('confirmation page renders the Metabase dashboard iframe (or env-gate fallback) without errors', async ({
+  // 17.1 removed the Metabase dashboard embed and its warmup: the page
+  // renders the order and the closing beat, frames nothing, and neither links
+  // to nor requests anything from the BI host.
+  test('confirmation page renders the order with no dashboard embed and nothing from the BI host', async ({
     page,
   }) => {
     const issues: ConsoleIssue[] = [];
     wireConsoleCapture(page, issues);
-
-    // `after()` fires a warmup fetch to `bi.iampatterson.com` that
-    // doesn't block render. `waitUntil: 'domcontentloaded'` is enough
-    // — `'networkidle'` would hang on the warmup's network chain.
-    await page.goto('/demo/ecommerce/confirmation?order_id=SMOKE-10a&total=44.98&items=2', {
-      waitUntil: 'domcontentloaded',
+    const biRequests: string[] = [];
+    page.on('request', (req) => {
+      if (/bi\.iampatterson\.com/.test(req.url())) biRequests.push(req.url());
     });
 
-    // Wait for the closing beat (always-present) to confirm the Server
-    // Component resolved its `await props.searchParams`.
-    await expect(page.getByText(/Dashboards are not the payoff/i)).toBeVisible({
-      timeout: 10000,
-    });
+    await page.goto('/demo/ecommerce/confirmation?order_id=SMOKE-10a&total=44.98&items=2');
 
-    // Two valid outcomes depending on env config (both exercise the
-    // D1 codemod + D2 `after()` wiring correctly):
-    //   (a) Signed iframe: src starts with
-    //       https://bi.iampatterson.com/embed/dashboard/...
-    //   (b) Fallback copy when MB_EMBEDDING_SECRET_KEY /
-    //       METABASE_EMBED_CONFIG env vars aren't wired.
-    const iframeSrc = await page
-      .locator('iframe')
-      .first()
-      .getAttribute('src')
-      .catch(() => null);
-    const fallbackText = page.getByText(/signing env vars aren't wired|dashboard embeds disabled/i);
-    const fallbackVisible = await fallbackText.isVisible().catch(() => false);
-
-    const iframeOk =
-      typeof iframeSrc === 'string' &&
-      /^https:\/\/bi\.iampatterson\.com\/embed\/dashboard\//.test(iframeSrc);
-
-    expect(
-      iframeOk || fallbackVisible,
-      `Expected signed Metabase iframe or env-gate fallback. iframeSrc=${iframeSrc ?? 'null'}, fallbackVisible=${fallbackVisible}`,
-    ).toBe(true);
+    await expect(page.getByText(/order confirmed/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/Dashboards are not the payoff/i)).toBeVisible();
+    await expect(page.locator('iframe')).toHaveCount(0);
+    await expect(page.locator('a[href*="bi.iampatterson.com"]')).toHaveCount(0);
+    expect(biRequests).toEqual([]);
 
     const errors = issues.filter((i) => i.severity === 'error');
     expect(errors).toEqual([]);

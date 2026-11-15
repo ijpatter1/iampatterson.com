@@ -85,7 +85,7 @@ export function Header() {
  * Slim "Back to homepage" bar (F5 UAT fix for S2, "each non-homepage
  * page needs a back-to-homepage CTA; navigating via footer is too much
  * friction"). Rendered directly below the LiveStrip on every route but
- * the homepage, /demo/* and /claudish (see `showHomeBar`). F8 polish: text-ink-2 (was text-ink-3)
+ * the homepage, the shop and /claudish (see `showHomeBar`). F8 polish: text-ink-2 (was text-ink-3)
  * so it reads as an action, not chrome; arrow gets a hover-translate
  * for discoverability.
  */
