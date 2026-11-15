@@ -43,7 +43,7 @@
 #
 # Usage:
 #   bash docs/uat/phase-10d-uat.sh                    # local dev (default)
-#   BASE_URL=https://iampatterson.com \
+#   BASE_URL=https://www.iampatterson.com \
 #     bash docs/uat/phase-10d-uat.sh                  # production
 #   SKIP_LOAD=1 bash docs/uat/phase-10d-uat.sh        # skip D6 load suites
 #   SKIP_SLOW=1 bash docs/uat/phase-10d-uat.sh        # skip 16s wait scenarios
@@ -878,7 +878,7 @@ if [ "$SKIP" -gt 0 ]; then
   echo "  ⚠  UAT: PASS (PARTIAL) — $SKIP scenario(s) skipped."
   echo ""
   echo "  Skip reasons: SKIP_LOAD=1, SKIP_SLOW=1, or [prod]-only scenarios"
-  echo "  on a local-dev BASE_URL. Re-run with BASE_URL=https://iampatterson.com"
+  echo "  on a local-dev BASE_URL. Re-run with BASE_URL=https://www.iampatterson.com"
   echo "  + no SKIP_* flags to cover everything before merge-to-main."
   hr
   exit 0

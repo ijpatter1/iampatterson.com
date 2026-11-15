@@ -23,7 +23,7 @@
 #
 # Usage:
 #   bash docs/uat/phase-10a-uat.sh                   # local dev (skips [prod*])
-#   BASE_URL=https://iampatterson.com \
+#   BASE_URL=https://www.iampatterson.com \
 #     bash docs/uat/phase-10a-uat.sh                 # production
 #
 # Prerequisites:
@@ -587,7 +587,7 @@ fi
 if [ "$SKIP" -gt 0 ]; then
   echo "  ⚠  UAT: PASS (LOCAL) — $SKIP scenario(s) skipped (require production URL)."
   echo ""
-  echo "  Re-run with BASE_URL=https://iampatterson.com to cover the [prod*]"
+  echo "  Re-run with BASE_URL=https://www.iampatterson.com to cover the [prod*]"
   echo "  scenarios before merge-to-main."
   hr
   exit 0

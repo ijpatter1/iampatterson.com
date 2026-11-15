@@ -28,7 +28,7 @@ describe('ContactThanksPage', () => {
   // The page sits inside /contact's layout. Without its own metadata, a shared
   // link to it would carry /contact's card and canonical.
   it("carries its own share card and canonical, not /contact's, and stays out of search", () => {
-    const url = 'https://iampatterson.com/contact/thanks';
+    const url = 'https://www.iampatterson.com/contact/thanks';
     expect(metadata.openGraph).toMatchObject({
       title: THANKS_METADATA.title,
       description: THANKS_METADATA.description,

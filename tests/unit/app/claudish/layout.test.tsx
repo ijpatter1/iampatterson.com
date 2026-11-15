@@ -16,11 +16,11 @@ describe('ClaudishLayout metadata', () => {
   });
 
   it('sets the bare canonical so the unbounded ?t= space collapses to one URL', () => {
-    expect(metadata.alternates?.canonical).toBe('https://iampatterson.com/claudish');
+    expect(metadata.alternates?.canonical).toBe('https://www.iampatterson.com/claudish');
   });
 
   it('carries openGraph + twitter defaults', () => {
-    expect(metadata.openGraph?.url).toBe('https://iampatterson.com/claudish');
+    expect(metadata.openGraph?.url).toBe('https://www.iampatterson.com/claudish');
     expect(metadata.twitter).toMatchObject({ card: 'summary_large_image' });
   });
 });

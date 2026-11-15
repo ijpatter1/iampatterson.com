@@ -67,8 +67,10 @@ specific route surfaces a need.
 
 ### `metadataBase`
 
-Set to `https://iampatterson.com/` on root layout so all OG / Twitter
+Set to `https://www.iampatterson.com/` on root layout so all OG / Twitter
 relative URLs resolve correctly when rendered in social preview cards.
+(Until 2026-11-15 it was the apex, which production redirects to www;
+LinkedIn would not load a share image behind that redirect.)
 
 ---
 
@@ -203,10 +205,13 @@ Before launching, in priority order:
       Vercel-side canonical disagrees (e.g., domain serves on `www.`
       without redirect), every page emits a canonical pointing at a
       different origin than the one that resolved the request — the
-      single most common SEO-launch foot-gun.
+      single most common SEO-launch foot-gun. **Decided 2026-11-15:**
+      Vercel serves www and redirects the apex, so every canonical,
+      og:url, sitemap and JSON-LD URL is `https://www.iampatterson.com/...`;
+      a unit test fails if `src/` names the apex.
 - [ ] **Verify Open Graph rendering.** Use `https://www.opengraph.xyz/`
       or LinkedIn / Twitter / Facebook debuggers against
-      `https://iampatterson.com/` to confirm the `/opengraph-image`
+      `https://www.iampatterson.com/` to confirm the `/opengraph-image`
       route renders correctly on each platform. Verify Instrument
       Serif loads (regular + italic on the accent word) — the OG
       image deliberately ships its own font assets via
@@ -216,10 +221,10 @@ Before launching, in priority order:
       via DNS TXT (preferred over meta-tag verification so it persists
       across re-deploys).
 - [ ] **Submit sitemap to Bing Webmaster Tools.** Same shape.
-- [ ] **Verify robots.txt** loads at `https://iampatterson.com/robots.txt`
+- [ ] **Verify robots.txt** loads at `https://www.iampatterson.com/robots.txt`
       and `Sitemap:` line is present.
 - [ ] **Test JSON-LD** via Google's Rich Results Test
-      (`https://search.google.com/test/rich-results?url=https%3A%2F%2Fiampatterson.com%2F`).
+      (`https://search.google.com/test/rich-results?url=https%3A%2F%2Fwww.iampatterson.com%2F`).
       Both Organization and Person schemas should validate.
 - [ ] **Run a Lighthouse SEO audit** on / and /services. Target:
       score 100. Already at 99-100 desktop per the Phase 10b D1b

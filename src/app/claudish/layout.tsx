@@ -20,11 +20,11 @@ export const metadata: Metadata = {
   openGraph: {
     title: TITLE,
     description: DESCRIPTION,
-    url: 'https://iampatterson.com/claudish',
+    url: 'https://www.iampatterson.com/claudish',
     type: 'website',
   },
   twitter: { card: 'summary_large_image', title: TITLE, description: DESCRIPTION },
-  alternates: { canonical: 'https://iampatterson.com/claudish' },
+  alternates: { canonical: 'https://www.iampatterson.com/claudish' },
 };
 
 /**

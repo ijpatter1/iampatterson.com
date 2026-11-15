@@ -9,7 +9,7 @@
  *   - https://schema.org/Organization
  *   - https://schema.org/Person
  *
- * Both schemas point at `https://iampatterson.com` as the canonical
+ * Both schemas point at `https://www.iampatterson.com` as the canonical
  * URL. The Person schema is `worksFor` linked to the Organization so
  * Google's Knowledge Graph can resolve the consultant ↔ entity
  * relationship cleanly.
@@ -17,7 +17,7 @@
 
 import { PRACTICE_NAME, SITE_DESCRIPTION } from './site';
 
-const SITE_URL = 'https://iampatterson.com';
+const SITE_URL = 'https://www.iampatterson.com';
 const ORG_NAME = PRACTICE_NAME;
 const PERSON_NAME = 'Ian Patterson';
 

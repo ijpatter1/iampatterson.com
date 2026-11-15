@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: TITLE,
     description: DESCRIPTION,
-    url: 'https://iampatterson.com/contact',
+    url: 'https://www.iampatterson.com/contact',
     type: 'website',
   },
   twitter: {
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     description: DESCRIPTION,
   },
   alternates: {
-    canonical: 'https://iampatterson.com/contact',
+    canonical: 'https://www.iampatterson.com/contact',
   },
 };
 

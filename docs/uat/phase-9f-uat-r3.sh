@@ -20,7 +20,7 @@
 #
 # Usage:
 #   bash docs/uat/phase-9f-uat-r3.sh                 # local dev (skips [prod])
-#   BASE_URL=https://iampatterson.com \
+#   BASE_URL=https://www.iampatterson.com \
 #     bash docs/uat/phase-9f-uat-r3.sh               # production
 #
 # Prerequisites:
@@ -326,7 +326,7 @@ fi
 
 if [ "$SKIP" -gt 0 ]; then
   echo "  VERDICT: INCOMPLETE, $SKIP scenario(s) skipped (likely require production URL)."
-  echo "           Re-run on production (BASE_URL=https://iampatterson.com) before release cut."
+  echo "           Re-run on production (BASE_URL=https://www.iampatterson.com) before release cut."
   exit 0
 fi
 
