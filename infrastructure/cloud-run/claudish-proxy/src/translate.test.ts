@@ -934,6 +934,36 @@ describe('20.1 gate: reservation and abort-estimate inputs', () => {
     for (const cap of caps) expect(cap).toBe(GEMINI_LOOP_MAX_OUTPUT_TOKENS);
   });
 
+  it('books nothing when the ladder is exhausted before any Claude request was sent', async () => {
+    // Every breaker open: no lane request leaves the proxy, so nothing is
+    // billed upstream. Charging the prefix-as-cache-write estimate here
+    // would book phantom spend on every capacity answer.
+    const lane = fakeLane('vertex-global', [{ kind: 'start' }]);
+    const breaker = new CircuitBreaker(1, 60000);
+    breaker.recordFailure('vertex-global');
+    const deps = makeDeps([lane], { breaker });
+    const releases: unknown[][] = [];
+    const real = deps.budget.reserve.bind(deps.budget);
+    deps.budget.reserve = () => {
+      const r = real();
+      if (!r) return r;
+      return {
+        reconcile: r.reconcile,
+        release: (...a: unknown[]) => {
+          releases.push(a);
+          (r.release as (...x: unknown[]) => void)(...a);
+        },
+      };
+    };
+    const ctx = stubReqRes({ text: 'Please review the plan.', direction: 'en2cl' as const });
+    await createTranslateHandler(deps)(ctx.req, ctx.res);
+
+    expect(lane.calls).toHaveLength(0);
+    expect(ctx.status()).toBe(503);
+    expect(releases).toHaveLength(1);
+    expect(releases[0][0]).toBeUndefined(); // released whole: $0 booked
+  });
+
   it('estimates an aborted Claude stream at Haiku 5.5 token density, prefix as a cache write', async () => {
     // The abort path used to estimate chars/4 and leave out the system
     // prefix. Haiku 5.5 bills ~chars/2.9 and a cold call writes the whole

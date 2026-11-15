@@ -225,14 +225,23 @@ export function createTranslateHandler(deps: TranslateDeps) {
     // The abort-path estimate is priced at the lane that was running: the
     // Gemini loop at Gemini rates, not the Haiku default (review batch 3).
     let activePrices: PriceTable | undefined;
+    // Set when a Claude lane call starts. Without one, nothing reached
+    // Anthropic or Vertex (breakers open, the ladder empty), so the Claude
+    // estimate, which charges the prefix as a cache write, would book
+    // phantom spend (20.1 gate).
+    let claudeRequestSent = false;
     const settle = (usage?: Usage, prices?: PriceTable) => {
       if (settled) return;
       settled = true;
       if (usage) reservation.reconcile(usage, prices);
       else if (activePrices) {
         reservation.release(estimateUsage(text.length, streamedChars), activePrices);
-      } else {
+      } else if (claudeRequestSent) {
         reservation.release(estimateClaudeUsage(direction, text.length, streamedChars));
+      } else {
+        reservation.release(
+          streamedChars > 0 ? estimateUsage(text.length, streamedChars) : undefined,
+        );
       }
       for (const extra of extraReservations) extra.release();
       extraReservations.length = 0;
@@ -455,6 +464,7 @@ export function createTranslateHandler(deps: TranslateDeps) {
       const onMasterAbort = () => attempt.abort();
       if (controller.signal.aborted) attempt.abort();
       else controller.signal.addEventListener('abort', onMasterAbort);
+      claudeRequestSent = true;
       const iterator = lane
         .stream({ text: normalized, direction }, attempt.signal)
         [Symbol.asyncIterator]();

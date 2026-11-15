@@ -245,7 +245,19 @@ describeIfGolden('golden set (live API)', () => {
   });
 
   describe('english → claudish', () => {
-    const repeat = parseGoldenRepeat(process.env.GOLDEN_REPEAT);
+    // Parsed in beforeAll, not here: describe.skip still runs this body, so
+    // a collection-time throw failed offline `npm test` on a leftover value.
+    let repeat = 1;
+    beforeAll(() => {
+      repeat = parseGoldenRepeat(process.env.GOLDEN_REPEAT);
+    });
+    // The per-test timeout is fixed at collection, before beforeAll runs, so
+    // it reads the value leniently (1 to 10 runs); the strict parse above
+    // decides whether the run happens at all.
+    const timeoutRuns = Math.min(
+      10,
+      Math.max(1, Math.floor(Number(process.env.GOLDEN_REPEAT)) || 1),
+    );
     let runs = 0;
     let passes = 0;
     afterAll(() => {
@@ -290,7 +302,7 @@ describeIfGolden('golden set (live API)', () => {
             );
           }
         },
-        60000 * repeat,
+        60000 * timeoutRuns,
       );
     }
   });

@@ -50,6 +50,10 @@ export function buildMessageParams(
     // xhigh and max.
     // Only on the Haiku 5 family: disabled is a 400 on Opus 5.5 and Sonnet
     // 5.5, so any other model ID (an env override) gets no thinking field.
+    // On Opus 5.5 and Sonnet 5.5 that means adaptive thinking: the model
+    // thinks before its first token, against the 3 s deadline. Each needs
+    // its own settings (Sonnet 5.5: thinking between_tools; Opus 5.5: low
+    // effort), so those overrides are unsupported until they get them.
     ...(modelId.startsWith('claude-haiku-5') ? { thinking: { type: 'disabled' as const } } : {}),
     stream: true,
     system: [
