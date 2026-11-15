@@ -151,7 +151,9 @@ export interface ClickNavEvent extends BaseEvent {
  * 15.4 removed the values whose calls to action were deleted: `hero` (the old
  * hero, split into `hero_review` and `hero_session`), `final_cta`,
  * `demo_card_ecommerce` and `pipeline_see_your_session`, plus `review` and
- * `proof`, which preview deploys emitted before 15.4 split them.
+ * `proof`, which preview deploys emitted before 15.4 split them. 16.1 removed
+ * `portal_services`, `services_closer` and `services_tier_01` to `_04` with
+ * the services page.
  * Rows already in BigQuery keep them; `infrastructure/bigquery/schema.json`
  * documents both sets.
  */
@@ -159,7 +161,6 @@ export type CtaLocation =
   // The header and the overlay
   | 'session_pulse'
   | 'header_review'
-  | 'portal_services'
   | 'portal_contact'
   | 'contact_cta_threshold'
   // The homepage (15.4)
@@ -177,10 +178,7 @@ export type CtaLocation =
   // The footer (15.4); footer_session is the three Session links, as before
   | 'footer_contact'
   | 'footer_email'
-  | 'footer_session'
-  // /services, until 16.1 deletes the page
-  | 'services_closer'
-  | `services_tier_${'01' | '02' | '03' | '04'}`;
+  | 'footer_session';
 
 /** Fired when a CTA button is clicked. */
 export interface ClickCtaEvent extends BaseEvent {
@@ -387,7 +385,7 @@ export interface ConsentTabViewEvent extends BaseEvent {
  */
 export interface PortalClickEvent extends BaseEvent {
   event: 'portal_click';
-  destination: 'services' | 'contact';
+  destination: 'contact';
 }
 
 /**

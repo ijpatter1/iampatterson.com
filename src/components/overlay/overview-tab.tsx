@@ -31,7 +31,7 @@ const BAR_WIDTH = 16;
 const EVENT_TYPE_THRESHOLD = 10;
 const TYPING_INTERVAL_MS = 24;
 
-type PortalDestination = 'services' | 'contact';
+type PortalDestination = 'contact';
 type StageStatus = 'reached' | 'skipped' | 'pending';
 
 const PORTAL_LINKS: {
@@ -40,12 +40,6 @@ const PORTAL_LINKS: {
   label: string;
   descriptor: string;
 }[] = [
-  {
-    destination: 'services',
-    href: '/services',
-    label: '> SERVICES',
-    descriptor: 'Four tiers of measurement infrastructure.',
-  },
   {
     destination: 'contact',
     href: '/contact',
@@ -284,11 +278,7 @@ export function OverviewTab({ storage = EMPTY_STORAGE }: { storage?: StorageSnap
           surfaces when the portals are hidden. */}
       <section data-testid="overview-portals">
         <CollapsiblePortals>
-          <ul
-            id="overview-portals-list"
-            data-testid="overview-portals-list"
-            className="grid gap-3 sm:grid-cols-2"
-          >
+          <ul id="overview-portals-list" data-testid="overview-portals-list" className="grid gap-3">
             {PORTAL_LINKS.map((link) => (
               <li key={link.destination}>
                 <Link
@@ -419,7 +409,7 @@ export function OverviewTab({ storage = EMPTY_STORAGE }: { storage?: StorageSnap
 
       {/* --- Ecommerce funnel (full width) --- */}
       <section>
-        <SectionKicker>Ecommerce demo · Tier 2 + 3</SectionKicker>
+        <SectionKicker>Ecommerce demo</SectionKicker>
         <ul className="space-y-2 font-mono text-sm">
           {ECOMMERCE_FUNNEL_SEQUENCE.map((stage) => {
             const status = getStageStatus(stage, state.demo_progress.ecommerce.stages_reached);

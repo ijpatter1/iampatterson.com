@@ -147,21 +147,15 @@ if [[ "$MODE" == "full" ]]; then
 fi
 
 # -----------------------------------------------------------------------------
-# Scenario 2, Services Cross-Link to Tier 3 Confirmation
+# Scenario 2, Seeded Confirmation (16.1 deleted the /services cross-link)
 # -----------------------------------------------------------------------------
 
 if [[ "$MODE" == "full" ]]; then
-  scenario 2 "Services Cross-Link to Tier 3 Confirmation"
-  verify "GET /services returns 200" \
-    "curl -sS -o /dev/null -w '%{http_code}' $BASE_URL/services | grep -q 200"
-  verify "/services HTML contains Tier 2 See-it-live link → /demo/ecommerce" \
-    "curl -sS $BASE_URL/services | grep -qE 'href=\"/demo/ecommerce\"[^>]*>.*See it live'"
-  verify "/services HTML contains Tier 3 See-it-live link → confirmation with seeded ORD-T3-DEMO params" \
-    "curl -sS $BASE_URL/services | grep -q 'order_id=ORD-T3-DEMO&total=44\\.98&items=2'"
-  confirm "Browser: on /services, Tier 2 and Tier 3 summary boxes each show an accent-colored 'See it live →' link" \
-    "Tier 2/3 See-it-live links visible in summary boxes"
-  confirm "Click Tier 3 'See it live →'; URL loads /demo/ecommerce/confirmation?order_id=ORD-T3-DEMO&total=44.98&items=2" \
-    "Tier 3 cross-link navigates correctly"
+  scenario 2 "Seeded Confirmation (16.1 deleted the /services cross-link)"
+  verify "GET /services lands on / (16.1 redirect)" \
+    "curl -sSL -o /dev/null -w '%{http_code} %{url_effective}' $BASE_URL/services | grep -qE '^200 https?://[^/]+/\$'"
+  confirm "Browser: load /demo/ecommerce/confirmation?order_id=ORD-T3-DEMO&total=44.98&items=2 directly" \
+    "Seeded confirmation URL loads"
   confirm "Order details block shows: Order confirmed · ORD-T3-DEMO, Items 2, Total \$44.98" \
     "Seeded order details display"
   confirm "AOV caption interpolates specifically '\$44.98' (visible in caption text)" \
@@ -339,8 +333,8 @@ if [[ "$MODE" == "full" ]]; then
     "npm run build >/tmp/uat-9b-build.log 2>&1"
   verify "GET / returns 200 (homepage not regressed)" \
     "curl -sS -o /dev/null -w '%{http_code}' $BASE_URL/ | grep -q 200"
-  verify "GET /services returns 200" \
-    "curl -sS -o /dev/null -w '%{http_code}' $BASE_URL/services | grep -q 200"
+  verify "GET /services lands on / (16.1 redirect)" \
+    "curl -sSL -o /dev/null -w '%{http_code} %{url_effective}' $BASE_URL/services | grep -qE '^200 https?://[^/]+/\$'"
   verify "GET /demo/ecommerce returns 200" \
     "curl -sS -o /dev/null -w '%{http_code}' $BASE_URL/demo/ecommerce | grep -q 200"
   confirm "Open overlay for the first time in a fresh browser session on the confirmation page, phosphor amber CRT boot plays once" \

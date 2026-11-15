@@ -294,7 +294,7 @@ describe('OverviewTab', () => {
         <OverviewTab />
       </Wrapper>,
     );
-    expect(screen.getByText(/Four tiers of measurement infrastructure/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Four tiers of measurement infrastructure/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Ian, Tuna, and the backstory/i)).not.toBeInTheDocument();
     expect(screen.getByText(/Start a conversation/i)).toBeInTheDocument();
   });
@@ -343,14 +343,15 @@ describe('OverviewTab', () => {
     expect(screen.getByTestId('consent-row-preferences')).toHaveTextContent(/granted/i);
   });
 
-  it('renders the portal links, with no About portal (16.2)', () => {
+  it('renders the Contact portal only: no About portal (16.2), no Services portal (16.1)', () => {
     useSessionState.mockReturnValue(makeState());
     render(
       <Wrapper>
         <OverviewTab />
       </Wrapper>,
     );
-    expect(screen.getByRole('link', { name: /services/i })).toHaveAttribute('href', '/services');
+    expect(screen.queryByRole('link', { name: /services/i })).not.toBeInTheDocument();
+    expect(document.querySelector('a[href="/services"]')).toBeNull();
     expect(screen.queryByRole('link', { name: /about/i })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /contact/i })).toHaveAttribute('href', '/contact');
   });
@@ -362,12 +363,12 @@ describe('OverviewTab', () => {
         <OverviewTab />
       </Wrapper>,
     );
-    fireEvent.click(screen.getByRole('link', { name: /services/i }));
+    fireEvent.click(screen.getByTestId('portal-contact'));
     const portal = window.dataLayer.find((e: { event?: string }) => e.event === 'portal_click') as
       | { event: string; destination: string }
       | undefined;
     expect(portal).toBeDefined();
-    expect(portal!.destination).toBe('services');
+    expect(portal!.destination).toBe('contact');
   });
 
   it('hides the contextual contact CTA below the threshold (<=10 event types, no checkout)', () => {
@@ -542,7 +543,7 @@ describe('OverviewTab', () => {
     expect(portals.contains(cta)).toBe(true);
   });
 
-  it('renders the portal row as a grid, two portals after the About portal left (16.2)', () => {
+  it('renders one portal in a single column after the About (16.2) and Services (16.1) portals left', () => {
     useSessionState.mockReturnValue(makeState());
     render(
       <Wrapper>
@@ -550,9 +551,23 @@ describe('OverviewTab', () => {
       </Wrapper>,
     );
     // Each portal link is isolable by testid.
-    expect(screen.getByTestId('portal-services')).toBeInTheDocument();
+    expect(screen.queryByTestId('portal-services')).not.toBeInTheDocument();
     expect(screen.queryByTestId('portal-about')).not.toBeInTheDocument();
     expect(screen.getByTestId('portal-contact')).toBeInTheDocument();
+    // A lone portal in a two-column grid would sit in half the row.
+    const list = screen.getByTestId('overview-portals-list');
+    expect(list.querySelectorAll('li')).toHaveLength(1);
+    expect(list.className).not.toMatch(/grid-cols-2/);
+  });
+
+  it('labels the funnel without the deleted services tiers (16.1)', () => {
+    useSessionState.mockReturnValue(makeState());
+    render(
+      <Wrapper>
+        <OverviewTab />
+      </Wrapper>,
+    );
+    expect(screen.getByTestId('overview-tab').textContent).not.toMatch(/\btiers?\b/i);
   });
 
   // UAT r3 B3: the portal list collapses on mobile to free vertical

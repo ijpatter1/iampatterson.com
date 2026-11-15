@@ -26,18 +26,18 @@ describe('CtaLink', () => {
   it('renders as a link with correct href', () => {
     const CtaLink = getCtaLink();
     render(
-      <CtaLink href="/services" ctaLocation="hero_review">
+      <CtaLink href="/review" ctaLocation="hero_review">
         Click me
       </CtaLink>,
     );
-    expect(screen.getByRole('link', { name: 'Click me' })).toHaveAttribute('href', '/services');
+    expect(screen.getByRole('link', { name: 'Click me' })).toHaveAttribute('href', '/review');
   });
 
   it('fires trackClickCta with string children text', async () => {
     const CtaLink = getCtaLink();
     const user = userEvent.setup();
     render(
-      <CtaLink href="/services" ctaLocation="hero_review">
+      <CtaLink href="/review" ctaLocation="hero_review">
         See how it works
       </CtaLink>,
     );
@@ -49,7 +49,7 @@ describe('CtaLink', () => {
     const CtaLink = getCtaLink();
     const user = userEvent.setup();
     render(
-      <CtaLink href="/services" ctaLocation="hero_review">
+      <CtaLink href="/review" ctaLocation="hero_review">
         <span>Explore</span> the demo
       </CtaLink>,
     );

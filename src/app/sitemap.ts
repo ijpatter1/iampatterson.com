@@ -8,7 +8,7 @@ const SITE_URL = 'https://iampatterson.com';
  * Phase 10d D4 — sitemap.
  *
  * Includes the canonical user-facing routes that should be crawled +
- * indexed: home, services, contact, demo entry, ecommerce
+ * indexed: home, review, contact, demo entry, ecommerce
  * landing + every product detail page in the catalog.
  *
  * Excludes session-scoped routes that have no value as standalone
@@ -23,12 +23,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   const staticEntries: MetadataRoute.Sitemap = [
     { url: SITE_URL, lastModified, changeFrequency: 'monthly', priority: 1.0 },
-    {
-      url: `${SITE_URL}/services`,
-      lastModified,
-      changeFrequency: 'monthly',
-      priority: 0.8,
-    },
     {
       url: `${SITE_URL}/review`,
       lastModified,

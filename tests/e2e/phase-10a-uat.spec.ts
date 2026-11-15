@@ -89,7 +89,7 @@ test.describe('Phase 10a UAT (12 of 13 scenarios)', () => {
     const issues: ConsoleIssue[] = [];
     captureConsole(page, issues);
 
-    const routes = ['/', '/services', '/contact'];
+    const routes = ['/', '/contact'];
     for (const route of routes) {
       await page.goto(route);
       await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
@@ -299,7 +299,6 @@ test.describe('Phase 10a UAT (12 of 13 scenarios)', () => {
     // Hard walk: every route + overlay cycle + ecommerce funnel.
     await page.goto('/');
     await page.waitForLoadState('networkidle');
-    await page.goto('/services');
     await page.goto('/contact');
     await page.goto('/');
     await page.evaluate(() => sessionStorage.removeItem('iampatterson.overlay.booted'));
@@ -522,10 +521,11 @@ test.describe('Phase 10a UAT (12 of 13 scenarios)', () => {
         preset.slice(-6),
       );
 
-      // Walk: home → services → home → open SessionPulse. Cookie
+      // Walk: home → /services (16.1: redirects home) → home. Cookie
       // value must remain stable throughout (max-age refresh is fine,
       // but the ID must not change).
       await page.goto('/services');
+      await expect(page).toHaveURL(/\/$/);
       await page.goto('/');
       const afterWalk = await context.cookies();
       const sidAfterWalk = decodeURIComponent(afterWalk.find((c) => c.name === '_iap_sid')!.value);
