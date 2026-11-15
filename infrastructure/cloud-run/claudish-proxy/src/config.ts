@@ -63,13 +63,15 @@ export type PriceTable = { readonly [K in keyof typeof PRICES]: number };
  *   counted on Haiku 5.5's tokenizer: ~6.8k x $0.125/MTok + ~1.0k input x
  *   $0.10/MTok + the 4,096-token output cap x $0.50/MTok ≈ $0.0030 (was
  *   ≈ $0.021 at Haiku 4.5's rates).
- * - One cl2en Gemini loop attempt at its worst: ≈ $0.0083, unchanged by
- *   20.1 and now the binding case.
- * Dropped from $0.022 to $0.009 in 20.1: the reservation only gates how
+ * - One cl2en Gemini loop attempt at its worst, with every turn at
+ *   GEMINI_LOOP_MAX_OUTPUT_TOKENS: ≈ $0.0107, unchanged by the model switch
+ *   and now the binding case.
+ * Dropped from $0.022 to $0.011 in 20.1: the reservation only gates how
  * many requests fit under the per-instance cap at once, and real usage
- * replaces it on settle.
+ * replaces it on settle. (The first 20.1 cut, $0.009, priced loop turns at
+ * the Claude ladder's 1,536 cap and fell below this bound.)
  */
-export const RESERVATION_USD = 0.009;
+export const RESERVATION_USD = 0.011;
 
 /**
  * Server-side input cap (chars); the client shows and enforces the same
@@ -83,6 +85,23 @@ export const MAX_TOKENS: Record<Direction, number> = {
   en2cl: 4096,
   cl2en: 1536, // English compresses, but dense input can run ~1:1
 };
+
+/**
+ * Output cap per Gemini cl2en loop attempt; translate.ts sends it and
+ * RESERVATION_USD is derived from it. MAX_TOKENS.cl2en is the Claude
+ * ladder's cap, not this one.
+ */
+export const GEMINI_LOOP_MAX_OUTPUT_TOKENS = 2048;
+
+/**
+ * Characters per token on the Claude lanes, a planning figure: 3.8 was
+ * measured on Haiku 4.5 billing, and Haiku 5.5's tokenizer turns the same
+ * text into about 30% more tokens (Anthropic's migration notes; the exact
+ * rise depends on the text). Plans the output caps, the reservation and
+ * the abort-path estimate. Re-measure on the golden run's billed prefix
+ * and repin (20.1).
+ */
+export const CLAUDE_CHARS_PER_TOKEN = 3.8 / 1.3;
 
 /** First-token deadline before the ladder advances to the next lane. */
 export const FIRST_TOKEN_DEADLINE_MS = 3000;

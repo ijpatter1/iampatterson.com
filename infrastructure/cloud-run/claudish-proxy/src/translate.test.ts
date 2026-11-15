@@ -11,7 +11,15 @@ import { EventEmitter } from 'node:events';
 
 import { BudgetTracker } from './budget';
 import { TranslationCache } from './cache';
-import { GEMINI_PRICES, INPUT_CAP, loadConfig, RESERVATION_USD } from './config';
+import {
+  CLAUDE_CHARS_PER_TOKEN,
+  GEMINI_LOOP_MAX_OUTPUT_TOKENS,
+  GEMINI_PRICES,
+  INPUT_CAP,
+  loadConfig,
+  RESERVATION_USD,
+} from './config';
+import { buildSystem } from './prompts';
 import { CircuitBreaker } from './lanes';
 import { setLogSink } from './log';
 import { RateLimiter } from './ratelimit';
@@ -898,5 +906,94 @@ describe('review batch 3 (2026-09-03): abort inside the loop settles at Gemini p
     await pending;
     expect(releases.length).toBe(1);
     expect(releases[0][1]).toBe(GEMINI_PRICES);
+  });
+});
+
+describe('20.1 gate: reservation and abort-estimate inputs', () => {
+  it('sends the Gemini loop the output cap the reservation is derived from', async () => {
+    // limits-contract.test.ts derives RESERVATION_USD from
+    // GEMINI_LOOP_MAX_OUTPUT_TOKENS; if the served loop sent a different
+    // cap, the derivation would price the wrong worst case.
+    const deps = makeDeps([fakeLane('vertex-global', [{ kind: 'start' }])]);
+    deps.config = loadConfig({ CL2EN_ENGINE: 'gemini-loop', LANES: 'vertex-global,cache-only' });
+    const caps: number[] = [];
+    (deps as { geminiStream?: unknown }).geminiStream = ((config: { maxOutputTokens: number }) => {
+      caps.push(config.maxOutputTokens);
+      return (async function* () {
+        yield { kind: 'text', text: 'You were right to send both fixes.' } as const;
+        yield {
+          kind: 'stop',
+          usage: { inputTokens: 10, outputTokens: 5, cachedTokens: 0 },
+          finishReason: 'STOP',
+        } as const;
+      })();
+    }) as never;
+    const ctx = stubReqRes({ text: 'q '.repeat(20), direction: 'cl2en' as const });
+    await createTranslateHandler(deps)(ctx.req, ctx.res);
+    expect(caps.length).toBeGreaterThan(0);
+    for (const cap of caps) expect(cap).toBe(GEMINI_LOOP_MAX_OUTPUT_TOKENS);
+  });
+
+  it('estimates an aborted Claude stream at Haiku 5.5 token density, prefix as a cache write', async () => {
+    // The abort path used to estimate chars/4 and leave out the system
+    // prefix. Haiku 5.5 bills ~chars/2.9 and a cold call writes the whole
+    // ~6.8k-token prefix to cache, so the old estimate released the
+    // reservation low: the one direction a spend cap must not err in.
+    const STREAMED = 'Claudish so far, '.repeat(10);
+    const lane: LaneClient = {
+      name: 'vertex-global',
+      modelId: 'claude-haiku-5-5',
+      stream() {
+        let i = 0;
+        return {
+          [Symbol.asyncIterator]() {
+            return {
+              async next(): Promise<IteratorResult<UpstreamEvent>> {
+                i++;
+                if (i === 1) return { done: false, value: { kind: 'start' } };
+                if (i === 2) return { done: false, value: { kind: 'text', text: STREAMED } };
+                return new Promise(() => undefined); // hang until the client leaves
+              },
+            };
+          },
+        };
+      },
+    };
+    const deps = makeDeps([lane]);
+    const releases: unknown[][] = [];
+    const real = deps.budget.reserve.bind(deps.budget);
+    deps.budget.reserve = () => {
+      const r = real();
+      if (!r) return r;
+      return {
+        reconcile: r.reconcile,
+        release: (...a: unknown[]) => {
+          releases.push(a);
+          (r.release as (...x: unknown[]) => void)(...a);
+        },
+      };
+    };
+    const input = 'Please review the attached plan before Friday. '.repeat(10);
+    const ctx = stubReqRes({ text: input, direction: 'en2cl' as const });
+    void createTranslateHandler(deps)(ctx.req, ctx.res);
+    await new Promise((r) => setTimeout(r, 20));
+    (ctx.res as unknown as EventEmitter).emit('close');
+    await new Promise((r) => setTimeout(r, 5));
+
+    expect(releases.length).toBe(1);
+    const [usage, prices] = releases[0] as [
+      { inputTokens: number; outputTokens: number; cacheWriteTokens: number },
+      unknown,
+    ];
+    expect(prices).toBeUndefined(); // the Claude default table
+    expect(usage.inputTokens).toBeGreaterThanOrEqual(
+      Math.ceil(input.trim().length / CLAUDE_CHARS_PER_TOKEN),
+    );
+    expect(usage.outputTokens).toBeGreaterThanOrEqual(
+      Math.ceil(STREAMED.trim().length / CLAUDE_CHARS_PER_TOKEN),
+    );
+    expect(usage.cacheWriteTokens).toBeGreaterThanOrEqual(
+      Math.ceil(buildSystem('en2cl').length / CLAUDE_CHARS_PER_TOKEN),
+    );
   });
 });

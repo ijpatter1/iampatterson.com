@@ -39,14 +39,18 @@ export function buildMessageParams(
     // loop showed nonzero temps resample the failure tails run to run);
     // Haiku 5.5 rejects any non-default temperature, top_p or top_k with a
     // 400, so the sampler is left at its default and determinism is no
-    // longer guaranteed. The golden suite measures what that costs (20.1).
+    // longer guaranteed. One golden pass is one sample under default
+    // sampling; GOLDEN_REPEAT=N runs the en2cl cases N times for a pass rate
+    // (20.1).
     //
     // Thinking off: Haiku 5.5 thinks by default, thinking spends the capped
     // max_tokens and streams before any text, which delays the first token
     // the 3 s deadline measures. Disabled is accepted at the default effort
     // (medium); effort is deliberately not sent, since disabled 400s at
     // xhigh and max.
-    thinking: { type: 'disabled' },
+    // Only on the Haiku 5 family: disabled is a 400 on Opus 5.5 and Sonnet
+    // 5.5, so any other model ID (an env override) gets no thinking field.
+    ...(modelId.startsWith('claude-haiku-5') ? { thinking: { type: 'disabled' as const } } : {}),
     stream: true,
     system: [
       {

@@ -6,8 +6,9 @@
  * set that repeats "testament" teaches "testament"), the battery's top
  * repeat "ensuring" is held to one, and every pair keeps the properties
  * the golden suite asserts on live output (length bounds, identifiers,
- * no canary). The size floor keeps the block above Haiku 4.5's
- * 4,096-token cache minimum — see the measured ratio in the test.
+ * no canary). The size floor keeps the block above the cache minimum:
+ * set for Haiku 4.5's 4,096 tokens, it clears Haiku 5.5's 512 (20.1) with
+ * wide margin — see the measured ratio in the test.
  */
 import { CANARY_TOKEN, PROMPT_VERSION, buildSystem } from './index';
 import { CL2EN_CONTRACT } from './cl2en.contract';
@@ -131,7 +132,8 @@ describe('en2cl few-shots as a range instrument', () => {
  * Measured 2026-09-01 through the service's own adapter: 19,175 chars of
  * en2cl system block billed as 4,952 tokens (3.87 chars/token), read
  * back in full from cache on the second call. Floor = 4,500 tokens x
- * 3.87, leaving ~400 tokens of margin above the 4,096 minimum.
+ * 3.87, leaving ~400 tokens of margin above the 4,096 minimum. On Haiku
+ * 5.5 (20.1) the same floor is ~5,900 tokens against a 512 minimum.
  */
 const EN2CL_PREFIX_CHAR_FLOOR = 17_400;
 

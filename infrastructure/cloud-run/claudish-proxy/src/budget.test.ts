@@ -58,7 +58,7 @@ describe('BudgetTracker', () => {
 
   it('fires threshold callbacks once each at 50/80/100', () => {
     const fired: number[] = [];
-    // Budget sized to the reservation ($0.009 since 20.1): 0.036 + 0.009
+    // Budget sized so 0.036 spent plus one reservation ($0.011 since 20.1)
     // fits under 0.06, so the second reserve succeeds.
     expect(0.036 + RESERVATION_USD).toBeLessThanOrEqual(0.06);
     const tracker = new BudgetTracker(0.06, false, (pct) => fired.push(pct), DAY1);

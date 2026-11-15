@@ -62,15 +62,31 @@ describe('buildMessageParams', () => {
     }
   });
 
-  it('turns thinking off explicitly and leaves effort at its default (20.1)', () => {
+  it('turns thinking off explicitly on the Haiku 5 family and leaves effort at its default (20.1)', () => {
     // Haiku 5.5 thinks by default. Thinking spends the capped max_tokens
     // and arrives before any text, so it would delay the first token the
     // 3 s deadline measures. Disabled is accepted at the default effort
     // (medium); effort is not sent, because disabled 400s at xhigh/max.
     for (const direction of ['en2cl', 'cl2en'] as const) {
-      const params = buildMessageParams(direction, 'x', 'm') as unknown as Record<string, unknown>;
+      const params = buildMessageParams(direction, 'x', 'claude-haiku-5-5') as unknown as Record<
+        string,
+        unknown
+      >;
       expect(params.thinking).toEqual({ type: 'disabled' });
       expect(params).not.toHaveProperty('output_config');
+    }
+  });
+
+  it('sends no thinking field for a model ID outside the Haiku 5 family (20.1 gate)', () => {
+    // {type: 'disabled'} is a 400 on Opus 5.5 and Sonnet 5.5, so an env
+    // override to either would fail every request on that lane. Outside the
+    // family the request leaves thinking to the model's default.
+    for (const modelId of ['claude-sonnet-5-5', 'claude-opus-5-5', 'claude-haiku-4-5']) {
+      const params = buildMessageParams('en2cl', 'x', modelId) as unknown as Record<
+        string,
+        unknown
+      >;
+      expect(params).not.toHaveProperty('thinking');
     }
   });
 
@@ -138,10 +154,11 @@ describe('adaptAnthropicStream', () => {
   });
 
   it('never emits thinking as translation text when the stream opens on a thinking block', async () => {
-    // Haiku 5.5 can stream thinking blocks before any text. Thinking is
-    // disabled in the request, but if one ever arrives (a model default
-    // change, an env override to a thinking-only model) the reader keys on
-    // the delta type, never on block index 0, so it can't leak into the panel.
+    // Haiku 5.5 can stream thinking blocks before any text. The request
+    // disables thinking only on the Haiku 5 family; an env override to
+    // another model sends no thinking field, runs that model's default, and
+    // can open on a thinking block. The reader keys on the delta type, never
+    // on block index 0, so thinking can't leak into the panel either way.
     const THINKING = 'internal reasoning that must never reach the visitor';
     const events = await collect(
       adaptAnthropicStream(

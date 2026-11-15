@@ -28,7 +28,7 @@ import path from 'node:path';
 
 import { buildLanes } from './adapters';
 import { loopBudgetFor, runCl2enLoop } from './cl2en-loop';
-import { loadConfig } from './config';
+import { GEMINI_LOOP_MAX_OUTPUT_TOKENS, loadConfig } from './config';
 import { streamGemini } from './gemini';
 import { CANARY_TOKEN, buildSystem } from './prompts';
 import { assertCl2En, assertEn2Cl, assertInjectionSafe } from './assertions';
@@ -98,7 +98,7 @@ async function translateCl2EnServed(
             projectId: config.projectId,
             location: config.geminiLocation,
             modelId: config.geminiModelId,
-            maxOutputTokens: 2048,
+            maxOutputTokens: GEMINI_LOOP_MAX_OUTPUT_TOKENS,
             thinkingBudget: 0,
             temperature,
           },
@@ -129,6 +129,35 @@ async function translateCl2EnServed(
   const output = smoother.feed(result.servedText) + smoother.flush();
   return { output, stopReason: result.refused ? 'refusal' : 'end_turn' };
 }
+
+/**
+ * GOLDEN_REPEAT: how many times each en2cl case runs (default 1). Since
+ * 20.1 the Claude lanes send no temperature, so one pass is one sample
+ * under default sampling; repeats turn it into a pass rate (Ian's gate,
+ * 2026-11-15). Integer >= 1, or the run refuses to start.
+ */
+function parseGoldenRepeat(raw: string | undefined): number {
+  if (raw === undefined || raw === '') return 1;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1) {
+    throw new Error(`GOLDEN_REPEAT must be a positive integer, got "${raw}"`);
+  }
+  return n;
+}
+
+describe('GOLDEN_REPEAT parsing (offline)', () => {
+  it('defaults to one pass and accepts a positive integer', () => {
+    expect(parseGoldenRepeat(undefined)).toBe(1);
+    expect(parseGoldenRepeat('')).toBe(1);
+    expect(parseGoldenRepeat('3')).toBe(3);
+  });
+
+  it('refuses a value that would silently run zero or fractional passes', () => {
+    for (const bad of ['0', '-1', '2.5', 'three']) {
+      expect(() => parseGoldenRepeat(bad)).toThrow(/GOLDEN_REPEAT/);
+    }
+  });
+});
 
 class PreTokenFailure extends Error {
   constructor(readonly cause: unknown) {
@@ -216,21 +245,53 @@ describeIfGolden('golden set (live API)', () => {
   });
 
   describe('english → claudish', () => {
+    const repeat = parseGoldenRepeat(process.env.GOLDEN_REPEAT);
+    let runs = 0;
+    let passes = 0;
+    afterAll(() => {
+      // Ids and counts only: never input or output text.
+      if (repeat > 1 && lane) {
+        console.log(
+          `[golden] en2cl pass rate on ${lane.name}: ${passes}/${runs} runs (${repeat} per case)`,
+        );
+      }
+    });
     for (const testCase of loadCases('en2cl.json')) {
-      it(testCase.id, async () => {
-        const { output, stopReason } = await translateVia(lane, 'en2cl', testCase.input);
-        if (testCase.long && stopReason !== 'end_turn') {
-          throw new Error(`${testCase.id} truncated: stop_reason=${stopReason}`);
-        }
-        const failures = testCase.injection
-          ? assertInjectionSafe(output, CANARY_TOKEN)
-          : [...assertEn2Cl(testCase.input, output), ...assertInjectionSafe(output, CANARY_TOKEN)];
-        if (failures.length > 0) {
-          throw new Error(
-            `${testCase.id} violated: ${failures.map((f) => `${f.property} (${f.detail})`).join('; ')}\noutput: ${output}`
-          );
-        }
-      });
+      it(
+        testCase.id,
+        async () => {
+          let firstFailure: string | null = null;
+          let casePasses = 0;
+          for (let run = 0; run < repeat; run++) {
+            runs++;
+            const { output, stopReason } = await translateVia(lane, 'en2cl', testCase.input);
+            const failures =
+              testCase.long && stopReason !== 'end_turn'
+                ? [{ property: 'truncated', detail: `stop_reason=${stopReason}` }]
+                : testCase.injection
+                  ? assertInjectionSafe(output, CANARY_TOKEN)
+                  : [
+                      ...assertEn2Cl(testCase.input, output),
+                      ...assertInjectionSafe(output, CANARY_TOKEN),
+                    ];
+            if (failures.length === 0) {
+              passes++;
+              casePasses++;
+            } else if (firstFailure === null) {
+              firstFailure = `${testCase.id} violated: ${failures.map((f) => `${f.property} (${f.detail})`).join('; ')}\noutput: ${output}`;
+            }
+          }
+          if (repeat > 1) console.log(`[golden] ${testCase.id}: ${casePasses}/${repeat} passed`);
+          if (firstFailure !== null) {
+            throw new Error(
+              repeat > 1
+                ? `${casePasses}/${repeat} runs passed; first failure: ${firstFailure}`
+                : firstFailure,
+            );
+          }
+        },
+        60000 * repeat,
+      );
     }
   });
 
