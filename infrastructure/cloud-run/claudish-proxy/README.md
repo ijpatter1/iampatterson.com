@@ -93,9 +93,9 @@ X-Forwarded-For to confirm the `TRUSTED_PROXY_HOPS` index (default 1 on
 the direct run.app deployment: Google's front end appends the client IP as
 the last entry; set 2 only behind an external load balancer; confirmed
 2026-09-03 through the rate limiter, review batch 1); check
-`cache_read_input_tokens` on a repeat call — EXPECT 0 today: the interim
-few-shot block sits below Haiku 4.5's 4,096-token cache minimum, and
-caching engages only once the lexicon-generated set grows the system
-block past it (tracked in prompts/index.ts); send FORCE_REFUSAL_TOKEN's
+`cache_read_input_tokens` on a repeat call — EXPECT it above 0: the en2cl
+system block has sat past the cache minimum since bundle Stage 2, and
+Claude Haiku 5.5's minimum is 512 tokens (Haiku 4.5's was 4,096; see
+prompts/index.ts); send FORCE_REFUSAL_TOKEN's
 value (set it on a staging revision only) to smoke the refusal path;
 rehearse the kill switch.

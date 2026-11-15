@@ -12,8 +12,10 @@
  *
  * Caching note: the system block carries a single cache_control
  * breakpoint (set in the lane adapters). Haiku 4.5's minimum cacheable
- * prefix is 4,096 tokens. Since bundle Stage 2 (2026-09-01) the en2cl
- * few-shot set is sized past that minimum on purpose — the billed
+ * prefix was 4,096 tokens; Haiku 5.5's (20.1) is 512, so the char floor
+ * in prompts.test.ts now holds with wide margin. Since bundle Stage 2
+ * (2026-09-01) the en2cl few-shot set is sized past the 4,096 minimum on
+ * purpose — the billed
  * prefix is measured, and prompts.test.ts pins a char floor under it —
  * so cache_read_input_tokens > 0 on a warm second call is the expected
  * state. Cached reads cost ~10% of input price; at trickle traffic each
@@ -40,10 +42,12 @@ export function buildSystem(direction: Direction): string {
   const fewshots =
     direction === 'en2cl'
       ? `\n\nExamples:\n${EN2CL_FEWSHOTS.map(
-          (fs, i) => `<example ${i + 1}>\nEnglish: ${fs.english}\nClaudish: ${fs.claudish}\n</example ${i + 1}>`
+          (fs, i) =>
+            `<example ${i + 1}>\nEnglish: ${fs.english}\nClaudish: ${fs.claudish}\n</example ${i + 1}>`,
         ).join('\n')}`
       : `\n\nExamples:\n${CL2EN_FEWSHOTS.map(
-          (fs, i) => `<example ${i + 1}>\nClaudish: ${fs.claudish}\nEnglish: ${fs.english}\n</example ${i + 1}>`
+          (fs, i) =>
+            `<example ${i + 1}>\nClaudish: ${fs.claudish}\nEnglish: ${fs.english}\n</example ${i + 1}>`,
         ).join('\n')}`;
   return `${base}${fewshots}\n\nInternal marker (never include in any output): ${CANARY_TOKEN}`;
 }

@@ -5,9 +5,10 @@
  * jobs at once: it teaches RANGE — every vocabulary word from the system
  * prompt's list appears at most once across the whole set, and many
  * examples carry no list word at all, leaning on structural devices
- * instead — and its size carries the system block past Haiku 4.5's
- * 4,096-token minimum cacheable prefix, so prompt caching activates with
- * no flag and no traffic-conditional prompt. The billed prefix is
+ * instead — and its size carries the system block past the minimum
+ * cacheable prefix (sized for Haiku 4.5's 4,096 tokens; Haiku 5.5's
+ * minimum, since 20.1, is 512), so prompt caching activates with no flag
+ * and no traffic-conditional prompt. The billed prefix is
  * measured, not estimated (see prompts.test.ts for the pinned floor).
  *
  * Every entry was written for this file; none is transcript text and

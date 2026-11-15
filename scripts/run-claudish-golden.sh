@@ -10,6 +10,12 @@
 # server and is NOT exercisable locally — it's covered by the deploy
 # smoke test instead.
 # Usage: bash scripts/run-claudish-golden.sh [jest args, e.g. -t en2cl-16]
+#
+# GOLDEN_REPEAT=N runs each en2cl case N times and prints a pass rate per
+# case and per lane (ids and counts only). Since 20.1 the Claude lanes send
+# no temperature, so a single pass is one sample. One lane per run: set
+# LANES to pick it, e.g.
+#   GOLDEN_REPEAT=3 LANES=vertex-global,cache-only bash scripts/run-claudish-golden.sh -t en2cl
 set -euo pipefail
 cd "$(dirname "$0")/../infrastructure/cloud-run/claudish-proxy"
 [ -d node_modules ] || npm install
@@ -37,6 +43,7 @@ GEMINI_ACCESS_TOKEN="$(gcloud auth print-access-token \
 export GEMINI_ACCESS_TOKEN
 
 GOLDEN_TEST=1 \
+  GOLDEN_REPEAT="${GOLDEN_REPEAT:-1}" \
   LANES="${LANES:-anthropic-api,cache-only}" \
   CL2EN_ENGINE="${CL2EN_ENGINE:-gemini-loop}" \
   GCP_PROJECT="${GCP_PROJECT:-iampatterson}" \

@@ -20,7 +20,13 @@ import { loopBudgetFor, runCl2enLoop } from './cl2en-loop';
 import { streamGemini } from './gemini';
 import { nextWithDeadline, StallDeadline } from './deadline';
 import { EmDashSmoother, MarkerStripper } from './smooth';
-import { FIRST_TOKEN_DEADLINE_MS, INPUT_CAP, GEMINI_PRICES } from './config';
+import {
+  CLAUDE_CHARS_PER_TOKEN,
+  FIRST_TOKEN_DEADLINE_MS,
+  GEMINI_LOOP_MAX_OUTPUT_TOKENS,
+  INPUT_CAP,
+  GEMINI_PRICES,
+} from './config';
 import { isOriginAllowed } from './config';
 import { hashIp, logEvent, redactError } from './log';
 import { clientIp } from './ratelimit';
@@ -46,13 +52,28 @@ export interface TranslateDeps {
 }
 
 
-/** Rough token estimate for abort-path reconciliation (chars/4). */
+/** Rough token estimate for abort-path reconciliation on the Gemini loop (chars/4). */
 function estimateUsage(inputChars: number, outputChars: number): Usage {
   return {
     inputTokens: Math.ceil(inputChars / 4),
     outputTokens: Math.ceil(outputChars / 4),
     cacheReadTokens: 0,
     cacheWriteTokens: 0,
+  };
+}
+
+/**
+ * Abort-path estimate on a Claude lane (20.1 gate): Haiku 5.5 token density,
+ * and the system prefix counted as a cold cache write. A warm call would
+ * have read it at a tenth of the price; assuming the write keeps the
+ * estimate from erring low, the one direction a spend cap must not err in.
+ */
+function estimateClaudeUsage(direction: Direction, inputChars: number, outputChars: number): Usage {
+  return {
+    inputTokens: Math.ceil(inputChars / CLAUDE_CHARS_PER_TOKEN),
+    outputTokens: Math.ceil(outputChars / CLAUDE_CHARS_PER_TOKEN),
+    cacheReadTokens: 0,
+    cacheWriteTokens: Math.ceil(buildSystem(direction).length / CLAUDE_CHARS_PER_TOKEN),
   };
 }
 
@@ -204,11 +225,24 @@ export function createTranslateHandler(deps: TranslateDeps) {
     // The abort-path estimate is priced at the lane that was running: the
     // Gemini loop at Gemini rates, not the Haiku default (review batch 3).
     let activePrices: PriceTable | undefined;
+    // Set when a Claude lane call starts. Without one, nothing reached
+    // Anthropic or Vertex (breakers open, the ladder empty), so the Claude
+    // estimate, which charges the prefix as a cache write, would book
+    // phantom spend (20.1 gate).
+    let claudeRequestSent = false;
     const settle = (usage?: Usage, prices?: PriceTable) => {
       if (settled) return;
       settled = true;
       if (usage) reservation.reconcile(usage, prices);
-      else reservation.release(estimateUsage(text.length, streamedChars), activePrices);
+      else if (activePrices) {
+        reservation.release(estimateUsage(text.length, streamedChars), activePrices);
+      } else if (claudeRequestSent) {
+        reservation.release(estimateClaudeUsage(direction, text.length, streamedChars));
+      } else {
+        reservation.release(
+          streamedChars > 0 ? estimateUsage(text.length, streamedChars) : undefined,
+        );
+      }
       for (const extra of extraReservations) extra.release();
       extraReservations.length = 0;
     };
@@ -255,7 +289,7 @@ export function createTranslateHandler(deps: TranslateDeps) {
                   projectId: config.projectId,
                   location: config.geminiLocation,
                   modelId: config.geminiModelId,
-                  maxOutputTokens: 2048,
+                  maxOutputTokens: GEMINI_LOOP_MAX_OUTPUT_TOKENS,
                   thinkingBudget: 0,
                   temperature,
                 },
@@ -430,6 +464,7 @@ export function createTranslateHandler(deps: TranslateDeps) {
       const onMasterAbort = () => attempt.abort();
       if (controller.signal.aborted) attempt.abort();
       else controller.signal.addEventListener('abort', onMasterAbort);
+      claudeRequestSent = true;
       const iterator = lane
         .stream({ text: normalized, direction }, attempt.signal)
         [Symbol.asyncIterator]();

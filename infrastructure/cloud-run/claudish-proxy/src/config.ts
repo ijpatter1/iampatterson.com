@@ -3,8 +3,11 @@
  *
  * Everything operational is env-driven so lane order, budgets, and the
  * kill switch are config flips, not deploys of new code. Model IDs and
- * prices are pinned constants awaiting the pre-deploy verification pass
- * (research memo 2026-08-31); setup.sh refuses a real deploy until
+ * prices are pinned constants. The Claude Haiku 5.5 pins (20.1) come from
+ * Anthropic's Claude API reference, cached 2026-11-03, and await the
+ * operator's live verification before deploy: each ID against the
+ * Anthropic models list and Vertex Model Garden, each price against the
+ * live price lists. setup.sh refuses a real deploy until
  * MODEL_ID_CONFIRMED=1.
  */
 
@@ -19,15 +22,19 @@ export type LaneName = (typeof LANE_NAMES)[number];
 export type Direction = 'en2cl' | 'cl2en';
 
 /**
- * USD per million tokens. Global-endpoint Vertex rates for Claude Haiku
- * 4.5 (verified against mirrors 2026-08-31; regional carries +10%).
- * VERIFY on the live pricing page before first deploy.
+ * USD per million tokens: Claude Haiku 5.5 on the Anthropic API, prompts
+ * of 100K tokens or fewer (the input cap keeps every request far below
+ * that; above it the card is $0.50 / $2.50). Cache writes are the 5-minute
+ * rate (1.25x input), cache reads 0.1x input. These are the first-party
+ * figures: Vertex prices Claude separately as a partner model (and its
+ * regional endpoint has carried +10%), so the operator checks Vertex's
+ * live price before deploy and repins here if it is higher.
  */
 export const PRICES = {
-  inputPerMTok: 1.0,
-  outputPerMTok: 5.0,
-  cacheWritePerMTok: 1.25,
-  cacheReadPerMTok: 0.1,
+  inputPerMTok: 0.1,
+  outputPerMTok: 0.5,
+  cacheWritePerMTok: 0.125,
+  cacheReadPerMTok: 0.01,
 } as const;
 
 /**
@@ -48,13 +55,23 @@ export const GEMINI_PRICES = {
 export type PriceTable = { readonly [K in keyof typeof PRICES]: number };
 
 /**
- * Worst-case per-request reservation, en2cl at the cap with a cold
- * prefix (bundle Stage 2: the ~5.0k-token prefix is cacheable, so the
- * cold case is a cache WRITE at 1.25x): ~5.0k x $1.25/MTok + ~0.8k input
- * x $1/MTok + ~2.8k output x $5/MTok ≈ $0.021. Pinned >= the derived
- * figure in limits-contract.test.ts.
+ * Worst-case per-request reservation: the larger of two derived cases,
+ * both pinned in limits-contract.test.ts (at or above each, and no more
+ * than 25% above the larger).
+ * - en2cl at the cap on a Claude lane with a cold prefix (bundle Stage 2:
+ *   the prefix is cacheable, so the cold case is a cache WRITE at 1.25x),
+ *   counted on Haiku 5.5's tokenizer: ~6.8k x $0.125/MTok + ~1.0k input x
+ *   $0.10/MTok + the 4,096-token output cap x $0.50/MTok ≈ $0.0030 (was
+ *   ≈ $0.021 at Haiku 4.5's rates).
+ * - One cl2en Gemini loop attempt at its worst, with every turn at
+ *   GEMINI_LOOP_MAX_OUTPUT_TOKENS: ≈ $0.0107, unchanged by the model switch
+ *   and now the binding case.
+ * Dropped from $0.022 to $0.011 in 20.1: the reservation only gates how
+ * many requests fit under the per-instance cap at once, and real usage
+ * replaces it on settle. (The first 20.1 cut, $0.009, priced loop turns at
+ * the Claude ladder's 1,536 cap and fell below this bound.)
  */
-export const RESERVATION_USD = 0.022;
+export const RESERVATION_USD = 0.011;
 
 /**
  * Server-side input cap (chars); the client shows and enforces the same
@@ -63,9 +80,28 @@ export const RESERVATION_USD = 0.022;
 export const INPUT_CAP = 3000;
 
 export const MAX_TOKENS: Record<Direction, number> = {
-  en2cl: 3072, // Claudish expands up to 3.5x: a cap-length input needs ~2.8k
+  // Claudish expands up to 3.5x: a cap-length input needed ~2.8k tokens on
+  // Haiku 4.5 and needs ~3.6k on Haiku 5.5's tokenizer (20.1; was 3072).
+  en2cl: 4096,
   cl2en: 1536, // English compresses, but dense input can run ~1:1
 };
+
+/**
+ * Output cap per Gemini cl2en loop attempt; translate.ts sends it and
+ * RESERVATION_USD is derived from it. MAX_TOKENS.cl2en is the Claude
+ * ladder's cap, not this one.
+ */
+export const GEMINI_LOOP_MAX_OUTPUT_TOKENS = 2048;
+
+/**
+ * Characters per token on the Claude lanes, a planning figure: 3.8 was
+ * measured on Haiku 4.5 billing, and Haiku 5.5's tokenizer turns the same
+ * text into about 30% more tokens (Anthropic's migration notes; the exact
+ * rise depends on the text). Plans the output caps, the reservation and
+ * the abort-path estimate. Re-measure on the golden run's billed prefix
+ * and repin (20.1).
+ */
+export const CLAUDE_CHARS_PER_TOKEN = 3.8 / 1.3;
 
 /** First-token deadline before the ladder advances to the next lane. */
 export const FIRST_TOKEN_DEADLINE_MS = 3000;
@@ -130,20 +166,19 @@ export interface Config {
   forceRefusalToken: string | null;
 }
 
-// TODO(model-id): confirm against Vertex Model Garden before first deploy.
-// Vertex keeps the @date suffix for Haiku 4.5; the first-party API takes
-// the bare alias. Retirement floor 2026-10-15 — expect a bump soon.
-const DEFAULT_VERTEX_MODEL_ID = 'claude-haiku-4-5@20251001';
-const DEFAULT_ANTHROPIC_MODEL_ID = 'claude-haiku-4-5';
+// Claude Haiku 5.5 (20.1, Ian 2026-11-02): the same bare ID on Vertex and
+// on the first-party API, with no @date suffix (Haiku 4.5 needed
+// claude-haiku-4-5@20251001 on Vertex). Confirm both against Vertex Model
+// Garden and the Anthropic models list before deploy.
+const DEFAULT_VERTEX_MODEL_ID = 'claude-haiku-5-5';
+const DEFAULT_ANTHROPIC_MODEL_ID = 'claude-haiku-5-5';
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const lanesRaw = env.LANES ?? 'vertex-global,vertex-regional,anthropic-api,cache-only';
   const lanes = lanesRaw.split(',').map((lane) => lane.trim()) as LaneName[];
   for (const lane of lanes) {
     if (!LANE_NAMES.includes(lane)) {
-      throw new Error(
-        `LANES contains unknown lane "${lane}" — valid: ${LANE_NAMES.join(', ')}`
-      );
+      throw new Error(`LANES contains unknown lane "${lane}" — valid: ${LANE_NAMES.join(', ')}`);
     }
   }
   const dailyBudgetUsd = Number(env.DAILY_BUDGET_USD ?? 23);
@@ -162,7 +197,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   // rate-limit key (review batch 1).
   const trustedProxyHops = Number(env.TRUSTED_PROXY_HOPS ?? 1);
   if (!Number.isInteger(trustedProxyHops) || trustedProxyHops < 1) {
-    throw new Error(`TRUSTED_PROXY_HOPS must be a positive integer, got "${env.TRUSTED_PROXY_HOPS}"`);
+    throw new Error(
+      `TRUSTED_PROXY_HOPS must be a positive integer, got "${env.TRUSTED_PROXY_HOPS}"`,
+    );
   }
   return {
     port: Number(env.PORT ?? 8080),

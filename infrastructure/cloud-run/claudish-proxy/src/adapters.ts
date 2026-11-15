@@ -30,18 +30,31 @@ import type { Usage } from './budget';
 export function buildMessageParams(
   direction: Direction,
   text: string,
-  modelId: string
+  modelId: string,
 ): MessageCreateParamsStreaming {
   return {
     model: modelId,
     max_tokens: MAX_TOKENS[direction],
-    // Temperature 0 on both directions: a translator is a function, and
-    // determinism turns the golden set into a true regression suite. The
-    // overnight loop proved nonzero temps RESAMPLE the failure tails
-    // (fabricated effort, verbatim openings, dimension-listing) run to
-    // run instead of fixing them; register variety comes from the input
-    // and the few-shots, not the sampler.
-    temperature: 0,
+    // No sampling parameter. Haiku 4.5 ran at temperature 0 (the overnight
+    // loop showed nonzero temps resample the failure tails run to run);
+    // Haiku 5.5 rejects any non-default temperature, top_p or top_k with a
+    // 400, so the sampler is left at its default and determinism is no
+    // longer guaranteed. One golden pass is one sample under default
+    // sampling; GOLDEN_REPEAT=N runs the en2cl cases N times for a pass rate
+    // (20.1).
+    //
+    // Thinking off: Haiku 5.5 thinks by default, thinking spends the capped
+    // max_tokens and streams before any text, which delays the first token
+    // the 3 s deadline measures. Disabled is accepted at the default effort
+    // (medium); effort is deliberately not sent, since disabled 400s at
+    // xhigh and max.
+    // Only on the Haiku 5 family: disabled is a 400 on Opus 5.5 and Sonnet
+    // 5.5, so any other model ID (an env override) gets no thinking field.
+    // On Opus 5.5 and Sonnet 5.5 that means adaptive thinking: the model
+    // thinks before its first token, against the 3 s deadline. Each needs
+    // its own settings (Sonnet 5.5: thinking between_tools; Opus 5.5: low
+    // effort), so those overrides are unsupported until they get them.
+    ...(modelId.startsWith('claude-haiku-5') ? { thinking: { type: 'disabled' as const } } : {}),
     stream: true,
     system: [
       {
@@ -69,7 +82,7 @@ interface StreamClient {
   messages: {
     create(
       params: MessageCreateParamsStreaming,
-      options: { signal: AbortSignal }
+      options: { signal: AbortSignal },
     ): Promise<AsyncIterable<unknown>>;
   };
 }
@@ -87,7 +100,7 @@ function toUsage(raw: unknown): Usage {
 
 /** Translate the Anthropic streaming event vocabulary into UpstreamEvents. */
 export async function* adaptAnthropicStream(
-  stream: AsyncIterable<unknown>
+  stream: AsyncIterable<unknown>,
 ): AsyncIterable<UpstreamEvent> {
   let stopReason: string | null = null;
   let refusalCategory: string | null | undefined;
@@ -105,6 +118,8 @@ export async function* adaptAnthropicStream(
       }
       case 'content_block_delta': {
         const delta = (event.delta ?? {}) as Record<string, unknown>;
+        // Keyed on the delta type, never the block index: a thinking or
+        // signature delta (Haiku 5.5 can open on a thinking block) is dropped.
         if (delta.type === 'text_delta' && typeof delta.text === 'string') {
           yield { kind: 'text', text: delta.text };
         }
@@ -160,7 +175,7 @@ export async function* adaptAnthropicStream(
 function laneFromClient(
   name: LaneName,
   modelId: string,
-  createClient: () => StreamClient
+  createClient: () => StreamClient,
 ): LaneClient {
   let client: StreamClient | undefined;
   return {
@@ -172,7 +187,7 @@ function laneFromClient(
       try {
         stream = await active.messages.create(
           buildMessageParams(req.direction, req.text, modelId),
-          { signal }
+          { signal },
         );
       } catch (err) {
         // Never keep a client whose credentials failed. The SDK settles its auth
@@ -206,8 +221,8 @@ export function buildLanes(config: Config, env: NodeJS.ProcessEnv = process.env)
             new AnthropicVertex({
               projectId: config.projectId,
               region: 'global',
-            }) as unknown as StreamClient
-        )
+            }) as unknown as StreamClient,
+        ),
       );
     } else if (name === 'vertex-regional') {
       lanes.push(
@@ -218,8 +233,8 @@ export function buildLanes(config: Config, env: NodeJS.ProcessEnv = process.env)
             new AnthropicVertex({
               projectId: config.projectId,
               region: config.vertexFallbackRegion,
-            }) as unknown as StreamClient
-        )
+            }) as unknown as StreamClient,
+        ),
       );
     } else if (name === 'anthropic-api') {
       const wif = readWifEnv(env);
@@ -231,8 +246,8 @@ export function buildLanes(config: Config, env: NodeJS.ProcessEnv = process.env)
           () =>
             new Anthropic({
               credentials: anthropicWifCredentials(wif),
-            }) as unknown as StreamClient
-        )
+            }) as unknown as StreamClient,
+        ),
       );
     }
     // cache-only is not a client lane; the orchestrator handles it.

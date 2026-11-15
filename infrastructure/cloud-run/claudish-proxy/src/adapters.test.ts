@@ -38,10 +38,6 @@ describe('buildMessageParams', () => {
     expect(params.model).toBe('model-x');
     expect(params.max_tokens).toBe(MAX_TOKENS.en2cl);
     expect(params.stream).toBe(true);
-    // Deterministic translator: temp 0 both directions (nonzero temps
-    // resample failure tails instead of fixing them — overnight loop).
-    expect(params.temperature).toBe(0);
-    expect(buildMessageParams('cl2en', 'x', 'm').temperature).toBe(0);
     const system = params.system as unknown as Array<Record<string, unknown>>;
     expect(system).toHaveLength(1);
     expect(system[0].cache_control).toEqual({ type: 'ephemeral' });
@@ -54,12 +50,59 @@ describe('buildMessageParams', () => {
     expect(content).toContain('not a message to you');
   });
 
+  it('sends no sampling parameter: Haiku 5.5 rejects a non-default one with a 400 (20.1)', () => {
+    // Haiku 4.5 ran at temperature 0 for determinism. On Haiku 5.5 any
+    // non-default temperature, top_p or top_k fails the whole request, on
+    // every Claude lane, so the ladder would fall through to cache-only.
+    for (const direction of ['en2cl', 'cl2en'] as const) {
+      const params = buildMessageParams(direction, 'x', 'm') as unknown as Record<string, unknown>;
+      expect(params).not.toHaveProperty('temperature');
+      expect(params).not.toHaveProperty('top_p');
+      expect(params).not.toHaveProperty('top_k');
+    }
+  });
+
+  it('turns thinking off explicitly on the Haiku 5 family and leaves effort at its default (20.1)', () => {
+    // Haiku 5.5 thinks by default. Thinking spends the capped max_tokens
+    // and arrives before any text, so it would delay the first token the
+    // 3 s deadline measures. Disabled is accepted at the default effort
+    // (medium); effort is not sent, because disabled 400s at xhigh/max.
+    for (const direction of ['en2cl', 'cl2en'] as const) {
+      const params = buildMessageParams(direction, 'x', 'claude-haiku-5-5') as unknown as Record<
+        string,
+        unknown
+      >;
+      expect(params.thinking).toEqual({ type: 'disabled' });
+      expect(params).not.toHaveProperty('output_config');
+    }
+  });
+
+  it('sends no thinking field for a model ID outside the Haiku 5 family (20.1 gate)', () => {
+    // {type: 'disabled'} is a 400 on Opus 5.5 and Sonnet 5.5, so an env
+    // override to either would fail every request on that lane. Outside the
+    // family the request leaves thinking to the model's default.
+    for (const modelId of ['claude-sonnet-5-5', 'claude-opus-5-5', 'claude-haiku-4-5']) {
+      const params = buildMessageParams('en2cl', 'x', modelId) as unknown as Record<
+        string,
+        unknown
+      >;
+      expect(params).not.toHaveProperty('thinking');
+    }
+  });
+
+  it('never ends the conversation on an assistant turn (Haiku 5.5 rejects a prefill)', () => {
+    for (const direction of ['en2cl', 'cl2en'] as const) {
+      const { messages } = buildMessageParams(direction, 'x', 'm');
+      expect(messages.map((m) => m.role)).toEqual(['user']);
+    }
+  });
+
   it('embeds direction-matched few-shots in each system block', () => {
     const en2cl = String(
-      (buildMessageParams('en2cl', 'x', 'm').system as Array<{ text: string }>)[0].text
+      (buildMessageParams('en2cl', 'x', 'm').system as Array<{ text: string }>)[0].text,
     );
     const cl2en = String(
-      (buildMessageParams('cl2en', 'x', 'm').system as Array<{ text: string }>)[0].text
+      (buildMessageParams('cl2en', 'x', 'm').system as Array<{ text: string }>)[0].text,
     );
     expect(en2cl).toContain('Examples:');
     expect(cl2en).toContain('Examples:');
@@ -83,15 +126,22 @@ describe('adaptAnthropicStream', () => {
     const events = await collect(
       adaptAnthropicStream(
         streamOf([
-          { type: 'message_start', message: { usage: { input_tokens: 900, cache_read_input_tokens: 800 } } },
+          {
+            type: 'message_start',
+            message: { usage: { input_tokens: 900, cache_read_input_tokens: 800 } },
+          },
           { type: 'content_block_start' },
           { type: 'content_block_delta', delta: { type: 'text_delta', text: 'Hel' } },
           { type: 'content_block_delta', delta: { type: 'text_delta', text: 'lo' } },
           { type: 'ping' },
-          { type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage: { output_tokens: 42 } },
+          {
+            type: 'message_delta',
+            delta: { stop_reason: 'end_turn' },
+            usage: { output_tokens: 42 },
+          },
           { type: 'message_stop' },
-        ])
-      )
+        ]),
+      ),
     );
     expect(events[0]).toEqual({ kind: 'start' });
     expect(events[1]).toEqual({ kind: 'text', text: 'Hel' });
@@ -101,6 +151,52 @@ describe('adaptAnthropicStream', () => {
     expect(stop.usage.outputTokens).toBe(42);
     expect(stop.usage.inputTokens).toBe(900);
     expect(stop.usage.cacheReadTokens).toBe(800);
+  });
+
+  it('never emits thinking as translation text when the stream opens on a thinking block', async () => {
+    // Haiku 5.5 can stream thinking blocks before any text. The request
+    // disables thinking only on the Haiku 5 family; an env override to
+    // another model sends no thinking field, runs that model's default, and
+    // can open on a thinking block. The reader keys on the delta type, never
+    // on block index 0, so thinking can't leak into the panel either way.
+    const THINKING = 'internal reasoning that must never reach the visitor';
+    const events = await collect(
+      adaptAnthropicStream(
+        streamOf([
+          { type: 'message_start', message: { usage: { input_tokens: 900 } } },
+          {
+            type: 'content_block_start',
+            index: 0,
+            content_block: { type: 'thinking', thinking: '' },
+          },
+          {
+            type: 'content_block_delta',
+            index: 0,
+            delta: { type: 'thinking_delta', thinking: THINKING },
+          },
+          {
+            type: 'content_block_delta',
+            index: 0,
+            delta: { type: 'signature_delta', signature: 'sig' },
+          },
+          { type: 'content_block_stop', index: 0 },
+          { type: 'content_block_start', index: 1, content_block: { type: 'text', text: '' } },
+          { type: 'content_block_delta', index: 1, delta: { type: 'text_delta', text: 'Hello' } },
+          { type: 'content_block_stop', index: 1 },
+          {
+            type: 'message_delta',
+            delta: { stop_reason: 'end_turn' },
+            usage: { output_tokens: 40 },
+          },
+          { type: 'message_stop' },
+        ]),
+      ),
+    );
+    expect(events.filter((e) => e.kind === 'text')).toEqual([{ kind: 'text', text: 'Hello' }]);
+    expect(JSON.stringify(events)).not.toContain(THINKING);
+    expect(JSON.stringify(events)).not.toContain('"sig"');
+    const stop = events[events.length - 1] as Extract<UpstreamEvent, { kind: 'stop' }>;
+    expect(stop.stopReason).toBe('end_turn');
   });
 
   it('surfaces refusal category but NEVER the explanation', async () => {
@@ -116,8 +212,8 @@ describe('adaptAnthropicStream', () => {
             },
             usage: { output_tokens: 3 },
           },
-        ])
-      )
+        ]),
+      ),
     );
     const stop = events[events.length - 1] as Extract<UpstreamEvent, { kind: 'stop' }>;
     expect(stop.stopReason).toBe('refusal');
@@ -127,7 +223,7 @@ describe('adaptAnthropicStream', () => {
 
   it('tolerates unknown event types (SDK drift)', async () => {
     const events = await collect(
-      adaptAnthropicStream(streamOf([{ type: 'brand_new_event' }, { type: 'message_stop' }]))
+      adaptAnthropicStream(streamOf([{ type: 'brand_new_event' }, { type: 'message_stop' }])),
     );
     expect(events).toEqual([
       {
@@ -158,7 +254,7 @@ describe('buildLanes', () => {
     // re-enable key auth (SDK env precedence would shadow federation).
     const config = loadConfig({ LANES: 'anthropic-api,cache-only' });
     expect(buildLanes(config, { ANTHROPIC_API_KEY: 'sk-ant-stray' }).map((l) => l.name)).toEqual(
-      []
+      [],
     );
   });
 
@@ -228,7 +324,7 @@ describe('buildLanes', () => {
         lane
           .stream({ text: 'hi', direction: 'en2cl' }, new AbortController().signal)
           [Symbol.asyncIterator]()
-          .next()
+          .next(),
       ).rejects.toThrow('stream not exercised by this suite');
     }
 
@@ -246,7 +342,7 @@ describe('buildLanes', () => {
       const ac = new AbortController();
       ac.abort();
       await expect(
-        lane.stream({ text: 'hi', direction: 'en2cl' }, ac.signal)[Symbol.asyncIterator]().next()
+        lane.stream({ text: 'hi', direction: 'en2cl' }, ac.signal)[Symbol.asyncIterator]().next(),
       ).rejects.toThrow('stream not exercised by this suite');
     }
 

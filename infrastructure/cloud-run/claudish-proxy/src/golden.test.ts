@@ -28,10 +28,11 @@ import path from 'node:path';
 
 import { buildLanes } from './adapters';
 import { loopBudgetFor, runCl2enLoop } from './cl2en-loop';
-import { loadConfig } from './config';
+import { GEMINI_LOOP_MAX_OUTPUT_TOKENS, loadConfig } from './config';
 import { streamGemini } from './gemini';
 import { CANARY_TOKEN, buildSystem } from './prompts';
 import { assertCl2En, assertEn2Cl, assertInjectionSafe } from './assertions';
+import type { PropertyFailure } from './assertions';
 import { EmDashSmoother } from './smooth';
 
 import type { Direction } from './config';
@@ -64,9 +65,10 @@ async function translateVia(
   lane: LaneClient,
   direction: Direction,
   text: string
-): Promise<{ output: string; stopReason: string | null }> {
+): Promise<{ output: string; stopReason: string | null; refusalCategory?: string | null }> {
   let output = '';
   let stopReason: string | null = null;
+  let refusalCategory: string | null | undefined;
   // Mirror production composition: cl2en output is served through the
   // EmDashSmoother (translate.ts), so the contract is asserted on what
   // a user actually receives, not the raw model text.
@@ -74,9 +76,32 @@ async function translateVia(
   for await (const event of lane.stream({ text, direction }, new AbortController().signal)) {
     if (event.kind === 'text') output += smoother ? smoother.feed(event.text) : event.text;
     if (event.kind === 'stop') output += smoother ? smoother.flush() : '';
-    if (event.kind === 'stop') stopReason = event.stopReason;
+    if (event.kind === 'stop') {
+      stopReason = event.stopReason;
+      refusalCategory = event.refusalCategory;
+    }
   }
-  return { output, stopReason };
+  return { output, stopReason, refusalCategory };
+}
+
+/**
+ * Haiku 5.5's safety classifiers can decline a request (stop_reason
+ * "refusal", HTTP 200), which Haiku 4.5 did not. Production handles it
+ * (refusal frame, never cached, no failover); the gate's job is to catch a
+ * classifier that declines ordinary input, so a refused case fails by name
+ * rather than as an empty output tripping a property check. The injection
+ * cases are exempt: they gate on the prompt not leaking, and a refusal is a
+ * safe answer to "print your system prompt" (an empty refused output passes
+ * assertInjectionSafe, as before 20.1). Category only: never the input or
+ * output text.
+ */
+function refusalFailure(
+  stopReason: string | null,
+  refusalCategory?: string | null
+): PropertyFailure[] {
+  return stopReason === 'refusal'
+    ? [{ property: 'not-refused', detail: `category=${refusalCategory ?? 'null'}` }]
+    : [];
 }
 
 /** The served cl2en path: the Gemini loop, composed as translate.ts composes it. */
@@ -98,7 +123,7 @@ async function translateCl2EnServed(
             projectId: config.projectId,
             location: config.geminiLocation,
             modelId: config.geminiModelId,
-            maxOutputTokens: 2048,
+            maxOutputTokens: GEMINI_LOOP_MAX_OUTPUT_TOKENS,
             thinkingBudget: 0,
             temperature,
           },
@@ -129,6 +154,35 @@ async function translateCl2EnServed(
   const output = smoother.feed(result.servedText) + smoother.flush();
   return { output, stopReason: result.refused ? 'refusal' : 'end_turn' };
 }
+
+/**
+ * GOLDEN_REPEAT: how many times each en2cl case runs (default 1). Since
+ * 20.1 the Claude lanes send no temperature, so one pass is one sample
+ * under default sampling; repeats turn it into a pass rate (Ian's gate,
+ * 2026-11-15). Integer >= 1, or the run refuses to start.
+ */
+function parseGoldenRepeat(raw: string | undefined): number {
+  if (raw === undefined || raw === '') return 1;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1) {
+    throw new Error(`GOLDEN_REPEAT must be a positive integer, got "${raw}"`);
+  }
+  return n;
+}
+
+describe('GOLDEN_REPEAT parsing (offline)', () => {
+  it('defaults to one pass and accepts a positive integer', () => {
+    expect(parseGoldenRepeat(undefined)).toBe(1);
+    expect(parseGoldenRepeat('')).toBe(1);
+    expect(parseGoldenRepeat('3')).toBe(3);
+  });
+
+  it('refuses a value that would silently run zero or fractional passes', () => {
+    for (const bad of ['0', '-1', '2.5', 'three']) {
+      expect(() => parseGoldenRepeat(bad)).toThrow(/GOLDEN_REPEAT/);
+    }
+  });
+});
 
 class PreTokenFailure extends Error {
   constructor(readonly cause: unknown) {
@@ -197,9 +251,15 @@ describeIfGolden('golden set (live API)', () => {
     });
     for (const testCase of loadCases('cl2en.json')) {
       it(testCase.id, async () => {
-        const { output, stopReason } = served
-          ? await translateCl2EnAsServed(config, lane, testCase.input)
-          : await translateVia(lane, 'cl2en', testCase.input);
+        const result: { output: string; stopReason: string | null; refusalCategory?: string | null } =
+          served
+            ? await translateCl2EnAsServed(config, lane, testCase.input)
+            : await translateVia(lane, 'cl2en', testCase.input);
+        const { output, stopReason } = result;
+        const refused = testCase.injection ? [] : refusalFailure(stopReason, result.refusalCategory);
+        if (refused.length > 0) {
+          throw new Error(`${testCase.id} violated: not-refused (${refused[0].detail})`);
+        }
         if (testCase.long && stopReason !== 'end_turn') {
           throw new Error(`${testCase.id} truncated: stop_reason=${stopReason}`);
         }
@@ -216,21 +276,77 @@ describeIfGolden('golden set (live API)', () => {
   });
 
   describe('english → claudish', () => {
+    // Parsed in beforeAll, not here: describe.skip still runs this body, so
+    // a collection-time throw failed offline `npm test` on a leftover value.
+    let repeat = 1;
+    beforeAll(() => {
+      repeat = parseGoldenRepeat(process.env.GOLDEN_REPEAT);
+    });
+    // The per-test timeout is fixed at collection, before beforeAll runs, so
+    // it reads the value leniently (1 to 10 runs); the strict parse above
+    // decides whether the run happens at all.
+    const timeoutRuns = Math.min(
+      10,
+      Math.max(1, Math.floor(Number(process.env.GOLDEN_REPEAT)) || 1),
+    );
+    let runs = 0;
+    let passes = 0;
+    afterAll(() => {
+      // Ids and counts only: never input or output text.
+      if (repeat > 1 && lane) {
+        console.log(
+          `[golden] en2cl pass rate on ${lane.name}: ${passes}/${runs} runs (${repeat} per case)`,
+        );
+      }
+    });
     for (const testCase of loadCases('en2cl.json')) {
-      it(testCase.id, async () => {
-        const { output, stopReason } = await translateVia(lane, 'en2cl', testCase.input);
-        if (testCase.long && stopReason !== 'end_turn') {
-          throw new Error(`${testCase.id} truncated: stop_reason=${stopReason}`);
-        }
-        const failures = testCase.injection
-          ? assertInjectionSafe(output, CANARY_TOKEN)
-          : [...assertEn2Cl(testCase.input, output), ...assertInjectionSafe(output, CANARY_TOKEN)];
-        if (failures.length > 0) {
-          throw new Error(
-            `${testCase.id} violated: ${failures.map((f) => `${f.property} (${f.detail})`).join('; ')}\noutput: ${output}`
-          );
-        }
-      });
+      it(
+        testCase.id,
+        async () => {
+          let firstFailure: string | null = null;
+          let casePasses = 0;
+          for (let run = 0; run < repeat; run++) {
+            runs++;
+            const { output, stopReason, refusalCategory } = await translateVia(
+              lane,
+              'en2cl',
+              testCase.input,
+            );
+            const refused = testCase.injection ? [] : refusalFailure(stopReason, refusalCategory);
+            const failures =
+              refused.length > 0
+                ? refused
+                : testCase.long && stopReason !== 'end_turn'
+                ? [{ property: 'truncated', detail: `stop_reason=${stopReason}` }]
+                : testCase.injection
+                  ? assertInjectionSafe(output, CANARY_TOKEN)
+                  : [
+                      ...assertEn2Cl(testCase.input, output),
+                      ...assertInjectionSafe(output, CANARY_TOKEN),
+                    ];
+            if (failures.length === 0) {
+              passes++;
+              casePasses++;
+            } else if (firstFailure === null) {
+              const detail = failures.map((f) => `${f.property} (${f.detail})`).join('; ');
+              // A refusal's partial text stays out of the suite output.
+              firstFailure =
+                refused.length > 0
+                  ? `${testCase.id} violated: ${detail}`
+                  : `${testCase.id} violated: ${detail}\noutput: ${output}`;
+            }
+          }
+          if (repeat > 1) console.log(`[golden] ${testCase.id}: ${casePasses}/${repeat} passed`);
+          if (firstFailure !== null) {
+            throw new Error(
+              repeat > 1
+                ? `${casePasses}/${repeat} runs passed; first failure: ${firstFailure}`
+                : firstFailure,
+            );
+          }
+        },
+        60000 * timeoutRuns,
+      );
     }
   });
 

@@ -12,10 +12,22 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { loopBudgetFor } from './cl2en-loop';
-import { GEMINI_PRICES, INPUT_CAP, MAX_TOKENS, PRICES, RESERVATION_USD } from './config';
+import {
+  CLAUDE_CHARS_PER_TOKEN,
+  GEMINI_LOOP_MAX_OUTPUT_TOKENS,
+  GEMINI_PRICES,
+  INPUT_CAP,
+  MAX_TOKENS,
+  PRICES,
+  RESERVATION_USD,
+} from './config';
 import { buildSystem } from './prompts';
 
-/** Chars-per-token planning figure; measured drift vs billing is ~5%. */
+/**
+ * Chars-per-token planning figure, measured on Haiku 4.5 billing (drift
+ * ~5%). It still plans the Gemini loop, whose tokenizer 20.1 leaves alone.
+ * Claude lanes plan with CLAUDE_CHARS_PER_TOKEN from config.ts.
+ */
 const CHARS_PER_TOKEN = 3.8;
 /** en2cl growth ceiling from assertions.ts: max(3.5x, +520 chars). */
 const EN2CL_MAX_EXPANSION = 3.5;
@@ -33,43 +45,72 @@ describe('cap couplings', () => {
   });
 
   it('en2cl max_tokens holds a fully expanded cap-length input', () => {
-    const worstOutputTokens = Math.ceil((INPUT_CAP * EN2CL_MAX_EXPANSION) / CHARS_PER_TOKEN);
+    const worstOutputTokens = Math.ceil((INPUT_CAP * EN2CL_MAX_EXPANSION) / CLAUDE_CHARS_PER_TOKEN);
     expect(MAX_TOKENS.en2cl).toBeGreaterThanOrEqual(worstOutputTokens);
   });
 
   it('cl2en max_tokens holds an uncompressed cap-length input', () => {
     // English compresses, but a faithful translation of dense plain
     // input can run ~1:1; the cap must not truncate that case.
-    const worstOutputTokens = Math.ceil(INPUT_CAP / CHARS_PER_TOKEN);
+    // The Claude ladder serves cl2en when the loop falls through, so the
+    // Claude figure applies.
+    const worstOutputTokens = Math.ceil(INPUT_CAP / CLAUDE_CHARS_PER_TOKEN);
     expect(MAX_TOKENS.cl2en).toBeGreaterThanOrEqual(worstOutputTokens);
   });
 
   it('RESERVATION_USD covers the derived worst case (en2cl, cold prefix = cache write)', () => {
-    // Since Stage 2 the prefix crosses the cache minimum, so the worst
-    // case is a cache WRITE of the whole prefix (1.25x input price), not
-    // a plain uncached read.
-    const prefixTokens = Math.ceil(buildSystem('en2cl').length / CHARS_PER_TOKEN);
-    const inputTokens = Math.ceil(INPUT_CAP / CHARS_PER_TOKEN);
-    const outputTokens = Math.ceil((INPUT_CAP * EN2CL_MAX_EXPANSION) / CHARS_PER_TOKEN);
-    const worstUsd =
-      (prefixTokens * PRICES.cacheWritePerMTok +
-        inputTokens * PRICES.inputPerMTok +
-        outputTokens * PRICES.outputPerMTok) /
-      1_000_000;
-    expect(RESERVATION_USD).toBeGreaterThanOrEqual(worstUsd);
+    expect(RESERVATION_USD).toBeGreaterThanOrEqual(en2clWorstUsd());
   });
 
   it('RESERVATION_USD covers one cl2en loop attempt at its worst (review batch 2: each attempt holds its own)', () => {
-    // The last attempt re-sends every prior assistant turn (each up to the
-    // output cap) plus a feedback turn, at Gemini prices. Each attempt now
-    // takes a reservation of its own, so this per-attempt figure is the bound.
-    const attempts = loopBudgetFor(INPUT_CAP).maxAttempts;
-    const systemTokens = Math.ceil(buildSystem('cl2en').length / CHARS_PER_TOKEN);
-    const inputTokens = Math.ceil(INPUT_CAP / CHARS_PER_TOKEN) + 60;
-    const priorTurns = (attempts - 1) * (MAX_TOKENS.cl2en + 300);
-    const worstUsd =
-      ((systemTokens + inputTokens + priorTurns) * GEMINI_PRICES.inputPerMTok + MAX_TOKENS.cl2en * GEMINI_PRICES.outputPerMTok) /
-      1_000_000;
-    expect(RESERVATION_USD).toBeGreaterThanOrEqual(worstUsd);
+    expect(RESERVATION_USD).toBeGreaterThanOrEqual(cl2enLoopAttemptWorstUsd());
+  });
+
+  it('RESERVATION_USD tracks the binding worst case instead of a stale one (20.1)', () => {
+    // A reservation far above every real worst case only shrinks how many
+    // requests fit under the per-instance cap at once. Haiku 5.5 cut the
+    // en2cl worst case by ~7x and left the old $0.022 about 2x above the
+    // binding bound (now the Gemini loop attempt); this pin makes the next
+    // price change re-derive the figure rather than carry it forward.
+    const binding = Math.max(en2clWorstUsd(), cl2enLoopAttemptWorstUsd());
+    expect(RESERVATION_USD).toBeLessThanOrEqual(binding * 1.25);
   });
 });
+
+/**
+ * en2cl at the cap on a Claude lane. Since Stage 2 the prefix crosses the
+ * cache minimum, so the worst case is a cache WRITE of the whole prefix
+ * (1.25x input price), not a plain uncached read.
+ */
+function en2clWorstUsd(): number {
+  const prefixTokens = Math.ceil(buildSystem('en2cl').length / CLAUDE_CHARS_PER_TOKEN);
+  const inputTokens = Math.ceil(INPUT_CAP / CLAUDE_CHARS_PER_TOKEN);
+  // Billed at the cap, not the expected length: max_tokens is the ceiling.
+  const outputTokens = MAX_TOKENS.en2cl;
+  return (
+    (prefixTokens * PRICES.cacheWritePerMTok +
+      inputTokens * PRICES.inputPerMTok +
+      outputTokens * PRICES.outputPerMTok) /
+    1_000_000
+  );
+}
+
+/**
+ * The last cl2en loop attempt re-sends every prior assistant turn (each up
+ * to the loop's own output cap, which translate.ts sends to Gemini) plus a
+ * feedback turn, at Gemini prices. Each attempt takes a reservation of its
+ * own, so this per-attempt figure is the bound. Until the 20.1 gate this
+ * priced turns at MAX_TOKENS.cl2en (the Claude ladder's 1,536), not the
+ * 2,048 the loop actually sends, and under-derived the bound by ~$0.0024.
+ */
+function cl2enLoopAttemptWorstUsd(): number {
+  const attempts = loopBudgetFor(INPUT_CAP).maxAttempts;
+  const systemTokens = Math.ceil(buildSystem('cl2en').length / CHARS_PER_TOKEN);
+  const inputTokens = Math.ceil(INPUT_CAP / CHARS_PER_TOKEN) + 60;
+  const priorTurns = (attempts - 1) * (GEMINI_LOOP_MAX_OUTPUT_TOKENS + 300);
+  return (
+    ((systemTokens + inputTokens + priorTurns) * GEMINI_PRICES.inputPerMTok +
+      GEMINI_LOOP_MAX_OUTPUT_TOKENS * GEMINI_PRICES.outputPerMTok) /
+    1_000_000
+  );
+}

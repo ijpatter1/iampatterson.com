@@ -17,6 +17,22 @@ describe('loadConfig', () => {
     expect(c.modelIdConfirmed).toBe(false);
   });
 
+  it('defaults every Claude lane to Claude Haiku 5.5 under its bare ID (20.1, Ian 2026-11-02)', () => {
+    // Haiku 5.5 takes the same bare ID on the Anthropic API and on Vertex:
+    // no date suffix and no @version, unlike claude-haiku-4-5@20251001.
+    const c = loadConfig({});
+    expect(c.vertexModelId).toBe('claude-haiku-5-5');
+    expect(c.anthropicModelId).toBe('claude-haiku-5-5');
+    // The cl2en loop stays on Gemini; 20.1 does not move it.
+    expect(c.geminiModelId).toBe('gemini-3.5-flash-lite');
+  });
+
+  it('still lets env override the model IDs (the operator verifies before deploy)', () => {
+    const c = loadConfig({ VERTEX_MODEL_ID: 'v-id', ANTHROPIC_MODEL_ID: 'a-id' });
+    expect(c.vertexModelId).toBe('v-id');
+    expect(c.anthropicModelId).toBe('a-id');
+  });
+
   it('parses and validates the lane ladder from env', () => {
     const c = loadConfig({ LANES: 'anthropic-api, cache-only' });
     expect(c.lanes).toEqual(['anthropic-api', 'cache-only']);
@@ -24,7 +40,7 @@ describe('loadConfig', () => {
 
   it('rejects unknown lanes with a readable message', () => {
     expect(() => loadConfig({ LANES: 'vertex-global,warp-drive' })).toThrow(
-      /unknown lane "warp-drive"/
+      /unknown lane "warp-drive"/,
     );
   });
 

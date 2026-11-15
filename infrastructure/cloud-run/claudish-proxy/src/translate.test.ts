@@ -11,7 +11,15 @@ import { EventEmitter } from 'node:events';
 
 import { BudgetTracker } from './budget';
 import { TranslationCache } from './cache';
-import { GEMINI_PRICES, INPUT_CAP, loadConfig } from './config';
+import {
+  CLAUDE_CHARS_PER_TOKEN,
+  GEMINI_LOOP_MAX_OUTPUT_TOKENS,
+  GEMINI_PRICES,
+  INPUT_CAP,
+  loadConfig,
+  RESERVATION_USD,
+} from './config';
+import { buildSystem } from './prompts';
 import { CircuitBreaker } from './lanes';
 import { setLogSink } from './log';
 import { RateLimiter } from './ratelimit';
@@ -111,7 +119,10 @@ function stubReqRes(body: unknown, headers: Record<string, string> = {}) {
   };
 }
 
-function makeDeps(lanes: LaneClient[], overrides: Partial<Parameters<typeof createTranslateHandler>[0]> = {}) {
+function makeDeps(
+  lanes: LaneClient[],
+  overrides: Partial<Parameters<typeof createTranslateHandler>[0]> = {},
+) {
   return {
     config: loadConfig({}),
     lanes,
@@ -195,7 +206,12 @@ describe('happy path', () => {
     ]);
     const deps = makeDeps([lane]);
     const handler = createTranslateHandler(deps);
-    await handler(...(() => { const c = stubReqRes(VALID_BODY); return [c.req, c.res] as const; })());
+    await handler(
+      ...(() => {
+        const c = stubReqRes(VALID_BODY);
+        return [c.req, c.res] as const;
+      })(),
+    );
     const second = stubReqRes(VALID_BODY);
     await handler(second.req, second.res);
     expect(lane.calls).toHaveLength(1);
@@ -233,7 +249,12 @@ describe('pre-stream rejections', () => {
 
   it('400s malformed input and 413s the cap', async () => {
     const handler = createTranslateHandler(makeDeps([fakeLane('vertex-global', [])]));
-    for (const body of [null, {}, { text: '', direction: 'en2cl' }, { text: 'x', direction: 'nope' }]) {
+    for (const body of [
+      null,
+      {},
+      { text: '', direction: 'en2cl' },
+      { text: 'x', direction: 'nope' },
+    ]) {
       const ctx = stubReqRes(body);
       await handler(ctx.req, ctx.res);
       expect(ctx.status()).toBe(400);
@@ -245,13 +266,16 @@ describe('pre-stream rejections', () => {
   });
 
   it('429s past the per-IP limit with Retry-After', async () => {
-    const deps = makeDeps([
-      fakeLane('vertex-global', [
-        { kind: 'start' },
-        { kind: 'text', text: 'y' },
-        { kind: 'stop', stopReason: 'end_turn', usage: OK_USAGE },
-      ]),
-    ], { limiter: new RateLimiter({ perMinute: 1, perHour: 10, perDay: 10 }) });
+    const deps = makeDeps(
+      [
+        fakeLane('vertex-global', [
+          { kind: 'start' },
+          { kind: 'text', text: 'y' },
+          { kind: 'stop', stopReason: 'end_turn', usage: OK_USAGE },
+        ]),
+      ],
+      { limiter: new RateLimiter({ perMinute: 1, perHour: 10, perDay: 10 }) },
+    );
     const handler = createTranslateHandler(deps);
     const first = stubReqRes(VALID_BODY);
     await handler(first.req, first.res);
@@ -351,7 +375,7 @@ describe('the ladder', () => {
     const boom = { kind: 'throw' as const, err: new Error('down') };
     const ctx = stubReqRes(VALID_BODY);
     await createTranslateHandler(
-      makeDeps([fakeLane('vertex-global', [boom]), fakeLane('anthropic-api', [boom])])
+      makeDeps([fakeLane('vertex-global', [boom]), fakeLane('anthropic-api', [boom])]),
     )(ctx.req, ctx.res);
     expect(ctx.status()).toBe(503);
     expect(ctx.json()).toEqual({ error: 'capacity' });
@@ -393,6 +417,24 @@ describe('refusal', () => {
     expect(lane2.calls).toHaveLength(0);
     expect(deps.cache.size).toBe(0);
     expect(logLines.join('\n')).toContain('general_harms');
+  });
+
+  // Haiku 5.5's classifiers can decline before any output: message_start,
+  // then a refusal stop with no text. No token frame, no failover to the
+  // next lane (same model, same verdict), nothing cached.
+  it('is terminal when the refusal arrives before any text', async () => {
+    const lane1 = fakeLane('anthropic-api', [
+      { kind: 'start' },
+      { kind: 'stop', stopReason: 'refusal', refusalCategory: 'cyber', usage: OK_USAGE },
+    ]);
+    const lane2 = fakeLane('vertex-global', []);
+    const deps = makeDeps([lane1, lane2]);
+    const ctx = stubReqRes(VALID_BODY);
+    await createTranslateHandler(deps)(ctx.req, ctx.res);
+    expect(ctx.frames().map((f) => f.type)).toEqual(['meta', 'refusal']);
+    expect(lane2.calls).toHaveLength(0);
+    expect(deps.cache.size).toBe(0);
+    expect(logLines.join('\n')).toContain('cyber');
   });
 });
 
@@ -513,7 +555,7 @@ describe('CORS on pre-stream errors (CR2)', () => {
 
     const capped = stubReqRes(VALID_BODY);
     await createTranslateHandler(
-      makeDeps([fakeLane('vertex-global', [])], { budget: new BudgetTracker(23, true) })
+      makeDeps([fakeLane('vertex-global', [])], { budget: new BudgetTracker(23, true) }),
     )(capped.req, capped.res);
     expect(capped.status()).toBe(503);
     expect(capped.headers()['Access-Control-Allow-Origin']).toBeTruthy();
@@ -726,7 +768,10 @@ describe('review batch 1 (2026-09-03): gemini-loop failure paths', () => {
     // rejection -> process exit).
     const boom = { kind: 'throw' as const, err: new Error('down') };
     const deps = makeDeps([fakeLane('vertex-global', [boom]), fakeLane('anthropic-api', [boom])]);
-    deps.config = loadConfig({ CL2EN_ENGINE: 'gemini-loop', LANES: 'vertex-global,anthropic-api,cache-only' });
+    deps.config = loadConfig({
+      CL2EN_ENGINE: 'gemini-loop',
+      LANES: 'vertex-global,anthropic-api,cache-only',
+    });
     (deps as { geminiStream?: unknown }).geminiStream = geminiScript(['throw']);
     const ctx = stubReqRes({ text: 'v '.repeat(20), direction: 'cl2en' as const });
     await expect(createTranslateHandler(deps)(ctx.req, ctx.res)).resolves.toBeUndefined();
@@ -761,7 +806,11 @@ describe('review batch 2 (2026-09-03): per-attempt reservations, empty results, 
         const text = texts[Math.min(call++, texts.length - 1)];
         return (async function* () {
           if (text.length > 0) yield { kind: 'text', text } as const;
-          yield { kind: 'stop', usage: { inputTokens: 100, outputTokens: 20, cachedTokens: 0 }, finishReason: 'STOP' } as const;
+          yield {
+            kind: 'stop',
+            usage: { inputTokens: 100, outputTokens: 20, cachedTokens: 0 },
+            finishReason: 'STOP',
+          } as const;
         })();
       }) as never,
     };
@@ -777,8 +826,8 @@ describe('review batch 2 (2026-09-03): per-attempt reservations, empty results, 
 
   it('each retry holds its own reservation; with room for one, a convicted attempt 1 is served without a retry', async () => {
     // Finding 6: one Haiku-sized reservation used to cover up to eight
-    // Gemini attempts. Budget of $0.03 fits exactly one $0.022 reservation.
-    const { deps, s } = loopDepsWithBudget([LOUD, CLEAN], 0.03);
+    // Gemini attempts. A budget of 1.5 reservations fits exactly one.
+    const { deps, s } = loopDepsWithBudget([LOUD, CLEAN], RESERVATION_USD * 1.5);
     const ctx = stubReqRes({ text: 't '.repeat(20), direction: 'cl2en' as const });
     await createTranslateHandler(deps)(ctx.req, ctx.res);
     expect(s.calls()).toBe(1);
@@ -818,12 +867,20 @@ describe('review batch 2 (2026-09-03): per-attempt reservations, empty results, 
     const body = { text: 'echo me please', direction: 'en2cl' as const };
     const first = stubReqRes(body);
     await createTranslateHandler(deps)(first.req, first.res);
-    const streamed = first.frames().filter((f) => f.type === 'token').map((f) => String(f.t)).join('');
+    const streamed = first
+      .frames()
+      .filter((f) => f.type === 'token')
+      .map((f) => String(f.t))
+      .join('');
     expect(streamed).toBe('Hello there');
     const second = stubReqRes(body);
     await createTranslateHandler(deps)(second.req, second.res);
     expect(second.frames()[0]).toMatchObject({ cached: true });
-    const replayed = second.frames().filter((f) => f.type === 'token').map((f) => String(f.t)).join('');
+    const replayed = second
+      .frames()
+      .filter((f) => f.type === 'token')
+      .map((f) => String(f.t))
+      .join('');
     expect(replayed).toBe('Hello there');
   });
 });
@@ -837,14 +894,29 @@ describe('review batch 3 (2026-09-03): abort inside the loop settles at Gemini p
     deps.budget.reserve = () => {
       const r = real();
       if (!r) return r;
-      return { reconcile: r.reconcile, release: (...a: unknown[]) => { releases.push(a); (r.release as (...x: unknown[]) => void)(...a); } };
+      return {
+        reconcile: r.reconcile,
+        release: (...a: unknown[]) => {
+          releases.push(a);
+          (r.release as (...x: unknown[]) => void)(...a);
+        },
+      };
     };
-    (deps as { geminiStream?: unknown }).geminiStream = ((_c: unknown, _s: unknown, _t: unknown, signal: AbortSignal) =>
+    (deps as { geminiStream?: unknown }).geminiStream = ((
+      _c: unknown,
+      _s: unknown,
+      _t: unknown,
+      signal: AbortSignal,
+    ) =>
       (async function* () {
         await new Promise((r) => setTimeout(r, 30));
         if (signal.aborted) throw new Error('AbortError');
         yield { kind: 'text', text: 'late' } as const;
-        yield { kind: 'stop', usage: { inputTokens: 1, outputTokens: 1, cachedTokens: 0 }, finishReason: 'STOP' } as const;
+        yield {
+          kind: 'stop',
+          usage: { inputTokens: 1, outputTokens: 1, cachedTokens: 0 },
+          finishReason: 'STOP',
+        } as const;
       })()) as never;
     const ctx = stubReqRes({ text: 'p '.repeat(20), direction: 'cl2en' as const });
     const pending = createTranslateHandler(deps)(ctx.req, ctx.res);
@@ -852,5 +924,124 @@ describe('review batch 3 (2026-09-03): abort inside the loop settles at Gemini p
     await pending;
     expect(releases.length).toBe(1);
     expect(releases[0][1]).toBe(GEMINI_PRICES);
+  });
+});
+
+describe('20.1 gate: reservation and abort-estimate inputs', () => {
+  it('sends the Gemini loop the output cap the reservation is derived from', async () => {
+    // limits-contract.test.ts derives RESERVATION_USD from
+    // GEMINI_LOOP_MAX_OUTPUT_TOKENS; if the served loop sent a different
+    // cap, the derivation would price the wrong worst case.
+    const deps = makeDeps([fakeLane('vertex-global', [{ kind: 'start' }])]);
+    deps.config = loadConfig({ CL2EN_ENGINE: 'gemini-loop', LANES: 'vertex-global,cache-only' });
+    const caps: number[] = [];
+    (deps as { geminiStream?: unknown }).geminiStream = ((config: { maxOutputTokens: number }) => {
+      caps.push(config.maxOutputTokens);
+      return (async function* () {
+        yield { kind: 'text', text: 'You were right to send both fixes.' } as const;
+        yield {
+          kind: 'stop',
+          usage: { inputTokens: 10, outputTokens: 5, cachedTokens: 0 },
+          finishReason: 'STOP',
+        } as const;
+      })();
+    }) as never;
+    const ctx = stubReqRes({ text: 'q '.repeat(20), direction: 'cl2en' as const });
+    await createTranslateHandler(deps)(ctx.req, ctx.res);
+    expect(caps.length).toBeGreaterThan(0);
+    for (const cap of caps) expect(cap).toBe(GEMINI_LOOP_MAX_OUTPUT_TOKENS);
+  });
+
+  it('books nothing when the ladder is exhausted before any Claude request was sent', async () => {
+    // Every breaker open: no lane request leaves the proxy, so nothing is
+    // billed upstream. Charging the prefix-as-cache-write estimate here
+    // would book phantom spend on every capacity answer.
+    const lane = fakeLane('vertex-global', [{ kind: 'start' }]);
+    const breaker = new CircuitBreaker(1, 60000);
+    breaker.recordFailure('vertex-global');
+    const deps = makeDeps([lane], { breaker });
+    const releases: unknown[][] = [];
+    const real = deps.budget.reserve.bind(deps.budget);
+    deps.budget.reserve = () => {
+      const r = real();
+      if (!r) return r;
+      return {
+        reconcile: r.reconcile,
+        release: (...a: unknown[]) => {
+          releases.push(a);
+          (r.release as (...x: unknown[]) => void)(...a);
+        },
+      };
+    };
+    const ctx = stubReqRes({ text: 'Please review the plan.', direction: 'en2cl' as const });
+    await createTranslateHandler(deps)(ctx.req, ctx.res);
+
+    expect(lane.calls).toHaveLength(0);
+    expect(ctx.status()).toBe(503);
+    expect(releases).toHaveLength(1);
+    expect(releases[0][0]).toBeUndefined(); // released whole: $0 booked
+  });
+
+  it('estimates an aborted Claude stream at Haiku 5.5 token density, prefix as a cache write', async () => {
+    // The abort path used to estimate chars/4 and leave out the system
+    // prefix. Haiku 5.5 bills ~chars/2.9 and a cold call writes the whole
+    // ~6.8k-token prefix to cache, so the old estimate released the
+    // reservation low: the one direction a spend cap must not err in.
+    const STREAMED = 'Claudish so far, '.repeat(10);
+    const lane: LaneClient = {
+      name: 'vertex-global',
+      modelId: 'claude-haiku-5-5',
+      stream() {
+        let i = 0;
+        return {
+          [Symbol.asyncIterator]() {
+            return {
+              async next(): Promise<IteratorResult<UpstreamEvent>> {
+                i++;
+                if (i === 1) return { done: false, value: { kind: 'start' } };
+                if (i === 2) return { done: false, value: { kind: 'text', text: STREAMED } };
+                return new Promise(() => undefined); // hang until the client leaves
+              },
+            };
+          },
+        };
+      },
+    };
+    const deps = makeDeps([lane]);
+    const releases: unknown[][] = [];
+    const real = deps.budget.reserve.bind(deps.budget);
+    deps.budget.reserve = () => {
+      const r = real();
+      if (!r) return r;
+      return {
+        reconcile: r.reconcile,
+        release: (...a: unknown[]) => {
+          releases.push(a);
+          (r.release as (...x: unknown[]) => void)(...a);
+        },
+      };
+    };
+    const input = 'Please review the attached plan before Friday. '.repeat(10);
+    const ctx = stubReqRes({ text: input, direction: 'en2cl' as const });
+    void createTranslateHandler(deps)(ctx.req, ctx.res);
+    await new Promise((r) => setTimeout(r, 20));
+    (ctx.res as unknown as EventEmitter).emit('close');
+    await new Promise((r) => setTimeout(r, 5));
+
+    expect(releases.length).toBe(1);
+    const [usage, prices] = releases[0] as [
+      { inputTokens: number; outputTokens: number; cacheWriteTokens: number },
+      unknown,
+    ];
+    expect(prices).toBeUndefined(); // the Claude default table
+    expect(usage.inputTokens).toBeGreaterThanOrEqual(
+      Math.ceil(input.trim().length / CLAUDE_CHARS_PER_TOKEN),
+    );
+    expect(usage.outputTokens).toBeGreaterThanOrEqual(
+      Math.ceil(STREAMED.trim().length / CLAUDE_CHARS_PER_TOKEN),
+    );
+    expect(usage.cacheWriteTokens).toBeGreaterThanOrEqual(
+      Math.ceil(buildSystem('en2cl').length / CLAUDE_CHARS_PER_TOKEN),
+    );
   });
 });

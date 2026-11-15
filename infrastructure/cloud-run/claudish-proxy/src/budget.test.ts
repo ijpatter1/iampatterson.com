@@ -16,8 +16,8 @@ const usage = (outputTokens: number) => ({
 
 describe('usageCostUsd', () => {
   it('prices tokens per the pinned rates', () => {
-    // 300 in ($1/M) + 200 out ($5/M) + 2000 cache-read ($0.10/M)
-    expect(usageCostUsd(usage(200))).toBeCloseTo(0.0003 + 0.001 + 0.0002, 6);
+    // 300 in ($0.10/M) + 200 out ($0.50/M) + 2000 cache-read ($0.01/M)
+    expect(usageCostUsd(usage(200))).toBeCloseTo(0.00003 + 0.0001 + 0.00002, 8);
   });
 });
 
@@ -28,7 +28,7 @@ describe('BudgetTracker', () => {
     expect(reservation).not.toBeNull();
     expect(tracker.usedPct(DAY1)).toBe(Math.round(RESERVATION_USD * 100));
     reservation!.reconcile(usage(200));
-    expect(tracker.usedPct(DAY1)).toBe(0); // $0.0015 of $1 rounds to 0%
+    expect(tracker.usedPct(DAY1)).toBe(0); // $0.00015 of $1 rounds to 0%
   });
 
   it('refuses reservations past the cap and trips', () => {
@@ -58,13 +58,14 @@ describe('BudgetTracker', () => {
 
   it('fires threshold callbacks once each at 50/80/100', () => {
     const fired: number[] = [];
-    // Budget sized to the 3,000-char reservation ($0.018): 0.036 + 0.018
+    // Budget sized so 0.036 spent plus one reservation ($0.011 since 20.1)
     // fits under 0.06, so the second reserve succeeds.
+    expect(0.036 + RESERVATION_USD).toBeLessThanOrEqual(0.06);
     const tracker = new BudgetTracker(0.06, false, (pct) => fired.push(pct), DAY1);
     const r1 = tracker.reserve(DAY1)!;
-    r1.reconcile({ inputTokens: 0, outputTokens: 7200, cacheReadTokens: 0, cacheWriteTokens: 0 }); // $0.036 = 60%
+    r1.reconcile({ inputTokens: 0, outputTokens: 72_000, cacheReadTokens: 0, cacheWriteTokens: 0 }); // $0.036 = 60%
     const r2 = tracker.reserve(DAY1)!;
-    r2.reconcile({ inputTokens: 0, outputTokens: 5400, cacheReadTokens: 0, cacheWriteTokens: 0 }); // +$0.027 => 105%
+    r2.reconcile({ inputTokens: 0, outputTokens: 54_000, cacheReadTokens: 0, cacheWriteTokens: 0 }); // +$0.027 => 105%
     expect(fired).toEqual([50, 80, 100]);
     expect(tracker.isCapped(DAY1)).toBe(true);
   });
@@ -83,21 +84,40 @@ describe('per-lane pricing (Stage 1 bundle, 2026-09-01)', () => {
   const { usageCostUsd } = require('./budget');
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { GEMINI_PRICES, PRICES } = require('./config');
-  const usage = { inputTokens: 1_000_000, outputTokens: 100_000, cacheReadTokens: 0, cacheWriteTokens: 0 };
+  const usage = {
+    inputTokens: 1_000_000,
+    outputTokens: 100_000,
+    cacheReadTokens: 0,
+    cacheWriteTokens: 0,
+  };
 
-  it('prices Gemini usage at Gemini rates, well under the Haiku default', () => {
+  it('prices Gemini usage at Gemini rates, not the Haiku default', () => {
+    // Since 20.1 the default is Haiku 5.5, and Gemini is the DEARER table:
+    // pricing loop usage at the default would now under-count it, the
+    // direction a spend cap must never err in.
     const haiku = usageCostUsd(usage);
     const gemini = usageCostUsd(usage, GEMINI_PRICES);
-    expect(haiku).toBeCloseTo(1.0 + 0.5, 6);
+    expect(haiku).toBeCloseTo(0.1 + 0.05, 6);
     expect(gemini).toBeCloseTo(0.3 + 0.25, 6);
-    expect(gemini).toBeLessThan(haiku / 2);
-    expect(PRICES.inputPerMTok).toBe(1.0);
+    expect(gemini).toBeGreaterThan(haiku * 3);
+  });
+
+  it('pins the Haiku 5.5 first-party rates, cache multipliers included (20.1)', () => {
+    expect(PRICES).toEqual({
+      inputPerMTok: 0.1,
+      outputPerMTok: 0.5,
+      cacheWritePerMTok: 0.125, // 5-minute write, 1.25x input
+      cacheReadPerMTok: 0.01, // 0.1x input
+    });
   });
 
   it('release prices a partial estimate at the given table (review batch 3: the loop abort path)', () => {
     const b = new BudgetTracker(1, false);
     const r = b.reserve()!;
-    r.release({ inputTokens: 1_000_000, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 }, GEMINI_PRICES);
-    expect(b.usedPct()).toBe(30); // $0.30/MTok, not the Haiku $1.00
+    r.release(
+      { inputTokens: 1_000_000, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
+      GEMINI_PRICES,
+    );
+    expect(b.usedPct()).toBe(30); // $0.30/MTok, not the Haiku $0.10
   });
 });
