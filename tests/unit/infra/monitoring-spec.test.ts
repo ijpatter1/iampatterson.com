@@ -219,9 +219,19 @@ print("WRITES " + json.dumps(writes))
   });
 
   it('names the exact resource to delete, the policy before the check', () => {
-    const out = run();
-    expect(out).toContain('projects/iampatterson/alertPolicies/metabase-lb');
-    expect(out).toContain('projects/iampatterson/uptimeCheckConfigs/metabase-lb-id');
+    // Monitoring refuses to delete a check an alert policy still references,
+    // so an operator working down the output must meet the policy first.
+    const lines = run().split('\n');
+    const policy = lines.findIndex((l) => /REMOVE\s+policy\s/.test(l));
+    const check = lines.findIndex((l) => /REMOVE\s+check\s/.test(l));
+    expect(policy).toBeGreaterThanOrEqual(0);
+    expect(check).toBeGreaterThan(policy);
+    expect(lines[policy]).toContain(
+      'gcloud monitoring policies delete projects/iampatterson/alertPolicies/metabase-lb --project=iampatterson',
+    );
+    expect(lines[check]).toContain(
+      'gcloud monitoring uptime delete projects/iampatterson/uptimeCheckConfigs/metabase-lb-id --project=iampatterson',
+    );
   });
 
   it('deletes nothing, even outside a dry run', () => {

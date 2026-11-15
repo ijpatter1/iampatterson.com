@@ -375,16 +375,10 @@ def reconcile_checks():
         else:
             act("check", "unchanged", c["displayName"])
         if cur: out[c["displayName"]] = cur["name"]
-    # Walking the spec cannot see a check the spec dropped, so look for those
-    # too. Reported, never deleted: its policy must go first (below).
-    named = {c["displayName"] for c in checks_spec}
-    for name, cur in sorted(live.items()):
-        if name not in named:
-            act("check", "REMOVE", name, f"no longer in uptime.json; after its policy, delete by hand: {delete_cmd('uptime', cur['name'])}")
     return out
 
 def delete_cmd(group, resource):
-    return f"gcloud monitoring {group} delete {resource}"
+    return f"gcloud monitoring {group} delete {resource} --project={P}"
 
 def desired_policy(c, check_name, channel_names):
     check_id = check_name.split("/")[-1]
@@ -423,10 +417,17 @@ def reconcile_policies(check_names, channel_names):
             if not DRY: call("PATCH", f"https://monitoring.googleapis.com/v3/{cur['name']}", {**want, "name": cur["name"]}, {"updateMask": "conditions,notificationChannels,alertStrategy,documentation,enabled"})
         else:
             act("policy", "unchanged", want["displayName"])
+    # Walking the spec cannot see what the spec dropped, so look for those too.
+    # Reported, never deleted. Policies print before checks because Monitoring
+    # refuses to delete a check that an alert policy still references.
     wanted = {f"Uptime: {c['displayName']}" for c in checks_spec if c.get("alert")}
     for name, cur in sorted(live.items()):
         if name.startswith("Uptime: ") and name not in wanted:
             act("policy", "REMOVE", name, f"its check is no longer in uptime.json; delete by hand, before the check: {delete_cmd('policies', cur['name'])}")
+    named = {c["displayName"] for c in checks_spec}
+    for name, cur in sorted(by_name(paged(f"{API}/uptimeCheckConfigs", "uptimeCheckConfigs")).items()):
+        if name not in named:
+            act("check", "REMOVE", name, f"no longer in uptime.json; after its policy above, delete by hand: {delete_cmd('uptime', cur['name'])}")
 
 def series(check_id, minutes):
     end = datetime.now(timezone.utc); start = end - timedelta(minutes=minutes)
