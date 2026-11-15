@@ -11,7 +11,8 @@ found something wrong with the data, and the whole workflow invocation is marked
 FAILED.
 
 The alert fires on the invocation, not the assertion, so the first job is
-finding which of the twenty actions failed.
+finding which of the six actions failed (three tables, three assertions, since
+18.1 thinned the set on 2026-11-15; runs before that had twenty).
 
 ## Diagnose
 
@@ -96,6 +97,15 @@ anchored to `CURRENT_DATE()` rather than to the newest row in the table. That
 second change matters more than it sounds. A spine that ends at the last row of
 data can never contain a missing day, so a pipeline that stopped dead entirely
 would have scored a perfect gap rate forever.
+
+Both checks were wrong again for real traffic, and 18.1 (2026-11-15) dealt with
+them before the generator stops. `assert_volume_anomaly` is removed: it modelled
+the generator's weekday schedule, and on real traffic 12 of 21 weekdays had no
+event. `assert_source_freshness` had been failing on most Sundays and Mondays
+because its 24-hour window did not tolerate the generator's idle weekend; it now
+counts real events only, by arrival time, and fails after fourteen days without
+one. The longest real-traffic gap measured before the change was 7.4 days. The
+reasoning is in the assertion's own comment.
 
 ## Fix
 
