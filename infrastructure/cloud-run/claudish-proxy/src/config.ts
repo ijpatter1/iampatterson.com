@@ -59,10 +59,10 @@ export type PriceTable = { readonly [K in keyof typeof PRICES]: number };
  * both pinned in limits-contract.test.ts (at or above each, and no more
  * than 25% above the larger).
  * - en2cl at the cap on a Claude lane with a cold prefix (bundle Stage 2:
- *   the ~5.3k-token prefix is cacheable, so the cold case is a cache WRITE
- *   at 1.25x): ~5.3k x $0.125/MTok + ~0.8k input x $0.10/MTok + ~2.8k
- *   output x $0.50/MTok ≈ $0.0021 at Haiku 5.5 rates (was ≈ $0.021 at
- *   Haiku 4.5's).
+ *   the prefix is cacheable, so the cold case is a cache WRITE at 1.25x),
+ *   counted on Haiku 5.5's tokenizer: ~6.8k x $0.125/MTok + ~1.0k input x
+ *   $0.10/MTok + the 4,096-token output cap x $0.50/MTok ≈ $0.0030 (was
+ *   ≈ $0.021 at Haiku 4.5's rates).
  * - One cl2en Gemini loop attempt at its worst: ≈ $0.0083, unchanged by
  *   20.1 and now the binding case.
  * Dropped from $0.022 to $0.009 in 20.1: the reservation only gates how
@@ -78,7 +78,9 @@ export const RESERVATION_USD = 0.009;
 export const INPUT_CAP = 3000;
 
 export const MAX_TOKENS: Record<Direction, number> = {
-  en2cl: 3072, // Claudish expands up to 3.5x: a cap-length input needs ~2.8k
+  // Claudish expands up to 3.5x: a cap-length input needed ~2.8k tokens on
+  // Haiku 4.5 and needs ~3.6k on Haiku 5.5's tokenizer (20.1; was 3072).
+  en2cl: 4096,
   cl2en: 1536, // English compresses, but dense input can run ~1:1
 };
 

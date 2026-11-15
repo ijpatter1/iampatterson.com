@@ -15,8 +15,18 @@ import { loopBudgetFor } from './cl2en-loop';
 import { GEMINI_PRICES, INPUT_CAP, MAX_TOKENS, PRICES, RESERVATION_USD } from './config';
 import { buildSystem } from './prompts';
 
-/** Chars-per-token planning figure; measured drift vs billing is ~5%. */
+/**
+ * Chars-per-token planning figure, measured on Haiku 4.5 billing (drift
+ * ~5%). It still plans the Gemini loop, whose tokenizer 20.1 leaves alone.
+ */
 const CHARS_PER_TOKEN = 3.8;
+/**
+ * Claude lanes since 20.1: Haiku 5.5's tokenizer turns the same text into
+ * about 30% more tokens than Haiku 4.5's (Anthropic's migration notes; the
+ * exact rise depends on the text). A planning figure until the golden run
+ * bills the prefix: re-measure it there and repin this.
+ */
+const CLAUDE_CHARS_PER_TOKEN = CHARS_PER_TOKEN / 1.3;
 /** en2cl growth ceiling from assertions.ts: max(3.5x, +520 chars). */
 const EN2CL_MAX_EXPANSION = 3.5;
 
@@ -33,14 +43,16 @@ describe('cap couplings', () => {
   });
 
   it('en2cl max_tokens holds a fully expanded cap-length input', () => {
-    const worstOutputTokens = Math.ceil((INPUT_CAP * EN2CL_MAX_EXPANSION) / CHARS_PER_TOKEN);
+    const worstOutputTokens = Math.ceil((INPUT_CAP * EN2CL_MAX_EXPANSION) / CLAUDE_CHARS_PER_TOKEN);
     expect(MAX_TOKENS.en2cl).toBeGreaterThanOrEqual(worstOutputTokens);
   });
 
   it('cl2en max_tokens holds an uncompressed cap-length input', () => {
     // English compresses, but a faithful translation of dense plain
     // input can run ~1:1; the cap must not truncate that case.
-    const worstOutputTokens = Math.ceil(INPUT_CAP / CHARS_PER_TOKEN);
+    // The Claude ladder serves cl2en when the loop falls through, so the
+    // Claude figure applies.
+    const worstOutputTokens = Math.ceil(INPUT_CAP / CLAUDE_CHARS_PER_TOKEN);
     expect(MAX_TOKENS.cl2en).toBeGreaterThanOrEqual(worstOutputTokens);
   });
 
@@ -69,9 +81,10 @@ describe('cap couplings', () => {
  * (1.25x input price), not a plain uncached read.
  */
 function en2clWorstUsd(): number {
-  const prefixTokens = Math.ceil(buildSystem('en2cl').length / CHARS_PER_TOKEN);
-  const inputTokens = Math.ceil(INPUT_CAP / CHARS_PER_TOKEN);
-  const outputTokens = Math.ceil((INPUT_CAP * EN2CL_MAX_EXPANSION) / CHARS_PER_TOKEN);
+  const prefixTokens = Math.ceil(buildSystem('en2cl').length / CLAUDE_CHARS_PER_TOKEN);
+  const inputTokens = Math.ceil(INPUT_CAP / CLAUDE_CHARS_PER_TOKEN);
+  // Billed at the cap, not the expected length: max_tokens is the ceiling.
+  const outputTokens = MAX_TOKENS.en2cl;
   return (
     (prefixTokens * PRICES.cacheWritePerMTok +
       inputTokens * PRICES.inputPerMTok +
