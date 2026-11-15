@@ -4,6 +4,12 @@ import type { Metadata } from 'next';
 import { ListingView } from '@/components/demo/ecommerce/listing-view';
 import { ToastProvider } from '@/components/demo/reveal/toast-provider';
 
+// Rendered per request. ListingView reads the query string with
+// useSearchParams() under a Suspense boundary; on a static page that boundary
+// falls back to client rendering, so the server HTML would carry no heading
+// and no product links for crawlers or no-JS clients (17.1 gate, 2026-11-15).
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'The Tuna Shop',
   description:

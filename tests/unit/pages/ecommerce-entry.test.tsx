@@ -65,9 +65,10 @@ describe('EcommerceDemoPage composition', () => {
     expect(afterMock).not.toHaveBeenCalled();
   });
 
-  // force-dynamic existed only so the warmup ran per visit; without it the
-  // page can be served static.
-  it('does not force dynamic rendering', () => {
-    expect((EcommerceEntryModule as { dynamic?: string }).dynamic).toBeUndefined();
+  // Rendered per request: ListingView reads useSearchParams() under Suspense,
+  // and on a static page that boundary renders nothing on the server, so
+  // crawlers would get no heading and no product links (17.1 gate).
+  it('renders per request so the listing is in the server HTML', () => {
+    expect((EcommerceEntryModule as { dynamic?: string }).dynamic).toBe('force-dynamic');
   });
 });
