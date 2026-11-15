@@ -28,3 +28,16 @@
 - Uncached cl2en (Gemini loop), 6 samples: time to first token p50 580 ms, p95 598 ms.
 
 Against the targets (time to first token p50 under 1 s, p95 under 2 s), p50 passes and p95 misses. The request log shows why: every en2cl call that took longer than 2.7 s made three lane attempts, two failed Vertex calls before `anthropic-api`. Calls that went straight to `anthropic-api` started in 0.7 to 1.1 s. The breaker retries a failed lane after 30 seconds, so a request roughly every 30 seconds pays for both Vertex failures.
+
+## Vertex lanes off, the baseline of record
+
+Ian turned the Vertex lanes off without removing them (2026-11-15). The live service was updated to `LANES=anthropic-api,cache-only`, which made `claudish-proxy-00035-z47`. Its diff against `00034-vcv` shows the same image digest and `env.LANES` as the only change. It was promoted and `/health` answered 200.
+
+- 20 uncached en2cl inputs: `[latency] en2cl uncached n=20 ttft p50=965ms p95=1295ms max=1688ms | full-render p50=1139ms p95=1651ms`. All calls took one lane attempt.
+- All three targets are met: time to first token p50 under 1 s, p95 under 2 s, and full render p95 under 3 s.
+
+Rollback for the env change is promoting `claudish-proxy-00034-vcv`. Rollback for the model is promoting `claudish-proxy-00033-vr6`, which serves Haiku 4.5 at its own prices.
+
+## Found during the deploy: the kill switch did not take effect
+
+`scripts/deploy-cloud-run.sh promote` routes traffic to a named revision. After that, `gcloud run services update --update-env-vars …` creates a new revision that gets 0% of traffic. The `LANES` update did exactly that until `00035-z47` was promoted. The documented kill switch is the same kind of update, so on any service promoted by name it would not have stopped spending. The runbook in `infrastructure/cloud-run/claudish-proxy/README.md` and `setup.sh`'s printout now add `update-traffic --to-revisions=LATEST=100`. The two-command switch has not been exercised against production.

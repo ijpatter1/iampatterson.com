@@ -26,7 +26,11 @@ ANTHROPIC_ORGANIZATION_ID="${ANTHROPIC_ORGANIZATION_ID:-ff69f7b8-02fa-4bbb-b4a9-
 ANTHROPIC_SERVICE_ACCOUNT_ID="${ANTHROPIC_SERVICE_ACCOUNT_ID:-svac_014RW8M13t3K3QXY6pL7mrLo}"
 ANTHROPIC_WORKSPACE_ID="${ANTHROPIC_WORKSPACE_ID:-wrkspc_01K3PnFVDjmiNyuH6DQUJwKo}"
 ALLOWED_ORIGINS="${ALLOWED_ORIGINS:-https://iampatterson.com,https://www.iampatterson.com,https://iampatterson-com.vercel.app,https://iampatterson-com-*.vercel.app,http://localhost:3000}"
-LANES="${LANES:-vertex-global,vertex-regional,anthropic-api,cache-only}"
+# The Vertex lanes are off (Ian, 2026-11-15): the project's Claude quota on
+# Vertex is zero and us-east5 answers 404, so every request paid two failed
+# calls before anthropic-api. The lane code stays; to turn them back on, pass
+# LANES=vertex-global,vertex-regional,anthropic-api,cache-only.
+LANES="${LANES:-anthropic-api,cache-only}"
 # cl2en engine: the judge-driven Gemini refinement loop (Ian 2026-09-01).
 # en2cl always rides the Claude ladder.
 CL2EN_ENGINE="${CL2EN_ENGINE:-gemini-loop}"
@@ -139,4 +143,7 @@ echo "  3. Latency:     CLAUDISH_PROXY_URL='${URL}' bash scripts/run-claudish-la
 echo ""
 echo "KILL SWITCH (runbook — takes ~30s to roll):"
 echo "  gcloud run services update ${SERVICE} --project=${PROJECT} --region=${REGION} --update-env-vars KILL_SWITCH=on"
-echo "  revert: ... --update-env-vars KILL_SWITCH=off"
+echo "  gcloud run services update-traffic ${SERVICE} --project=${PROJECT} --region=${REGION} --to-revisions=LATEST=100"
+echo "  (the second command is required: deploy-cloud-run.sh promote pins traffic to a named revision,"
+echo "   so the env update alone makes a revision that serves nothing)"
+echo "  revert: the same two commands with KILL_SWITCH=off"

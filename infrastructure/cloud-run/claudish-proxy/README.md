@@ -24,6 +24,13 @@ short-lived Anthropic access token; no key exists) → `cache-only`.
 Failover happens only BEFORE the first token (the commit barrier);
 refusals never fail over — that's a policy decision this toy does not make.
 
+**Since 2026-11-15 the service runs `LANES=anthropic-api,cache-only`.**
+The project's Claude quota on Vertex is zero (`vertex-global` answers 429)
+and `vertex-regional` answers 404, so every request paid two failed calls
+first: en2cl p95 time to first token was 2,844 ms with them and 1,295 ms
+without. The Vertex lane code stays. Pass the full ladder in `LANES` to
+turn it back on once quota exists.
+
 ## Cost controls, honestly
 
 Per-IP limits (20/min, 200/hr, 1000/day, per instance) shape the happy
@@ -41,10 +48,19 @@ is blast radius, not cost control.
 ```
 gcloud run services update claudish-proxy --project=iampatterson \
   --region=us-central1 --update-env-vars KILL_SWITCH=on
+gcloud run services update-traffic claudish-proxy --project=iampatterson \
+  --region=us-central1 --to-revisions=LATEST=100
 ```
 
+Both commands are needed. `scripts/deploy-cloud-run.sh promote` routes
+traffic to a named revision, so an env update on its own creates a new
+revision that gets no traffic, and the switch never takes effect (found
+2026-11-15). The second command moves traffic to the revision the first
+one made. Check it with `gcloud run services describe claudish-proxy …
+--format='value(status.traffic[0].revisionName)'`.
+
 ~30s to roll. The page shows the verbatim capacity line; cache hits
-still serve. Revert with `KILL_SWITCH=off`. Deploys keep the switch as it
+still serve. Revert with the same two commands and `KILL_SWITCH=off`. Deploys keep the switch as it
 is: `setup.sh` merges its env with `--update-env-vars` and never writes
 `KILL_SWITCH`, so a hotfix shipped mid-incident does not turn spend back on
 (review batch 1, 2026-09-03).
