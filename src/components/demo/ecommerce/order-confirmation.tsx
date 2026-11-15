@@ -152,12 +152,6 @@ export function ConfirmationCloser() {
           Dashboards are not the payoff. Answers are. The mart layer is what makes the answers
           trustworthy.
         </p>
-        <Link
-          href="/services"
-          className="font-mono text-xs uppercase tracking-[0.12em] text-[var(--shop-terracotta,#C4703A)] hover:underline"
-        >
-          read about the services →
-        </Link>
       </section>
 
       <nav className="flex flex-wrap items-center gap-4 border-t border-[var(--shop-warm-brown,#5C4A3D)]/12 pt-6 text-sm">
