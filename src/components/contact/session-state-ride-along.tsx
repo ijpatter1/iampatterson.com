@@ -63,11 +63,13 @@ export function SessionStateRideAlong() {
   // transparency conceit requires showing the concrete payload whenever
   // the box is checked, including when the visitor overrode a denied
   // consent, so the visitor always sees exactly what they're sharing.
+  // The demo's progress is neither named nor sent (16.2): the ecommerce
+  // demo leaves the site.
   let summary: string;
   if (checked && marketingGranted) {
-    summary = `You've triggered ${payload.event_types_triggered} of ${payload.event_types_total} event types, completed ${payload.ecommerce_demo_percentage}% of the ecommerce demo, and visited ${payload.pages_visited} pages. Your consent state and session ID will ride along.`;
+    summary = `You've triggered ${payload.event_types_triggered} of ${payload.event_types_total} event types and visited ${payload.pages_visited} pages. Your consent state and session ID will ride along.`;
   } else if (checked && !marketingGranted) {
-    summary = `Overriding your denied marketing consent. You've triggered ${payload.event_types_triggered} of ${payload.event_types_total} event types, completed ${payload.ecommerce_demo_percentage}% of the ecommerce demo, and visited ${payload.pages_visited} pages. Your consent state and session ID will ride along.`;
+    summary = `Overriding your denied marketing consent. You've triggered ${payload.event_types_triggered} of ${payload.event_types_total} event types and visited ${payload.pages_visited} pages. Your consent state and session ID will ride along.`;
   } else if (!checked && marketingGranted) {
     summary =
       'Session state will not be included with this message. Check the box above to share it.';

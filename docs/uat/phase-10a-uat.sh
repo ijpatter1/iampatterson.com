@@ -160,9 +160,9 @@ expect \
   "No flash of unstyled content (FOUC)" \
   "Typography loads without layout shift"
 
-do_step "Scroll top-to-bottom slowly. Observe pipeline-editorial rotation, section transitions."
+do_step "Scroll top-to-bottom slowly. Observe section transitions."
 
-do_step "Click through: Services → About → Contact → Home."
+do_step "Click through: Services → Contact → Home."
 expect \
   "Navigation feels instant, no flicker between pages" \
   "No double-render artefact from React 19 concurrent mode"
@@ -171,7 +171,7 @@ do_step "Resize the window: 1440 → 800 → 1440."
 expect \
   "Layout reflows smoothly at each breakpoint"
 
-confirm "Homepage pipeline animation runs smoothly without visible frame drops?"
+confirm "Homepage scrolls smoothly without visible frame drops?"
 confirm "Navigation between pages feels instant with no flicker or FOUC?"
 confirm "Typography and layout feel polished and identical to pre-upgrade?"
 
@@ -293,11 +293,11 @@ setup \
 
 do_step "Verify reduced-motion toggle is ON."
 
-do_step "Reload $BASE_URL/. Observe the homepage pipeline."
+do_step "Reload $BASE_URL/. Scroll the homepage."
 expect \
-  "Pipeline rotation is STATIC or near-static (NOT rotating continuously)"
+  "Nothing on the homepage animates continuously"
 
-do_step "Navigate through Services / About / Contact."
+do_step "Navigate through Services / Contact."
 expect \
   "No scroll-triggered animations, or motion significantly reduced"
 
@@ -327,10 +327,6 @@ setup \
 
 do_step "Verify reduced-motion is OFF (DevTools Rendering: 'No emulation')."
 
-do_step "Reload $BASE_URL/. Observe the pipeline rotation."
-expect \
-  "Pipeline rotates fully (loop animation active)"
-
 do_step "/demo/ecommerce → add product → see toast slide-in."
 expect \
   "Toast slides in with full motion"
@@ -343,7 +339,7 @@ do_step "SessionPulse → full boot animation."
 expect \
   "Overlay boot reveal plays in full"
 
-confirm "All animations played at full fidelity (pipeline, toast, diagnostic, overlay-boot)?"
+confirm "All animations played at full fidelity (toast, diagnostic, overlay-boot)?"
 confirm "Motion behaviour feels identical to pre-upgrade baseline?"
 
 # ────────────────────────────────────────────────────────────────────────
@@ -358,7 +354,7 @@ setup \
 do_step "Clear console. Hard-reload $BASE_URL/."
 
 do_step "Walk:"
-do_step "  / → Services → About → Contact"
+do_step "  / → Services → Contact"
 do_step "  → /demo/ecommerce → product page → cart → checkout → place order → confirmation"
 
 do_step "On /, open SessionPulse, cycle all tabs, close, reopen."
@@ -465,43 +461,20 @@ confirm "Confirmation page + Metabase rendered normally under reduced-motion?"
 section "EDGE CASES"
 
 # ────────────────────────────────────────────────────────────────────────
-scenario "A. [devtools] Rebuild-banner tri-state via redirect URL" \
-  "D3 useClientMount gate on rebuild banner + storage persistence"
+scenario "A. Legacy demo redirects land on the homepage" \
+  "15.4 retired the rebuild banner with the homepage's Demos section"
 
-setup \
-  "Cookies + localStorage + sessionStorage cleared." \
-  "DevTools Application tab open."
+do_step "Navigate directly to $BASE_URL/demo/subscription"
+open_url "$BASE_URL/demo/subscription"
 
-do_step "Clear all storage for the origin."
-
-do_step "Navigate directly to $BASE_URL/?rebuild=subscription#demos"
-open_url "$BASE_URL/?rebuild=subscription#demos"
-
-do_step "Observe initial render. Check for banner-flash or layout shift."
-
-do_step "Application tab → inspect Local Storage + Session Storage for rebuild-banner keys."
-
-do_step "Dismiss the banner (X or dismissal CTA)."
-
-do_step "Note the storage state after dismissal."
-
-do_step "Hard-refresh the page with '?rebuild=subscription#demos' still in URL."
-
-do_step "Observe whether the banner re-appears."
-
-do_step "Close tab, open new tab, navigate to $BASE_URL/?rebuild=subscription#demos"
+do_step "Then to $BASE_URL/demo/leadgen/anything"
 
 expect \
-  "First load: NO flash of banner-then-gone (useClientMount prevents SSR/client mismatch)" \
-  "Banner renders in the subscription-rebuild variant state" \
-  "Dismissal persists to the expected storage mechanism" \
-  "Post-refresh: banner respects dismissal (if localStorage-based persistence)" \
-  "Scroll anchor #demos scrolls to the demos section" \
+  "Each lands on $BASE_URL/ with no ?rebuild= flag and no #demos anchor" \
+  "No rebuild banner renders" \
   "NO hydration warnings across any step"
 
-confirm "Rebuild banner rendered without flash on initial load?"
-confirm "Dismissal persisted correctly across refresh?"
-confirm "Hash anchor #demos scrolled to the right section?"
+confirm "Both legacy demo URLs landed on the plain homepage?"
 confirm "Console stayed clean (no hydration warnings during the redirect flow)?"
 
 # ────────────────────────────────────────────────────────────────────────

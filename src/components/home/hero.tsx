@@ -1,69 +1,62 @@
 'use client';
 
 import { EditorialButton, EditorialLink } from '@/components/chrome/editorial-button';
+import { EYEBROW_CLASSES, LABEL_CLASSES, SECTION_PADDING_BOTTOM } from '@/components/home/section';
 import { useOverlay } from '@/components/overlay/overlay-context';
+import { HERO } from '@/lib/content/hero';
+import { REVIEW_PAGE_HREF } from '@/lib/content/review';
 import { trackClickCta } from '@/lib/events/track';
 
 export function HeroEditorial() {
   const { open } = useOverlay();
 
   const handleOpen = () => {
-    trackClickCta('See your session', 'hero');
+    trackClickCta(HERO.ghostCta, 'hero_session');
     open();
   };
 
   return (
-    <section className="bg-paper pt-4 pb-16 md:pt-12 md:pb-28">
+    <section className={`bg-paper pt-4 md:pt-12 ${SECTION_PADDING_BOTTOM}`}>
       <div className="mx-auto max-w-content px-5 md:px-10">
-        <h1
-          className="font-display font-normal text-ink"
-          style={{
-            // F5 UAT S11, shrink mobile floor 56px → 44px so the headline
-            // takes ~33px less vertical space on 360px, putting CTAs
-            // within the 667px iPhone SE fold.
-            fontSize: 'clamp(44px, 13vw, 200px)',
-            lineHeight: '0.9',
-            letterSpacing: '-0.035em',
-          }}
-        >
-          I build
-          <br />
-          <em className="text-accent-current">measurement</em>
-          <br />
-          infrastructure.
+        <div className={`flex flex-wrap justify-between gap-x-6 gap-y-1 ${EYEBROW_CLASSES}`}>
+          <span>{HERO.eyebrowLeft}</span>
+          <span>{HERO.eyebrowRight}</span>
+        </div>
+
+        {/* Each line stays unbroken. The size floor keeps "marketing team"
+            inside a 390px screen and the primary CTA inside a 667px viewport. */}
+        <h1 className="mt-6 font-display text-[clamp(64px,9vw,140px)] font-normal leading-[0.92] tracking-[-0.035em] text-ink md:mt-10">
+          {HERO.headlineLines.map((line) => (
+            <span key={line}>
+              <span className="block whitespace-nowrap">{line}</span>{' '}
+            </span>
+          ))}
+          <span className="block whitespace-nowrap">
+            <em className="text-accent-current">{HERO.headlineAccent}</em>
+          </span>
         </h1>
 
-        <div className="mt-6 grid gap-6 border-t border-rule-soft pt-6 md:mt-12 md:grid-cols-[1fr_1.8fr] md:gap-16 md:pt-8">
-          <p
-            className="font-display italic text-ink"
-            style={{
-              // Mobile italic kicker: 18px (was 22px) so 3 lines of
-              // supporting prose fit in ~68px, not ~88px.
-              fontSize: 'clamp(18px, 2.6vw, 34px)',
-              lineHeight: '1.25',
-            }}
-          >
-            This site runs on the same stack I sell: consent, sGTM, BigQuery, Dataform, live
-            dashboards.
+        {/* From lg up the calls to action sit in a column beside the kicker, as
+            in the design reference, so "Start with a review" stays above the
+            fold on laptop screens down to 1280 by 720. */}
+        <div className="mt-6 border-t border-rule-soft pt-6 md:mt-12 md:pt-8 lg:flex lg:items-start lg:justify-between lg:gap-x-16">
+          <p className="max-w-[40ch] font-display text-[clamp(22px,2.4vw,32px)] italic leading-[1.28] text-ink">
+            {HERO.kicker}
           </p>
-          <div>
-            <p className="max-w-[52ch] text-[15px] leading-[1.65] text-ink-2 md:text-base md:leading-[1.7]">
-              Instead of describing it, I built on it. Every scroll, every click in your session is
-              flowing through the stack right now. Measurement is usually invisible; here, you can
-              watch it live. Your session is the portfolio.
-            </p>
-            <div className="mt-5 flex flex-wrap gap-3 md:mt-7">
-              <EditorialButton variant="accent" onClick={handleOpen}>
-                See your session →
-              </EditorialButton>
+          <div className="lg:shrink-0">
+            <div className="mt-6 flex flex-wrap gap-3 md:mt-8 lg:mt-0 lg:flex-col lg:items-start">
               <EditorialLink
-                href="/#demos"
-                variant="ghost"
-                onClick={() => trackClickCta('Explore the demo', 'hero')}
+                href={REVIEW_PAGE_HREF}
+                variant="solid"
+                onClick={() => trackClickCta(HERO.primaryCta, 'hero_review')}
               >
-                Explore the demo
+                {HERO.primaryCta}
               </EditorialLink>
+              <EditorialButton variant="ghost" onClick={handleOpen}>
+                {HERO.ghostCta} →
+              </EditorialButton>
             </div>
+            <p className={`mt-4 ${LABEL_CLASSES}`}>{HERO.capacityNote}</p>
           </div>
         </div>
       </div>

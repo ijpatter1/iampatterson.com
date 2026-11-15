@@ -8,7 +8,7 @@ const DESCRIPTION =
 
 /**
  * Static metadata for /claudish. The title is ABSOLUTE: the root
- * template's " | Patterson Consulting" suffix would read wrong on a
+ * template's " | I am Patterson" suffix would read wrong on a
  * Translate spoof, in the tab and in every unfurl. The canonical is
  * always the bare route so the unbounded ?t= share space collapses to
  * one indexable URL. page.tsx layers the dynamic OG card on top when a

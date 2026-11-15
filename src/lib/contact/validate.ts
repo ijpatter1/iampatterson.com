@@ -1,9 +1,23 @@
 import { CONTACT_CONFIG } from './config';
 
+/** Why the visitor wrote: `review` from the "Book the review" buttons. */
+export type ContactIntent = 'default' | 'review';
+
+/**
+ * `review` selects the review heading on /contact and the review subject on
+ * the inquiry; anything else, missing or unknown, is the default. Lives with
+ * validation so the API route doesn't depend on page copy.
+ */
+export function contactIntent(value: unknown): ContactIntent {
+  return value === 'review' ? 'review' : 'default';
+}
+
 export interface Inquiry {
   name: string;
   email: string;
   message: string;
+  /** `review` from the "Book the review" buttons, read as the contact page reads it. */
+  intent: ContactIntent;
   /** The session summary, when the visitor ticked the box to send it. */
   sessionState?: string;
 }
@@ -44,6 +58,8 @@ export function validateInquiry(input: unknown): ValidationResult {
   const message = text(raw.message).replace(/\r\n/g, '\n');
   const token = text(raw.token);
   const sessionState = text(raw.session_state ?? raw.sessionState);
+  // Never a rejection: a missing or unknown intent is a general inquiry.
+  const intent = contactIntent(raw.intent);
 
   // Name and address end up in mail headers; a line break there would start a
   // header of the visitor's choosing.
@@ -56,6 +72,6 @@ export function validateInquiry(input: unknown): ValidationResult {
 
   return {
     ok: true,
-    value: { name, email, message, token, ...(sessionState ? { sessionState } : {}) },
+    value: { name, email, message, intent, token, ...(sessionState ? { sessionState } : {}) },
   };
 }

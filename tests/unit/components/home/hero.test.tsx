@@ -6,6 +6,8 @@ import userEvent from '@testing-library/user-event';
 
 import { HeroEditorial } from '@/components/home/hero';
 import { OverlayProvider, useOverlay } from '@/components/overlay/overlay-context';
+import { HERO } from '@/lib/content/hero';
+import { REVIEW_PAGE_HREF } from '@/lib/content/review';
 
 jest.mock('@/lib/events/track', () => ({
   trackClickCta: jest.fn(),
@@ -31,52 +33,71 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
+// The hero says what the LinkedIn profile's banner says, so a visitor who
+// arrives from the profile reads the same line. The page's only h1 is that
+// line, and the accent sits on the promise, "can count on."
 describe('HeroEditorial', () => {
-  it('renders the three-line masthead', () => {
+  it('is the page’s single h1 and reads "Numbers your marketing team can count on."', () => {
     renderHero();
-    const h1 = screen.getByRole('heading', { level: 1 });
-    expect(h1.textContent).toMatch(/I build[\s\S]*measurement[\s\S]*infrastructure/);
+    const headings = screen.getAllByRole('heading', { level: 1 });
+    expect(headings).toHaveLength(1);
+    expect(headings[0].textContent?.replace(/\s+/g, ' ').trim()).toBe(
+      'Numbers your marketing team can count on.',
+    );
+    expect(headings[0].textContent?.replace(/\s+/g, ' ').trim()).toBe(
+      `${HERO.headlineLines.join(' ')} ${HERO.headlineAccent}`,
+    );
   });
 
-  it('sets the accent-current color on the italic emphasis word', () => {
+  it('keeps each line of the headline unbroken', () => {
     renderHero();
-    const em = screen.getByText(/^measurement$/i);
-    expect(em.tagName).toBe('EM');
-    expect(em.className).toContain('accent-current');
+    for (const line of HERO.headlineLines) {
+      expect(screen.getByText(line).className).toContain('whitespace-nowrap');
+    }
+    expect(screen.getByText(HERO.headlineAccent).closest('span')?.className).toContain(
+      'whitespace-nowrap',
+    );
   });
 
-  it('renders the editorial lede from the prototype', () => {
+  it('sets "can count on." in the accent', () => {
     renderHero();
-    expect(screen.getByText(/same stack I sell/i)).toBeInTheDocument();
-    expect(screen.getByText(/Instead of describing it, I built on it/i)).toBeInTheDocument();
+    const accent = screen.getByText(HERO.headlineAccent);
+    expect(accent.tagName).toBe('EM');
+    expect(accent.textContent).toBe('can count on.');
+    expect(accent.className).toContain('text-accent-current');
   });
 
-  it('renders the long-form deck body', () => {
+  it('renders the eyebrows, the positioning sentence and the capacity note from the content module', () => {
     renderHero();
-    expect(
-      screen.getByText(
-        /Every scroll, every click in your session is flowing through the stack right now/i,
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/Measurement is usually invisible/i)).toBeInTheDocument();
-    expect(screen.getByText(/Your session is the portfolio/i)).toBeInTheDocument();
+    expect(screen.getByText(HERO.eyebrowLeft)).toBeInTheDocument();
+    expect(screen.getByText(HERO.eyebrowRight)).toBeInTheDocument();
+    expect(screen.getByText(HERO.kicker)).toBeInTheDocument();
+    expect(screen.getByText(HERO.capacityNote)).toBeInTheDocument();
   });
 
-  it('primary CTA opens the overlay and fires click_cta', async () => {
-    const user = userEvent.setup();
+  it('sends the primary call to action to the review page, and tracks it', async () => {
     renderHero();
-    const cta = screen.getByRole('button', { name: /see your session/i });
-    await user.click(cta);
+    const link = screen.getByRole('link', { name: HERO.primaryCta });
+    expect(link).toHaveAttribute('href', REVIEW_PAGE_HREF);
+    link.addEventListener('click', (e) => e.preventDefault());
+    await userEvent.click(link);
+    expect(trackClickCta).toHaveBeenCalledTimes(1);
+    expect(trackClickCta).toHaveBeenCalledWith(HERO.primaryCta, 'hero_review');
+  });
+
+  it('opens the overlay from "See your session" and tracks it', async () => {
+    renderHero();
+    expect(screen.getByTestId('overlay-status')).toHaveTextContent('closed');
+    await userEvent.click(screen.getByRole('button', { name: /see your session/i }));
     expect(screen.getByTestId('overlay-status')).toHaveTextContent('open');
-    expect(trackClickCta).toHaveBeenCalledWith('See your session', 'hero');
+    expect(trackClickCta).toHaveBeenCalledTimes(1);
+    expect(trackClickCta).toHaveBeenCalledWith(HERO.ghostCta, 'hero_session');
   });
 
-  it('ghost CTA links to the demos anchor and fires click_cta', async () => {
-    const user = userEvent.setup();
-    renderHero();
-    const link = screen.getByRole('link', { name: /explore the demo$/i });
-    expect(link).toHaveAttribute('href', '/#demos');
-    await user.click(link);
-    expect(trackClickCta).toHaveBeenCalledWith('Explore the demo', 'hero');
+  it('no longer links to the demo or names the old positioning', () => {
+    const { container } = renderHero();
+    expect(container.querySelector('a[href*="demo"]')).toBeNull();
+    expect(container.textContent).not.toMatch(/measurement infrastructure|explore the demo/i);
+    expect(container.textContent).not.toMatch(/Patterson Consulting|two-day/i);
   });
 });

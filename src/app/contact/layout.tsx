@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
 
-const TITLE = 'Contact';
-const DESCRIPTION =
-  'Start a conversation about your measurement stack. I work with marketing teams whose infrastructure needs work.';
+import { CONTACT_METADATA } from '@/lib/content/contact';
+
+const TITLE = CONTACT_METADATA.title;
+const DESCRIPTION = CONTACT_METADATA.description;
 
 export const metadata: Metadata = {
   title: TITLE,

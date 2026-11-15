@@ -5,6 +5,11 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import ContactPage from '@/app/contact/page';
+import { ContactForm } from '@/components/contact/contact-form';
+import { CONTACT_COPY, CONTACT_EMAIL, CONTACT_INTROS, PRINCIPLES } from '@/lib/content/contact';
+import { DONE_WHERE } from '@/lib/content/done-where';
+import { REVIEW_PAGE_HREF, REVIEW_PRICE } from '@/lib/content/review';
+import { REVIEW_PAGE } from '@/lib/content/review-page';
 import { RENDERABLE_EVENT_NAMES } from '@/lib/events/schema';
 
 // Mock the track module
@@ -13,16 +18,8 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
 }));
 
-jest.mock('framer-motion', () => ({
-  motion: {
-    div: ({ children, className }: { children: React.ReactNode; className?: string }) => (
-      <div className={className}>{children}</div>
-    ),
-  },
-  useReducedMotion: () => false,
-}));
-
 jest.mock('@/lib/events/track', () => ({
+  trackClickCta: jest.fn(),
   trackFormStart: jest.fn(),
   trackFormFieldFocus: jest.fn(),
   trackFormSubmit: jest.fn(),
@@ -45,9 +42,15 @@ jest.mock('@/components/session-state-provider', () => ({
   useSessionState: () => mockSessionState,
 }));
 
-import { trackFormStart, trackFormFieldFocus, trackFormSubmit } from '@/lib/events/track';
+import {
+  trackClickCta,
+  trackFormStart,
+  trackFormFieldFocus,
+  trackFormSubmit,
+} from '@/lib/events/track';
 import type { SessionState } from '@/lib/session-state/types';
 
+const mockTrackClickCta = trackClickCta as jest.Mock;
 const mockTrackFormStart = trackFormStart as jest.Mock;
 const mockTrackFormFieldFocus = trackFormFieldFocus as jest.Mock;
 const mockTrackFormSubmit = trackFormSubmit as jest.Mock;
@@ -71,47 +74,150 @@ function sentBody(): Record<string, unknown> {
   return JSON.parse(mockFetch.mock.calls[0][1].body);
 }
 
-describe('ContactPage', () => {
-  it('renders the page heading', () => {
-    render(<ContactPage />);
+async function renderPage(searchParams: Record<string, string | string[]> = {}) {
+  render(await ContactPage({ searchParams: Promise.resolve(searchParams) }));
+}
+
+describe('ContactPage, the merged contact and about page (16.2)', () => {
+  it('has one h1, the general heading, when no intent is given', async () => {
+    await renderPage();
+    const h1s = screen.getAllByRole('heading', { level: 1 });
+    expect(h1s).toHaveLength(1);
+    expect(h1s[0]).toHaveTextContent(CONTACT_INTROS.default.title);
+    expect(screen.getByText(CONTACT_INTROS.default.intro)).toBeInTheDocument();
+  });
+
+  // The review buttons send visitors here with ?intent=review: they have
+  // already decided, so the page greets them as booking the review and
+  // restates the price and turnaround they just read.
+  it('greets ?intent=review with the review heading, intro, price and turnaround', async () => {
+    await renderPage({ intent: 'review' });
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-      /let's talk about your measurement stack/i,
+      CONTACT_INTROS.review.title,
+    );
+    expect(screen.getByText(CONTACT_INTROS.review.intro)).toBeInTheDocument();
+    expect(screen.queryByText(CONTACT_INTROS.default.intro)).not.toBeInTheDocument();
+    // The price and the turnaround render as separate strings, each exactly
+    // as /review states it, so the claims check can match the turnaround.
+    expect(screen.getByText(REVIEW_PAGE.price)).toHaveTextContent(REVIEW_PRICE);
+    expect(screen.getByText(REVIEW_PAGE.turnaround)).toBeInTheDocument();
+  });
+
+  // A visitor on the general page hasn't decided on the review yet, so the
+  // page names the priced first step and links to what it covers. The review
+  // intent already shows the price and turnaround, so it doesn't repeat it.
+  it('points the general page at the review page, with its price', async () => {
+    await renderPage();
+    const link = screen.getByRole('link', { name: /what it includes/i });
+    expect(link).toHaveAttribute('href', REVIEW_PAGE_HREF);
+    expect(screen.getByText(/^start with the review, from/i)).toHaveTextContent(REVIEW_PRICE);
+  });
+
+  it('does not repeat the review pointer on the review intent', async () => {
+    await renderPage({ intent: 'review' });
+    expect(screen.queryByRole('link', { name: /what it includes/i })).not.toBeInTheDocument();
+  });
+
+  // The page hands its intent to the form, so the inquiry carries it.
+  it.each([
+    [{ intent: 'review' }, 'review'],
+    [{}, 'default'],
+    [{ intent: 'sales' }, 'default'],
+  ])('passes %j to the form as the %s intent', async (params, intent) => {
+    const user = userEvent.setup();
+    await renderPage(params);
+    await fillAndSend(user);
+    expect(sentBody().intent).toBe(intent);
+  });
+
+  it('treats an unknown or repeated intent as the general page', async () => {
+    await renderPage({ intent: 'services' });
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+      CONTACT_INTROS.default.title,
+    );
+    await renderPage({ intent: ['review', 'review'] });
+    expect(screen.getAllByRole('heading', { level: 1 })[1]).toHaveTextContent(
+      CONTACT_INTROS.default.title,
     );
   });
 
-  it('renders the introductory copy', () => {
-    render(<ContactPage />);
-    expect(
-      screen.getByText(/marketing teams that know their measurement infrastructure needs work/i),
-    ).toBeInTheDocument();
+  it('carries the about page: the three principles and the "Where I\'ve done it" cards', async () => {
+    await renderPage();
+    expect(PRINCIPLES.items).toHaveLength(3);
+    for (const principle of PRINCIPLES.items) {
+      expect(screen.getByRole('heading', { name: principle.title })).toBeInTheDocument();
+    }
+    expect(screen.getByRole('heading', { name: DONE_WHERE.eyebrow })).toBeInTheDocument();
+    for (const card of DONE_WHERE.cards) {
+      expect(screen.getByRole('heading', { name: card.name })).toBeInTheDocument();
+    }
   });
 
-  it('renders the email address', () => {
-    render(<ContactPage />);
-    const emailLink = screen.getByRole('link', { name: /ian@iampatterson\.com/i });
+  it('keeps the form on the page, so both intents reach the same inquiry endpoint', async () => {
+    await renderPage({ intent: 'review' });
+    expect(screen.getByRole('button', { name: /send/i })).toBeInTheDocument();
+  });
+
+  it('renders the email address and the response expectation', async () => {
+    await renderPage();
+    const emailLink = screen.getAllByRole('link', { name: /ian@iampatterson\.com/i })[0];
     expect(emailLink).toHaveAttribute('href', 'mailto:ian@iampatterson.com');
+    expect(screen.getByText(/reply within 24 hours/i)).toBeInTheDocument();
   });
 
-  it('renders the response expectation', () => {
-    render(<ContactPage />);
-    expect(screen.getByText(/respond within 24 hours/i)).toBeInTheDocument();
+  // 15.4: each call to action on the page fires one click_cta with its own
+  // location. The form reports through form_* events instead.
+  it('tracks the review link and the address, each with its own location', async () => {
+    const user = userEvent.setup();
+    await renderPage();
+    const review = screen.getByRole('link', { name: CONTACT_INTROS.default.reviewLink!.text });
+    const email = screen.getByRole('link', { name: CONTACT_EMAIL });
+    const calls: unknown[][] = [];
+    for (const link of [review, email]) {
+      mockTrackClickCta.mockClear();
+      link.addEventListener('click', (e) => e.preventDefault());
+      await user.click(link);
+      expect(mockTrackClickCta).toHaveBeenCalledTimes(1);
+      calls.push(mockTrackClickCta.mock.calls[0]);
+    }
+    expect(calls).toEqual([
+      [expect.stringContaining(CONTACT_INTROS.default.reviewLink!.text), 'contact_review_link'],
+      [CONTACT_EMAIL, 'contact_email'],
+    ]);
   });
 
+  it('drops the old offer: no measurement stack, no tiers', async () => {
+    const { container } = render(await ContactPage({ searchParams: Promise.resolve({}) }));
+    expect(container.textContent).not.toMatch(
+      /measurement stack|tiers?\b|measurement infrastructure/i,
+    );
+  });
+});
+
+describe('ContactForm', () => {
   it('renders a contact form with name, email, and message fields', () => {
-    render(<ContactPage />);
+    render(<ContactForm />);
     expect(screen.getByLabelText(/name/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/message/i)).toBeInTheDocument();
   });
 
+  // The hint tells the visitor what makes a useful first message, and is
+  // tied to the field so a screen reader announces it with the label.
+  it('describes the message field with what to include', () => {
+    render(<ContactForm />);
+    const message = screen.getByLabelText(/^message$/i);
+    expect(message).toHaveAccessibleDescription(CONTACT_COPY.messageHint);
+  });
+
   it('renders a submit button', () => {
-    render(<ContactPage />);
+    render(<ContactForm />);
     expect(screen.getByRole('button', { name: /send/i })).toBeInTheDocument();
   });
 
   it('fires form_start on first field focus', async () => {
     const user = userEvent.setup();
-    render(<ContactPage />);
+    render(<ContactForm />);
     await user.click(screen.getByLabelText(/name/i));
     expect(mockTrackFormStart).toHaveBeenCalledWith('contact');
     expect(mockTrackFormStart).toHaveBeenCalledTimes(1);
@@ -119,7 +225,7 @@ describe('ContactPage', () => {
 
   it('fires form_field_focus on each field focus', async () => {
     const user = userEvent.setup();
-    render(<ContactPage />);
+    render(<ContactForm />);
     await user.click(screen.getByLabelText(/name/i));
     await user.click(screen.getByLabelText(/email/i));
     expect(mockTrackFormFieldFocus).toHaveBeenCalledWith('contact', 'name');
@@ -129,7 +235,7 @@ describe('ContactPage', () => {
 
   it('fires form_start only once across multiple field focuses', async () => {
     const user = userEvent.setup();
-    render(<ContactPage />);
+    render(<ContactForm />);
     await user.click(screen.getByLabelText(/name/i));
     await user.click(screen.getByLabelText(/email/i));
     await user.click(screen.getByLabelText(/message/i));
@@ -140,7 +246,7 @@ describe('ContactPage', () => {
   // page and deliver nothing. Now the thanks page means the inquiry was sent.
   it('posts the inquiry with a reCAPTCHA token, then shows the thanks page', async () => {
     const user = userEvent.setup();
-    render(<ContactPage />);
+    render(<ContactForm />);
     await fillAndSend(user);
     expect(mockFetch).toHaveBeenCalledWith(
       '/api/contact',
@@ -158,10 +264,63 @@ describe('ContactPage', () => {
     expect(mockPush).toHaveBeenCalledWith('/contact/thanks');
   });
 
+  // The inquiry records its intent (Ian, 2026-11-14): a visitor who came from
+  // a "Book the review" button is a review lead, and the mailbox and the
+  // form analytics can tell those apart from general questions.
+  it('posts the default intent and reports form_name contact without a review intent', async () => {
+    const user = userEvent.setup();
+    render(<ContactForm />);
+    await fillAndSend(user);
+    expect(sentBody().intent).toBe('default');
+    expect(mockTrackFormStart).toHaveBeenCalledWith('contact');
+    expect(mockTrackFormFieldFocus.mock.calls.map((c) => c[0])).toEqual([
+      'contact',
+      'contact',
+      'contact',
+    ]);
+    expect(mockTrackFormSubmit).toHaveBeenCalledWith('contact', true);
+  });
+
+  it('posts the review intent and reports form_name contact_review on every form event', async () => {
+    const user = userEvent.setup();
+    render(<ContactForm intent="review" />);
+    await fillAndSend(user);
+    expect(sentBody().intent).toBe('review');
+    expect(mockTrackFormStart).toHaveBeenCalledWith('contact_review');
+    expect(mockTrackFormFieldFocus.mock.calls.map((c) => c[0])).toEqual([
+      'contact_review',
+      'contact_review',
+      'contact_review',
+    ]);
+    expect(mockTrackFormSubmit).toHaveBeenCalledWith('contact_review', true);
+  });
+
+  it('reports a failed review submission under contact_review too', async () => {
+    mockFetch.mockResolvedValue({ ok: false, status: 502 });
+    const user = userEvent.setup();
+    render(<ContactForm intent="review" />);
+    await fillAndSend(user);
+    await screen.findByRole('alert');
+    expect(mockTrackFormSubmit).toHaveBeenCalledWith('contact_review', false);
+  });
+
+  // The form's analytics carry the field names only, never what was typed.
+  it('puts no message text in any form event', async () => {
+    const user = userEvent.setup();
+    render(<ContactForm intent="review" />);
+    await fillAndSend(user);
+    const calls = [
+      ...mockTrackFormStart.mock.calls,
+      ...mockTrackFormFieldFocus.mock.calls,
+      ...mockTrackFormSubmit.mock.calls,
+    ];
+    expect(JSON.stringify(calls)).not.toMatch(/Hello|Test User|test@example\.com/);
+  });
+
   it('says the message did not send, and offers the email address, when the server refuses it', async () => {
     mockFetch.mockResolvedValue({ ok: false, status: 502 });
     const user = userEvent.setup();
-    render(<ContactPage />);
+    render(<ContactForm />);
     await fillAndSend(user);
     expect(await screen.findByRole('alert')).toHaveTextContent(/didn.t send/i);
     expect(screen.getByRole('alert')).toHaveTextContent('ian@iampatterson.com');
@@ -172,7 +331,7 @@ describe('ContactPage', () => {
   it('says so too when reCAPTCHA cannot load, and sends nothing', async () => {
     mockGetRecaptchaToken.mockRejectedValueOnce(new Error('blocked'));
     const user = userEvent.setup();
-    render(<ContactPage />);
+    render(<ContactForm />);
     await fillAndSend(user);
     expect(await screen.findByRole('alert')).toBeInTheDocument();
     expect(mockFetch).not.toHaveBeenCalled();
@@ -181,7 +340,7 @@ describe('ContactPage', () => {
   // A page view alone must make no request to a reCAPTCHA host.
   it('loads reCAPTCHA only when the visitor starts the form', async () => {
     const user = userEvent.setup();
-    render(<ContactPage />);
+    render(<ContactForm />);
     expect(mockLoadRecaptcha).not.toHaveBeenCalled();
     await user.click(screen.getByLabelText(/^name$/i));
     expect(mockLoadRecaptcha).toHaveBeenCalledTimes(1);
@@ -208,7 +367,7 @@ describe('ContactPage', () => {
 
     it('does NOT render the ride-along block when no SessionStateProvider wraps the page', () => {
       mockSessionState = null;
-      const { container } = render(<ContactPage />);
+      const { container } = render(<ContactForm />);
       expect(container.querySelector('[data-testid="ride-along-summary"]')).not.toBeInTheDocument();
       expect(container.querySelector('input[name="session_state"]')).not.toBeInTheDocument();
     });
@@ -216,7 +375,7 @@ describe('ContactPage', () => {
     it('renders the ride-along block and includes the hidden session_state field on submit when marketing is granted', async () => {
       mockSessionState = stateFixture('granted');
       const user = userEvent.setup();
-      const { container } = render(<ContactPage />);
+      const { container } = render(<ContactForm />);
       // Checkbox present and checked (marketing granted → default checked).
       const cb = screen.getByRole('checkbox', {
         name: /share my session state/i,
@@ -234,7 +393,6 @@ describe('ContactPage', () => {
       expect(parsed).toMatchObject({
         session_id: 'sid-contact-test',
         event_types_triggered: 3,
-        ecommerce_demo_percentage: 0,
         pages_visited: 5,
         consent: { analytics: 'granted', marketing: 'granted', preferences: 'granted' },
       });
@@ -255,7 +413,7 @@ describe('ContactPage', () => {
 
     it('renders the ride-along block with the checkbox unchecked when marketing is denied', () => {
       mockSessionState = stateFixture('denied');
-      const { container } = render(<ContactPage />);
+      const { container } = render(<ContactForm />);
       const cb = screen.getByRole('checkbox', {
         name: /share my session state/i,
       }) as HTMLInputElement;

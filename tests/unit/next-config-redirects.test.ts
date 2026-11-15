@@ -10,38 +10,46 @@
 import nextConfig from '../../next.config.mjs';
 
 describe('next.config.mjs redirects (Phase 9E D7)', () => {
+  // 16.2: the about page folds into /contact. Old links (LinkedIn, search)
+  // must land on the merged page, permanently, so search engines move the
+  // index entry rather than keep a dead URL.
+  it('redirects `/about` permanently to `/contact`', async () => {
+    const redirects = await nextConfig.redirects?.();
+    const about = redirects!.find((r) => r.source === '/about');
+    expect(about).toEqual(
+      expect.objectContaining({ source: '/about', destination: '/contact', permanent: true }),
+    );
+  });
+
+  // 15.4 deleted the Demos section and its rebuild banner, so `#demos` and
+  // `?rebuild=` would point at nothing. No demo redirect may carry either.
+  it('sends no demo redirect to the deleted Demos section or its rebuild banner', async () => {
+    const redirects = await nextConfig.redirects?.();
+    for (const r of redirects!) {
+      expect(r.destination).not.toMatch(/#demos|rebuild=/);
+    }
+  });
+
   it('exports an async redirects() function', () => {
     expect(typeof nextConfig.redirects).toBe('function');
   });
 
-  it('redirects `/demo/subscription` and deep-link children to /?rebuild=subscription#demos', async () => {
-    const redirects = await nextConfig.redirects?.();
-    expect(redirects).toBeDefined();
-    const subs = redirects!.filter((r) => r.source.startsWith('/demo/subscription'));
-    // Both the bare path and the `:path*` glob must be listed so the
-    // bare URL doesn't 404 past the glob.
-    expect(subs.length).toBeGreaterThanOrEqual(2);
-    for (const redirect of subs) {
-      expect(redirect.destination).toBe('/?rebuild=subscription#demos');
-      expect(redirect.permanent).toBe(true);
-    }
-    expect(subs.map((r) => r.source)).toEqual(
-      expect.arrayContaining(['/demo/subscription', '/demo/subscription/:path*']),
-    );
-  });
-
-  it('redirects `/demo/leadgen` and deep-link children to /?rebuild=leadgen#demos', async () => {
-    const redirects = await nextConfig.redirects?.();
-    const leads = redirects!.filter((r) => r.source.startsWith('/demo/leadgen'));
-    expect(leads.length).toBeGreaterThanOrEqual(2);
-    for (const redirect of leads) {
-      expect(redirect.destination).toBe('/?rebuild=leadgen#demos');
-      expect(redirect.permanent).toBe(true);
-    }
-    expect(leads.map((r) => r.source)).toEqual(
-      expect.arrayContaining(['/demo/leadgen', '/demo/leadgen/:path*']),
-    );
-  });
+  // One `:path*` rule per demo: in Next.js `:path*` matches zero or more
+  // segments, so the one rule covers the bare URL and every deep link.
+  it.each(['subscription', 'leadgen'])(
+    'redirects `/demo/%s` and every deep link to the homepage with one rule (15.4)',
+    async (demo) => {
+      const redirects = await nextConfig.redirects?.();
+      const rules = redirects!.filter((r) => r.source.startsWith(`/demo/${demo}`));
+      expect(rules).toEqual([
+        expect.objectContaining({
+          source: `/demo/${demo}/:path*`,
+          destination: '/',
+          permanent: true,
+        }),
+      ]);
+    },
+  );
 
   it('all D7 redirects are permanent (so search engines update their index)', async () => {
     // Guard against a future edit that adds a demo-removal redirect
@@ -51,7 +59,7 @@ describe('next.config.mjs redirects (Phase 9E D7)', () => {
     const demoRedirects = redirects!.filter(
       (r) => r.source.startsWith('/demo/subscription') || r.source.startsWith('/demo/leadgen'),
     );
-    expect(demoRedirects.length).toBeGreaterThanOrEqual(4);
+    expect(demoRedirects).toHaveLength(2);
     expect(demoRedirects.every((r) => r.permanent === true)).toBe(true);
   });
 });

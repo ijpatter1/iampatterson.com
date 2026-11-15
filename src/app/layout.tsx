@@ -17,32 +17,24 @@ import { WebVitalsReporter } from '@/components/scripts/web-vitals-reporter';
 import { instrumentSerif, plusJakarta, jetbrainsMono } from '@/lib/fonts';
 import { organizationJsonLd, personJsonLd } from '@/lib/seo/json-ld';
 import '@/styles/globals.css';
+import { SITE_DESCRIPTION } from '@/lib/seo/site';
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
 };
 
-// Single source of truth for the site's one-line offer + thesis.
-// Used by `metadata.description`, `openGraph.description`, and
-// `twitter.description` — keep this in sync with the JSON-LD
-// Organization description in `src/lib/seo/json-ld.ts` so SERP
-// snippet, social cards, and Knowledge Graph all carry the same
-// line.
-const SITE_DESCRIPTION =
-  'Measurement infrastructure for marketing teams. The site itself runs on the same stack I sell.';
-
 export const metadata: Metadata = {
   metadataBase: new URL('https://iampatterson.com'),
   title: {
-    default: 'Patterson Consulting',
-    template: '%s | Patterson Consulting',
+    default: 'I am Patterson · Marketing data, measurement and AI',
+    template: '%s | I am Patterson',
   },
   description: SITE_DESCRIPTION,
-  applicationName: 'Patterson Consulting',
+  applicationName: 'I am Patterson',
   authors: [{ name: 'Ian Patterson', url: 'https://iampatterson.com' }],
   creator: 'Ian Patterson',
-  publisher: 'Patterson Consulting',
+  publisher: 'I am Patterson',
   keywords: [
     'marketing measurement',
     'server-side tagging',
@@ -57,21 +49,21 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     url: 'https://iampatterson.com',
-    siteName: 'Patterson Consulting',
-    title: 'Patterson Consulting',
+    siteName: 'I am Patterson',
+    title: 'I am Patterson · Marketing data, measurement and AI',
     description: SITE_DESCRIPTION,
     images: [
       {
         url: '/opengraph-image',
         width: 1200,
         height: 630,
-        alt: 'Patterson Consulting — measurement infrastructure',
+        alt: 'I am Patterson. Numbers your marketing team can count on.',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Patterson Consulting',
+    title: 'I am Patterson · Marketing data, measurement and AI',
     description: SITE_DESCRIPTION,
     images: ['/opengraph-image'],
   },

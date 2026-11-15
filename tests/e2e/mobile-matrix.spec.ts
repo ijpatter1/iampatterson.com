@@ -7,8 +7,9 @@
  *
  *   /                              homepage hero, primary CTA above-fold
  *   /services                      tier deep-link targets
- *   /about                         long-form prose + closer CTA
+ *   /review                        the review page and its booking buttons
  *   /contact                       form
+ *   /contact?intent=review         form, with the review heading
  *   /demo/ecommerce                catalog
  *   /demo/ecommerce/<product>      product detail
  *   /demo/ecommerce/cart           cart
@@ -16,12 +17,16 @@
  *
  * Per-page assertions:
  *   1. H1 visible.
- *   2. SessionPulse rendered with min 44×44 tap target (WCAG 2.5.5).
+ *   2. SessionPulse and the header's review link (15.4) rendered with
+ *      min 44×44 tap targets (WCAG 2.5.5), on one header row.
  *   3. No horizontal scroll: document.body.scrollWidth <= viewport.width.
- *   4. On homepage: primary "See your session" CTA above the fold,
- *      against a Safari-chrome-aware budget. iPhone-SE budget = 132px
- *      (URL bar + bottom toolbar = ~535px usable against 667px nominal,
- *      the 9E F8 Product Minor #5 number).
+ *   4. On homepage: each hero headline line renders on one line, and the
+ *      primary call to action (HERO.primaryCta, "Start with a review")
+ *      sits above the fold wherever the project has no chrome budget,
+ *      390×667 included. Ian, 2026-11-14: 390×667 is the bar; on iPhone
+ *      SE with Safari chrome (132px budget, ~535px usable) the header
+ *      review link is the above-the-fold path, so there the hero CTA is
+ *      measured and recorded, and the header link is asserted.
  *   5. SessionPulse opens overlay; Overview is the default tab; tab row
  *      stays on a single row (whitespace-nowrap + overflow-x-auto from
  *      F5 UAT S11). Switch to Consent tab; storage inspector renders.
@@ -46,6 +51,9 @@ import { test, expect, type Page } from '@playwright/test';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
+import { showReviewLink } from '../../src/lib/chrome/suppression';
+import { HERO } from '../../src/lib/content/hero';
+
 const E2E_ENABLED = process.env.E2E_ENABLED === '1';
 
 const SCREENSHOT_DATE = process.env.MATRIX_DATE ?? new Date().toISOString().slice(0, 10);
@@ -65,10 +73,11 @@ type RouteSpec = {
 };
 
 const ROUTES: RouteSpec[] = [
-  { path: '/', label: 'home', expectedH1: /measurement/i, isHomepage: true },
+  { path: '/', label: 'home', expectedH1: /count on/i, isHomepage: true },
   { path: '/services', label: 'services', expectedH1: /./ },
-  { path: '/about', label: 'about', expectedH1: /./ },
+  { path: '/review', label: 'review', expectedH1: /./ },
   { path: '/contact', label: 'contact', expectedH1: /./ },
+  { path: '/contact?intent=review', label: 'contact-review', expectedH1: /book the review/i },
   { path: '/demo/ecommerce', label: 'ecommerce-catalog' },
   { path: '/demo/ecommerce/tuna-plush-classic', label: 'ecommerce-product' },
   { path: '/demo/ecommerce/cart', label: 'ecommerce-cart' },
@@ -151,8 +160,10 @@ test.describe('Phase 10d D1, mobile matrix', () => {
       await page.waitForTimeout(100);
 
       if (route.expectedH1) {
-        const h1 = page.locator('h1').first();
+        const h1 = page.locator('h1');
+        await expect(h1, `${route.label}: one h1`).toHaveCount(1);
         await expect(h1, `${route.label}: h1 visible`).toBeVisible();
+        await expect(h1, `${route.label}: h1 text`).toHaveText(route.expectedH1);
       }
 
       // ── 2. No horizontal scroll on the page body ──────────────
@@ -178,17 +189,52 @@ test.describe('Phase 10d D1, mobile matrix', () => {
         44,
       );
 
+      // ── 3b. Header review link (15.4): 44px target, same row as the pulse.
+      // Hidden where showReviewLink says (/review and /contact).
+      const reviewLink = page.locator('header').getByRole('link', { name: HERO.primaryCta });
+      const routePath = new URL(route.path, 'http://localhost').pathname;
+      if (!showReviewLink(routePath)) {
+        await expect(reviewLink, `${route.label}: no header review link`).toHaveCount(0);
+      } else {
+        await expect(reviewLink, `${route.label}: header review link visible`).toBeVisible();
+        const reviewBox = await reviewLink.boundingBox();
+        expect(reviewBox, `${route.label}: review link boundingBox readable`).not.toBeNull();
+        expect(
+          reviewBox!.height,
+          `${route.label} review link height >= 44px`,
+        ).toBeGreaterThanOrEqual(44);
+        expect(
+          Math.abs(reviewBox!.y - pulseBox!.y),
+          `${route.label} on ${mobileLabel}: review link shares the pulse's row (no wrap)`,
+        ).toBeLessThanOrEqual(8);
+        expect(
+          reviewBox!.x + reviewBox!.width,
+          `${route.label} on ${mobileLabel}: review link inside the viewport`,
+        ).toBeLessThanOrEqual(vp.width + 1);
+      }
+
       // Capture the at-rest screenshot before opening the overlay.
       await captureScreenshot(page, testInfo, route.label, '01-at-rest');
 
       // ── 4. Homepage: primary CTA above the Safari-aware fold ──
       if (route.isHomepage) {
-        // Two "See your session" CTAs render on the homepage (hero,
-        // pipeline-section); the final-cta uses "Explore your session"
-        // (UAT r3 B10). The hero one is the load-bearing fold-line CTA;
-        // first DOM occurrence is in the hero section.
-        const cta = page.getByRole('button', { name: /see your session/i }).first();
-        await expect(cta, 'home: "See your session" CTA visible').toBeVisible();
+        // The hero line stays unbroken: each headline line's text sits on
+        // one line, counted as the distinct tops of its text's line boxes.
+        const lineCounts = await page.evaluate(() =>
+          Array.from(document.querySelectorAll('h1 span.block')).map((el) => {
+            const range = document.createRange();
+            range.selectNodeContents(el);
+            const tops = Array.from(range.getClientRects()).map((r) => Math.round(r.top));
+            return new Set(tops).size;
+          }),
+        );
+        expect(lineCounts.length, 'home: hero headline lines found').toBeGreaterThanOrEqual(3);
+        for (const n of lineCounts) expect(n, 'home: a hero headline line wrapped').toBe(1);
+
+        // The primary call to action. The header carries a link with the
+        // same words, so scope to the page's main content.
+        const cta = page.locator('main').getByRole('link', { name: HERO.primaryCta }).first();
+        await expect(cta, `home: "${HERO.primaryCta}" CTA visible`).toBeVisible();
         const ctaBox = await cta.boundingBox();
         expect(ctaBox, 'home: CTA boundingBox readable').not.toBeNull();
         const usableHeight = vp.height - mobileChromeBoost;
@@ -198,33 +244,27 @@ test.describe('Phase 10d D1, mobile matrix', () => {
         // don't fail the run on it (the doc surfaces actual numbers in
         // the matrix, and a real-device verification is the falsifying
         // signal anyway).
-        const isHardFail = mobileChromeBoost === 0;
+        const hasChromeBudget = mobileChromeBoost > 0;
         const message =
-          `home on ${mobileLabel}: "See your session" CTA bottom=${ctaBottom.toFixed(0)}px ` +
+          `home on ${mobileLabel}: "${HERO.primaryCta}" CTA bottom=${ctaBottom.toFixed(0)}px ` +
           `vs usable=${usableHeight}px (chrome boost ${mobileChromeBoost}px).`;
-        if (isHardFail) {
+        if (!hasChromeBudget) {
           expect(ctaBottom, message).toBeLessThanOrEqual(usableHeight);
         } else {
-          // Log soft check via testInfo annotations — surfaces in the
-          // HTML report + the matrix doc summary.
+          // Ian, 2026-11-14: 390×667 is the bar; on iPhone SE with Safari
+          // chrome the header review link is the above-the-fold path. The
+          // hero CTA is still measured and recorded here, not failed.
           testInfo.annotations.push({
-            type: ctaBottom <= usableHeight ? 'fold-check-pass' : 'fold-check-soft-fail',
+            type: ctaBottom <= usableHeight ? 'fold-check-pass' : 'fold-check-recorded',
             description: message,
           });
-          // Hard ceiling on the soft path: even iPhone-SE has a real
-          // limit. Today the CTA bottom is 562px; the chrome-aware
-          // usable is 535px (worst case). After URL-bar collapse on
-          // first scroll the visitor recovers ~50px (587px usable),
-          // so a 30px slack is reachable. A regression past ~565px
-          // (usableHeight + 30 = 565) means the CTA isn't reachable
-          // even with the URL-bar-collapse mitigation, which the
-          // matrix doc records as the load-bearing fold-line claim.
-          // See `docs/perf/mobile-matrix-2026-04-25.md` §"Soft-fail".
-          const SOFT_CEILING = usableHeight + 30;
+          const headerLink = page.locator('header').getByRole('link', { name: HERO.primaryCta });
+          const headerBox = await headerLink.boundingBox();
+          expect(headerBox, 'home: header review link boundingBox readable').not.toBeNull();
           expect(
-            ctaBottom,
-            `${message} (hard ceiling: ${SOFT_CEILING}px = usable + 30px URL-bar-collapse slack)`,
-          ).toBeLessThanOrEqual(SOFT_CEILING);
+            headerBox!.y + headerBox!.height,
+            `home on ${mobileLabel}: header review link above the ${usableHeight}px fold`,
+          ).toBeLessThanOrEqual(usableHeight);
         }
       }
 

@@ -125,7 +125,9 @@ describe('SessionStateRideAlong', () => {
   });
 
   describe('human-readable summary', () => {
-    it('reports event types triggered over total, demo percentage, and pages visited', () => {
+    // The ecommerce demo leaves the site (Phase 17), so the summary no longer
+    // names it (16.2); the payload keeps its field until 17.x removes it.
+    it('reports event types triggered over total and pages visited, and never the ecommerce demo', () => {
       mockState = makeState();
       render(<SessionStateRideAlong />);
       // Fixture fires 14 events (all renderable) out of RENDERABLE_EVENT_NAMES
@@ -133,7 +135,7 @@ describe('SessionStateRideAlong', () => {
       const summary = screen.getByTestId('ride-along-summary');
       const denom = RENDERABLE_EVENT_NAMES.length;
       expect(summary.textContent).toMatch(new RegExp(`14 of ${denom}`));
-      expect(summary.textContent).toMatch(/75%/);
+      expect(summary.textContent).not.toMatch(/75%|ecommerce|demo/i);
       expect(summary.textContent).toMatch(/9 pages/);
       expect(summary.textContent).toMatch(/consent state and session id will ride along/i);
     });
@@ -169,7 +171,6 @@ describe('SessionStateRideAlong', () => {
         session_id: 'sid-abc123def456',
         event_types_triggered: 14,
         event_types_total: RENDERABLE_EVENT_NAMES.length,
-        ecommerce_demo_percentage: 75,
         pages_visited: 9,
         consent: {
           analytics: 'granted',
@@ -217,22 +218,15 @@ describe('SessionStateRideAlong', () => {
       const first = JSON.parse(
         container.querySelector<HTMLInputElement>('input[name="session_state"]')!.value,
       );
-      expect(first.ecommerce_demo_percentage).toBe(75);
+      expect(first.pages_visited).toBe(9);
 
-      // Simulate a state update pushing the visitor to 100%.
-      mockState = makeState({
-        demo_progress: {
-          ecommerce: {
-            stages_reached: ['product_view', 'add_to_cart', 'begin_checkout', 'purchase'],
-            percentage: 100,
-          },
-        },
-      });
+      // Simulate the visitor reaching two more pages.
+      mockState = makeState({ page_count: 11 });
       rerender(<SessionStateRideAlong />);
       const second = JSON.parse(
         container.querySelector<HTMLInputElement>('input[name="session_state"]')!.value,
       );
-      expect(second.ecommerce_demo_percentage).toBe(100);
+      expect(second.pages_visited).toBe(11);
     });
   });
 
@@ -362,8 +356,10 @@ describe('SessionStateRideAlong', () => {
       });
       render(<SessionStateRideAlong />);
       const summary = screen.getByTestId('ride-along-summary');
-      expect(summary.textContent).toMatch(new RegExp(`14 of ${RENDERABLE_EVENT_NAMES.length} event types`));
-      expect(summary.textContent).toMatch(/75%/);
+      expect(summary.textContent).toMatch(
+        new RegExp(`14 of ${RENDERABLE_EVENT_NAMES.length} event types`),
+      );
+      expect(summary.textContent).not.toMatch(/demo/i);
       expect(summary.textContent).toMatch(/will ride along/i);
       expect(summary.textContent).not.toMatch(/will not be included/i);
       expect(summary.textContent).not.toMatch(/overriding/i);
@@ -398,8 +394,10 @@ describe('SessionStateRideAlong', () => {
       await user.click(screen.getByRole('checkbox'));
       const summary = screen.getByTestId('ride-along-summary');
       expect(summary.textContent).toMatch(/overriding.*denied marketing consent/i);
-      expect(summary.textContent).toMatch(new RegExp(`14 of ${RENDERABLE_EVENT_NAMES.length} event types`));
-      expect(summary.textContent).toMatch(/75%/);
+      expect(summary.textContent).toMatch(
+        new RegExp(`14 of ${RENDERABLE_EVENT_NAMES.length} event types`),
+      );
+      expect(summary.textContent).not.toMatch(/demo/i);
       expect(summary.textContent).toMatch(/will ride along/i);
       // Critically: visitor must see the payload they're opting into,
       // not just the override-invitation copy they saw pre-click.

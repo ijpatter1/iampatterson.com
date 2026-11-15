@@ -9,7 +9,9 @@
  * network boundary must go through this helper, not `JSON.stringify` the
  * whole blob.
  *
- * Shape matches `docs/UX_PIVOT_SPEC.md` §3.6 verbatim.
+ * Shape follows `docs/UX_PIVOT_SPEC.md` §3.6, less `ecommerce_demo_percentage`:
+ * 16.2 stopped showing the demo percentage on the form, so it stopped sending
+ * it, and the visitor sees exactly what is transmitted.
  */
 import { RENDERABLE_EVENT_NAMES } from '@/lib/events/schema';
 
@@ -19,7 +21,6 @@ export interface RideAlongPayload {
   session_id: string;
   event_types_triggered: number;
   event_types_total: number;
-  ecommerce_demo_percentage: number;
   pages_visited: number;
   consent: {
     analytics: ConsentValue;
@@ -50,7 +51,6 @@ export function toRideAlongPayload(state: SessionState): RideAlongPayload {
     session_id: state.session_id,
     event_types_triggered: firedRenderable.length,
     event_types_total: RENDERABLE_EVENT_NAMES.length,
-    ecommerce_demo_percentage: state.demo_progress.ecommerce.percentage,
     pages_visited: state.page_count,
     consent: { ...state.consent_snapshot },
   };

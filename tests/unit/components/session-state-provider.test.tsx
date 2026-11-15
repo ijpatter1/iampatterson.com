@@ -19,11 +19,11 @@ jest.mock('@/hooks/useLiveEvents', () => ({
   useLiveEvents: () => ({ events: [], source: 'dataLayer', stream: 'off' }),
 }));
 
-import { LiveStrip } from '@/components/chrome/live-strip';
 import { OverlayProvider } from '@/components/overlay/overlay-context';
 import { OverviewTab } from '@/components/overlay/overview-tab';
 import { SessionStateProvider, useSessionState } from '@/components/session-state-provider';
 import { useEventStream } from '@/hooks/useEventStream';
+import { useSessionReadout } from '@/hooks/useSessionReadout';
 import { _resetKnownSessionIdForTests, setSessionCookie } from '@/lib/events/session';
 import { DATA_LAYER_EVENT_NAMES } from '@/lib/events/schema';
 import { SESSION_STATE_STORAGE_KEY, loadSessionState } from '@/lib/session-state/storage';
@@ -531,15 +531,14 @@ describe('SessionStateProvider', () => {
   // contact ride-along all name `session_id`, and the header must not name
   // the old session above the new session's rows.
   describe('when the session cookie changes', () => {
-    // main's header readout is the LiveStrip's SESSION item, the last six
-    // characters of the ID.
     function Header() {
+      const { shortId } = useSessionReadout();
       const state = useSessionState();
       return (
-        <div>
-          <LiveStrip />
+        <p>
+          <span data-testid="short-id">{shortId}</span>
           <span data-testid="state-id">{state?.session_id}</span>
-        </div>
+        </p>
       );
     }
 
@@ -565,13 +564,13 @@ describe('SessionStateProvider', () => {
           </SessionStateProvider>
         </OverlayProvider>,
       );
-      expect(screen.getByTestId('live-strip')).toHaveTextContent('first1');
+      expect(screen.getByTestId('short-id')).toHaveTextContent('first1');
       expect(screen.getByText('10:00:00 UTC')).toBeInTheDocument();
 
       jest.setSystemTime(new Date('2026-11-14T10:42:07Z'));
       act(() => setSessionCookie('bbbbbbbb-second'));
 
-      expect(screen.getByTestId('live-strip')).toHaveTextContent('second');
+      expect(screen.getByTestId('short-id')).toHaveTextContent('second');
       const overviewSession = screen.getByText('Session', { selector: 'dt' }).parentElement!;
       expect(within(overviewSession).getByText('second')).toBeInTheDocument();
       expect(screen.getByText('10:42:07 UTC')).toBeInTheDocument();
@@ -636,11 +635,11 @@ describe('SessionStateProvider', () => {
           <Header />
         </SessionStateProvider>,
       );
-      expect(getByTestId('live-strip')).toHaveTextContent('first1');
+      expect(getByTestId('short-id')).toHaveTextContent('first1');
 
       act(() => setSessionCookie('bbbbbbbb-second'));
 
-      expect(getByTestId('live-strip')).toHaveTextContent('second');
+      expect(getByTestId('short-id')).toHaveTextContent('second');
       expect(getByTestId('state-id')).toHaveTextContent('bbbbbbbb-second');
       expect(loadSessionState()?.session_id).toBe('bbbbbbbb-second');
     });

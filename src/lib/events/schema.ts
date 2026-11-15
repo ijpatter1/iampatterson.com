@@ -71,7 +71,6 @@ export interface PageEngagementEvent extends BaseEvent {
   max_scroll_pct: number;
 }
 
-
 // --- Claudish translator (feat/claudish) ---
 
 /**
@@ -140,46 +139,48 @@ export interface ClickNavEvent extends BaseEvent {
 }
 
 /**
- * Closed enum of `cta_location` values for `click_cta` emissions.
+ * Closed enum of `cta_location` values for `click_cta` emissions. Every call
+ * to action has its own value, so two buttons on one page can be told apart
+ * in the click data. The footer's three Session links share `footer_session`,
+ * as they always have; `cta_text` tells them apart.
  *
- * Nav-adjacent CTAs (Phase 9E deliverable 9 closed set) must use one of:
- * `session_pulse`, `portal_services`, `portal_about`, `portal_contact`,
- * `contact_cta_threshold`, `pipeline_see_your_session`, `footer_session`.
- * The "etc." escape hatch is closed, adding a nav-adjacent CTA extends this
- * union explicitly.
+ * Nav-adjacent values name their affordance (`session_pulse`, `portal_*`);
+ * page values name their page and place (`hero_review`, `review_page_top`).
+ * The "etc." escape hatch is closed: a new call to action extends this union.
  *
- * Editorial / page-specific CTAs live alongside the nav-adjacent set in the
- * same union so `ClickCtaEvent.cta_location` receives a single type check at
- * every call site; distinguishing them as branded sub-types would require
- * every caller to pick a sub-type at the call site without adding safety.
- * Naming convention communicates intent: nav-adjacent values name their
- * affordance (`session_pulse`, `portal_*`); editorial values name their
- * page or region (`hero`, `final_cta`, `services_tier_NN`).
- *
- * Legacy values (pre-Phase-9E demos that 9E removes or rebuilds) stay in the
- * union until their emitting components are deleted or rewritten: they
- * guarantee continuity through the pivot's implementation passes. They are
- * expected to leave the union when deliverables 6 and 7 ship.
+ * 15.4 removed the values whose calls to action were deleted: `hero` (the old
+ * hero, split into `hero_review` and `hero_session`), `final_cta`,
+ * `demo_card_ecommerce` and `pipeline_see_your_session`, plus `review` and
+ * `proof`, which preview deploys emitted before 15.4 split them.
+ * Rows already in BigQuery keep them; `infrastructure/bigquery/schema.json`
+ * documents both sets.
  */
 export type CtaLocation =
-  // Phase 9E nav-adjacent closed enum
+  // The header and the overlay
   | 'session_pulse'
+  | 'header_review'
   | 'portal_services'
-  | 'portal_about'
   | 'portal_contact'
   | 'contact_cta_threshold'
-  | 'pipeline_see_your_session'
+  // The homepage (15.4)
+  | 'hero_review'
+  | 'hero_session'
+  | 'how_we_work_link'
+  | 'how_we_work_review'
+  | 'proof_button'
+  | 'proof_panel'
+  // /review and /contact (15.4)
+  | 'review_page_top'
+  | 'review_page_bottom'
+  | 'contact_review_link'
+  | 'contact_email'
+  // The footer (15.4); footer_session is the three Session links, as before
+  | 'footer_contact'
+  | 'footer_email'
   | 'footer_session'
-  // Editorial / page-specific CTAs (not nav-adjacent, named by page or region)
-  | 'hero'
+  // /services, until 16.1 deletes the page
   | 'services_closer'
-  | `services_tier_${'01' | '02' | '03' | '04'}`
-  | 'final_cta'
-  | 'about_closer'
-  // Homepage Demos section, single ecommerce entry after D6's rebuild. Name
-  // retained across the card→section refactor so the analytics time series
-  // stays continuous (no split series from a rename).
-  | 'demo_card_ecommerce';
+  | `services_tier_${'01' | '02' | '03' | '04'}`;
 
 /** Fired when a CTA button is clicked. */
 export interface ClickCtaEvent extends BaseEvent {
@@ -386,7 +387,7 @@ export interface ConsentTabViewEvent extends BaseEvent {
  */
 export interface PortalClickEvent extends BaseEvent {
   event: 'portal_click';
-  destination: 'services' | 'about' | 'contact';
+  destination: 'services' | 'contact';
 }
 
 /**

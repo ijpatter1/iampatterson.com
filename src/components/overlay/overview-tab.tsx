@@ -31,7 +31,7 @@ const BAR_WIDTH = 16;
 const EVENT_TYPE_THRESHOLD = 10;
 const TYPING_INTERVAL_MS = 24;
 
-type PortalDestination = 'services' | 'about' | 'contact';
+type PortalDestination = 'services' | 'contact';
 type StageStatus = 'reached' | 'skipped' | 'pending';
 
 const PORTAL_LINKS: {
@@ -45,12 +45,6 @@ const PORTAL_LINKS: {
     href: '/services',
     label: '> SERVICES',
     descriptor: 'Four tiers of measurement infrastructure.',
-  },
-  {
-    destination: 'about',
-    href: '/about',
-    label: '> ABOUT',
-    descriptor: 'Ian, Tuna, and the backstory.',
   },
   {
     destination: 'contact',
@@ -293,7 +287,7 @@ export function OverviewTab({ storage = EMPTY_STORAGE }: { storage?: StorageSnap
           <ul
             id="overview-portals-list"
             data-testid="overview-portals-list"
-            className="grid gap-3 sm:grid-cols-3"
+            className="grid gap-3 sm:grid-cols-2"
           >
             {PORTAL_LINKS.map((link) => (
               <li key={link.destination}>

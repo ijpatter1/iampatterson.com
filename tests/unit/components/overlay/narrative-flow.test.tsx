@@ -45,6 +45,21 @@ describe('NarrativeFlow', () => {
     expect(screen.getByText(/\/services/)).toBeInTheDocument();
   });
 
+  // 15.4: the narrative names the button by its words, never by its
+  // cta_location, which is an analytics key and not copy.
+  it('narrates the header review link by its text, not its location', () => {
+    render(
+      <NarrativeFlow
+        event={makeEvent({
+          event_name: 'click_cta',
+          parameters: { cta_text: 'Start with a review', cta_location: 'header_review' },
+        })}
+      />,
+    );
+    expect(screen.getByText(/clicked/i)).toHaveTextContent('Start with a review');
+    expect(screen.queryByText(/header_review/)).not.toBeInTheDocument();
+  });
+
   it('shows a user action description for click_cta', () => {
     render(
       <NarrativeFlow
@@ -68,6 +83,27 @@ describe('NarrativeFlow', () => {
       />,
     );
     expect(screen.getByText(/submitted/i)).toBeInTheDocument();
+  });
+
+  // 15.4: form_name is an analytics key, not copy. The review-intent form
+  // reads as the same contact form, and no key shows raw, known or not.
+  it.each([
+    ['form_start', 'contact', 'You started the contact form'],
+    ['form_start', 'contact_review', 'You started the contact form'],
+    ['form_submit', 'contact_review', 'You submitted the contact form'],
+    ['form_submit', 'some_future_form', 'You submitted the form'],
+    // Keys on Object.prototype must never resolve to a label.
+    ['form_start', 'constructor', 'You started the form'],
+    ['form_submit', 'toString', 'You submitted the form'],
+    ['form_start', '__proto__', 'You started the form'],
+  ])('narrates %s for form_name %s as "%s"', (eventName, formName, words) => {
+    const { container } = render(
+      <NarrativeFlow
+        event={makeEvent({ event_name: eventName, parameters: { form_name: formName } })}
+      />,
+    );
+    expect(screen.getByText(words)).toBeInTheDocument();
+    if (formName !== 'contact') expect(container.textContent).not.toContain(formName);
   });
 
   it('shows the pipeline stages (data layer → sGTM → destinations)', () => {
@@ -108,9 +144,7 @@ describe('NarrativeFlow', () => {
         })}
       />,
     );
-    expect(
-      screen.getByText(/translated 412 characters into Claudish/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/translated 412 characters into Claudish/i)).toBeInTheDocument();
   });
 
   it('describes a refused claudish_translate honestly', () => {

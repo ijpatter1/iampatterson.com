@@ -21,9 +21,27 @@ describe('Phase 10d D4 — SEO', () => {
       const metadata = (mod as unknown as { metadata: Metadata }).metadata;
       expect(metadata.openGraph).toBeDefined();
       const og = metadata.openGraph as { siteName?: string; locale?: string; type?: string };
-      expect(og.siteName).toBe('Patterson Consulting');
+      expect(og.siteName).toBe('I am Patterson');
       expect(og.locale).toBe('en_US');
       expect(og.type).toBe('website');
+    });
+
+    // The practice is I am Patterson, and the page says what the LinkedIn
+    // headline says, so search results and link previews match the profile.
+    it('names the practice I am Patterson and describes it in the profile headline', async () => {
+      const mod = await import('@/app/layout');
+      const metadata = (mod as unknown as { metadata: Metadata }).metadata;
+      const headline =
+        'I lead marketing data, measurement and AI work for in-house marketing teams, from tracking reviews to fractional leadership.';
+      expect(metadata.title).toEqual({
+        default: 'I am Patterson · Marketing data, measurement and AI',
+        template: '%s | I am Patterson',
+      });
+      expect(metadata.description).toBe(headline);
+      expect((metadata.openGraph as { description?: string }).description).toBe(headline);
+      expect(JSON.stringify(metadata)).not.toMatch(
+        /Patterson Consulting|measurement infrastructure/i,
+      );
     });
 
     it('exports twitter card with summary_large_image', async () => {
@@ -38,8 +56,8 @@ describe('Phase 10d D4 — SEO', () => {
   describe('Per-route layout metadata', () => {
     const routes = [
       { path: '@/app/services/layout', name: 'services' },
-      { path: '@/app/about/layout', name: 'about' },
       { path: '@/app/contact/layout', name: 'contact' },
+      { path: '@/app/review/layout', name: 'review' },
       { path: '@/app/demo/ecommerce/layout', name: 'ecommerce demo' },
     ];
 
@@ -63,7 +81,7 @@ describe('Phase 10d D4 — SEO', () => {
       ).organizationJsonLd();
       expect(org['@context']).toBe('https://schema.org');
       expect(org['@type']).toBe('Organization');
-      expect(org.name).toBe('Patterson Consulting');
+      expect(org.name).toBe('I am Patterson');
       expect(org.url).toBe('https://iampatterson.com');
       // Founder must be a real Person sub-object, not just truthy.
       // A future edit that flips `founder` to a bare string or `{}`
@@ -75,6 +93,20 @@ describe('Phase 10d D4 — SEO', () => {
       expect(founder.name).toBe('Ian Patterson');
     });
 
+    // Search results, link previews and the Knowledge Graph say the same
+    // thing because they read one constant.
+    it('gives the Organization JSON-LD the same description as the page metadata', async () => {
+      const layout = await import('@/app/layout');
+      const metadata = (layout as unknown as { metadata: Metadata }).metadata;
+      const mod = await import('@/lib/seo/json-ld');
+      const org = (
+        mod as { organizationJsonLd: () => Record<string, unknown> }
+      ).organizationJsonLd();
+      expect(org.description).toBe(metadata.description);
+      const site = await import('@/lib/seo/site');
+      expect(metadata.description).toBe(site.SITE_DESCRIPTION);
+    });
+
     it('exposes Person JSON-LD via @/lib/seo/json-ld', async () => {
       const mod = await import('@/lib/seo/json-ld');
       const person = (mod as { personJsonLd: () => Record<string, unknown> }).personJsonLd();
@@ -83,6 +115,51 @@ describe('Phase 10d D4 — SEO', () => {
       expect(person.name).toBe('Ian Patterson');
       expect(person.url).toBe('https://iampatterson.com');
       expect(person.jobTitle).toBeTruthy();
+      expect(JSON.stringify(person)).not.toMatch(
+        /Patterson Consulting|measurement infrastructure/i,
+      );
+    });
+  });
+
+  // 15.4 acceptance: what a search result, a link preview or the Knowledge
+  // Graph shows carries the new positioning and none of the old offer's words.
+  describe('Old positioning (15.4)', () => {
+    const OLD_WORDS =
+      /\btiers?\b|measurement infrastructure|\bdemos?\b|tuna shop|explore your session first|metabase/i;
+
+    // The site metadata carries the default share image's alt text.
+    it('appears nowhere in the site metadata or the JSON-LD', async () => {
+      const layout = await import('@/app/layout');
+      const jsonLd = await import('@/lib/seo/json-ld');
+      const surfaces = [
+        (layout as unknown as { metadata: Metadata }).metadata,
+        jsonLd.organizationJsonLd(),
+        jsonLd.personJsonLd(),
+      ];
+      for (const surface of surfaces) expect(JSON.stringify(surface)).not.toMatch(OLD_WORDS);
+    });
+
+    it('appears nowhere in the metadata of /review and /contact', async () => {
+      for (const path of ['@/app/review/layout', '@/app/contact/layout']) {
+        const mod = await import(/* webpackIgnore: true */ path);
+        const metadata = (mod as unknown as { metadata: Metadata }).metadata;
+        expect([path, JSON.stringify(metadata)]).not.toEqual([
+          path,
+          expect.stringMatching(OLD_WORDS),
+        ]);
+      }
+    });
+  });
+
+  // The price lives in one constant, so the review page's search snippet and
+  // share card cannot go stale when it changes.
+  describe('Review page metadata', () => {
+    it('takes its price from the single constant', async () => {
+      const { metadata } = (await import('@/app/review/layout')) as unknown as {
+        metadata: Metadata;
+      };
+      const { REVIEW_PRICE } = await import('@/lib/content/review');
+      expect(metadata.description).toContain(`From ${REVIEW_PRICE}.`);
     });
   });
 
@@ -92,16 +169,16 @@ describe('Phase 10d D4 — SEO', () => {
       const entries = (sitemap as () => MetadataRoute.Sitemap)();
       const urls = entries.map((e) => e.url);
 
-      // Canonical static inclusions — six entries (`/`, `/services`,
-      // `/about`, `/contact`, `/demo`, `/demo/ecommerce`). Tightened
+      // Canonical static inclusions (`/about` left with 16.2, which folds
+      // it into `/contact`). Tightened
       // beyond `arrayContaining` so a future drop of e.g. `/demo`
       // can't silently slip past the test (mirrors the product-URL
       // tightness fix-pack applied at line 111-114 below).
       const expectedStatic = [
         'https://iampatterson.com',
         'https://iampatterson.com/services',
-        'https://iampatterson.com/about',
         'https://iampatterson.com/contact',
+        'https://iampatterson.com/review',
         'https://iampatterson.com/demo',
         'https://iampatterson.com/demo/ecommerce',
         'https://iampatterson.com/claudish',

@@ -87,7 +87,7 @@ test.describe('Claudish translator', () => {
     await page.goto('/claudish');
     await expect(page.getByTestId('claudish-output').or(page.getByRole('textbox'))).toBeVisible();
     await expect(page.locator('[data-testid="home-bar"]')).toHaveCount(0);
-    // The page's own footer exists; the site's 4-column footer does not.
+    // The page's own footer exists.
     await expect(page.getByText('Not affiliated with Google. Yet.')).toBeVisible();
   });
 });
