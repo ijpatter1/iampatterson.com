@@ -5,6 +5,7 @@ import {
 } from '@/lib/identity/anonymous-id';
 import { isGlobalPrivacyControlEnabled } from './global-privacy-control';
 import { pushEvent } from './push';
+import { readStoredConsent } from './stored-consent';
 import type {
   CoverageMilestoneEvent,
   CtaLocation,
@@ -25,6 +26,12 @@ let currentConsent = {
   consent_marketing: false,
   consent_preferences: false,
 };
+
+/**
+ * Whether this page load has taken its consent from the stored cookie or from
+ * Cookiebot yet. See applyStoredConsent.
+ */
+let storedConsentRead = false;
 
 /**
  * `_iap_aid`, the 365-day visitor ID, is a Statistics cookie (Ian,
@@ -104,8 +111,10 @@ type GtagFn = {
  * speaks to and keep following the banner.
  *
  * This holds only because the bridge below is the single writer of Consent
- * Mode: Cookiebot's own writes are switched off on its script tag
- * (`data-consentmode="disabled"` in `cookiebot.tsx`).
+ * Mode after page load: Cookiebot's own writes are switched off on its script
+ * tag (`data-consentmode="disabled"` in `cookiebot.tsx`). The one writer
+ * before GTM loads, the stored-consent update in the consent defaults
+ * (`STORED_CONSENT_UPDATE_JS`, 15.8), applies the same rule.
  */
 function honorGlobalPrivacyControl(marketing: boolean): boolean {
   return marketing && !isGlobalPrivacyControlEnabled();
@@ -121,6 +130,8 @@ function recordConsent(
   marketing: boolean,
   preferences: boolean,
 ): typeof currentConsent {
+  // An answer from Cookiebot supersedes the stored cookie for this page load.
+  storedConsentRead = true;
   currentConsent = {
     consent_analytics: analytics,
     consent_marketing: honorGlobalPrivacyControl(marketing),
@@ -159,6 +170,37 @@ function applyAnonymousIdConsent(resolved: boolean): void {
   } else if (resolved) {
     clearAnonymousIdCookie();
   }
+}
+
+/**
+ * Take a returning visitor's stored choice from Cookiebot's `CookieConsent`
+ * cookie, before Cookiebot has resolved it (15.8). On a reload Cookiebot has
+ * no answer for ~180ms (measured in production, 2026-11-14), and the landing
+ * page_view and the first scroll and web-vital events can fire inside that
+ * window. Without this they carried the denied defaults and no visitor ID.
+ *
+ * Runs once per page load, on the first event or consent read (and from the
+ * listener's mount), and never after Cookiebot has answered: recordConsent
+ * marks it done. A choice made in another tab later is not picked up here,
+ * because this tab's tags do not have it either.
+ *
+ * It sends no gtag update: the inline script ahead of GTM
+ * (`STORED_CONSENT_UPDATE_JS` in the consent defaults) already sent this
+ * choice, read from the same cookie with the same patterns. It pushes no
+ * `consent_update`: the visitor changed nothing on this page load.
+ *
+ * A stored choice is a resolved answer, so a stored decline expires a
+ * leftover `_iap_aid` here; until 15.8 that rode the reload's
+ * `consent_update`. No stored choice: nothing happens, and the never-chosen
+ * cleanup (`expireAnonymousIdLeftover`) owns the leftover.
+ */
+export function applyStoredConsent(): void {
+  if (storedConsentRead || typeof document === 'undefined') return;
+  storedConsentRead = true;
+  const stored = readStoredConsent(document.cookie);
+  if (!stored) return;
+  recordConsent(stored.analytics, stored.marketing, stored.preferences);
+  applyAnonymousIdConsent(true);
 }
 
 /**
@@ -216,8 +258,9 @@ export function expireAnonymousIdLeftover(): void {
 }
 
 /**
- * Initialize consent state from Cookiebot (call on page load for returning
- * visitors whose consent choice is already stored). Also bridges to gtag so
+ * Initialize consent state from Cookiebot's resolved answer on page load: at
+ * mount if it has already resolved, or when it replays a stored choice
+ * (`Cookiebot.changed === false`, 15.8). Also bridges to gtag so
  * GTM Consent Mode v2 sees the returning-visitor state instead of staying
  * on the denied defaults forever.
  *
@@ -254,6 +297,7 @@ export function getCurrentConsent(): {
   consent_marketing: boolean;
   consent_preferences: boolean;
 } {
+  applyStoredConsent();
   return { ...currentConsent };
 }
 
@@ -269,6 +313,7 @@ function baseFields(): {
   consent_marketing: boolean;
   consent_preferences: boolean;
 } {
+  applyStoredConsent();
   const sid = getSessionId();
   return {
     iap_source: true,

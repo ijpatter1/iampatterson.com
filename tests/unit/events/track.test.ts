@@ -732,8 +732,11 @@ describe('anonymous_id follows analytics consent', () => {
       'readAnonymousIdCookie',
     ]);
     // The full list, so a writer cannot arrive under any name.
+    // applyStoredConsent is a consent entry point like initConsentState: it
+    // mints only from the visitor's stored analytics grant (15.8).
     expect(Object.keys(trackModule).sort()).toEqual(
       [
+        'applyStoredConsent',
         'expireAnonymousIdLeftover',
         'getCurrentConsent',
         'initConsentState',

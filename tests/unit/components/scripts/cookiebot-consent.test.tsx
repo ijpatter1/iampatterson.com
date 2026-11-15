@@ -6,12 +6,15 @@ import { render, act } from '@testing-library/react';
 jest.mock('@/lib/events/track', () => ({
   trackConsentUpdate: jest.fn(),
   initConsentState: jest.fn(),
+  applyStoredConsent: jest.fn(),
+  expireAnonymousIdLeftover: jest.fn(),
 }));
 
-import { initConsentState, trackConsentUpdate } from '@/lib/events/track';
+import { applyStoredConsent, initConsentState, trackConsentUpdate } from '@/lib/events/track';
 
 const mockTrackConsentUpdate = trackConsentUpdate as jest.Mock;
 const mockInitConsentState = initConsentState as jest.Mock;
+const mockApplyStoredConsent = applyStoredConsent as jest.Mock;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -35,10 +38,14 @@ describe('CookiebotConsentListener', () => {
     addSpy.mockRestore();
   });
 
-  it('fires trackConsentUpdate when CookiebotOnAccept is dispatched', () => {
+  // `Cookiebot.changed` is true when the visitor has just submitted a choice
+  // and false when Cookiebot replays a stored one on page load (measured on
+  // localhost, 2026-11-15).
+  it('fires trackConsentUpdate when the visitor accepts', () => {
     const CookiebotConsentListener = getComponent();
-    // Simulate Cookiebot global
     (window as Record<string, unknown>).Cookiebot = {
+      hasResponse: true,
+      changed: true,
       consent: { statistics: true, marketing: false, preferences: true },
     };
     render(<CookiebotConsentListener />);
@@ -48,9 +55,11 @@ describe('CookiebotConsentListener', () => {
     expect(mockTrackConsentUpdate).toHaveBeenCalledWith(true, false, true);
   });
 
-  it('fires trackConsentUpdate when CookiebotOnDecline is dispatched', () => {
+  it('fires trackConsentUpdate when the visitor declines', () => {
     const CookiebotConsentListener = getComponent();
     (window as Record<string, unknown>).Cookiebot = {
+      hasResponse: true,
+      changed: true,
       consent: { statistics: false, marketing: false, preferences: false },
     };
     render(<CookiebotConsentListener />);
@@ -73,11 +82,60 @@ describe('CookiebotConsentListener', () => {
     expect(mockInitConsentState).toHaveBeenCalledWith(false, true, false, true);
   });
 
-  it('treats a missing hasResponse on mount as unresolved', () => {
+  // 15.8: on a reload Cookiebot exists at ~15ms with no answer. Its
+  // unresolved defaults are not the visitor's choice; recording them would
+  // send Google a denied update after the stored choice the inline script
+  // sent ahead of GTM. The stored cookie is applied instead.
+  it('records nothing from Cookiebot before it has resolved, and applies the stored choice', () => {
     const CookiebotConsentListener = getComponent();
-    (window as Record<string, unknown>).Cookiebot = { consent: {} };
+    (window as unknown as Record<string, unknown>).Cookiebot = { consent: {} };
     render(<CookiebotConsentListener />);
-    expect(mockInitConsentState).toHaveBeenCalledWith(undefined, undefined, undefined, false);
+    expect(mockInitConsentState).not.toHaveBeenCalled();
+    expect(mockApplyStoredConsent).toHaveBeenCalledTimes(1);
+  });
+
+  // The returning visitor's path: Cookiebot replays the stored choice on page
+  // load with CookiebotOnLoad and then CookiebotOnAccept or CookiebotOnDecline,
+  // `hasResponse` true and `changed` false. That is no choice the visitor made
+  // on this page, so it is recorded silently: no consent_update.
+  it.each([
+    ['CookiebotOnAccept', { statistics: true, marketing: true, preferences: false }],
+    ['CookiebotOnDecline', { statistics: false, marketing: false, preferences: false }],
+  ])('records a stored choice replayed on %s without a consent_update', (event, consent) => {
+    const CookiebotConsentListener = getComponent();
+    (window as unknown as Record<string, unknown>).Cookiebot = { consent: {} };
+    render(<CookiebotConsentListener />);
+    (window as unknown as Record<string, unknown>).Cookiebot = {
+      hasResponse: true,
+      changed: false,
+      consent,
+    };
+    act(() => {
+      window.dispatchEvent(new Event('CookiebotOnLoad'));
+      window.dispatchEvent(new Event(event));
+    });
+    expect(mockTrackConsentUpdate).not.toHaveBeenCalled();
+    expect(mockInitConsentState).toHaveBeenCalledWith(
+      consent.statistics,
+      consent.marketing,
+      consent.preferences,
+      true,
+    );
+  });
+
+  // A Cookiebot that does not report `changed` gets the pre-15.8 behavior:
+  // the event is treated as the visitor's choice.
+  it('treats an event without Cookiebot.changed as a choice', () => {
+    const CookiebotConsentListener = getComponent();
+    (window as unknown as Record<string, unknown>).Cookiebot = {
+      hasResponse: true,
+      consent: { statistics: true, marketing: false, preferences: false },
+    };
+    render(<CookiebotConsentListener />);
+    act(() => {
+      window.dispatchEvent(new Event('CookiebotOnAccept'));
+    });
+    expect(mockTrackConsentUpdate).toHaveBeenCalledWith(true, false, false);
   });
 
   it('does not fire when Cookiebot global is absent', () => {

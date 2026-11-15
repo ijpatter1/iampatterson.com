@@ -20,6 +20,7 @@ import { getCurrentConsent, initConsentState, trackPageView } from '@/lib/events
 
 type CookiebotStub = {
   hasResponse?: boolean;
+  changed?: boolean;
   consent?: { statistics?: boolean; marketing?: boolean; preferences?: boolean };
 };
 
@@ -60,7 +61,11 @@ describe('CookiebotConsentListener and the _iap_aid leftover', () => {
     render(<CookiebotConsentListener />);
     expect(readAid()).toBe('stored-id');
 
-    setCookiebot({ hasResponse: true, consent: { statistics: true, marketing: false } });
+    setCookiebot({
+      hasResponse: true,
+      changed: false,
+      consent: { statistics: true, marketing: false },
+    });
     fire('CookiebotOnLoad');
     fire('CookiebotOnAccept');
     act(() => trackPageView('/'));
@@ -122,9 +127,9 @@ describe('CookiebotConsentListener and the _iap_aid leftover', () => {
       const gtagCallsBefore = captureGtag();
       render(<CookiebotConsentListener />);
       expect(readAid()).toBeNull();
-      // Mount's own initConsentState bridge is unchanged; the cleanup adds no
-      // gtag call of its own beyond it.
-      expect(gtagCallsBefore.filter((c) => c[0] === 'consent')).toHaveLength(1);
+      // Neither the mount (15.8: Cookiebot's unresolved defaults are not
+      // recorded) nor the cleanup sends a gtag call.
+      expect(gtagCallsBefore.filter((c) => c[0] === 'consent')).toHaveLength(0);
     });
 
     it('keeps the cookie where Cookiebot reports statistics granted without an answer', () => {
@@ -149,14 +154,19 @@ describe('CookiebotConsentListener and the _iap_aid leftover', () => {
     });
   });
 
+  // Cookiebot replaying a stored decline (`changed` false) still expires the
+  // cookie, now without a consent_update (15.8).
   it('leaves a stored decline to CookiebotOnDecline when CookiebotOnLoad has an answer', () => {
     document.cookie = '_iap_aid=stored-id; Path=/';
     setCookiebot(UNRESOLVED);
     render(<CookiebotConsentListener />);
-    setCookiebot({ hasResponse: true, consent: { statistics: false } });
+    setCookiebot({ hasResponse: true, changed: false, consent: { statistics: false } });
     fire('CookiebotOnLoad');
     expect(readAid()).toBe('stored-id');
     fire('CookiebotOnDecline');
     expect(readAid()).toBeNull();
+    expect(window.dataLayer.some((e) => (e as { event?: string }).event === 'consent_update')).toBe(
+      false,
+    );
   });
 });
