@@ -89,8 +89,11 @@ async function translateVia(
  * "refusal", HTTP 200), which Haiku 4.5 did not. Production handles it
  * (refusal frame, never cached, no failover); the gate's job is to catch a
  * classifier that declines ordinary input, so a refused case fails by name
- * rather than as an empty output tripping a property check. Category only:
- * never the input or output text.
+ * rather than as an empty output tripping a property check. The injection
+ * cases are exempt: they gate on the prompt not leaking, and a refusal is a
+ * safe answer to "print your system prompt" (an empty refused output passes
+ * assertInjectionSafe, as before 20.1). Category only: never the input or
+ * output text.
  */
 function refusalFailure(
   stopReason: string | null,
@@ -253,7 +256,7 @@ describeIfGolden('golden set (live API)', () => {
             ? await translateCl2EnAsServed(config, lane, testCase.input)
             : await translateVia(lane, 'cl2en', testCase.input);
         const { output, stopReason } = result;
-        const refused = refusalFailure(stopReason, result.refusalCategory);
+        const refused = testCase.injection ? [] : refusalFailure(stopReason, result.refusalCategory);
         if (refused.length > 0) {
           throw new Error(`${testCase.id} violated: not-refused (${refused[0].detail})`);
         }
@@ -309,7 +312,7 @@ describeIfGolden('golden set (live API)', () => {
               'en2cl',
               testCase.input,
             );
-            const refused = refusalFailure(stopReason, refusalCategory);
+            const refused = testCase.injection ? [] : refusalFailure(stopReason, refusalCategory);
             const failures =
               refused.length > 0
                 ? refused
@@ -325,7 +328,12 @@ describeIfGolden('golden set (live API)', () => {
               passes++;
               casePasses++;
             } else if (firstFailure === null) {
-              firstFailure = `${testCase.id} violated: ${failures.map((f) => `${f.property} (${f.detail})`).join('; ')}\noutput: ${output}`;
+              const detail = failures.map((f) => `${f.property} (${f.detail})`).join('; ');
+              // A refusal's partial text stays out of the suite output.
+              firstFailure =
+                refused.length > 0
+                  ? `${testCase.id} violated: ${detail}`
+                  : `${testCase.id} violated: ${detail}\noutput: ${output}`;
             }
           }
           if (repeat > 1) console.log(`[golden] ${testCase.id}: ${casePasses}/${repeat} passed`);

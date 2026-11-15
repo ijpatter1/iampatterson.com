@@ -83,6 +83,10 @@
     {
       "id": "en2cl-20-sick-team",
       "input": "Half my team is out with the flu, so I am pushing the launch to next Tuesday."
+    },
+    {
+      "id": "en2cl-21-ai-practice",
+      "input": "We red-teamed the new model last week and found two jailbreaks in the system prompt. Both are patched."
     }
   ]
 }
