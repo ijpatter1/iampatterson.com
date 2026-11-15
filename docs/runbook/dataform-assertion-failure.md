@@ -79,8 +79,8 @@ failed somewhere the assertions are not.
 
 An assertion failure means one of two things, and they need opposite responses:
 
-**The data is wrong.** Events stopped arriving, a source changed shape, a
-generator run failed. Fix the data or the pipeline feeding it.
+**The data is wrong.** Real events stopped arriving or a source changed
+shape. Fix the data or the pipeline feeding it.
 
 **The assertion is wrong.** It encodes an expectation that was never true, or
 stopped being true for a legitimate reason.
@@ -92,7 +92,7 @@ weekdays, so every weekend counted against it. Six empty days in sixty-one gave 
 gap rate of 0.098 against its own threshold of 0.10, and it drifted across that
 line as old days aged out. The assertion was wrong, not the data.
 
-It was corrected twice over: the date spine now counts weekdays only, and it is
+It was corrected twice over: the date spine came to count weekdays only, and it was
 anchored to `CURRENT_DATE()` rather than to the newest row in the table. That
 second change matters more than it sounds. A spine that ends at the last row of
 data can never contain a missing day, so a pipeline that stopped dead entirely
