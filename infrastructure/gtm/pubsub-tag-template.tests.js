@@ -308,14 +308,14 @@ setupMocks({
     page_path: '/',
     page_title: 'Home',
     page_location: 'https://www.iampatterson.com/',
-    engagement_seconds: '60',
-    max_scroll_pct: '59',
+    engagement_seconds: 60,
+    max_scroll_pct: 0,
   },
 });
 
-var capturedBody8;
+var capturedBody9;
 mock('sendHttpRequest', function (url, options, body) {
-  capturedBody8 = body;
+  capturedBody9 = body;
   return {
     then: function (cb) {
       cb({ statusCode: 200, body: '' });
@@ -324,5 +324,7 @@ mock('sendHttpRequest', function (url, options, body) {
 });
 
 runCode(code);
-assertThat(capturedBody8).contains('\\"engagement_seconds\\":\\"60\\"');
-assertThat(capturedBody8).contains('\\"max_scroll_pct\\":\\"59\\"');
+// GA4 delivers these as numbers. A 0 scroll is a real value and must survive
+// (only '' is filtered out).
+assertThat(capturedBody9).contains('\\"engagement_seconds\\":60');
+assertThat(capturedBody9).contains('\\"max_scroll_pct\\":0');

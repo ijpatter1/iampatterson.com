@@ -13,7 +13,14 @@
 //      - getCookieValues: allow _iap_sid
 //      - Uses Google application default credentials: allow https://www.googleapis.com/auth/cloud-platform
 //      - Reads event data: any
-//   5. Save template, then create a tag using it with trigger "All GA4 Events"
+//   5. Save template, then create a tag using it with trigger "clientName - GA4"
+//      (the live trigger, per docs/verification/2026-09-08-gtm-container-census.md)
+//
+// Updating it: CI publishes the web container only, so a change to this file
+// reaches production when someone pastes it (and pubsub-tag-template.tests.js)
+// into the live template, runs the Tests tab, saves, and publishes a server
+// container version. Diff the live code against the previous repo copy first,
+// so an untracked live edit is not overwritten.
 //
 // Sandboxed JS limitations:
 //   - No Date, Math, or other browser/Node globals

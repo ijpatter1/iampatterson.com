@@ -324,7 +324,7 @@ sGTM sets a first-party cookie (`_iap_sid`) with a UUID v4 session ID. This cook
 
 ### Pub/Sub
 
-A custom sGTM tag publishes every event to a Pub/Sub topic (`iampatterson-events`). The message payload is the full event JSON including session ID, event name, timestamp, and all parameters.
+A custom sGTM tag publishes every event to a Pub/Sub topic (`iampatterson-events`). The message payload carries the session ID, event name, timestamp, page fields, consent and routing status, and the event parameters on the tag's allow-list (`keys` in `infrastructure/gtm/pubsub-tag-template.js`), not every parameter. A parameter the overlay shows must be on that list; `tests/unit/infra/stream-parameters.test.ts` holds the narrative's reads to it. The tag lives in the sGTM server container, which CI does not publish: a change to the template reaches production only when it is pasted into the container's template editor and a version is published.
 
 ### Cloud Run WebSocket/SSE Service
 
