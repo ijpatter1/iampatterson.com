@@ -10,14 +10,15 @@ import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 
 // UAT r1 item 14 → Pass-1 eval correction. 1900ms was too fast (~240ms
 // per line); 4500ms was flagged as overcorrection (a full 4.5s block on
-// every checkout). Landed at 3200ms: ~400ms per line across 7 lines (5 since 2026-11-16),
+// every checkout). Landed at 3200ms: ~400ms per line across the 7 lines it
+// had then; since 2026-11-16 there are 5, so each line shows for ~530ms,
 // readable without feeling like a gate. The "press any key to skip"
 // affordance (promoted below) handles the returning-visitor case.
 const DEFAULT_DURATION_MS = 3200;
 
 export interface DiagnosticLine {
   text: string;
-  /** Status tag rendered as `[OK]` / `[SKIP]` / `[LIVE]` etc. */
+  /** Status tag rendered as `[OK]` / `[SKIP]` etc. */
   tag?: string;
   /** Emphasises the line visually, used for the final payoff line. */
   emph?: boolean;

@@ -73,16 +73,23 @@ describe('OrderConfirmation (Phase 9F D9)', () => {
     expect(screen.getByText(/A real order just landed in production BigQuery/)).toBeInTheDocument();
   });
 
-  it('does NOT render the back-to-shop / return-to-site nav (moved to ConfirmationCloser)', () => {
+  it('does NOT render the closer links, back to the shop or the review (they live in ConfirmationCloser)', () => {
     const { container } = renderConfirmation();
     expect(container.textContent).not.toMatch(/back to the shop/);
-    expect(container.textContent).not.toMatch(/return to iampatterson\.com/);
+    expect(container.querySelector('a[href="/review"]')).toBeNull();
   });
 
   it('marks the journey timings as representative (UAT r2 item 19)', () => {
     renderConfirmation();
     const diag = document.querySelector('[data-inline-diagnostic]');
     expect(diag?.textContent).toContain('representative cadence');
+  });
+
+  // The pipeline journey keeps a heading, so a screen-reader user moving by
+  // heading can still reach it.
+  it('titles the journey from click to BigQuery', () => {
+    renderConfirmation();
+    expect(screen.getByRole('heading', { name: 'from click to BigQuery' })).toBeInTheDocument();
   });
 
   it('renders item count meta', () => {

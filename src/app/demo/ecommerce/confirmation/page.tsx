@@ -27,7 +27,7 @@ function sanitizeNumber(raw: string | undefined, fallback: number, parse: (s: st
  *
  * Server Component renders the order-confirmation surface (editorial
  * header + Pattern 3 inline diagnostic pipeline-journey list) and the
- * closing beat. 17.1 removed the Metabase dashboard embed that sat
+ * closing links. 17.1 removed the Metabase dashboard embed that sat
  * between them. Numeric query params are sanitized at this boundary
  * so downstream components can trust finite non-negative inputs. The
  * page is wrapped in `ToastProvider` so the `purchase` toast fired by

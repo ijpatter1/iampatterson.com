@@ -279,7 +279,7 @@ describe('diagnosticLinesForConsent (UAT r1 item 14, real consent data)', () => 
   });
 
   it.each([
-    [false, false],
+    [true, false],
     [true, true],
   ])(
     'ends on the BigQuery row and claims no dashboard or Dataform step (analytics=%s, marketing=%s)',
@@ -288,6 +288,27 @@ describe('diagnosticLinesForConsent (UAT r1 item 14, real consent data)', () => 
       expect(lines[lines.length - 1].text).toMatch(/BigQuery · 1 row written/);
       expect(lines[lines.length - 1].emph).toBe(true);
       expect(lines.some((l) => /dashboard|dataform|mart/i.test(l.text))).toBe(false);
+    },
+  );
+
+  // Every GA4 tag in web-container.json, purchase included, requires
+  // analytics_storage. With analytics denied the purchase never leaves the
+  // browser: nothing reaches sGTM, so neither Meta CAPI nor BigQuery gets it.
+  it.each([false, true])(
+    'with analytics denied, claims no sGTM routing, no Meta send and no BigQuery row (marketing=%s)',
+    (marketing) => {
+      const lines = diagnosticLinesForConsent({ analytics: false, marketing });
+      const sgtm = lines.find((l) => l.text.includes('sGTM'));
+      const meta = lines.find((l) => l.text.includes('Meta CAPI'));
+      const last = lines[lines.length - 1];
+      expect(sgtm).toMatchObject({ tag: 'SKIP' });
+      expect(sgtm?.text).toMatch(/analytics denied/);
+      expect(meta).toMatchObject({ tag: 'SKIP' });
+      expect(meta?.text).toMatch(/analytics denied/);
+      expect(last.text).toMatch(/BigQuery · no row written \(analytics denied\)/);
+      expect(last.tag).toBe('SKIP');
+      expect(last.emph).toBe(true);
+      expect(lines.some((l) => /1 row written|event sent/.test(l.text))).toBe(false);
     },
   );
 });

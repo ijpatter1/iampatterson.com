@@ -3,9 +3,9 @@
 import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 
-import { CtaLink } from '@/components/cta-link';
 import { HERO } from '@/lib/content/hero';
 import { REVIEW_PAGE_HREF } from '@/lib/content/review';
+import { trackClickCta } from '@/lib/events/track';
 
 import { useScrollToTopOnMount } from '@/hooks/useScrollToTopOnMount';
 import { useToast } from '@/components/demo/reveal/toast-provider';
@@ -103,7 +103,7 @@ export function OrderConfirmation({ orderId, orderTotal, itemCount }: OrderConfi
         </div>
       </section>
 
-      <InlineDiagnostic tag="WHAT JUST HAPPENED">
+      <InlineDiagnostic tag="WHAT JUST HAPPENED" title="from click to BigQuery">
         <ol className="flex flex-col gap-1.5">
           {PIPELINE_JOURNEY.map((step, i) => (
             <li key={i} className="flex items-baseline gap-2 text-xs leading-snug text-[#EAD9BC]">
@@ -141,13 +141,13 @@ export function ConfirmationCloser() {
         >
           ← back to the shop
         </Link>
-        <CtaLink
+        <Link
           href={REVIEW_PAGE_HREF}
-          ctaLocation="shop_confirmation_review"
+          onClick={() => trackClickCta(HERO.primaryCta, 'shop_confirmation_review')}
           className="text-[var(--shop-terracotta,#C4703A)] hover:underline"
         >
-          {HERO.primaryCta} →
-        </CtaLink>
+          {HERO.primaryCta} <span aria-hidden="true">→</span>
+        </Link>
       </nav>
     </div>
   );

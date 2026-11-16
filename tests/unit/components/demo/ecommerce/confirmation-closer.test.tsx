@@ -26,9 +26,8 @@ describe('ConfirmationCloser call to action', () => {
   it('reports its click as shop_confirmation_review', () => {
     render(<ConfirmationCloser />);
     fireEvent.click(screen.getByRole('link', { name: new RegExp(HERO.primaryCta) }));
-    expect(trackClickCta).toHaveBeenCalledWith(
-      expect.stringContaining(HERO.primaryCta),
-      'shop_confirmation_review',
-    );
+    // Exactly the header's and hero's cta_text, so the review CTA is one value
+    // in click_cta, not two (the arrow is decoration).
+    expect(trackClickCta).toHaveBeenCalledWith(HERO.primaryCta, 'shop_confirmation_review');
   });
 });

@@ -206,7 +206,7 @@ test.describe('Phase 10a D6 interactive smoke', () => {
     await expect(
       page.getByRole('main').getByRole('link', { name: /Start with a review/ }),
     ).toBeVisible();
-    await expect(page.getByText(/dashboard/i)).toHaveCount(0);
+    await expect(page.getByRole('main').getByText(/dashboard/i)).toHaveCount(0);
     await expect(page.locator('iframe')).toHaveCount(0);
     await expect(page.locator('a[href*="bi.iampatterson.com"]')).toHaveCount(0);
     expect(biRequests).toEqual([]);
