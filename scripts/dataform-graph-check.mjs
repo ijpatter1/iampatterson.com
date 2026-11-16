@@ -19,12 +19,16 @@ import { readFileSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 /**
- * Expected object counts, measured 2026-09-12 against @dataform/core 2.9.0.
+ * Expected object counts. First measured 2026-09-12 against @dataform/core
+ * 2.9.0 at 14 tables, 6 assertions and 2 declarations; thinned in 18.1
+ * (2026-11-15, core 3.0.71) to the three models real traffic needs
+ * (stg_events, stg_sessions, mart_session_events), their three assertions and
+ * the events_raw declaration.
  * Exported so the test fixtures derive from it rather than restating it — a
  * hardcoded copy means a legitimate new mart fails in two places, naming the
  * fixture instead of the model.
  */
-export const EXPECTED = { tables: 14, assertions: 6, declarations: 2 };
+export const EXPECTED = { tables: 3, assertions: 3, declarations: 1 };
 
 /**
  * The CLI emits CONCATENATED top-level JSON documents: a small `{level,message}`

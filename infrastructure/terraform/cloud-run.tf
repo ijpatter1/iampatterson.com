@@ -760,7 +760,7 @@ resource "google_cloud_run_v2_service" "claudish_proxy" {
       template[0].containers[0].image,
       # The kill switch. KILL_SWITCH lives in the service env, so if Terraform
       # owned this block an emergency
-      # `gcloud run services update --update-env-vars KILL_SWITCH=on` would be
+      # `scripts/deploy-cloud-run.sh kill-switch claudish-proxy on` would be
       # silently reverted by the next apply — mid-incident.
       # IMPORT_PLAN.md calls this "the class of thing this plan exists to
       # catch". It was written in advance and is only now implemented.

@@ -133,13 +133,13 @@ export function SessionStateProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!ready) return;
 
-    // Re-seed consent_snapshot on the first poll tick. Cookiebot's script loads
-    // async from <head>; on a slow first visit it may not have populated by the
-    // time the mount effect runs getCurrentConsent(). A re-read ~400ms later
-    // catches the common case; the existing reducer self-heals from any event
-    // thereafter.
-    let reseededConsent = false;
-
+    // Follow the module's consent on every tick. Cookiebot's script loads
+    // async from <head>, and its replay of a stored choice is recorded
+    // silently (15.8: no consent_update), so neither may have happened when
+    // the mount effect ran getCurrentConsent(), and no event may follow soon.
+    // The consent is read after the tick's events are reduced: an event
+    // pushed before a change carries the old consent, and the tick ends on
+    // the consent in force.
     const interval = window.setInterval(() => {
       if (!window.dataLayer) return;
       const dl = window.dataLayer;
@@ -152,36 +152,26 @@ export function SessionStateProvider({ children }: { children: ReactNode }) {
         if (input) inputs.push(input);
       }
 
-      const consentReseedPending = !reseededConsent;
-      if (consentReseedPending) reseededConsent = true;
+      const current = getCurrentConsent();
+      const consentNow = {
+        analytics: current.consent_analytics ? ('granted' as const) : ('denied' as const),
+        marketing: current.consent_marketing ? ('granted' as const) : ('denied' as const),
+        preferences: current.consent_preferences ? ('granted' as const) : ('denied' as const),
+      };
 
-      if (inputs.length === 0 && !consentReseedPending) return;
-
-      // Apply reseed + events inside a single setState so the tick produces at
-      // most one sessionStorage write even when both paths fire together.
+      // Apply events + consent inside a single setState so the tick produces
+      // at most one sessionStorage write.
       setState((prev) => {
         if (!prev) return prev;
-        let next = prev;
+        let next = inputs.length > 0 ? inputs.reduce((acc, e) => deriveNext(acc, e), prev) : prev;
 
-        if (consentReseedPending) {
-          const current = getCurrentConsent();
-          const nextSnap = {
-            analytics: current.consent_analytics ? ('granted' as const) : ('denied' as const),
-            marketing: current.consent_marketing ? ('granted' as const) : ('denied' as const),
-            preferences: current.consent_preferences ? ('granted' as const) : ('denied' as const),
-          };
-          const s = prev.consent_snapshot;
-          const consentChanged =
-            s.analytics !== nextSnap.analytics ||
-            s.marketing !== nextSnap.marketing ||
-            s.preferences !== nextSnap.preferences;
-          if (consentChanged) {
-            next = { ...next, consent_snapshot: nextSnap, updated_at: new Date().toISOString() };
-          }
-        }
-
-        if (inputs.length > 0) {
-          next = inputs.reduce((acc, e) => deriveNext(acc, e), next);
+        const s = next.consent_snapshot;
+        if (
+          s.analytics !== consentNow.analytics ||
+          s.marketing !== consentNow.marketing ||
+          s.preferences !== consentNow.preferences
+        ) {
+          next = { ...next, consent_snapshot: consentNow, updated_at: new Date().toISOString() };
         }
 
         if (next !== prev) saveSessionState(next);

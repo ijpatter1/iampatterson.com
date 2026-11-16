@@ -4,9 +4,10 @@
  *
  * Four routes-aware predicates that previously lived inline in three
  * separate client wrappers, extracted so a new route (here /claudish)
- * is one edit, not four. Existing behavior is pinned exactly: footer
- * hides on /demo/ecommerce*, bubbles hide on /demo*, HomeBar hides on
- * / and /demo/*; LiveStrip was unconditional before /claudish.
+ * is one edit, not four. Footer, bubbles and HomeBar hide on the shop
+ * (/demo/ecommerce*), and the HomeBar on / too; LiveStrip was
+ * unconditional before /claudish. 17.1 deleted the /demo catalog, so
+ * the predicates name the shop rather than the /demo prefix.
  */
 import {
   showAmbientBubbles,
@@ -24,16 +25,13 @@ describe('showSiteFooter', () => {
   it.each(['/demo/ecommerce', '/demo/ecommerce/cart', '/claudish'])('hides on %s', (p) => {
     expect(showSiteFooter(p)).toBe(false);
   });
-  it('shows on the demo hub (only the ecommerce shell has its own footer)', () => {
-    expect(showSiteFooter('/demo')).toBe(true);
-  });
 });
 
 describe('showAmbientBubbles', () => {
   it.each(['/', '/services'])('shows on %s', (p) => {
     expect(showAmbientBubbles(p)).toBe(true);
   });
-  it.each(['/demo', '/demo/ecommerce', '/claudish'])('hides on %s', (p) => {
+  it.each(['/demo/ecommerce', '/demo/ecommerce/cart', '/claudish'])('hides on %s', (p) => {
     expect(showAmbientBubbles(p)).toBe(false);
   });
 });
@@ -42,13 +40,8 @@ describe('showHomeBar', () => {
   it.each(['/services', '/about', '/contact'])('shows on %s', (p) => {
     expect(showHomeBar(p)).toBe(true);
   });
-  it.each(['/', '/demo/ecommerce', '/claudish'])('hides on %s', (p) => {
+  it.each(['/', '/demo/ecommerce', '/demo/ecommerce/cart', '/claudish'])('hides on %s', (p) => {
     expect(showHomeBar(p)).toBe(false);
-  });
-  it('keeps the pre-extraction quirk: bare /demo shows the HomeBar', () => {
-    // The original predicate tested startsWith('/demo/') — trailing slash —
-    // so /demo itself showed the bar. Preserved verbatim by the move.
-    expect(showHomeBar('/demo')).toBe(true);
   });
 });
 

@@ -2,7 +2,7 @@
  * Tests for Dataform model SQL files.
  *
  * These tests validate:
- * - All expected model files exist
+ * - The definitions directory holds exactly the thinned model set (18.1)
  * - SQL files contain required references and patterns
  * - Constants module exports expected values
  * - Schema JSON files are valid
@@ -135,9 +135,63 @@ describe('Dataform project structure', () => {
     expect(constants.RAW_DATASET).toBe('iampatterson_raw');
     expect(constants.STAGING_DATASET).toBe('iampatterson_staging');
     expect(constants.MARTS_DATASET).toBe('iampatterson_marts');
-    expect(constants.ECOMMERCE_EVENTS).toContain('purchase');
-    expect(constants.SUBSCRIPTION_EVENTS).toContain('trial_signup');
-    expect(constants.LEADGEN_EVENTS).toContain('lead_qualify');
+  });
+
+  // The per-demo event lists and route prefixes scoped the ecommerce,
+  // subscription and lead-generation marts, which 18.1 removed. Nothing else
+  // read them, so leaving them would describe a warehouse that no longer exists.
+  test("includes/constants.js no longer carries the removed demo marts' event lists", () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const constants = require(path.join(DATAFORM_ROOT, 'includes/constants.js'));
+    for (const name of [
+      'ECOMMERCE_EVENTS',
+      'SUBSCRIPTION_EVENTS',
+      'LEADGEN_EVENTS',
+      'ECOMMERCE_PREFIX',
+      'SUBSCRIPTION_PREFIX',
+      'LEADGEN_PREFIX',
+    ]) {
+      expect(constants).not.toHaveProperty(name);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The model set (18.1)
+// ---------------------------------------------------------------------------
+// Every file under definitions/ runs every night at 04:00 UTC, and every one
+// the demo needed and real traffic does not is a nightly cost and a nightly
+// chance to page. 18.1 thinned the set to the three models real traffic needs,
+// their assertions and the one raw declaration. Pinning the exact list makes
+// adding a model back a deliberate edit here and in
+// scripts/dataform-graph-check.mjs, not a file that slips in.
+describe('Dataform model set', () => {
+  const listDefinitions = (dir: string): string[] =>
+    fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+      const full = path.join(dir, e.name);
+      if (e.isDirectory()) return listDefinitions(full);
+      return [path.relative(DATAFORM_ROOT, full)];
+    });
+
+  test('definitions/ holds exactly the models real traffic needs', () => {
+    expect(listDefinitions(path.join(DATAFORM_ROOT, 'definitions')).sort()).toEqual(
+      [
+        'definitions/assertions/assert_source_freshness.sqlx',
+        'definitions/assertions/assert_stg_events.sqlx',
+        'definitions/assertions/assert_stg_sessions.sqlx',
+        'definitions/marts/mart_session_events.sqlx',
+        'definitions/sources/raw_sources.sqlx',
+        'definitions/staging/stg_events.sqlx',
+        'definitions/staging/stg_sessions.sqlx',
+      ].sort(),
+    );
+  });
+
+  // The generated data dictionary queried INFORMATION_SCHEMA for the marts it
+  // described; with those marts gone the markdown copy would describe tables
+  // Dataform no longer builds.
+  test('the data dictionary is gone along with the marts it described', () => {
+    expect(fs.existsSync(path.join(DATAFORM_ROOT, 'DATA_DICTIONARY.md'))).toBe(false);
   });
 });
 
@@ -148,7 +202,6 @@ describe('Staging models', () => {
   const stagingModels = [
     'definitions/staging/stg_events.sqlx',
     'definitions/staging/stg_sessions.sqlx',
-    'definitions/staging/stg_ad_platform.sqlx',
   ];
 
   test.each(stagingModels)('%s exists', (modelPath) => {
@@ -229,101 +282,17 @@ describe('Staging models', () => {
     expect(sql).toContain('utm_campaign');
     expect(sql).toContain('event_seq = 1');
   });
-
-  test('stg_ad_platform references ad_platform_raw', () => {
-    const sql = readSqlx('definitions/staging/stg_ad_platform.sqlx');
-    expect(sql).toContain('ad_platform_raw');
-    expect(sql).toContain('SAFE_DIVIDE');
-  });
 });
 
 // ---------------------------------------------------------------------------
 // Mart models
 // ---------------------------------------------------------------------------
 describe('Mart models', () => {
-  const martModels = [
-    'definitions/marts/mart_session_events.sqlx',
-    'definitions/marts/mart_campaign_performance.sqlx',
-    'definitions/marts/mart_channel_attribution.sqlx',
-    'definitions/marts/mart_customer_ltv.sqlx',
-    'definitions/marts/mart_subscription_cohorts.sqlx',
-    'definitions/marts/mart_lead_funnel.sqlx',
-    // Phase 10d D3: cross-event funnel reach into the ecommerce demo.
-    'definitions/marts/mart_ecommerce_funnel.sqlx',
-  ];
-
-  test.each(martModels)('%s exists', (modelPath) => {
-    expect(fs.existsSync(path.join(DATAFORM_ROOT, modelPath))).toBe(true);
-  });
-
-  test('mart_campaign_performance joins ad spend with conversions', () => {
-    const sql = readSqlx('definitions/marts/mart_campaign_performance.sqlx');
-    expect(sql).toContain('ref("stg_ad_platform")');
+  test('mart_session_events joins events to their sessions and targets iampatterson_marts', () => {
+    const sql = readSqlx('definitions/marts/mart_session_events.sqlx');
     expect(sql).toContain('ref("stg_events")');
-    expect(sql).toContain('spend_usd');
-    expect(sql).toContain('purchase_revenue');
-    expect(sql).toContain('roas');
-  });
-
-  test('mart_channel_attribution aggregates by channel', () => {
-    const sql = readSqlx('definitions/marts/mart_channel_attribution.sqlx');
     expect(sql).toContain('ref("stg_sessions")');
-    expect(sql).toContain('conversion_rate');
-    expect(sql).toContain('utm_source');
-  });
-
-  test('mart_customer_ltv calculates lifetime value by client_id', () => {
-    const sql = readSqlx('definitions/marts/mart_customer_ltv.sqlx');
-    expect(sql).toContain('client_id');
-    expect(sql).toContain('total_revenue');
-    expect(sql).toContain('total_orders');
-    expect(sql).toContain('annualized_revenue');
-    expect(sql).toContain('ecommerce');
-    // Must group by client_id, not session_id, for cross-session LTV
-    expect(sql).toContain('GROUP BY client_id');
-  });
-
-  test('mart_subscription_cohorts tracks cohort lifecycle', () => {
-    const sql = readSqlx('definitions/marts/mart_subscription_cohorts.sqlx');
-    expect(sql).toContain('cohort_month');
-    expect(sql).toContain('trial_signup');
-    expect(sql).toContain('has_churned');
-    expect(sql).toContain('lifetime_revenue');
-    expect(sql).toContain('tenure_at_churn');
-  });
-
-  test('mart_lead_funnel tracks funnel stages', () => {
-    const sql = readSqlx('definitions/marts/mart_lead_funnel.sqlx');
-    expect(sql).toContain('funnel_stage');
-    expect(sql).toContain('form_start');
-    expect(sql).toContain('form_complete');
-    expect(sql).toContain('lead_qualify');
-    expect(sql).toContain('qualification_tier');
-  });
-
-  test('mart_ecommerce_funnel pivots ecommerce events into per-session funnel rows', () => {
-    const sql = readSqlx('definitions/marts/mart_ecommerce_funnel.sqlx');
-    // Per-stage flag columns drive the binary funnel reach signal.
-    expect(sql).toContain('has_demo_page_view');
-    expect(sql).toContain('has_product_view');
-    expect(sql).toContain('has_add_to_cart');
-    expect(sql).toContain('has_begin_checkout');
-    expect(sql).toContain('has_purchase');
-    // Furthest-stage CASE label drives the cluster key + drop-off chart.
-    expect(sql).toContain('furthest_stage');
-    // Step-to-step conversion times in seconds for cohort latency analysis.
-    expect(sql).toContain('seconds_total_funnel');
-    // Demo-entry scoping must filter to the ecommerce surface specifically.
-    expect(sql).toContain("page_path LIKE '/demo/ecommerce");
-    // Forward-compatible column for the page_engagement event (Phase 10d D3).
-    expect(sql).toContain('demo_engagement_pings');
-  });
-
-  test('all mart models target iampatterson_marts schema', () => {
-    for (const modelPath of martModels) {
-      const sql = readSqlx(modelPath);
-      expect(sql).toContain('schema: "iampatterson_marts"');
-    }
+    expect(sql).toContain('schema: "iampatterson_marts"');
   });
 });
 
@@ -334,9 +303,6 @@ describe('Dataform assertions', () => {
   const assertions = [
     'definitions/assertions/assert_stg_events.sqlx',
     'definitions/assertions/assert_stg_sessions.sqlx',
-    'definitions/assertions/assert_purchase_revenue.sqlx',
-    'definitions/assertions/assert_subscription_events.sqlx',
-    'definitions/assertions/assert_volume_anomaly.sqlx',
     'definitions/assertions/assert_source_freshness.sqlx',
   ];
 
@@ -351,37 +317,57 @@ describe('Dataform assertions', () => {
     }
   });
 
-  // The volume assertion failed 28 of the 30 nightly runs to 2026-09-04. The
-  // data was behaving as designed: measured that day, 6 of the 61 days in the
-  // range had no events and every one of them was a weekend, giving a gap rate
-  // of 0.098 against a 0.10 threshold it drifted across as old days aged out.
-  // The generator runs on weekdays, so a weekend is not a pipeline gap.
-  test('assert_volume_anomaly counts weekdays only, so an idle weekend is not a gap', () => {
-    const sql = readSqlx('definitions/assertions/assert_volume_anomaly.sqlx');
-    const spine = sql.slice(sql.indexOf('date_spine AS'), sql.indexOf('gap_stats AS'));
-    expect(spine).toContain("FORMAT_DATE('%u', date) NOT IN ('6', '7')");
-    expect(sql).toMatch(/weekday/i);
+  // Strip comments: the prose explains what the SQL deliberately does not do,
+  // so asserting over the raw text would read the explanation as the code.
+  const code = (sql: string) => sql.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/--.*$/gm, ' ');
+  const freshness = () => code(readSqlx('definitions/assertions/assert_source_freshness.sqlx'));
+
+  // Retuned in 18.1. The 24-hour check over all rows failed 13 of the nightly
+  // runs from 2026-09-07 to 2026-11-08, every one a Sunday or Monday after the
+  // generator's idle weekend, and it would fail most nights once the generator
+  // stops: real traffic is about ten events a day with many days at zero.
+  // Counting only real rows makes its verdict the same before and after the
+  // generator goes, which is what lets the failure alert stay quiet through 18.9.
+  test('assert_source_freshness counts real traffic only, so the generator cannot keep it green', () => {
+    expect(freshness()).toMatch(/is_synthetic\s*=\s*FALSE/);
   });
 
-  // A spine generated between MIN and MAX(event_timestamp) can never contain a
-  // missing day, so a pipeline that stops and stays stopped scores a gap rate
-  // of zero forever — the one failure this assertion exists to catch. The
-  // window is anchored to the calendar instead.
-  test('assert_volume_anomaly anchors its window to CURRENT_DATE, so a dead pipeline is detectable', () => {
-    const sql = readSqlx('definitions/assertions/assert_volume_anomaly.sqlx');
-    const bounds = sql.slice(sql.indexOf('WITH bounds AS'), sql.indexOf('daily_counts AS'));
-    // Strip comments: the prose explains what the SQL deliberately does not do,
-    // so asserting over the raw text would read the explanation as the code.
-    const code = bounds
-      .split('\n')
-      .filter((l) => !l.trim().startsWith('--'))
-      .join('\n');
-    expect(code).toContain('CURRENT_DATE()');
-    expect(code).not.toContain('MAX(event_timestamp)');
-    // The current day is partial until the generator runs, so it is excluded.
-    expect(bounds).toContain("DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY) AS last_date");
-    // The scan is pruned to the window rather than reading the whole table.
-    expect(sql).toContain('WHERE event_timestamp >= TIMESTAMP(DATE_SUB(CURRENT_DATE()');
+  // Measured over the 60 runs from 2026-09-17 to 2026-11-15: the longest wait
+  // since the last real event at 04:00 UTC was 177 hours (7.4 days). Seven days
+  // would have failed once; fourteen failed none and still fires sixteen days
+  // sooner than the thirty-day real-session check in assert_stg_sessions.
+  test('assert_source_freshness tolerates fourteen quiet days, twice the longest measured', () => {
+    expect(freshness()).toContain('INTERVAL 14 DAY');
+    expect(freshness()).not.toMatch(/>\s*24\b/);
+  });
+
+  // event_timestamp prefers the browser's clock, so one visitor with a clock
+  // set ahead keeps MAX(event_timestamp) in the future and the check green for
+  // as long as the skew lasts (the 10c future-date scrub, whose record left with
+  // infrastructure/bigquery/backfills/ in 18.1 and is in git history, removed 3,262 such
+  // rows). received_at is sGTM's own clock: when the pipeline last delivered.
+  test('assert_source_freshness measures arrival time, not the client clock', () => {
+    expect(freshness()).toContain('MAX(received_at)');
+    expect(freshness()).not.toContain('event_timestamp');
+  });
+
+  // An aggregate over zero rows returns one row of NULLs, and a comparison
+  // against NULL is never true, so the old HAVING clause passed a table with no
+  // rows at all. With the real-only filter that is the exact state a dead
+  // pipeline produces, so it has to fail.
+  test('assert_source_freshness fails when there is no real event at all', () => {
+    expect(freshness()).toMatch(/MAX\(received_at\)\s+IS\s+NULL/);
+  });
+
+  // Removed in 18.1. It counted weekdays with zero events, a model of the
+  // generator's weekday schedule; on real traffic 12 of the 21 weekdays to
+  // 2026-11-14 had no real event, a gap rate of 0.571 against its 0.10
+  // threshold, so it would fail the first night after the generator stops.
+  // A dead pipeline is caught by the freshness check above.
+  test("assert_volume_anomaly is gone, because it modelled the generator's schedule", () => {
+    expect(
+      fs.existsSync(path.join(DATAFORM_ROOT, 'definitions/assertions/assert_volume_anomaly.sqlx')),
+    ).toBe(false);
   });
 });
 
@@ -421,21 +407,6 @@ describe('BigQuery schema files', () => {
     expect(columnNames).toContain('partnership_type');
   });
 
-  test('ad_platform_raw schema is valid JSON', () => {
-    const raw = fs.readFileSync(path.join(BQ_ROOT, 'ad_platform_schema.json'), 'utf-8');
-    const schema = JSON.parse(raw);
-    const columnNames = schema.map((col: { name: string }) => col.name);
-
-    expect(columnNames).toContain('date');
-    expect(columnNames).toContain('platform');
-    expect(columnNames).toContain('business_model');
-    expect(columnNames).toContain('campaign_name');
-    expect(columnNames).toContain('campaign_name_raw');
-    expect(columnNames).toContain('impressions');
-    expect(columnNames).toContain('clicks');
-    expect(columnNames).toContain('spend');
-  });
-
   test('events_raw schema has correct types for numeric fields', () => {
     const raw = fs.readFileSync(path.join(BQ_ROOT, 'schema.json'), 'utf-8');
     const schema = JSON.parse(raw);
@@ -451,120 +422,5 @@ describe('BigQuery schema files', () => {
     expect(byName.get('item_count')).toBe('INT64');
     expect(byName.get('renewal_month')).toBe('INT64');
     expect(byName.get('tenure_months')).toBe('INT64');
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Campaign taxonomy models
-// ---------------------------------------------------------------------------
-describe('Campaign taxonomy models', () => {
-  const taxonomyModels = [
-    'definitions/taxonomy/campaign_taxonomy.sqlx',
-    'definitions/taxonomy/campaign_taxonomy_rules.sqlx',
-    'definitions/taxonomy/campaign_taxonomy_validation.sqlx',
-  ];
-
-  test.each(taxonomyModels)('%s exists', (modelPath) => {
-    expect(fs.existsSync(path.join(DATAFORM_ROOT, modelPath))).toBe(true);
-  });
-
-  test('campaign_taxonomy uses AI.CLASSIFY', () => {
-    const sql = readSqlx('definitions/taxonomy/campaign_taxonomy.sqlx');
-    expect(sql).toContain('AI.CLASSIFY');
-    expect(sql).toContain('AI.IF');
-    expect(sql).toContain('campaign_name_standardized');
-  });
-
-  test('campaign_taxonomy_rules uses regex without duplicated CASE logic', () => {
-    const sql = readSqlx('definitions/taxonomy/campaign_taxonomy_rules.sqlx');
-    expect(sql).toContain('REGEXP_CONTAINS');
-    expect(sql).toContain('brand');
-    expect(sql).toContain('retargeting');
-    expect(sql).toContain('shopping');
-    expect(sql).toContain('prospecting');
-    expect(sql).toContain('campaign_name_standardized');
-    // campaign_name_standardized should reference campaign_type, not duplicate the CASE
-    expect(sql).toContain('UPPER(campaign_type)');
-  });
-
-  test('campaign_taxonomy_validation joins taxonomy with volumes', () => {
-    const sql = readSqlx('definitions/taxonomy/campaign_taxonomy_validation.sqlx');
-    expect(sql).toContain('ref("campaign_taxonomy")');
-    expect(sql).toContain('ref("stg_events")');
-    expect(sql).toContain('variant_count_in_group');
-  });
-
-  test('all taxonomy models target iampatterson_marts schema', () => {
-    for (const modelPath of taxonomyModels) {
-      const sql = readSqlx(modelPath);
-      expect(sql).toContain('schema: "iampatterson_marts"');
-    }
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Data dictionary
-// ---------------------------------------------------------------------------
-describe('Data dictionary', () => {
-  test('data_dictionary.sqlx exists and queries INFORMATION_SCHEMA', () => {
-    const sql = readSqlx('definitions/docs/data_dictionary.sqlx');
-    expect(sql).toContain('INFORMATION_SCHEMA.COLUMNS');
-    expect(sql).toContain('iampatterson_staging');
-    expect(sql).toContain('iampatterson_marts');
-  });
-
-  test('DATA_DICTIONARY.md exists in Dataform root', () => {
-    expect(fs.existsSync(path.join(DATAFORM_ROOT, 'DATA_DICTIONARY.md'))).toBe(true);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// AI access layer and RAG infrastructure
-// ---------------------------------------------------------------------------
-describe('AI access layer', () => {
-  const AI_ROOT = path.join(process.cwd(), 'infrastructure/bigquery');
-
-  test('setup.sh exists and is executable', () => {
-    const setupPath = path.join(AI_ROOT, 'ai_access_layer/setup.sh');
-    expect(fs.existsSync(setupPath)).toBe(true);
-  });
-
-  test('export.sh exists', () => {
-    const exportPath = path.join(AI_ROOT, 'ai_access_layer/export.sh');
-    expect(fs.existsSync(exportPath)).toBe(true);
-  });
-
-  test('.gitignore excludes key files', () => {
-    const gitignore = fs.readFileSync(path.join(AI_ROOT, 'ai_access_layer/.gitignore'), 'utf-8');
-    expect(gitignore).toContain('ai-access-key.json');
-  });
-});
-
-describe('RAG infrastructure', () => {
-  const RAG_ROOT = path.join(process.cwd(), 'infrastructure/bigquery/rag');
-
-  test('setup_rag.sql exists with embedding and vector index setup', () => {
-    const sql = fs.readFileSync(path.join(RAG_ROOT, 'setup_rag.sql'), 'utf-8');
-    expect(sql).toContain('ML.GENERATE_TEXT_EMBEDDING');
-    expect(sql).toContain('VECTOR INDEX');
-    expect(sql).toContain('embedding_model');
-    expect(sql).toContain('gemini_model');
-    expect(sql).toContain('text-embedding-005');
-  });
-
-  test('semantic_query.sql exists with stored procedures', () => {
-    const sql = fs.readFileSync(path.join(RAG_ROOT, 'semantic_query.sql'), 'utf-8');
-    expect(sql).toContain('PROCEDURE');
-    expect(sql).toContain('semantic_search');
-    expect(sql).toContain('query_business');
-    expect(sql).toContain('VECTOR_SEARCH');
-    expect(sql).toContain('ML.GENERATE_TEXT');
-  });
-
-  test('README.md documents prerequisites and usage', () => {
-    const readme = fs.readFileSync(path.join(RAG_ROOT, 'README.md'), 'utf-8');
-    expect(readme).toContain('vertex-ai-connection');
-    expect(readme).toContain('semantic_search');
-    expect(readme).toContain('query_business');
   });
 });

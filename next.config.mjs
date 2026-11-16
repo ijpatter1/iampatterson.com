@@ -18,6 +18,11 @@ const nextConfig = {
       // URL too.
       { source: '/demo/subscription/:path*', destination: '/', permanent: true },
       { source: '/demo/leadgen/:path*', destination: '/', permanent: true },
+      // 17.1: the demo catalog and the shop's dashboard page are deleted;
+      // both land on the shop. `/demo` has no `:path*`, so the shop's own
+      // pages under it are untouched.
+      { source: '/demo', destination: '/demo/ecommerce', permanent: true },
+      { source: '/demo/ecommerce/analytics', destination: '/demo/ecommerce', permanent: true },
     ];
   },
 };

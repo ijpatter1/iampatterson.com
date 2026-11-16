@@ -19,11 +19,9 @@
 #   - lighthouse is installed (npm install --save-dev lighthouse)
 #
 # Known quirks:
-#   - `/demo/ecommerce`'s `after()` hook fires a fetch to bi.iampatterson.com
-#     that trips Lighthouse's trace_engine insight computation. Perf score
-#     will show as 0 for that route; FCP + CLS + Speed Index still captured.
-#     The same after-response warmup is fine for real users; it's only the
-#     synthetic trace-engine that falls over.
+#   - Until 17.1, `/demo/ecommerce`'s `after()` Metabase warmup tripped
+#     Lighthouse's trace_engine and scored that route 0. 17.1 removed the
+#     warmup, so a 0 there is now a real finding, not a known quirk.
 
 set -euo pipefail
 

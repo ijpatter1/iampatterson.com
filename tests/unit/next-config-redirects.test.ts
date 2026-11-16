@@ -7,6 +7,8 @@
  * being dropped, which `next build` schema validation alone wouldn't
  * surface until an external link 404'd in production.
  */
+import { getPathMatch } from 'next/dist/shared/lib/router/utils/path-match';
+
 import nextConfig from '../../next.config.mjs';
 
 describe('next.config.mjs redirects (Phase 9E D7)', () => {
@@ -38,6 +40,36 @@ describe('next.config.mjs redirects (Phase 9E D7)', () => {
     for (const r of redirects!) {
       expect(r.destination).not.toMatch(/#demos|rebuild=/);
     }
+  });
+
+  // 17.1 deleted the demo catalog and the shop's dashboard page. The shop
+  // itself stays, so both old URLs land on it, permanently, so search engines
+  // move the index entry to the shop instead of keeping a dead URL.
+  it.each(['/demo', '/demo/ecommerce/analytics'])(
+    'redirects `%s` permanently to the shop (17.1)',
+    async (source) => {
+      const redirects = await nextConfig.redirects?.();
+      const rules = redirects!.filter((r) => r.source === source);
+      expect(rules).toEqual([
+        expect.objectContaining({ source, destination: '/demo/ecommerce', permanent: true }),
+      ]);
+    },
+  );
+
+  // The catalog rule must match the bare `/demo` only. A `:path*` on it would
+  // also catch the shop's own pages and send every visitor in a loop back to
+  // the shop's front page, so no shop step could be reached. Matched with
+  // Next's own path matcher, so the check is what the router does.
+  it.each([
+    '/demo/ecommerce',
+    '/demo/ecommerce/tuna-plush-classic',
+    '/demo/ecommerce/cart',
+    '/demo/ecommerce/checkout',
+    '/demo/ecommerce/confirmation',
+  ])('redirects no visitor away from the shop page %s (17.1)', async (shopPath) => {
+    const redirects = await nextConfig.redirects?.();
+    const caught = redirects!.filter((r) => getPathMatch(r.source, { strict: true })(shopPath));
+    expect(caught).toEqual([]);
   });
 
   it('exports an async redirects() function', () => {

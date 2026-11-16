@@ -223,7 +223,7 @@ describe('14.5 — the claudish proxy carries the kill-switch treatment', () => 
   it('excludes the env block from ignore_changes, which the kill switch depends on', () => {
     // IMPORT_PLAN.md calls this "the class of thing this plan exists to catch":
     // KILL_SWITCH lives in the service env, so if Terraform owns that block an
-    // emergency `gcloud run services update --update-env-vars KILL_SWITCH=on`
+    // emergency `deploy-cloud-run.sh kill-switch claudish-proxy on`
     // is silently reverted by the next apply — mid-incident.
     const ignored = svc.claudish_proxy[0].lifecycle[0].ignore_changes;
     expect(ignored).toEqual(

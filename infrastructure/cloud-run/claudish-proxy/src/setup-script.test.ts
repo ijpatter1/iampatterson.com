@@ -46,7 +46,17 @@ describe('setup.sh deploy contract', () => {
     expect(script).not.toContain('--set-env-vars');
     const deployLine = script.split('\n').find((l) => l.includes('--update-env-vars="^@^'))!;
     expect(deployLine).not.toContain('KILL_SWITCH');
-    // The runbook echo still names the switch; only the deploy line must not.
-    expect(script).toContain('--update-env-vars KILL_SWITCH=on');
+    // The printout names the switch through deploy-cloud-run.sh: the bare
+    // `services update` form serves 0% once promote has pinned traffic (2026-11-15).
+    expect(script).toContain('deploy-cloud-run.sh kill-switch ${SERVICE} on');
+    expect(script).not.toContain('--update-env-vars KILL_SWITCH');
+    expect(script).not.toContain('LATEST');
+  });
+
+  it('says when the revision it built is not serving, instead of printing Deployed', () => {
+    expect(script).toContain('latestCreatedRevisionName');
+    expect(script).toMatch(/if \[ "\$\{SERVING\}" = "\$\{BUILT\}" \]/);
+    expect(script).toContain('serves 0%: traffic is pinned to');
+    expect(script).toContain('deploy-cloud-run.sh promote ${SERVICE} ${BUILT}');
   });
 });

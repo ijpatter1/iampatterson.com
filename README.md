@@ -12,7 +12,7 @@ Visitors browse a normal consulting site. At any point they can open the "Under 
 - GA4 via sGTM, BigQuery event sink, Pub/Sub for real-time streaming
 - Dataform for warehouse transformations (medallion architecture)
 - Jest + React Testing Library for unit/component tests, Playwright for E2E
-- Metabase for the BI layer, embedded into the site with signed JWTs
+- Metabase for the BI layer
 - Terraform for the GCP infrastructure, applied from CI behind an approval gate
 - Deployed on Vercel (frontend), GCP Cloud Run (backend services)
 
@@ -70,7 +70,7 @@ docs/
 
 ## Demo environments
 
-**The Tuna Shop** is the instrumented demo storefront, built around the Tuna Melts My Heart brand (a real pet influencer brand with 2M+ followers). Product listing, cart, checkout and a post-purchase analytics view. Each page's "under the hood" view shows a different tier of the measurement stack: campaign taxonomy, staging transformations, data quality assertions, warehouse writes, and an embedded Metabase dashboard on the confirmation page.
+**The Tuna Shop** is the instrumented demo storefront, built around the Tuna Melts My Heart brand (a real pet influencer brand with 2M+ followers). Product listing, cart and checkout. Each page's "under the hood" view shows a different tier of the measurement stack: campaign taxonomy, staging transformations, data quality assertions and warehouse writes.
 
 Two earlier demos — a subscription flow and a lead-gen form — were removed in the 9E redesign and their routes now permanently redirect. An automated data generator (Cloud Run) produces 18 months of realistic historical data for the dashboards.
 

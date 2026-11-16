@@ -1,0 +1,4 @@
+# claudish-proxy: claudish-proxy-env-1115214031 -> claudish-proxy-env-1115214118, set KILL_SWITCH=off (2026-11-15T21:41:24Z)
+  image digest: sha256:f2299fc3d57f… (unchanged, as expected)
+  env.KILL_SWITCH: 'on' -> 'off'
+  0 unexpected change(s)

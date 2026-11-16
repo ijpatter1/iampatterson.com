@@ -43,7 +43,7 @@ const assertionFiles = fs
 
 describe('Dataform assertions can fail', () => {
   it('finds the assertions to check, so an empty directory is not a silent pass', () => {
-    expect(assertionFiles.length).toBeGreaterThanOrEqual(4);
+    expect(assertionFiles.length).toBeGreaterThanOrEqual(3);
   });
 
   it.each(assertionFiles)('%s does not check a null its source model removes', (file) => {

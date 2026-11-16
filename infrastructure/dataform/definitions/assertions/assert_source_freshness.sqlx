@@ -1,11 +1,41 @@
 config {
   type: "assertion",
-  description: "Validates source freshness: most recent event should be within the last 24 hours. Fails if no events have arrived recently, indicating a pipeline outage."
+  description: "Validates source freshness on real traffic: at least one non-synthetic event has arrived in the last 14 days. Fails if none has, or if there is no real event at all, indicating a pipeline outage."
 }
 
--- Fails if the most recent event is older than 24 hours
+/*
+ * Retuned 2026-11-15 (18.1) for real-traffic volume.
+ *
+ * The previous version failed if MAX(event_timestamp) over ALL rows was more
+ * than 24 hours old. Only the data generator kept it green, and not even that:
+ * it failed 13 nightly runs between 2026-09-07 and 2026-11-08, every one a
+ * Sunday or Monday after the generator's idle weekend. Real traffic is about
+ * ten events a day with many days at zero, so once the generator stops (18.9)
+ * it would fail most nights.
+ *
+ * Real rows only. The verdict is then the same with the generator running or
+ * stopped, so its retirement cannot change what this assertion says.
+ *
+ * Fourteen days. Measured over the 60 nightly runs from 2026-09-17 to
+ * 2026-11-15, the longest wait at 04:00 UTC since the last real event was
+ * 177 hours (7.4 days, a quiet week from 2026-09-22). Seven days would have
+ * failed once; fourteen failed none, and still fires sixteen days before
+ * assert_stg_sessions' thirty-day real-session check.
+ *
+ * received_at, not event_timestamp. event_timestamp prefers the browser's
+ * clock, so one visitor with a clock set ahead holds the maximum in the future
+ * and the check green for as long as the skew lasts. received_at is sGTM's own
+ * clock: when the pipeline last delivered a real event.
+ *
+ * An aggregate over zero rows returns one row of NULLs, and a comparison with
+ * NULL is never true, so without the IS NULL branch a warehouse holding no
+ * real event at all would pass.
+ */
 SELECT
-  MAX(event_timestamp) AS most_recent_event,
-  TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), MAX(event_timestamp), HOUR) AS hours_since_last_event
+  MAX(received_at) AS most_recent_real_event,
+  TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), MAX(received_at), HOUR) AS hours_since_last_real_event
 FROM ${ref("stg_events")}
-HAVING TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), MAX(event_timestamp), HOUR) > 24
+WHERE is_synthetic = FALSE
+HAVING
+  MAX(received_at) IS NULL
+  OR MAX(received_at) < TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 14 DAY)
