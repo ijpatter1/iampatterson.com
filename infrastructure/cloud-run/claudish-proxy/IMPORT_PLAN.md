@@ -10,7 +10,7 @@ D9 merges — do not edit the inventory from this branch.
 
 `KILL_SWITCH` lives in the service's env. If Terraform owns
 `template[0].containers[0].env` without excluding it, an emergency
-`gcloud run services update --update-env-vars KILL_SWITCH=on` is
+`scripts/deploy-cloud-run.sh kill-switch claudish-proxy on` is
 silently reverted by the next `terraform apply` — mid-incident.
 **Decision: add the env block (or the KILL_SWITCH entry) to
 `ignore_changes`.** This is the class of thing this plan exists to catch.

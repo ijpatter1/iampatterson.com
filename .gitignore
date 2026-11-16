@@ -1,7 +1,8 @@
 # ─────────────────────────────────────────────
 # Dependencies
 # ─────────────────────────────────────────────
-node_modules/
+# No trailing slash: a worktree's node_modules symlink must be ignored too.
+node_modules
 .pnp.*
 .yarn/
 

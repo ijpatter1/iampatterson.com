@@ -62,25 +62,59 @@ UTC midnight. If you want it back sooner, the daily allowance is an environment
 variable, and raising it is a deliberate spending decision:
 
 ```bash
-# from infrastructure/cloud-run/claudish-proxy/
-MODEL_ID_CONFIRMED=1 bash setup.sh
+# from the repo root: the serving image with only the allowance changed
+bash scripts/deploy-cloud-run.sh set-env claudish-proxy DAILY_BUDGET_USD=<new figure> --promote
 ```
+
+**Any promote resets the day's spend.** The budget is counted in memory per
+instance, so a new revision starts the day at $0 with the trip cleared. Any
+`set-env … --promote` grants a full new day, not just the increment, even
+with the same figure. Turning the kill switch off after a budget trip does
+the same.
+
+`setup.sh` writes `DAILY_BUDGET_USD` (default 23) and `LANES` on every run. If
+you later run it for an IAM change, pass the current values
+(`DAILY_BUDGET_USD=<figure> MODEL_ID_CONFIRMED=1 bash setup.sh`) or it puts
+the default back.
 
 **If it is misbehaving — bad output, a runaway, anything you want stopped now —
 use the kill switch.** This forces cache-only immediately:
 
 ```bash
-gcloud run services update claudish-proxy --project=iampatterson \
-  --region=us-central1 --update-env-vars KILL_SWITCH=on
+# from the repo root
+bash scripts/deploy-cloud-run.sh kill-switch claudish-proxy on
 ```
+
+It ends with `✓ <revision> serves 100% with KILL_SWITCH=on`. Confirm in the
+serving process too: `/health` (see "How you know it worked") reports
+`"capped":true`. If it doesn't end with ✓:
+
+- **A gcloud credential error:** run `gcloud auth login` and run the same
+  command again. It is safe to re-run: every run starts again from whatever
+  revision is serving.
+- **"more changed than the requested env; not promoting":** the service
+  template carries a change that isn't serving yet, such as a `setup.sh` run
+  that was never promoted. The image is pinned to what serves, so the drift is
+  configuration only. Read the diff it printed. If you can live with those
+  settings for the length of the incident, add `--allow-drift`.
+- **"⚠ but its health probe failed":** the switch IS on and serving. Do not
+  route traffic back to the old revision; that turns the switch off. Check
+  `/health` again in a minute.
+- **"✗ serving revision is …":** traffic didn't move. Run the command again; if
+  it repeats, promote the revision it named with
+  `scripts/deploy-cloud-run.sh promote claudish-proxy <revision>`. Do not set the switch with a bare
+`gcloud run services update`. Traffic is pinned to a named revision, so that
+creates a revision that serves 0% and spending carries on (found 2026-11-15).
 
 The switch survives deploys, which is the point: a redeploy in the middle of an
 incident must not quietly re-enable the thing you just turned off. Turn it back
-off the same way with `KILL_SWITCH=off`, and remember that you must, because
+off with `kill-switch claudish-proxy off`, and remember that you must, because
 nothing will do it for you.
 
 **If a bad revision is the cause**, roll back with
-`scripts/deploy-cloud-run.sh promote claudish-proxy <revision>`.
+`scripts/deploy-cloud-run.sh promote claudish-proxy <revision>`. Env lives on
+each revision, so a rollback restores that revision's `KILL_SWITCH` (and
+`LANES`). If the switch was on, run it again after the rollback.
 
 ## Before you call it fixed: the golden gate
 
@@ -100,12 +134,17 @@ translates badly is still broken, and the health endpoint cannot tell you that.
 
 The health endpoint answers, the golden gate passes, and a real translation
 completes end to end at `https://www.iampatterson.com/claudish`. If you used the
-kill switch, confirm it is off:
+kill switch, confirm it is off where it counts, in the serving process:
 
 ```bash
-gcloud run services describe claudish-proxy --project=iampatterson \
-  --region=us-central1 --format='value(spec.template.spec.containers[0].env)'
+curl -s "$(gcloud run services describe claudish-proxy --project=iampatterson \
+  --region=us-central1 --format='value(status.url)')/health"
 ```
+
+`"capped":false` means it is serving normally. `"capped":true` means the
+switch is on or the day's budget has tripped; either way the proxy is
+refusing new spend. Don't confirm from the service's env
+(`spec.template…`): that is the last revision built, not the one serving.
 
 ## Rehearsal
 

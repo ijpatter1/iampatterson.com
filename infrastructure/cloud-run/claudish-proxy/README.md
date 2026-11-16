@@ -45,25 +45,35 @@ is blast radius, not cost control.
 
 ## Kill switch (runbook)
 
+From the repo root:
+
 ```
-gcloud run services update claudish-proxy --project=iampatterson \
-  --region=us-central1 --update-env-vars KILL_SWITCH=on
-gcloud run services update-traffic claudish-proxy --project=iampatterson \
-  --region=us-central1 --to-revisions=LATEST=100
+bash scripts/deploy-cloud-run.sh kill-switch claudish-proxy on
 ```
 
-Both commands are needed. `scripts/deploy-cloud-run.sh promote` routes
-traffic to a named revision, so an env update on its own creates a new
-revision that gets no traffic, and the switch never takes effect (found
-2026-11-15). The second command moves traffic to the revision the first
-one made. Check it with `gcloud run services describe claudish-proxy …
---format='value(status.traffic[0].revisionName)'`.
+It builds a revision on the serving image with `KILL_SWITCH=on` and no
+traffic, checks that nothing else changed, moves all traffic to that exact
+revision, and confirms the serving revision carries `KILL_SWITCH=on`. The
+page shows the verbatim capacity line. The response cache is in each
+instance's memory, and the switch starts a new revision with empty caches,
+so at first even repeated translations get the capacity line (measured
+2026-11-15). Turn it off
+with `kill-switch claudish-proxy off`, and remember that you must, because
+nothing will do it for you.
 
-~30s to roll. The page shows the verbatim capacity line; cache hits
-still serve. Revert with the same two commands and `KILL_SWITCH=off`. Deploys keep the switch as it
-is: `setup.sh` merges its env with `--update-env-vars` and never writes
-`KILL_SWITCH`, so a hotfix shipped mid-incident does not turn spend back on
-(review batch 1, 2026-09-03).
+Why not `gcloud run services update --update-env-vars KILL_SWITCH=on`:
+`deploy-cloud-run.sh promote` pins traffic to a named revision, so that
+command makes a revision that serves 0% and spending carries on (found
+2026-11-15). The same applies to any env change: use
+`deploy-cloud-run.sh set-env claudish-proxy KEY=VALUE --promote`.
+
+Deploys keep the switch as it is: `setup.sh` merges its env with
+`--update-env-vars` and never writes `KILL_SWITCH`, and `deploy-cloud-run.sh
+deploy` never writes env. **A rollback does not:** env lives on each
+revision, so `promote <older revision>` restores that revision's
+`KILL_SWITCH` and `LANES`. After a rollback mid-incident, run the kill
+switch again.
+
 **Terraform note:** once D9 imports this service, `KILL_SWITCH` must be
 in `ignore_changes` or the next `terraform apply` silently reverts an
 emergency flip (documented in IMPORT_PLAN.md).

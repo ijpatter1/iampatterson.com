@@ -104,9 +104,12 @@ echo "── Step 5: Deploy (source-deploy, buildpacks) ──"
 # --update-env-vars merges into the live env; the set variant would replace it
 # and a hotfix deploy would silently reset KILL_SWITCH mid-incident (review
 # batch 1, 2026-09-03). The kill switch is never written here: it is only ever
-# set by the runbook command, and it survives every deploy.
+# set by `scripts/deploy-cloud-run.sh kill-switch`, and it survives every deploy.
+# Named revision: deploy-cloud-run.sh set-env pins a name on the template, and
+# a deploy that let gcloud reuse it would collide (2026-11-15).
 run gcloud run deploy "${SERVICE}" \
   --source . \
+  --revision-suffix="setup-$(date -u +%m%d%H%M%S)" \
   --project="${PROJECT}" \
   --region="${REGION}" \
   --port=8080 \
@@ -129,8 +132,26 @@ if [ "${DRY_RUN}" = "1" ]; then
 fi
 
 URL="$(gcloud run services describe "${SERVICE}" --project="${PROJECT}" --region="${REGION}" --format='value(status.url)')"
+# scripts/deploy-cloud-run.sh promote pins traffic to a named revision, and
+# once it is pinned this deploy builds a revision that serves 0% (2026-11-15).
+# Say so instead of printing "Deployed" over a change that never went live.
+BUILT="$(gcloud run services describe "${SERVICE}" --project="${PROJECT}" --region="${REGION}" --format='value(status.latestCreatedRevisionName)')"
+SERVING="$(gcloud run services describe "${SERVICE}" --project="${PROJECT}" --region="${REGION}" --format=json \
+  | python3 -c 'import json,sys; t=[x for x in json.load(sys.stdin)["status"].get("traffic",[]) if x.get("percent")]; print(t[0]["revisionName"] if len(t)==1 else ",".join(x["revisionName"] for x in t))')"
 echo ""
-echo "═══ Deployed ═══"
+if [ -z "${SERVING}" ]; then
+  echo "═══ Built ${BUILT}; could not read which revision serves. Check before trusting this deploy: ═══"
+  echo "  gcloud run services describe ${SERVICE} --project=${PROJECT} --region=${REGION} --format='value(status.traffic)'"
+elif [ "${SERVING}" = "${BUILT}" ]; then
+  echo "═══ Deployed: ${BUILT} serves 100% ═══"
+else
+  echo "═══ Built ${BUILT}, but it serves 0%: traffic is pinned to ${SERVING} ═══"
+  echo "Review, then promote this exact revision (from the repo root):"
+  echo "  bash scripts/deploy-cloud-run.sh diff ${SERVICE} ${SERVING} ${BUILT}"
+  echo "  bash scripts/deploy-cloud-run.sh promote ${SERVICE} ${BUILT}"
+  echo "For an env-only change, prefer: bash scripts/deploy-cloud-run.sh set-env ${SERVICE} KEY=VALUE --promote"
+  echo "(it keeps the serving image and refuses to promote anything else that moved)."
+fi
 echo "Service URL:   ${URL}"
 echo ""
 echo "Next steps:"
@@ -141,9 +162,6 @@ echo "       -H 'Content-Type: application/json' -H 'Origin: https://iampatterso
 echo "       -d '{\"text\":\"We fixed the bug.\",\"direction\":\"en2cl\"}'"
 echo "  3. Latency:     CLAUDISH_PROXY_URL='${URL}' bash scripts/run-claudish-latency.sh"
 echo ""
-echo "KILL SWITCH (runbook — takes ~30s to roll):"
-echo "  gcloud run services update ${SERVICE} --project=${PROJECT} --region=${REGION} --update-env-vars KILL_SWITCH=on"
-echo "  gcloud run services update-traffic ${SERVICE} --project=${PROJECT} --region=${REGION} --to-revisions=LATEST=100"
-echo "  (the second command is required: deploy-cloud-run.sh promote pins traffic to a named revision,"
-echo "   so the env update alone makes a revision that serves nothing)"
-echo "  revert: the same two commands with KILL_SWITCH=off"
+echo "KILL SWITCH (runbook docs/runbook/claudish-proxy-over-budget.md), from the repo root:"
+echo "  bash scripts/deploy-cloud-run.sh kill-switch ${SERVICE} on"
+echo "  revert: bash scripts/deploy-cloud-run.sh kill-switch ${SERVICE} off"
