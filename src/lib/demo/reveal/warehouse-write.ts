@@ -132,7 +132,7 @@ export function bqRowForCart(params: {
   });
 }
 
-/** 6-line pipeline-journey sequence for the full-page diagnostic moment.
+/** 5-line pipeline-journey sequence for the full-page diagnostic moment.
  *
  * The static default assumes analytics=granted, marketing=denied, the
  * most common state for a visitor who accepts only strictly necessary
@@ -148,18 +148,22 @@ export const FULL_PAGE_DIAGNOSTIC_LINES: Array<{
   { text: 'consent check · analytics=granted, marketing=denied', tag: 'OK' },
   { text: 'routed → sGTM (io.iampatterson.com)', tag: 'OK' },
   { text: 'routed → Meta CAPI · skipped (marketing denied)', tag: 'SKIP' },
-  { text: 'routed → BigQuery · 1 row written to iampatterson_raw.events_raw', tag: 'OK' },
-  { text: 'dataform · marts rebuilding against the new row', tag: 'OK', emph: true },
+  {
+    text: 'routed → BigQuery · 1 row written to iampatterson_raw.events_raw',
+    tag: 'OK',
+    emph: true,
+  },
 ];
 
 /**
- * Build the 6-line pipeline-journey sequence against the visitor's real
+ * Build the 5-line pipeline-journey sequence against the visitor's real
  * consent state so the diagnostic text matches what would actually
  * happen. When analytics is denied, the consent check line reflects that;
  * when marketing is granted, the Meta CAPI line flips from SKIP to OK
  * ("routed → Meta CAPI · event sent"). Other lines are unconditional,
- * the purchase fires, sGTM receives it, BigQuery inserts the row and
- * Dataform rebuilds downstream of it.
+ * the purchase fires, sGTM receives it, BigQuery inserts the row. The
+ * sequence ends there: Dataform runs nightly, not per event, and Metabase
+ * is retired (18.3).
  */
 export function diagnosticLinesForConsent(consent: {
   analytics: boolean;
@@ -179,7 +183,10 @@ export function diagnosticLinesForConsent(consent: {
     },
     { text: 'routed → sGTM (io.iampatterson.com)', tag: 'OK' },
     metaLine,
-    { text: 'routed → BigQuery · 1 row written to iampatterson_raw.events_raw', tag: 'OK' },
-    { text: 'dataform · marts rebuilding against the new row', tag: 'OK', emph: true },
+    {
+      text: 'routed → BigQuery · 1 row written to iampatterson_raw.events_raw',
+      tag: 'OK',
+      emph: true,
+    },
   ];
 }

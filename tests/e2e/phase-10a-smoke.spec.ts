@@ -202,7 +202,10 @@ test.describe('Phase 10a D6 interactive smoke', () => {
     await page.goto('/demo/ecommerce/confirmation?order_id=SMOKE-10a&total=44.98&items=2');
 
     await expect(page.getByText(/order confirmed/i)).toBeVisible({ timeout: 10000 });
-    await expect(page.getByRole('link', { name: /Start with a review/ })).toBeVisible();
+    // The header carries its own "Start with a review"; this is the closer's.
+    await expect(
+      page.getByRole('main').getByRole('link', { name: /Start with a review/ }),
+    ).toBeVisible();
     await expect(page.getByText(/dashboard/i)).toHaveCount(0);
     await expect(page.locator('iframe')).toHaveCount(0);
     await expect(page.locator('a[href*="bi.iampatterson.com"]')).toHaveCount(0);

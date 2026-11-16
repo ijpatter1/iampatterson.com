@@ -3,6 +3,10 @@
 import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 
+import { CtaLink } from '@/components/cta-link';
+import { HERO } from '@/lib/content/hero';
+import { REVIEW_PAGE_HREF } from '@/lib/content/review';
+
 import { useScrollToTopOnMount } from '@/hooks/useScrollToTopOnMount';
 import { useToast } from '@/components/demo/reveal/toast-provider';
 import { InlineDiagnostic } from '@/components/demo/reveal/inline-diagnostic';
@@ -20,8 +24,9 @@ interface OrderConfirmationProps {
  *   (a) the editorial order-confirmed block with $total-interpolated
  *       lead paragraph (with zombie-state fallback for missing / zero /
  *       non-finite totals, closes 9B follow-up #5);
- *   (b) the Pattern 3 InlineDiagnostic-wrapped timestamped 5-step
- *       pipeline-journey list (+0ms → +611ms), ending at the mart. Per-step timings are
+ *   (b) the Pattern 3 InlineDiagnostic-wrapped timestamped 3-step
+ *       pipeline-journey list (+0ms → +186ms), ending at the BigQuery row
+ *       (Dataform runs nightly, so it is not a step). Per-step timings are
  *       representative; a muted footer inside the diagnostic surfaces
  *       this honestly (UAT r2 item 19).
  *
@@ -101,25 +106,14 @@ export function OrderConfirmation({ orderId, orderTotal, itemCount }: OrderConfi
       <InlineDiagnostic tag="WHAT JUST HAPPENED">
         <ol className="flex flex-col gap-1.5">
           {PIPELINE_JOURNEY.map((step, i) => (
-            <li
-              key={i}
-              className={`flex items-baseline gap-2 text-xs leading-snug ${
-                step.tag === 'LIVE' ? 'text-[#F3C769]' : 'text-[#EAD9BC]'
-              }`}
-            >
+            <li key={i} className="flex items-baseline gap-2 text-xs leading-snug text-[#EAD9BC]">
               <span className="w-[70px] shrink-0 font-mono text-[#9E8A6B]">{step.t}</span>
               <span aria-hidden="true" className="text-[#F3C769]">
                 &gt;
               </span>
               <span className="flex-1">{step.text}</span>
-              <span
-                className={`shrink-0 rounded border px-1 py-[1px] text-[9px] tracking-[0.1em] ${
-                  step.tag === 'OK'
-                    ? 'border-[#8FBF7A]/40 text-[#8FBF7A]'
-                    : 'border-[#F3C769]/50 text-[#F3C769]'
-                }`}
-              >
-                [{step.tag}]
+              <span className="shrink-0 rounded border border-[#8FBF7A]/40 px-1 py-[1px] text-[9px] tracking-[0.1em] text-[#8FBF7A]">
+                [OK]
               </span>
             </li>
           ))}
@@ -147,9 +141,13 @@ export function ConfirmationCloser() {
         >
           ← back to the shop
         </Link>
-        <Link href="/review" className="text-[var(--shop-terracotta,#C4703A)] hover:underline">
-          Start with a review →
-        </Link>
+        <CtaLink
+          href={REVIEW_PAGE_HREF}
+          ctaLocation="shop_confirmation_review"
+          className="text-[var(--shop-terracotta,#C4703A)] hover:underline"
+        >
+          {HERO.primaryCta} →
+        </CtaLink>
       </nav>
     </div>
   );
@@ -158,13 +156,10 @@ export function ConfirmationCloser() {
 interface JourneyStep {
   t: string;
   text: string;
-  tag: 'OK' | 'LIVE';
 }
 
 const PIPELINE_JOURNEY: JourneyStep[] = [
-  { t: '+ 0ms', text: 'purchase event fired in browser', tag: 'OK' },
-  { t: '+ 84ms', text: 'sGTM received · consent checked · enriched · routed', tag: 'OK' },
-  { t: '+ 186ms', text: 'streaming insert · 1 row → iampatterson_raw.events_raw', tag: 'OK' },
-  { t: '+ 412ms', text: 'Dataform staging · 4 stitches, 0 null drops', tag: 'OK' },
-  { t: '+ 611ms', text: 'mart refreshed · session_events', tag: 'OK' },
+  { t: '+ 0ms', text: 'purchase event fired in browser' },
+  { t: '+ 84ms', text: 'sGTM received · consent checked · enriched · routed' },
+  { t: '+ 186ms', text: 'streaming insert · 1 row → iampatterson_raw.events_raw' },
 ];

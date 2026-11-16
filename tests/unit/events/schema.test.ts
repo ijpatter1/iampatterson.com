@@ -159,8 +159,9 @@ describe('Event schema types', () => {
       footer_contact: true,
       footer_email: true,
       footer_session: true,
+      shop_confirmation_review: true,
     };
-    expect(Object.keys(all)).toHaveLength(17);
+    expect(Object.keys(all)).toHaveLength(18);
 
     // The schema checklist: the BigQuery column lists exactly the union.
     const { current, retired } = ctaLists(ctaDescription());

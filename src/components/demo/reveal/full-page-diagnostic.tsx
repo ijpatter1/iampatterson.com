@@ -10,7 +10,7 @@ import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 
 // UAT r1 item 14 → Pass-1 eval correction. 1900ms was too fast (~240ms
 // per line); 4500ms was flagged as overcorrection (a full 4.5s block on
-// every checkout). Landed at 3200ms: ~400ms per line across 7 lines,
+// every checkout). Landed at 3200ms: ~400ms per line across 7 lines (5 since 2026-11-16),
 // readable without feeling like a gate. The "press any key to skip"
 // affordance (promoted below) handles the returning-visitor case.
 const DEFAULT_DURATION_MS = 3200;

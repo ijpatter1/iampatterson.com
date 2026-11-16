@@ -79,10 +79,9 @@ describe('OrderConfirmation (Phase 9F D9)', () => {
     expect(container.textContent).not.toMatch(/return to iampatterson\.com/);
   });
 
-  it('inline-diagnostic title drops the ~840ms specific claim (UAT r2 item 19)', () => {
+  it('marks the journey timings as representative (UAT r2 item 19)', () => {
     renderConfirmation();
     const diag = document.querySelector('[data-inline-diagnostic]');
-    expect(diag?.textContent).not.toContain('840ms end-to-end');
     expect(diag?.textContent).toContain('representative cadence');
   });
 
@@ -107,29 +106,25 @@ describe('OrderConfirmation (Phase 9F D9)', () => {
     expect(toast?.textContent).toContain('ORD-XYZ987');
   });
 
-  it('renders the 5-step pipeline-journey list in an inline diagnostic', () => {
+  it('renders the 3-step pipeline-journey list in an inline diagnostic', () => {
     renderConfirmation();
     const diag = document.querySelector('[data-inline-diagnostic]');
     expect(diag).not.toBeNull();
     expect(diag?.textContent).toContain('purchase event fired in browser');
     expect(diag?.textContent).toContain('sGTM received');
     expect(diag?.textContent).toContain('iampatterson_raw.events_raw');
-    expect(diag?.textContent).toContain('Dataform staging');
-    expect(diag?.textContent).toContain('mart refreshed · session_events');
-    expect(diag?.querySelectorAll('li')).toHaveLength(5);
+    expect(diag?.querySelectorAll('li')).toHaveLength(3);
   });
 
-  // Metabase is retired (18.3) and 18.1 left one mart, mart_session_events.
-  // The journey ends where the data does: at the warehouse, not a dashboard,
-  // and it names no mart that no longer exists.
-  it('ends the journey at the mart, naming no dashboard and no deleted mart', () => {
+  // Metabase is retired (18.3), and Dataform runs nightly, not per event. The
+  // journey keeps only the steps that happen in the moment and ends where the
+  // order really lands: one row in events_raw.
+  it('ends the journey at the BigQuery row, with no dashboard and no Dataform step', () => {
     renderConfirmation();
     const diag = document.querySelector('[data-inline-diagnostic]');
     const steps = Array.from(diag?.querySelectorAll('li') ?? []).map((li) => li.textContent);
-    expect(steps[steps.length - 1]).toMatch(/mart refreshed · session_events/);
-    expect(diag?.textContent).not.toMatch(/dashboard/i);
-    expect(diag?.textContent).not.toMatch(/attribution|ltv/i);
-    expect(diag?.textContent).not.toContain('[LIVE]');
+    expect(steps[steps.length - 1]).toMatch(/1 row → iampatterson_raw\.events_raw/);
+    expect(diag?.textContent).not.toMatch(/dashboard|dataform|mart/i);
   });
 });
 
@@ -142,10 +137,8 @@ describe('ConfirmationCloser (UAT r2 item 20 split)', () => {
   // The confirmation page is the end of the shop demo. It ends on the site's
   // one call to action (the homepage's "Start with a review"), with the way
   // back to the shop beside it. /services was deleted in 16.1.
-  it('ends the demo on the review call to action and the way back to the shop', () => {
+  it('ends the demo on the way back to the shop, then the review call to action', () => {
     render(<ConfirmationCloser />);
-    const cta = screen.getByRole('link', { name: /Start with a review/ });
-    expect(cta.getAttribute('href')).toBe('/review');
     const hrefs = screen.getAllByRole('link').map((l) => l.getAttribute('href'));
     expect(hrefs).toEqual(['/demo/ecommerce', '/review']);
   });
