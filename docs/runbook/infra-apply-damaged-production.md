@@ -7,8 +7,8 @@ environment's approval gate, and both can still do damage that an approver did
 not foresee — an approved plan is not a correct one.
 
 No alert points here. You arrive because something visible broke shortly after a
-merge: the site stopped recording events, the real-time overlay went quiet,
-Metabase started refusing everyone, or a demo surface began showing nothing.
+merge: the site stopped recording events, the real-time overlay went quiet, or
+a demo surface began showing nothing.
 
 **Read this before touching anything: the two systems roll back differently, and
 the GTM one is fast.**

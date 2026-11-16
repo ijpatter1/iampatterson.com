@@ -9,13 +9,3 @@ import {
   to = google_project_iam_member.runtime["data_gen_runtime_bigquery_job"]
   id = "iampatterson roles/bigquery.jobUser serviceAccount:data-gen-runtime@iampatterson.iam.gserviceaccount.com"
 }
-
-import {
-  to = google_project_iam_member.runtime["metabase_runtime_cloudsql"]
-  id = "iampatterson roles/cloudsql.client serviceAccount:metabase-runtime@iampatterson.iam.gserviceaccount.com"
-}
-
-import {
-  to = google_project_iam_member.runtime["metabase_bigquery_job"]
-  id = "iampatterson roles/bigquery.jobUser serviceAccount:metabase-bigquery@iampatterson.iam.gserviceaccount.com"
-}

@@ -31,8 +31,8 @@ interrupt.
 3. **Run `npm audit`** at the root, in each service, and in `infrastructure/dataform`. Advisories that Dependabot
    has not already raised are the ones with no fix available yet; note them and
    move on rather than force-fixing.
-4. **Check the two pinned images** that no bot watches: `gtm-cloud-image` and
-   Metabase. Both are below.
+4. **Check the pinned image** that no bot watches: `gtm-cloud-image`. It is
+   below.
 5. **Check the blocked list** below. Each row names what an update is waiting on
    and the command that answers whether it still is.
 6. **Run `npm outdated`** at the root, in each service, and in `infrastructure/dataform`. This is the only step
@@ -106,7 +106,6 @@ have caught.
 | GitHub Actions | Dependabot (github-actions) | Monthly | Low. |
 | Dataform (`@dataform/core`) | Dependabot (npm, grouped `all`) | Monthly | Judged by the `dataform compile` job in `test.yml`, which also asserts the compiled object counts — `compile` alone exits 0 whenever the graph resolves. **What green proves is that the project compiles and the model set is unchanged; nothing here executes SQL against BigQuery**, so a bump that still compiles but changes what the marts contain is not covered. `@dataform/cli` is deliberately not a dependency: this `package.json` is mirrored to the `dataform` branch GCP compiles from, so CI derives the CLI version from the pinned core version instead. |
 | `gtm-cloud-image` (sGTM) | **Nobody. Check it by hand.** | Monthly, step 4 | See `docs/runbook/sgtm-image-update.md`. Dependabot does not watch a tag consumed by a Cloud Run service, and this one is worse than unwatched: the tag looks like it auto-updates and does not. Run `bash infrastructure/sgtm/update-image.sh status`. |
-| Metabase | **Nobody. Check it by hand.** | Monthly, step 4 | Baseline **v0.59.31**, which is what is live (upgraded from v0.59.6 on 2026-09-11 for CVE-2026-72898). Updates go through `infrastructure/metabase/upgrade.sh`, which already refuses to proceed until you confirm you have read the release notes. Keep that gate; Metabase minors have migrated the app database before. |
 | Security advisories | GitHub security updates | Whenever they land | Judged case by case against the table below. |
 
 ## Advisories are not all the same

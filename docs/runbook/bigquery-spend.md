@@ -32,15 +32,10 @@ bq query --project_id=iampatterson --nouse_legacy_sql --format=prettyjson \
  LIMIT 10'
 ```
 
-`user_email` is the thing to read first. It tells you which of the four possible
+`user_email` is the thing to read first. It tells you which of the three possible
 causes this is.
 
-## The four causes, in order of likelihood
-
-**Metabase.** A dashboard question with no filter, or one someone left
-auto-refreshing. Metabase reads through `metabase-bigquery@`, which is scoped
-read-only to `iampatterson_marts`. The marts are small, so this is usually a
-query that joins badly rather than one that reads a lot.
+## The three causes, in order of likelihood
 
 **Dataform.** The nightly run rebuilds staging and marts from raw. It is the
 largest scheduled consumer and its cost is proportional to the raw window, which
@@ -64,9 +59,6 @@ WHERE _PARTITIONTIME >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)
 
 turns a 60-day scan into a 7-day one. The staging and mart tables are small
 enough that this rarely matters there.
-
-**If it is a Metabase question**, find it from the query text and add a date
-filter, or reduce its refresh interval.
 
 **If you need a hard stop**, set a maximum bytes billed on the offending query or
 a custom quota on the project. Neither is configured today, deliberately: at this

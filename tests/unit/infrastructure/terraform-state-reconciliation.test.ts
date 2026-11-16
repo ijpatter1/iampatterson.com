@@ -25,7 +25,7 @@ import path from 'node:path';
 const TF_DIR = path.join(process.cwd(), 'infrastructure', 'terraform');
 const read = (file: string): string => readFileSync(path.join(TF_DIR, file), 'utf8');
 
-const SERVICES = ['event_stream', 'data_generator', 'sgtm', 'sgtm_preview', 'metabase'];
+const SERVICES = ['event_stream', 'data_generator', 'sgtm', 'sgtm_preview'];
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 let cloudRun: Record<string, any>;

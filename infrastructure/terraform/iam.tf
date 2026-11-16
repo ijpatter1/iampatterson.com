@@ -36,14 +36,6 @@ locals {
       member = "serviceAccount:data-gen-runtime@iampatterson.iam.gserviceaccount.com"
       role   = "roles/bigquery.jobUser"
     }
-    metabase_runtime_cloudsql = {
-      member = "serviceAccount:metabase-runtime@iampatterson.iam.gserviceaccount.com"
-      role   = "roles/cloudsql.client"
-    }
-    metabase_bigquery_job = {
-      member = "serviceAccount:metabase-bigquery@iampatterson.iam.gserviceaccount.com"
-      role   = "roles/bigquery.jobUser"
-    }
   }
 }
 

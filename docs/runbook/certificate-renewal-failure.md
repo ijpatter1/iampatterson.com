@@ -5,9 +5,19 @@ monitored surface`.
 
 ## How certificates work here, and how they are watched
 
-`bi.iampatterson.com` uses a Google-managed SSL certificate on the Metabase load
-balancer. Google renews it automatically. `io.iampatterson.com` and the site are
-fronted by Cloud Run and Vercel respectively, which manage their own.
+Nothing in this project issues a certificate by hand. Each monitored host gets
+its certificate from whoever serves it, and each renews on its own:
+
+| Host | Served by | Certificate |
+| --- | --- | --- |
+| `io.iampatterson.com` | Cloud Run domain mapping onto `sgtm` | Google-managed, issued through the mapping. DNS is a CNAME to `ghs.googlehosted.com`. |
+| `www.iampatterson.com` | Vercel | Vercel-managed (Let's Encrypt). DNS is a CNAME into Vercel. |
+| `event-stream-eb4xrwmo3q-uc.a.run.app` | Cloud Run | Google's `*.run.app` certificate. Nothing of ours to renew. |
+| `claudish-proxy-eb4xrwmo3q-uc.a.run.app` | Cloud Run | Google's `*.run.app` certificate. Nothing of ours to renew. |
+
+The hosts are the ones in `infrastructure/monitoring/spec/uptime.json`. The
+`bi.iampatterson.com` certificate on the Metabase load balancer was the one
+certificate this project declared itself; it went with Metabase in [18.3].
 
 The monitoring is indirect and worth understanding, because it constrains what
 this alert can see. **Google publishes no metric for managed certificate
@@ -19,45 +29,51 @@ uptime check and its certificate is unwatched.
 
 ## Diagnose
 
-What does the certificate actually say?
+The alert groups by `resource.labels.host`; read it first. Then see what the
+certificate on that host actually says:
 
 ```bash
-echo | openssl s_client -servername bi.iampatterson.com \
-  -connect bi.iampatterson.com:443 2>/dev/null \
+HOST=io.iampatterson.com   # the host named in the alert
+echo | openssl s_client -servername "$HOST" -connect "$HOST:443" 2>/dev/null \
 | openssl x509 -noout -dates -issuer
 ```
 
-What does Google think its status is?
+**`io.iampatterson.com`.** Ask Cloud Run what it thinks of the mapping, and check
+DNS still points at Google:
 
 ```bash
-gcloud compute ssl-certificates list --project=iampatterson \
-  --format='value(name, type, managed.status, managed.domainStatus)'
+gcloud beta run domain-mappings describe --domain=io.iampatterson.com \
+  --project=iampatterson --region=us-central1 \
+  --format='yaml(status.conditions, status.resourceRecords)'
+dig +short io.iampatterson.com CNAME
 ```
 
-`ACTIVE` with a domain status of `ACTIVE` is healthy. `PROVISIONING` means a
-renewal is in flight. `FAILED_NOT_VISIBLE` is the one that matters: it means
-Google cannot validate the domain, almost always because DNS no longer points at
-the load balancer's IP.
+`Ready`, `CertificateProvisioned` and `DomainRoutable` all `True` is healthy, and
+the CNAME should be `ghs.googlehosted.com.`. `CertificateProvisioned` going
+`False` almost always means Google can no longer validate the domain because DNS
+stopped pointing there.
+
+**`www.iampatterson.com`.** The certificate is Vercel's. The project's Domains
+page in the Vercel dashboard shows it and any validation error. There is no CLI
+path configured in this project.
+
+**A `*.run.app` host.** Google renews that certificate for every Cloud Run
+service. An expiring one is Google's incident, not ours: check the Google Cloud
+status page rather than changing anything here.
 
 ## Fix
 
-**If the domain status is `FAILED_NOT_VISIBLE`**, check DNS against the load
-balancer address:
+**If DNS for `io` changed**, put the CNAME back to `ghs.googlehosted.com.` at the
+registrar. The mapping re-provisions on its own once DNS is correct, which takes
+up to about an hour.
 
-```bash
-gcloud compute addresses list --project=iampatterson --global \
-  --format='value(name, address)'
-dig +short bi.iampatterson.com
-```
+**If the `io` mapping is stuck with DNS correct**, stop and take it to Ian. The
+mapping is not in Terraform, and the remaining lever is deleting and re-creating
+it, which leaves sGTM unreachable on `io` until the new certificate is issued and
+loses every visitor's events for that window. That is a decision, not a step.
 
-Those must match. If they do not, the DNS record was changed and fixing it lets
-the renewal proceed on its own; provisioning takes up to about an hour after DNS
-is correct.
-
-**If the certificate is genuinely stuck**, a managed certificate can be replaced,
-but that is a load balancer change and belongs in
-`infrastructure/terraform/metabase-lb.tf` rather than being done by hand — the
-topology is declared there and a hand change will show as drift.
+**If it is `www`**, follow the error Vercel shows. A failed renewal there is
+almost always a DNS change.
 
 **Do not** let it lapse quietly. The alert fires at 14 days, which is deliberate
 slack: DNS propagation plus provisioning is measured in hours, so two weeks is
@@ -66,18 +82,18 @@ comfortable rather than tight.
 ## How you know it worked
 
 ```bash
-echo | openssl s_client -servername bi.iampatterson.com \
-  -connect bi.iampatterson.com:443 2>/dev/null | openssl x509 -noout -enddate
+echo | openssl s_client -servername "$HOST" -connect "$HOST:443" 2>/dev/null \
+| openssl x509 -noout -enddate
 ```
 
-The expiry date has moved out, and the uptime check `metabase-lb` stays green.
+The expiry date has moved out, and the host's uptime check stays green.
 
 ## Rehearsal
 
 Not rehearsed. You cannot fail a certificate renewal on demand: the failure is
-Google declining to renew, usually because of a DNS condition, and staging it
-means pointing production DNS away from the load balancer and waiting weeks for
-the alert window.
+the provider declining to renew, usually because of a DNS condition, and staging
+it means pointing production DNS away from the service and waiting weeks for the
+alert window.
 
 Two honest qualifications. The uptime rehearsal of 2026-09-04 was performed on
 `claudish-proxy-health`, not on a certificate-bearing host, so it establishes the
