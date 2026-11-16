@@ -19,10 +19,11 @@ config {
  * Ten days (Ian, 2026-11-16). Measured over the 60 nightly runs from
  * 2026-09-17 to 2026-11-15, the longest wait at 04:00 UTC since the last real
  * event was 177 hours (7.4 days, a quiet week from 2026-09-22). Seven days
- * would have failed once; ten, 1.35 times that gap, failed none. Once the
+ * would have failed once; ten, 1.36 times that gap, failed none. Once the
  * generator is gone this is the only check that notices sGTM no longer
- * writing to BigQuery. It runs once a day, so that breakage can go unseen
- * for the window plus up to a day: ten to eleven days.
+ * writing to BigQuery. The window counts from the last real event and the
+ * check runs once a day, so that breakage can go unseen for up to eleven
+ * days.
  *
  * received_at, not event_timestamp. event_timestamp prefers the browser's
  * clock, so one visitor with a clock set ahead holds the maximum in the future
