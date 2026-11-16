@@ -21,8 +21,8 @@ config {
  * event was 177 hours (7.4 days, a quiet week from 2026-09-22). Seven days
  * would have failed once; ten, 1.35 times that gap, failed none. Once the
  * generator is gone this is the only check that notices sGTM no longer
- * writing to BigQuery, so the window is also how long that can go unseen.
- * It fires twenty days before assert_stg_sessions' thirty-day check.
+ * writing to BigQuery. It runs once a day, so that breakage can go unseen
+ * for the window plus up to a day: ten to eleven days.
  *
  * received_at, not event_timestamp. event_timestamp prefers the browser's
  * clock, so one visitor with a clock set ahead holds the maximum in the future
