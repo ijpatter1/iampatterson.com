@@ -110,6 +110,18 @@ var payload = {
       'source', // OverviewTabViewEvent / TimelineTabViewEvent / ConsentTabViewEvent
       'destination', // PortalClickEvent
       'threshold', // CoverageMilestoneEvent
+      // The overlay's narrative reads these (narrative-flow.tsx); without them
+      // page_engagement rendered "?s ... (scrolled 0%)" (2026-11-16).
+      // stream-parameters.test.ts keeps this list in step with the narrative.
+      'engagement_seconds', // PageEngagementEvent
+      'max_scroll_pct', // PageEngagementEvent
+      // Claudish: counts and closed enums only, never the text (CLAUDE.md).
+      'direction',
+      'outcome',
+      'input_chars',
+      'detected_language',
+      'share_action',
+      'rating',
     ];
     for (var i = 0; i < keys.length; i++) {
       var val = eventData[keys[i]];
