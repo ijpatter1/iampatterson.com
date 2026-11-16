@@ -3,10 +3,6 @@
  */
 import { render, screen } from '@testing-library/react';
 
-jest.mock('@/lib/events/track', () => ({
-  trackClickNav: jest.fn(),
-}));
-
 let mockPathname = '/demo/ecommerce';
 jest.mock('next/navigation', () => ({
   usePathname: () => mockPathname,
@@ -34,26 +30,20 @@ describe('DemoLayout', () => {
     expect(screen.getByTestId('demo-child')).toBeInTheDocument();
   });
 
-  it('suppresses the generic DemoFooterNav on /demo/ecommerce/* routes', () => {
-    // Phase 9F Major #4: the ecommerce demo carries its own brand-voiced
-    // EcomFooter; the generic DemoFooterNav is suppressed so the two
-    // footers don't stack.
-    mockPathname = '/demo/ecommerce';
-    render(
-      <DemoLayout>
-        <div>Demo content</div>
-      </DemoLayout>,
-    );
-    expect(screen.queryByRole('link', { name: /back to demos/i })).not.toBeInTheDocument();
-  });
-
-  it('renders DemoFooterNav on non-ecommerce demo routes (when future demos return)', () => {
-    mockPathname = '/demo/subscription';
-    render(
-      <DemoLayout>
-        <div>Demo content</div>
-      </DemoLayout>,
-    );
-    expect(screen.getByRole('link', { name: /back to demos/i })).toHaveAttribute('href', '/#demos');
-  });
+  // 17.1: the layout's generic footer linked back to the homepage's Demos
+  // section, which 15.4 deleted. The shop carries its own footer, and no
+  // other route lives under /demo, so nothing under /demo links to it.
+  it.each(['/demo/ecommerce', '/demo/ecommerce/cart', '/demo/subscription'])(
+    'renders no link to the deleted Demos section on %s',
+    (path) => {
+      mockPathname = path;
+      const { container } = render(
+        <DemoLayout>
+          <div>Demo content</div>
+        </DemoLayout>,
+      );
+      expect(screen.queryByRole('link', { name: /back to demos/i })).not.toBeInTheDocument();
+      expect(container.querySelector('a[href*="#demos"]')).toBeNull();
+    },
+  );
 });

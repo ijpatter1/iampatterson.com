@@ -172,15 +172,15 @@ describe('Phase 10d D4 — SEO', () => {
       const urls = entries.map((e) => e.url);
 
       // Canonical static inclusions (`/about` left with 16.2, which folds
-      // it into `/contact`; `/services` left with 16.1). Tightened
-      // beyond `arrayContaining` so a future drop of e.g. `/demo`
-      // can't silently slip past the test (mirrors the product-URL
-      // tightness fix-pack applied at line 111-114 below).
+      // it into `/contact`; `/services` left with 16.1; `/demo` left with
+      // 17.1, which deleted the catalog and redirects it to the shop).
+      // Tightened beyond `arrayContaining` so a future drop of e.g.
+      // `/demo/ecommerce` can't silently slip past the test (mirrors the
+      // product-URL tightness fix-pack applied below).
       const expectedStatic = [
         'https://www.iampatterson.com',
         'https://www.iampatterson.com/contact',
         'https://www.iampatterson.com/review',
-        'https://www.iampatterson.com/demo',
         'https://www.iampatterson.com/demo/ecommerce',
         'https://www.iampatterson.com/claudish',
       ];
@@ -205,6 +205,16 @@ describe('Phase 10d D4 — SEO', () => {
       expect(urls).not.toContain('https://www.iampatterson.com/demo/ecommerce/checkout');
       expect(urls).not.toContain('https://www.iampatterson.com/demo/ecommerce/confirmation');
       expect(urls).not.toContain('https://www.iampatterson.com/contact/thanks');
+    });
+
+    // 17.1: a sitemap that lists a URL which redirects tells crawlers to
+    // fetch a page that is not there. The deleted catalog and dashboard
+    // page both redirect to the shop, so neither is listed.
+    it('lists neither the deleted catalog nor the deleted dashboard page', async () => {
+      const sitemap = (await import('@/app/sitemap')).default;
+      const urls = (sitemap as () => MetadataRoute.Sitemap)().map((e) => e.url);
+      expect(urls).not.toContain('https://www.iampatterson.com/demo');
+      expect(urls).not.toContain('https://www.iampatterson.com/demo/ecommerce/analytics');
     });
   });
 

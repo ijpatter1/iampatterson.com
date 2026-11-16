@@ -1,21 +1,21 @@
 /**
  * Phase 10a UAT — Playwright-automated run of 12 of 13 scenarios from
- * `docs/uat/phase-10a-uat.sh`. Scenario 4 ([prod-cold]) is the only
- * scenario that requires genuine Vercel Lambda freeze state and is
- * skipped here — it must be run against the deployed URL after a
- * ≥30-minute idle window.
+ * `docs/uat/phase-10a-uat.sh`. Scenario 4 ([prod-cold]) checked the
+ * Metabase embed's cold cache; 17.1 removed the embed, so it no longer
+ * applies.
  *
  * What this spec covers vs. the human-guided shell script:
  *   - Scenario 1: public-site walkthrough → objective load + console checks
  *   - Scenario 2: overlay boot/cycle/close/reopen → data-phase + BOOT_SESSION_KEY
  *   - Scenario 3: ecommerce funnel with animation timing windows
- *   - Scenario 4: SKIPPED (prod-cold Lambda freeze)
+ *   - Scenario 4: retired with the Metabase embed (17.1)
  *   - Scenario 5/6/10: reduced-motion ON/OFF via page.emulateMedia
  *   - Scenario 7: browser console health across the full walk
  *   - Scenario 8: SessionPulse + LiveStrip session-suffix coherence
  *   - Scenario 9: session rotation propagation via cookie delete + refresh
  *   - Edge A: legacy demo redirects land on the homepage (15.4 retired the
- *     rebuild banner with the Demos section)
+ *     rebuild banner with the Demos section); the deleted catalog and
+ *     dashboard page land on the shop (17.1)
  *   - Edge B: fresh-context cold hydration (Playwright context IS incognito)
  *   - Edge C: pre-set cookie read-don't-mint
  *
@@ -50,8 +50,6 @@ const IGNORED_CONSOLE_PATTERNS = [
   /net::ERR_BLOCKED_BY_CLIENT/i,
   /\[webpack\.cache/i,
   /\[turbopack\]/i,
-  // Recharts pre-existing width/height warnings on analytics page
-  /width\(-1\) and height\(-1\)/i,
   // React 19 informational warning about Cookiebot / GTM / structured-
   // data script tags rendered by layout Server Components. The tags
   // themselves are legitimate (Next.js `<Script>` component or raw
@@ -209,14 +207,6 @@ test.describe('Phase 10a UAT (12 of 13 scenarios)', () => {
 
     await expect(page.getByText(/order confirmed/i)).toBeVisible();
     expect(issues.filter((i) => i.severity === 'error')).toEqual([]);
-  });
-
-  // ════════════════════════════════════════════════════════════════
-  // Scenario 4 — SKIPPED (prod-cold)
-  test.skip('S4: [prod-cold] cold-cache Metabase embed durability — requires prod + 30min idle', () => {
-    // Cannot be automated locally. Run manually via:
-    //   BASE_URL=https://iampatterson.com bash docs/uat/phase-10a-uat.sh
-    // after waiting ≥30 minutes without hitting / or /demo/ecommerce.
   });
 
   // ════════════════════════════════════════════════════════════════
@@ -437,6 +427,20 @@ test.describe('Phase 10a UAT (12 of 13 scenarios)', () => {
       /hydrat|did not match|text content does not match/i.test(i.text),
     );
     expect(hydrationIssues).toEqual([]);
+  });
+
+  // 17.1 deleted the demo catalog and the shop's dashboard page. Old links to
+  // either land on the shop, which is still there.
+  test('EA2: the deleted catalog and dashboard page land on the shop', async ({ page }) => {
+    for (const legacy of ['/demo', '/demo/ecommerce/analytics']) {
+      const response = await page.goto(legacy);
+      expect(new URL(page.url()).pathname).toBe('/demo/ecommerce');
+      expect(response?.status()).toBe(200);
+      const hop = response?.request().redirectedFrom();
+      expect(hop?.url()).toMatch(new RegExp(`${legacy}$`));
+      // 308, so search engines move the index entry to the shop.
+      expect((await hop?.response())?.status()).toBe(308);
+    }
   });
 
   // ════════════════════════════════════════════════════════════════

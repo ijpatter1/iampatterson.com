@@ -8,7 +8,7 @@ import type { ReactNode } from 'react';
  * A styled wrapper that applies the terminal token set (dark background,
  * amber headers, warm cream body, scanline texture) and composes arbitrary
  * children. Primary consumers: deliverable 8 checkout warehouse-write sidebar
- * caller, deliverable 9 confirmation-page Metabase-embed payoff. Callers
+ * caller, deliverable 9 confirmation-page pipeline journey. Callers
  * own content shape; this component owns the chrome.
  */
 export function InlineDiagnostic({

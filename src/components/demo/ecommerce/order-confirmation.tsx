@@ -26,13 +26,9 @@ interface OrderConfirmationProps {
  *       this honestly (UAT r2 item 19).
  *
  * UAT r2 item 20 split: the "Dashboards are not the payoff" closing
- * beat + back-nav used to live inside this component, rendered ABOVE
- * the `DashboardPayoff` Metabase embed. That put the CTA above the
- * payoff, which fought the payoff. The closing beat moved into
- * `ConfirmationCloser` (exported below); the page-level server
- * component renders `<OrderConfirmation /> → <DashboardPayoff /> →
- * <ConfirmationCloser />` so the dashboard is the first thing below
- * the pipeline journey and the CTA lands AFTER it.
+ * beat + back-nav live in `ConfirmationCloser` (exported below), which
+ * the page renders after this component. A Metabase dashboard embed
+ * sat between the two until 17.1 removed it.
  */
 export function OrderConfirmation({ orderId, orderTotal, itemCount }: OrderConfirmationProps) {
   const { push } = useToast();
@@ -69,8 +65,8 @@ export function OrderConfirmation({ orderId, orderTotal, itemCount }: OrderConfi
 
   const hasFiniteTotal = Number.isFinite(orderTotal) && orderTotal > 0;
   const leadSentence1 = hasFiniteTotal
-    ? `Your $${orderTotal.toFixed(2)} order just landed in production BigQuery and is rolling into today's revenue below.`
-    : `A real order just landed in production BigQuery and is rolling into today's revenue below.`;
+    ? `Your $${orderTotal.toFixed(2)} order just landed in production BigQuery.`
+    : `A real order just landed in production BigQuery.`;
 
   return (
     <div className="flex flex-col gap-10">
@@ -82,7 +78,7 @@ export function OrderConfirmation({ orderId, orderTotal, itemCount }: OrderConfi
           Thanks. The event made it all the way through.
         </h1>
         <p className="max-w-[640px] text-[15px] leading-relaxed text-[var(--shop-warm-brown,#5C4A3D)]/80">
-          {leadSentence1} The dashboard ops reads in the morning is what you&apos;re looking at.
+          {leadSentence1}
         </p>
         <div className="flex flex-wrap gap-6 text-xs text-[var(--shop-warm-brown,#5C4A3D)]/80">
           <span>
@@ -138,11 +134,8 @@ export function OrderConfirmation({ orderId, orderTotal, itemCount }: OrderConfi
 
 /**
  * Confirmation-page closing beat, "Dashboards are not the payoff"
- * paragraph + back-nav. Split out of `OrderConfirmation`
- * in UAT r2 item 20 so the page-level composition can render it AFTER
- * the `DashboardPayoff` Metabase embed (pre-r2 it rendered above,
- * putting the "dashboards are not the payoff" CTA in conflict with the
- * dashboard-as-payoff framing by appearing first).
+ * paragraph + back-nav. Split out of `OrderConfirmation` in UAT r2
+ * item 20; the page renders it last.
  */
 export function ConfirmationCloser() {
   return (
