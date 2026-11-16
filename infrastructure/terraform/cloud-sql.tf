@@ -8,9 +8,10 @@ resource "google_sql_database_instance" "metabase_app_db" {
   region           = var.region
   database_version = "POSTGRES_15"
 
-  # TF-level guard against `terraform destroy` deleting the app DB. The GCP-level
+  # TF-level guard against `terraform destroy` deleting the app DB, lifted by
+  # [18.10] so [18.3] can destroy it. The GCP-level
   # settings.deletion_protection_enabled is separately false, matching live.
-  deletion_protection = true
+  deletion_protection = false
 
   settings {
     tier                        = "db-f1-micro"

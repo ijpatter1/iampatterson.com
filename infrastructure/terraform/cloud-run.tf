@@ -426,7 +426,7 @@ resource "google_cloud_run_v2_service" "metabase" {
   client               = "gcloud"
   client_version       = "562.0.0"
   custom_audiences     = []
-  deletion_protection  = true
+  deletion_protection  = false
   description          = null
   ingress              = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
   invoker_iam_disabled = false

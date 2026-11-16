@@ -1,11 +1,11 @@
 # A public surface is down
 
-**Alerts that lead here:** the uptime checks `site-www`
-(`https://www.iampatterson.com/`) and `metabase-lb`
-(`https://bi.iampatterson.com/`).
+**Alerts that lead here:** the uptime check `site-www`
+(`https://www.iampatterson.com/`), and a Cloud Run 5xx on `metabase`.
 
-These two are grouped because the diagnosis is the same shape and the systems
-behind them are entirely different.
+The `metabase-lb` uptime check on `https://bi.iampatterson.com/` was removed by
+[18.10], one step before [18.3] destroys Metabase. Its section below stays until
+then, for a 5xx on the service; [18.3] removes it.
 
 ## `site-www` — the website itself
 

@@ -16,7 +16,7 @@ each part of the system fails.
 
 ## Alert to entry
 
-Sixteen alerts: eleven policies in `infrastructure/monitoring/spec/policies.json`
+Fifteen alerts: eleven policies in `infrastructure/monitoring/spec/policies.json`
 plus one per uptime check in `uptime.json`.
 
 | Alert | Entry |
@@ -36,7 +36,6 @@ plus one per uptime check in `uptime.json`.
 | Uptime `event-stream-health` failing | [event pipeline backlog](event-pipeline-backlog.md) |
 | Uptime `claudish-proxy-health` failing | [Claudish proxy over budget](claudish-proxy-over-budget.md) |
 | Uptime `site-www` failing | [a public surface is down](uptime-check-failing.md) |
-| Uptime `metabase-lb` failing | [a public surface is down](uptime-check-failing.md) |
 
 ### Two alerts cover every service
 
