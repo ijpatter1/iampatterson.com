@@ -970,8 +970,8 @@ decided and why.
 | Vertex spend budget for Claudish | not created | The proxy's in-app cap reserves and reconciles token spend per request and trips itself to cache-only, which acts; a budget only notifies, hours late. Project-level spend is now visible through the budget above. |
 
 The AI export bucket the deliverable names, `gs://iampatterson-ai-exports`, does
-not exist. It is declared by `infrastructure/bigquery/ai_access_layer/setup.sh`,
-which was written and never run. Recorded rather than created: a bucket nothing
+not exist. It was declared by `infrastructure/bigquery/ai_access_layer/setup.sh`,
+which was written and never run, and deleted unrun in 18.1. Recorded rather than created: a bucket nothing
 writes to is not infrastructure.
 
 ### The provider boundary

@@ -51,7 +51,7 @@
     ],
     "_absent": {
       "name": "gs://iampatterson-ai-exports",
-      "declaredBy": "infrastructure/bigquery/ai_access_layer/setup.sh",
+      "declaredBy": "infrastructure/bigquery/ai_access_layer/setup.sh, deleted unrun in 18.1 (2026-11-15) with the rest of the AI access layer",
       "finding": "Not provisioned. The project has three buckets and this is not among them, so the deliverable's 'lifecycle rules on the AI export bucket' has no target. The access layer's setup script was written and never run. Recorded rather than created: a bucket nobody has asked for and nothing writes to is not infrastructure, and creating one to satisfy a checklist would be worse than saying so."
     }
   },

@@ -11,7 +11,8 @@ found something wrong with the data, and the whole workflow invocation is marked
 FAILED.
 
 The alert fires on the invocation, not the assertion, so the first job is
-finding which of the twenty actions failed.
+finding which of the six actions failed (three tables, three assertions, since
+18.1 thinned the set on 2026-11-15; runs before that had twenty).
 
 ## Diagnose
 
@@ -78,8 +79,8 @@ failed somewhere the assertions are not.
 
 An assertion failure means one of two things, and they need opposite responses:
 
-**The data is wrong.** Events stopped arriving, a source changed shape, a
-generator run failed. Fix the data or the pipeline feeding it.
+**The data is wrong.** Real events stopped arriving or a source changed
+shape. Fix the data or the pipeline feeding it.
 
 **The assertion is wrong.** It encodes an expectation that was never true, or
 stopped being true for a legitimate reason.
@@ -91,16 +92,35 @@ weekdays, so every weekend counted against it. Six empty days in sixty-one gave 
 gap rate of 0.098 against its own threshold of 0.10, and it drifted across that
 line as old days aged out. The assertion was wrong, not the data.
 
-It was corrected twice over: the date spine now counts weekdays only, and it is
+It was corrected twice over: the date spine came to count weekdays only, and it was
 anchored to `CURRENT_DATE()` rather than to the newest row in the table. That
 second change matters more than it sounds. A spine that ends at the last row of
 data can never contain a missing day, so a pipeline that stopped dead entirely
 would have scored a perfect gap rate forever.
 
+Both checks were wrong again for real traffic, and 18.1 (2026-11-15) dealt with
+them before the generator stops. `assert_volume_anomaly` is removed: it modelled
+the generator's weekday schedule, and on real traffic 12 of 21 weekdays had no
+event. `assert_source_freshness` had been failing on most Sundays and Mondays
+because its 24-hour window did not tolerate the generator's idle weekend; it now
+counts real events only, by arrival time, and fails after fourteen days without
+one. The longest real-traffic gap measured before the change was 7.4 days. The
+reasoning is in the assertion's own comment.
+
 ## Fix
 
-If the data is wrong, follow the entry for whatever produced it — most often
-[data generator stuck](data-generator-stuck.md).
+If the data is wrong, find where real events stopped. Since 18.1 no remaining
+check reads the generator's rows, so a failure is never the generator. A
+freshness or real-session failure means either no real visitor reached
+BigQuery for the window, or sGTM stopped writing to BigQuery. To tell them
+apart:
+
+1. Visit `https://www.iampatterson.com`, allow analytics, and watch the
+   overlay: if your events appear there, the browser and sGTM are fine.
+2. Then query `events_raw` for rows with your session ID. Rows present: it
+   was a genuinely quiet spell. Overlay events but no rows: the server
+   container's BigQuery tag, or the `sgtm-runtime` account's BigQuery grants,
+   are broken.
 
 If the assertion is wrong, edit it under `infrastructure/dataform/definitions/`
 on `main` and let the sync action propagate it. **Do not edit the `dataform`
@@ -113,15 +133,16 @@ The next nightly run at 04:00 UTC completes SUCCEEDED. You do not have to wait
 for it — re-run the same invocation query above after triggering a workflow, or
 simply check the following morning.
 
-For reference, the corrected assertion first ran on 2026-09-05 and succeeded.
+For reference, the retuned checks (18.1, 2026-11-15) leave three assertions,
+none of which reads generator rows.
 
 ## Rehearsal
 
-Not rehearsed, and it cannot now be. Firing this alert on demand needs a failing
-Dataform action, and the one action that failed reliably is the one this project
-fixed. `infrastructure/monitoring/apply.sh rehearse-dataform` exists, checks for
-a recent failed invocation, finds none, and refuses rather than spending a
-production workflow run to manufacture a failure.
+Not rehearsed. Firing this alert on demand needs a failing Dataform action.
+`infrastructure/monitoring/apply.sh rehearse-dataform` checks for a recent
+failed invocation and, if there is one, re-runs `assert_source_freshness` alone
+to reproduce it; on a healthy site there is none, and it refuses rather than
+spending a production workflow run to manufacture a failure.
 
 The alert has fired for real, nightly, for a month before the fix. Its delivery
 path is not in doubt; what is missing is a staged firing, and manufacturing one

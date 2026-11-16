@@ -118,3 +118,22 @@ describe('infrastructure/monitoring/apply.sh', () => {
     expect(script).toContain('docs/verification/');
   });
 });
+
+describe('apply.sh names only Dataform actions that exist', () => {
+  // 18.1 removed assert_volume_anomaly while rehearse-dataform still invoked it
+  // by name; an operator command aimed at a missing target fails confusingly or
+  // "succeeds" doing nothing. Every assertion the script names must be defined.
+  it('every iampatterson_assertions target in apply.sh has a definition', () => {
+    const named = [
+      ...read('infrastructure/monitoring/apply.sh').matchAll(/"name":\s*"(assert_[a-z_]+)"/g),
+    ].map((m) => m[1]);
+    expect(named.length).toBeGreaterThan(0);
+    for (const name of named) {
+      expect(
+        statSync(
+          path.join(root, `infrastructure/dataform/definitions/assertions/${name}.sqlx`),
+        ).isFile(),
+      ).toBe(true);
+    }
+  });
+});
