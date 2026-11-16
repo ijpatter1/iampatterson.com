@@ -73,13 +73,6 @@ describe('OrderConfirmation (Phase 9F D9)', () => {
     expect(screen.getByText(/A real order just landed in production BigQuery/)).toBeInTheDocument();
   });
 
-  it('does NOT render the "Dashboards are not the payoff" closing beat (moved to ConfirmationCloser in UAT r2 item 20)', () => {
-    const { container } = renderConfirmation();
-    // The closing beat lives in ConfirmationCloser, which the page renders
-    // last.
-    expect(container.textContent).not.toMatch(/Dashboards are not the payoff/);
-  });
-
   it('does NOT render the back-to-shop / return-to-site nav (moved to ConfirmationCloser)', () => {
     const { container } = renderConfirmation();
     expect(container.textContent).not.toMatch(/back to the shop/);
@@ -90,7 +83,6 @@ describe('OrderConfirmation (Phase 9F D9)', () => {
     renderConfirmation();
     const diag = document.querySelector('[data-inline-diagnostic]');
     expect(diag?.textContent).not.toContain('840ms end-to-end');
-    expect(diag?.textContent).toContain('from click to dashboard');
     expect(diag?.textContent).toContain('representative cadence');
   });
 
@@ -115,7 +107,7 @@ describe('OrderConfirmation (Phase 9F D9)', () => {
     expect(toast?.textContent).toContain('ORD-XYZ987');
   });
 
-  it('renders the 6-step pipeline-journey list in an inline diagnostic', () => {
+  it('renders the 5-step pipeline-journey list in an inline diagnostic', () => {
     renderConfirmation();
     const diag = document.querySelector('[data-inline-diagnostic]');
     expect(diag).not.toBeNull();
@@ -123,33 +115,38 @@ describe('OrderConfirmation (Phase 9F D9)', () => {
     expect(diag?.textContent).toContain('sGTM received');
     expect(diag?.textContent).toContain('iampatterson_raw.events_raw');
     expect(diag?.textContent).toContain('Dataform staging');
-    expect(diag?.textContent).toContain('marts refreshed');
-    expect(diag?.textContent).toContain('dashboard KPIs reflect this order');
+    expect(diag?.textContent).toContain('mart refreshed · session_events');
+    expect(diag?.querySelectorAll('li')).toHaveLength(5);
   });
 
-  it('final pipeline step has [LIVE] tag instead of [OK]', () => {
+  // Metabase is retired (18.3) and 18.1 left one mart, mart_session_events.
+  // The journey ends where the data does: at the warehouse, not a dashboard,
+  // and it names no mart that no longer exists.
+  it('ends the journey at the mart, naming no dashboard and no deleted mart', () => {
     renderConfirmation();
     const diag = document.querySelector('[data-inline-diagnostic]');
-    expect(diag?.textContent).toContain('[LIVE]');
+    const steps = Array.from(diag?.querySelectorAll('li') ?? []).map((li) => li.textContent);
+    expect(steps[steps.length - 1]).toMatch(/mart refreshed · session_events/);
+    expect(diag?.textContent).not.toMatch(/dashboard/i);
+    expect(diag?.textContent).not.toMatch(/attribution|ltv/i);
+    expect(diag?.textContent).not.toContain('[LIVE]');
   });
 });
 
 describe('ConfirmationCloser (UAT r2 item 20 split)', () => {
-  it('renders the "Dashboards are not the payoff" closing beat', () => {
-    render(<ConfirmationCloser />);
-    expect(
-      screen.getByText(/Dashboards are not the payoff\. Answers are\. The mart layer/),
-    ).toBeInTheDocument();
+  it('no longer claims a dashboard', () => {
+    const { container } = render(<ConfirmationCloser />);
+    expect(container.textContent).not.toMatch(/dashboard/i);
   });
 
-  // /services was deleted in 16.1 and redirects home, so the closer no longer
-  // links to it; the shop and site links remain.
-  it('renders back-to-shop and return-to-site nav, and no link to the deleted /services', () => {
+  // The confirmation page is the end of the shop demo. It ends on the site's
+  // one call to action (the homepage's "Start with a review"), with the way
+  // back to the shop beside it. /services was deleted in 16.1.
+  it('ends the demo on the review call to action and the way back to the shop', () => {
     render(<ConfirmationCloser />);
-    const links = screen.getAllByRole('link');
-    const hrefs = links.map((l) => l.getAttribute('href'));
-    expect(hrefs).not.toContain('/services');
-    expect(hrefs).toContain('/demo/ecommerce');
-    expect(hrefs).toContain('/');
+    const cta = screen.getByRole('link', { name: /Start with a review/ });
+    expect(cta.getAttribute('href')).toBe('/review');
+    const hrefs = screen.getAllByRole('link').map((l) => l.getAttribute('href'));
+    expect(hrefs).toEqual(['/demo/ecommerce', '/review']);
   });
 });

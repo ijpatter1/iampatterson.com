@@ -23,8 +23,8 @@ export function EcomFooter() {
         <div className="flex flex-col gap-2 md:max-w-[520px]">
           <p className="text-[13px] leading-relaxed text-[var(--shop-warm-brown,#5C4A3D)]/80">
             The tuna shop is a working storefront built to show what a production measurement stack
-            looks like end-to-end. Nothing actually ships from here. Every interaction you make is
-            traced from click to dashboard. A portion of every real sale goes to no-kill rescues.
+            looks like end-to-end. Nothing actually ships from here. A portion of every real sale
+            goes to no-kill rescues.
           </p>
         </div>
         <nav

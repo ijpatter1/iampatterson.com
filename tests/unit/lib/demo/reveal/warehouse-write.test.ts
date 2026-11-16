@@ -224,16 +224,18 @@ describe('bqRowForCart', () => {
 });
 
 describe('FULL_PAGE_DIAGNOSTIC_LINES', () => {
-  it('is the 7-line pipeline-journey sequence', () => {
-    expect(FULL_PAGE_DIAGNOSTIC_LINES).toHaveLength(7);
+  it('is the 6-line pipeline-journey sequence', () => {
+    expect(FULL_PAGE_DIAGNOSTIC_LINES).toHaveLength(6);
   });
 
-  it('first line is the purchase fire, final line is the dashboards refresh (emphasised)', () => {
+  // Metabase is retired (18.3): the journey ends at Dataform, with no
+  // dashboard step after it.
+  it('first line is the purchase fire, final line is the Dataform rebuild, and no line claims a dashboard', () => {
     expect(FULL_PAGE_DIAGNOSTIC_LINES[0].text).toMatch(/purchase event fired/i);
     const last = FULL_PAGE_DIAGNOSTIC_LINES[FULL_PAGE_DIAGNOSTIC_LINES.length - 1];
-    expect(last.text).toMatch(/dashboards.*revenue kpi/i);
+    expect(last.text).toMatch(/^dataform · /);
     expect(last.emph).toBe(true);
-    expect(last.tag).toBe('LIVE');
+    expect(FULL_PAGE_DIAGNOSTIC_LINES.some((l) => /dashboard/i.test(l.text))).toBe(false);
   });
 
   it('includes the Meta CAPI skip line', () => {
@@ -274,10 +276,16 @@ describe('diagnosticLinesForConsent (UAT r1 item 14, real consent data)', () => 
     expect(meta?.text).toMatch(/skipped/);
   });
 
-  it('final line is always the LIVE emph dashboards refresh', () => {
-    const lines = diagnosticLinesForConsent({ analytics: false, marketing: false });
-    const last = lines[lines.length - 1];
-    expect(last.tag).toBe('LIVE');
-    expect(last.emph).toBe(true);
-  });
+  it.each([
+    [false, false],
+    [true, true],
+  ])(
+    'ends at Dataform and claims no dashboard (analytics=%s, marketing=%s)',
+    (analytics, marketing) => {
+      const lines = diagnosticLinesForConsent({ analytics, marketing });
+      expect(lines[lines.length - 1].text).toMatch(/^dataform · /);
+      expect(lines[lines.length - 1].emph).toBe(true);
+      expect(lines.some((l) => /dashboard/i.test(l.text))).toBe(false);
+    },
+  );
 });

@@ -20,15 +20,15 @@ interface OrderConfirmationProps {
  *   (a) the editorial order-confirmed block with $total-interpolated
  *       lead paragraph (with zombie-state fallback for missing / zero /
  *       non-finite totals, closes 9B follow-up #5);
- *   (b) the Pattern 3 InlineDiagnostic-wrapped timestamped 6-step
- *       pipeline-journey list (+0ms → +840ms). Per-step timings are
+ *   (b) the Pattern 3 InlineDiagnostic-wrapped timestamped 5-step
+ *       pipeline-journey list (+0ms → +611ms), ending at the mart. Per-step timings are
  *       representative; a muted footer inside the diagnostic surfaces
  *       this honestly (UAT r2 item 19).
  *
- * UAT r2 item 20 split: the "Dashboards are not the payoff" closing
- * beat + back-nav live in `ConfirmationCloser` (exported below), which
- * the page renders after this component. A Metabase dashboard embed
- * sat between the two until 17.1 removed it.
+ * UAT r2 item 20 split: the closing links live in `ConfirmationCloser`
+ * (exported below), which the page renders after this component. A
+ * Metabase dashboard embed sat between the two until 17.1 removed it,
+ * and the dashboard copy went before Metabase was retired (18.3).
  */
 export function OrderConfirmation({ orderId, orderTotal, itemCount }: OrderConfirmationProps) {
   const { push } = useToast();
@@ -98,7 +98,7 @@ export function OrderConfirmation({ orderId, orderTotal, itemCount }: OrderConfi
         </div>
       </section>
 
-      <InlineDiagnostic tag="WHAT JUST HAPPENED" title="from click to dashboard">
+      <InlineDiagnostic tag="WHAT JUST HAPPENED">
         <ol className="flex flex-col gap-1.5">
           {PIPELINE_JOURNEY.map((step, i) => (
             <li
@@ -133,20 +133,13 @@ export function OrderConfirmation({ orderId, orderTotal, itemCount }: OrderConfi
 }
 
 /**
- * Confirmation-page closing beat, "Dashboards are not the payoff"
- * paragraph + back-nav. Split out of `OrderConfirmation` in UAT r2
- * item 20; the page renders it last.
+ * The end of the shop demo: the way back to the shop and the site's one
+ * call to action, the homepage's "Start with a review". Split out of
+ * `OrderConfirmation` in UAT r2 item 20; the page renders it last.
  */
 export function ConfirmationCloser() {
   return (
     <div className="flex flex-col gap-10">
-      <section className="flex flex-col gap-4 border-t border-[var(--shop-warm-brown,#5C4A3D)]/12 pt-8">
-        <p className="max-w-[640px] font-display text-[20px] leading-snug text-[var(--shop-warm-brown,#5C4A3D)]">
-          Dashboards are not the payoff. Answers are. The mart layer is what makes the answers
-          trustworthy.
-        </p>
-      </section>
-
       <nav className="flex flex-wrap items-center gap-4 border-t border-[var(--shop-warm-brown,#5C4A3D)]/12 pt-6 text-sm">
         <Link
           href="/demo/ecommerce"
@@ -154,8 +147,8 @@ export function ConfirmationCloser() {
         >
           ← back to the shop
         </Link>
-        <Link href="/" className="text-[var(--shop-terracotta,#C4703A)] hover:underline">
-          return to iampatterson.com →
+        <Link href="/review" className="text-[var(--shop-terracotta,#C4703A)] hover:underline">
+          Start with a review →
         </Link>
       </nav>
     </div>
@@ -173,6 +166,5 @@ const PIPELINE_JOURNEY: JourneyStep[] = [
   { t: '+ 84ms', text: 'sGTM received · consent checked · enriched · routed', tag: 'OK' },
   { t: '+ 186ms', text: 'streaming insert · 1 row → iampatterson_raw.events_raw', tag: 'OK' },
   { t: '+ 412ms', text: 'Dataform staging · 4 stitches, 0 null drops', tag: 'OK' },
-  { t: '+ 611ms', text: 'marts refreshed · session_events, attribution, ltv', tag: 'OK' },
-  { t: '+ 840ms', text: 'dashboard KPIs reflect this order', tag: 'LIVE' },
+  { t: '+ 611ms', text: 'mart refreshed · session_events', tag: 'OK' },
 ];

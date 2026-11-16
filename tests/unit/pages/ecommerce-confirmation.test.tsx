@@ -74,9 +74,9 @@ describe('ConfirmationPage', () => {
     expect(screen.queryByText(/-100/)).toBeNull();
   });
 
-  it('still closes with the way back to the shop and the site', async () => {
+  it('closes with the way back to the shop and the review call to action', async () => {
     await renderPage({ order_id: 'demo-d9', total: '44.98', items: '2' });
     const hrefs = screen.getAllByRole('link').map((l) => l.getAttribute('href'));
-    expect(hrefs).toEqual(expect.arrayContaining(['/demo/ecommerce', '/']));
+    expect(hrefs).toEqual(expect.arrayContaining(['/demo/ecommerce', '/review']));
   });
 });

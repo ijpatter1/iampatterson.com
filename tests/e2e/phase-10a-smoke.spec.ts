@@ -187,7 +187,7 @@ test.describe('Phase 10a D6 interactive smoke', () => {
   });
 
   // 17.1 removed the Metabase dashboard embed and its warmup: the page
-  // renders the order and the closing beat, frames nothing, and neither links
+  // renders the order and the closing links, frames nothing, and neither links
   // to nor requests anything from the BI host.
   test('confirmation page renders the order with no dashboard embed and nothing from the BI host', async ({
     page,
@@ -202,7 +202,8 @@ test.describe('Phase 10a D6 interactive smoke', () => {
     await page.goto('/demo/ecommerce/confirmation?order_id=SMOKE-10a&total=44.98&items=2');
 
     await expect(page.getByText(/order confirmed/i)).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText(/Dashboards are not the payoff/i)).toBeVisible();
+    await expect(page.getByRole('link', { name: /Start with a review/ })).toBeVisible();
+    await expect(page.getByText(/dashboard/i)).toHaveCount(0);
     await expect(page.locator('iframe')).toHaveCount(0);
     await expect(page.locator('a[href*="bi.iampatterson.com"]')).toHaveCount(0);
     expect(biRequests).toEqual([]);

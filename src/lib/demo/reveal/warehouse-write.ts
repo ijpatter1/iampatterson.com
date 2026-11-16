@@ -132,7 +132,7 @@ export function bqRowForCart(params: {
   });
 }
 
-/** 7-line pipeline-journey sequence for the full-page diagnostic moment.
+/** 6-line pipeline-journey sequence for the full-page diagnostic moment.
  *
  * The static default assumes analytics=granted, marketing=denied, the
  * most common state for a visitor who accepts only strictly necessary
@@ -149,18 +149,17 @@ export const FULL_PAGE_DIAGNOSTIC_LINES: Array<{
   { text: 'routed → sGTM (io.iampatterson.com)', tag: 'OK' },
   { text: 'routed → Meta CAPI · skipped (marketing denied)', tag: 'SKIP' },
   { text: 'routed → BigQuery · 1 row written to iampatterson_raw.events_raw', tag: 'OK' },
-  { text: 'dataform · marts rebuilding against the new row', tag: 'OK' },
-  { text: 'dashboards · revenue KPI refreshing', tag: 'LIVE', emph: true },
+  { text: 'dataform · marts rebuilding against the new row', tag: 'OK', emph: true },
 ];
 
 /**
- * Build the 7-line pipeline-journey sequence against the visitor's real
+ * Build the 6-line pipeline-journey sequence against the visitor's real
  * consent state so the diagnostic text matches what would actually
  * happen. When analytics is denied, the consent check line reflects that;
  * when marketing is granted, the Meta CAPI line flips from SKIP to OK
  * ("routed → Meta CAPI · event sent"). Other lines are unconditional,
- * the purchase fires, sGTM receives it, BigQuery inserts the row, the
- * attribution engine and dashboards downstream of BQ both run.
+ * the purchase fires, sGTM receives it, BigQuery inserts the row and
+ * Dataform rebuilds downstream of it.
  */
 export function diagnosticLinesForConsent(consent: {
   analytics: boolean;
@@ -181,7 +180,6 @@ export function diagnosticLinesForConsent(consent: {
     { text: 'routed → sGTM (io.iampatterson.com)', tag: 'OK' },
     metaLine,
     { text: 'routed → BigQuery · 1 row written to iampatterson_raw.events_raw', tag: 'OK' },
-    { text: 'dataform · marts rebuilding against the new row', tag: 'OK' },
-    { text: 'dashboards · revenue KPI refreshing', tag: 'LIVE', emph: true },
+    { text: 'dataform · marts rebuilding against the new row', tag: 'OK', emph: true },
   ];
 }
