@@ -21,7 +21,7 @@ export EVENT_STREAM_URL=https://event-stream-XXXXXXXXXX.run.app
 
 ## Topic: `iampatterson-events`
 
-Every event processed by sGTM is published to this topic. The message payload is a JSON object containing the full event data from `getAllEventData()` plus the `session_id` from the `_iap_sid` cookie.
+Every event processed by sGTM is published to this topic. The message payload is a JSON object built from `getAllEventData()`: the session ID, event name, timestamp, page fields, consent and routing status, and only the parameters on the tag's allow-list (`keys` in `infrastructure/gtm/pubsub-tag-template.js`), not every parameter. `tests/unit/infra/stream-parameters.test.ts` holds that list to what the overlay reads.
 
 ### Message Schema
 
