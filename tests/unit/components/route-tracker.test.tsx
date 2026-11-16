@@ -2,6 +2,7 @@
  * @jest-environment jsdom
  */
 import { render } from '@testing-library/react';
+import { StrictMode } from 'react';
 
 jest.mock('next/navigation', () => ({
   usePathname: jest.fn(() => '/'),
@@ -23,10 +24,75 @@ beforeEach(() => {
   mockUsePathname.mockReturnValue('/');
 });
 
+/** jsdom has no Navigation Timing; stand in the one entry the tracker reads. */
+function stubNavigationType(type: string): () => void {
+  Object.defineProperty(performance, 'getEntriesByType', {
+    configurable: true,
+    value: (entryType: string) => (entryType === 'navigation' ? [{ type }] : []),
+  });
+  return () => {
+    delete (performance as unknown as { getEntriesByType?: unknown }).getEntriesByType;
+  };
+}
+
 describe('RouteTracker', () => {
-  it('does not fire trackPageView on initial mount (googtag handles it)', () => {
-    render(<RouteTracker />);
-    expect(mockTrackPageView).not.toHaveBeenCalled();
+  // 15.8: the landing page needs its own page_view. `GA4 - Config` has
+  // send_page_view off (page views come from app code), so before 15.8 a
+  // visitor's first page sent none, and nothing in GA4 or BigQuery saw where
+  // a visit started.
+  it('fires trackPageView for the landing page, with the document referrer', () => {
+    Object.defineProperty(document, 'referrer', {
+      value: 'https://www.linkedin.com/',
+      configurable: true,
+    });
+    try {
+      render(<RouteTracker />);
+      expect(mockTrackPageView).toHaveBeenCalledTimes(1);
+      expect(mockTrackPageView).toHaveBeenCalledWith('https://www.linkedin.com/');
+    } finally {
+      delete (document as unknown as { referrer?: string }).referrer;
+    }
+  });
+
+  // A hard reload keeps the original document.referrer. Sending it again
+  // would credit the external source with a second landing.
+  it('sends an empty referrer on a reload', () => {
+    Object.defineProperty(document, 'referrer', {
+      value: 'https://www.linkedin.com/',
+      configurable: true,
+    });
+    const restore = stubNavigationType('reload');
+    try {
+      render(<RouteTracker />);
+      expect(mockTrackPageView).toHaveBeenCalledWith('');
+    } finally {
+      restore();
+      delete (document as unknown as { referrer?: string }).referrer;
+    }
+  });
+
+  it('keeps the referrer on a first navigation to the site', () => {
+    Object.defineProperty(document, 'referrer', {
+      value: 'https://www.linkedin.com/',
+      configurable: true,
+    });
+    const restore = stubNavigationType('navigate');
+    try {
+      render(<RouteTracker />);
+      expect(mockTrackPageView).toHaveBeenCalledWith('https://www.linkedin.com/');
+    } finally {
+      restore();
+      delete (document as unknown as { referrer?: string }).referrer;
+    }
+  });
+
+  it('fires the landing page_view once under Strict Mode', () => {
+    render(
+      <StrictMode>
+        <RouteTracker />
+      </StrictMode>,
+    );
+    expect(mockTrackPageView).toHaveBeenCalledTimes(1);
   });
 
   it('fires trackPageView with previous path on SPA navigation', () => {
@@ -41,6 +107,7 @@ describe('RouteTracker', () => {
 
   it('fires trackPageView on subsequent navigations', () => {
     const { rerender } = render(<RouteTracker />);
+    mockTrackPageView.mockClear();
 
     mockUsePathname.mockReturnValue('/services');
     rerender(<RouteTracker />);

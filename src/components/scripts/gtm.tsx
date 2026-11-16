@@ -2,6 +2,8 @@
 
 import Script from 'next/script';
 
+import { STORED_CONSENT_UPDATE_JS } from '@/lib/events/stored-consent';
+
 const GTM_CDN = 'https://www.googletagmanager.com';
 
 function getGtmScriptUrl(): string {
@@ -22,6 +24,9 @@ export function GtmScript() {
 
   const scriptUrl = getGtmScriptUrl();
 
+  // The defaults, then a returning visitor's stored choice (15.8), in one
+  // inline script ahead of the GTM loader, so GTM's page-load evaluation sees
+  // the stored choice rather than the defaults. See stored-consent.ts.
   return (
     <>
       <Script id="consent-defaults" strategy="beforeInteractive" data-cookieconsent="ignore">
@@ -39,7 +44,8 @@ gtag('consent', 'default', {
   'wait_for_update': 500
 });
 gtag('set', 'ads_data_redaction', true);
-gtag('set', 'url_passthrough', false);`}
+gtag('set', 'url_passthrough', false);
+${STORED_CONSENT_UPDATE_JS}`}
       </Script>
       <Script id="gtm-script" strategy="afterInteractive" data-cookieconsent="ignore">
         {`

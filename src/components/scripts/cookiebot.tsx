@@ -25,8 +25,9 @@ import Script from 'next/script';
  * `data-consentmode="disabled"` turns off the loader's own Consent Mode
  * writes. Blocking mode does not affect those: left on, the loader pushes its
  * own consent update from the raw banner choice, alongside the bridge. The
- * bridge is where Global Privacy Control is honored, so it has to be the only
- * writer.
+ * bridge, and the stored-consent update ahead of GTM in the consent defaults
+ * (15.8), are where Global Privacy Control is honored, so they have to be the
+ * only writers.
  *
  * Two more loader signals carry the raw banner choice and are not covered by
  * that attribute. `data-ms-consent-mode="disabled"` turns off its Microsoft

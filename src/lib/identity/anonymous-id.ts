@@ -12,9 +12,9 @@
  * holds the honored analytics consent. A grant mints the cookie (or reuses
  * and refreshes the one already there). Without analytics consent it is
  * expired only once Cookiebot has a resolved answer: a decline or withdrawal
- * event, or the init path when `Cookiebot.hasResponse === true`, never
- * Cookiebot's unresolved default at page load. For a visitor who has never
- * chosen, `expireAnonymousIdLeftover` expires a leftover. No export here can
+ * event, the init path when Cookiebot has an answer (`hasResponse` true, or
+ * false for a visitor who has never chosen), or a stored decline, never
+ * Cookiebot's unresolved default at page load. No export here can
  * write it, so no caller can mint the ID without consent. A visitor who
  * declines, or has not chosen yet, carries no year-long identifier, and
  * events carry ''.
