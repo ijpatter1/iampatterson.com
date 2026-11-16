@@ -103,9 +103,9 @@ them before the generator stops. `assert_volume_anomaly` is removed: it modelled
 the generator's weekday schedule, and on real traffic 12 of 21 weekdays had no
 event. `assert_source_freshness` had been failing on most Sundays and Mondays
 because its 24-hour window did not tolerate the generator's idle weekend; it now
-counts real events only, by arrival time, and fails after fourteen days without
-one. The longest real-traffic gap measured before the change was 7.4 days. The
-reasoning is in the assertion's own comment.
+counts real events only, by arrival time, and fails after ten days without
+one. Over the 60 nightly runs to 2026-11-15, the longest real-traffic gap was
+7.4 days. The reasoning is in the assertion's own comment.
 
 ## Fix
 
