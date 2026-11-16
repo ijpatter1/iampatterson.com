@@ -327,4 +327,4 @@ runCode(code);
 // GA4 delivers these as numbers. A 0 scroll is a real value and must survive
 // (only '' is filtered out).
 assertThat(capturedBody9).contains('\\"engagement_seconds\\":60');
-assertThat(capturedBody9).contains('\\"max_scroll_pct\\":0');
+assertThat(capturedBody9).contains('\\"max_scroll_pct\\":0}');

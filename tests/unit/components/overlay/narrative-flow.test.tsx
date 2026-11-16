@@ -129,6 +129,29 @@ describe('NarrativeFlow', () => {
     expect(screen.getByText(/scrolled 87%/i)).toBeInTheDocument();
   });
 
+  // A parameter that never arrived is unknown, not zero: "(scrolled 0%)" was a
+  // false fact the overlay showed while the stream dropped the key (2026-11-16).
+  // A real 0 still reads 0%.
+  it('shows ? for a missing scroll value, and 0% only for a real 0', () => {
+    const { unmount } = render(
+      <NarrativeFlow
+        event={makeEvent({ event_name: 'page_engagement', page_path: '/', parameters: {} })}
+      />,
+    );
+    expect(screen.getByText(/spent \?s engaged on \/ \(scrolled \?%\)/i)).toBeInTheDocument();
+    unmount();
+    render(
+      <NarrativeFlow
+        event={makeEvent({
+          event_name: 'page_engagement',
+          page_path: '/',
+          parameters: { engagement_seconds: 15, max_scroll_pct: 0 },
+        })}
+      />,
+    );
+    expect(screen.getByText(/scrolled 0%/i)).toBeInTheDocument();
+  });
+
   it('describes claudish_translate with direction + size (feat/claudish)', () => {
     render(
       <NarrativeFlow

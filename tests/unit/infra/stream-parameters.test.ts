@@ -35,8 +35,10 @@ const narrativeReads = (): string[] => {
   const reads = new Set<string>();
   for (const f of overlayFiles()) {
     const src = read(f);
-    for (const m of src.matchAll(/\b(?:params|parameters)(?:\?\.|\.)([a-z_]+)\b/g)) reads.add(m[1]);
-    for (const m of src.matchAll(/\b(?:params|parameters)\[['"]([a-z_]+)['"]\]/g)) reads.add(m[1]);
+    for (const m of src.matchAll(/\b(?:params|parameters)(?:\?\.|\.)([A-Za-z0-9_]+)\b/g))
+      reads.add(m[1]);
+    for (const m of src.matchAll(/\b(?:params|parameters)\[['"]([A-Za-z0-9_]+)['"]\]/g))
+      reads.add(m[1]);
   }
   return [...reads];
 };
