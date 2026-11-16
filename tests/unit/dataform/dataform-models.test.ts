@@ -334,10 +334,11 @@ describe('Dataform assertions', () => {
 
   // Measured over the 60 runs from 2026-09-17 to 2026-11-15: the longest wait
   // since the last real event at 04:00 UTC was 177 hours (7.4 days). Seven days
-  // would have failed once; fourteen failed none and still fires sixteen days
-  // sooner than the thirty-day real-session check in assert_stg_sessions.
-  test('assert_source_freshness tolerates fourteen quiet days, twice the longest measured', () => {
-    expect(freshness()).toContain('INTERVAL 14 DAY');
+  // would have failed once. Ian chose ten (2026-11-16), 1.35 times that gap:
+  // it failed none of the 60 runs, and a broken sGTM-to-BigQuery write goes
+  // unnoticed for at most ten days once the generator is gone.
+  test('assert_source_freshness tolerates ten quiet days, 1.35 times the longest measured', () => {
+    expect(freshness()).toContain('INTERVAL 10 DAY');
     expect(freshness()).not.toMatch(/>\s*24\b/);
   });
 

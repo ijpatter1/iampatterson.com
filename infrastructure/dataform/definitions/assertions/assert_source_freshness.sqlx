@@ -1,6 +1,6 @@
 config {
   type: "assertion",
-  description: "Validates source freshness on real traffic: at least one non-synthetic event has arrived in the last 14 days. Fails if none has, or if there is no real event at all, indicating a pipeline outage."
+  description: "Validates source freshness on real traffic: at least one non-synthetic event has arrived in the last 10 days. Fails if none has, or if there is no real event at all, indicating a pipeline outage."
 }
 
 /*
@@ -16,11 +16,13 @@ config {
  * Real rows only. The verdict is then the same with the generator running or
  * stopped, so its retirement cannot change what this assertion says.
  *
- * Fourteen days. Measured over the 60 nightly runs from 2026-09-17 to
- * 2026-11-15, the longest wait at 04:00 UTC since the last real event was
- * 177 hours (7.4 days, a quiet week from 2026-09-22). Seven days would have
- * failed once; fourteen failed none, and still fires sixteen days before
- * assert_stg_sessions' thirty-day real-session check.
+ * Ten days (Ian, 2026-11-16). Measured over the 60 nightly runs from
+ * 2026-09-17 to 2026-11-15, the longest wait at 04:00 UTC since the last real
+ * event was 177 hours (7.4 days, a quiet week from 2026-09-22). Seven days
+ * would have failed once; ten, 1.35 times that gap, failed none. Once the
+ * generator is gone this is the only check that notices sGTM no longer
+ * writing to BigQuery, so the window is also how long that can go unseen.
+ * It fires twenty days before assert_stg_sessions' thirty-day check.
  *
  * received_at, not event_timestamp. event_timestamp prefers the browser's
  * clock, so one visitor with a clock set ahead holds the maximum in the future
@@ -38,4 +40,4 @@ FROM ${ref("stg_events")}
 WHERE is_synthetic = FALSE
 HAVING
   MAX(received_at) IS NULL
-  OR MAX(received_at) < TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 14 DAY)
+  OR MAX(received_at) < TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 10 DAY)

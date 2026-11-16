@@ -602,7 +602,7 @@ def rehearse_dataform():
     the log-match kind, which is what the crash-loop, scheduler and Dataform
     policies use. It re-runs `assert_source_freshness` off-schedule, the one
     assertion that can still fail on real traffic (18.1, 2026-11-15: no real
-    event for 14 days), so a recent genuine failure is reproduced without
+    event for 10 days), so a recent genuine failure is reproduced without
     inventing one. The targeted form invokes the assertion alone and writes no
     table; the RUN_FULL_WORKFLOW fallback runs all six production actions,
     which is why it is gated.
