@@ -294,3 +294,37 @@ mock('sendHttpRequest', function (url, options, body) {
 
 runCode(code);
 assertThat(capturedBody7).contains('\\"destination\\":\\"pubsub\\",\\"status\\":\\"sent\\"');
+
+// ---------------------------------------------------------------------------
+// Test: page_engagement carries its threshold and scroll high-water mark
+// (the overlay rendered "?s ... (scrolled 0%)" without them, 2026-11-16)
+// ---------------------------------------------------------------------------
+
+setupMocks({
+  eventData: {
+    iap_source: true,
+    event_name: 'page_engagement',
+    timestamp: '',
+    page_path: '/',
+    page_title: 'Home',
+    page_location: 'https://www.iampatterson.com/',
+    engagement_seconds: 60,
+    max_scroll_pct: 0,
+  },
+});
+
+var capturedBody9;
+mock('sendHttpRequest', function (url, options, body) {
+  capturedBody9 = body;
+  return {
+    then: function (cb) {
+      cb({ statusCode: 200, body: '' });
+    },
+  };
+});
+
+runCode(code);
+// GA4 delivers these as numbers. A 0 scroll is a real value and must survive
+// (only '' is filtered out).
+assertThat(capturedBody9).contains('\\"engagement_seconds\\":60');
+assertThat(capturedBody9).contains('\\"max_scroll_pct\\":0}');

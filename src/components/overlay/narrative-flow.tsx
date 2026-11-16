@@ -45,7 +45,8 @@ function describeAction(event: PipelineEvent): string {
       // three firings sees what threshold they crossed without inspecting
       // the raw payload.
       const seconds = params.engagement_seconds ?? '?';
-      const scroll = params.max_scroll_pct ?? 0;
+      // A missing value is unknown, not 0% (2026-11-16: the stream dropped it).
+      const scroll = params.max_scroll_pct ?? '?';
       return `You spent ${seconds}s engaged on ${event.page_path} (scrolled ${scroll}%)`;
     }
     case 'claudish_translate': {
