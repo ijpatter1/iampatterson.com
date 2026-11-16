@@ -179,7 +179,9 @@ export type CtaLocation =
   // The footer (15.4); footer_session is the three Session links, as before
   | 'footer_contact'
   | 'footer_email'
-  | 'footer_session';
+  | 'footer_session'
+  // The end of the shop demo, its confirmation page
+  | 'shop_confirmation_review';
 
 /** Fired when a CTA button is clicked. */
 export interface ClickCtaEvent extends BaseEvent {

@@ -132,7 +132,7 @@ export function bqRowForCart(params: {
   });
 }
 
-/** 7-line pipeline-journey sequence for the full-page diagnostic moment.
+/** 5-line pipeline-journey sequence for the full-page diagnostic moment.
  *
  * The static default assumes analytics=granted, marketing=denied, the
  * most common state for a visitor who accepts only strictly necessary
@@ -148,19 +148,23 @@ export const FULL_PAGE_DIAGNOSTIC_LINES: Array<{
   { text: 'consent check · analytics=granted, marketing=denied', tag: 'OK' },
   { text: 'routed → sGTM (io.iampatterson.com)', tag: 'OK' },
   { text: 'routed → Meta CAPI · skipped (marketing denied)', tag: 'SKIP' },
-  { text: 'routed → BigQuery · 1 row written to iampatterson_raw.events_raw', tag: 'OK' },
-  { text: 'dataform · marts rebuilding against the new row', tag: 'OK' },
-  { text: 'dashboards · revenue KPI refreshing', tag: 'LIVE', emph: true },
+  {
+    text: 'routed → BigQuery · 1 row written to iampatterson_raw.events_raw',
+    tag: 'OK',
+    emph: true,
+  },
 ];
 
 /**
- * Build the 7-line pipeline-journey sequence against the visitor's real
+ * Build the 5-line pipeline-journey sequence against the visitor's real
  * consent state so the diagnostic text matches what would actually
- * happen. When analytics is denied, the consent check line reflects that;
- * when marketing is granted, the Meta CAPI line flips from SKIP to OK
- * ("routed → Meta CAPI · event sent"). Other lines are unconditional,
- * the purchase fires, sGTM receives it, BigQuery inserts the row, the
- * attribution engine and dashboards downstream of BQ both run.
+ * happen. Every GA4 tag in the web container, purchase included, requires
+ * analytics_storage, so with analytics denied the purchase never leaves the
+ * browser: the sGTM, Meta CAPI and BigQuery lines all read SKIP. With
+ * analytics granted, sGTM receives it and BigQuery inserts the row, and the
+ * Meta CAPI line is OK only when marketing is granted too. The sequence ends
+ * on the BigQuery line: Dataform runs nightly, not per event, and Metabase is
+ * retired (18.3).
  */
 export function diagnosticLinesForConsent(consent: {
   analytics: boolean;
@@ -168,20 +172,34 @@ export function diagnosticLinesForConsent(consent: {
 }): typeof FULL_PAGE_DIAGNOSTIC_LINES {
   const analyticsLabel = consent.analytics ? 'granted' : 'denied';
   const marketingLabel = consent.marketing ? 'granted' : 'denied';
+  const consentLine = {
+    text: `consent check · analytics=${analyticsLabel}, marketing=${marketingLabel}`,
+    tag: 'OK',
+  };
+
+  if (!consent.analytics) {
+    return [
+      { text: 'purchase event fired', tag: 'OK' },
+      consentLine,
+      { text: 'routed → sGTM · skipped (analytics denied)', tag: 'SKIP' },
+      { text: 'routed → Meta CAPI · skipped (analytics denied)', tag: 'SKIP' },
+      { text: 'routed → BigQuery · no row written (analytics denied)', tag: 'SKIP', emph: true },
+    ];
+  }
+
   const metaLine = consent.marketing
     ? { text: 'routed → Meta CAPI · event sent (marketing granted)', tag: 'OK' }
     : { text: 'routed → Meta CAPI · skipped (marketing denied)', tag: 'SKIP' };
 
   return [
     { text: 'purchase event fired', tag: 'OK' },
-    {
-      text: `consent check · analytics=${analyticsLabel}, marketing=${marketingLabel}`,
-      tag: 'OK',
-    },
+    consentLine,
     { text: 'routed → sGTM (io.iampatterson.com)', tag: 'OK' },
     metaLine,
-    { text: 'routed → BigQuery · 1 row written to iampatterson_raw.events_raw', tag: 'OK' },
-    { text: 'dataform · marts rebuilding against the new row', tag: 'OK' },
-    { text: 'dashboards · revenue KPI refreshing', tag: 'LIVE', emph: true },
+    {
+      text: 'routed → BigQuery · 1 row written to iampatterson_raw.events_raw',
+      tag: 'OK',
+      emph: true,
+    },
   ];
 }

@@ -3,6 +3,10 @@
 import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 
+import { HERO } from '@/lib/content/hero';
+import { REVIEW_PAGE_HREF } from '@/lib/content/review';
+import { trackClickCta } from '@/lib/events/track';
+
 import { useScrollToTopOnMount } from '@/hooks/useScrollToTopOnMount';
 import { useToast } from '@/components/demo/reveal/toast-provider';
 import { InlineDiagnostic } from '@/components/demo/reveal/inline-diagnostic';
@@ -20,15 +24,16 @@ interface OrderConfirmationProps {
  *   (a) the editorial order-confirmed block with $total-interpolated
  *       lead paragraph (with zombie-state fallback for missing / zero /
  *       non-finite totals, closes 9B follow-up #5);
- *   (b) the Pattern 3 InlineDiagnostic-wrapped timestamped 6-step
- *       pipeline-journey list (+0ms → +840ms). Per-step timings are
+ *   (b) the Pattern 3 InlineDiagnostic-wrapped timestamped 3-step
+ *       pipeline-journey list (+0ms → +186ms), ending at the BigQuery row
+ *       (Dataform runs nightly, so it is not a step). Per-step timings are
  *       representative; a muted footer inside the diagnostic surfaces
  *       this honestly (UAT r2 item 19).
  *
- * UAT r2 item 20 split: the "Dashboards are not the payoff" closing
- * beat + back-nav live in `ConfirmationCloser` (exported below), which
- * the page renders after this component. A Metabase dashboard embed
- * sat between the two until 17.1 removed it.
+ * UAT r2 item 20 split: the closing links live in `ConfirmationCloser`
+ * (exported below), which the page renders after this component. A
+ * Metabase dashboard embed sat between the two until 17.1 removed it,
+ * and the dashboard copy went before Metabase was retired (18.3).
  */
 export function OrderConfirmation({ orderId, orderTotal, itemCount }: OrderConfirmationProps) {
   const { push } = useToast();
@@ -98,28 +103,17 @@ export function OrderConfirmation({ orderId, orderTotal, itemCount }: OrderConfi
         </div>
       </section>
 
-      <InlineDiagnostic tag="WHAT JUST HAPPENED" title="from click to dashboard">
+      <InlineDiagnostic tag="WHAT JUST HAPPENED" title="from click to BigQuery">
         <ol className="flex flex-col gap-1.5">
           {PIPELINE_JOURNEY.map((step, i) => (
-            <li
-              key={i}
-              className={`flex items-baseline gap-2 text-xs leading-snug ${
-                step.tag === 'LIVE' ? 'text-[#F3C769]' : 'text-[#EAD9BC]'
-              }`}
-            >
+            <li key={i} className="flex items-baseline gap-2 text-xs leading-snug text-[#EAD9BC]">
               <span className="w-[70px] shrink-0 font-mono text-[#9E8A6B]">{step.t}</span>
               <span aria-hidden="true" className="text-[#F3C769]">
                 &gt;
               </span>
               <span className="flex-1">{step.text}</span>
-              <span
-                className={`shrink-0 rounded border px-1 py-[1px] text-[9px] tracking-[0.1em] ${
-                  step.tag === 'OK'
-                    ? 'border-[#8FBF7A]/40 text-[#8FBF7A]'
-                    : 'border-[#F3C769]/50 text-[#F3C769]'
-                }`}
-              >
-                [{step.tag}]
+              <span className="shrink-0 rounded border border-[#8FBF7A]/40 px-1 py-[1px] text-[9px] tracking-[0.1em] text-[#8FBF7A]">
+                [OK]
               </span>
             </li>
           ))}
@@ -133,20 +127,13 @@ export function OrderConfirmation({ orderId, orderTotal, itemCount }: OrderConfi
 }
 
 /**
- * Confirmation-page closing beat, "Dashboards are not the payoff"
- * paragraph + back-nav. Split out of `OrderConfirmation` in UAT r2
- * item 20; the page renders it last.
+ * The end of the shop demo: the way back to the shop and the site's one
+ * call to action, the homepage's "Start with a review". Split out of
+ * `OrderConfirmation` in UAT r2 item 20; the page renders it last.
  */
 export function ConfirmationCloser() {
   return (
     <div className="flex flex-col gap-10">
-      <section className="flex flex-col gap-4 border-t border-[var(--shop-warm-brown,#5C4A3D)]/12 pt-8">
-        <p className="max-w-[640px] font-display text-[20px] leading-snug text-[var(--shop-warm-brown,#5C4A3D)]">
-          Dashboards are not the payoff. Answers are. The mart layer is what makes the answers
-          trustworthy.
-        </p>
-      </section>
-
       <nav className="flex flex-wrap items-center gap-4 border-t border-[var(--shop-warm-brown,#5C4A3D)]/12 pt-6 text-sm">
         <Link
           href="/demo/ecommerce"
@@ -154,8 +141,12 @@ export function ConfirmationCloser() {
         >
           ← back to the shop
         </Link>
-        <Link href="/" className="text-[var(--shop-terracotta,#C4703A)] hover:underline">
-          return to iampatterson.com →
+        <Link
+          href={REVIEW_PAGE_HREF}
+          onClick={() => trackClickCta(HERO.primaryCta, 'shop_confirmation_review')}
+          className="text-[var(--shop-terracotta,#C4703A)] hover:underline"
+        >
+          {HERO.primaryCta} <span aria-hidden="true">→</span>
         </Link>
       </nav>
     </div>
@@ -165,14 +156,10 @@ export function ConfirmationCloser() {
 interface JourneyStep {
   t: string;
   text: string;
-  tag: 'OK' | 'LIVE';
 }
 
 const PIPELINE_JOURNEY: JourneyStep[] = [
-  { t: '+ 0ms', text: 'purchase event fired in browser', tag: 'OK' },
-  { t: '+ 84ms', text: 'sGTM received · consent checked · enriched · routed', tag: 'OK' },
-  { t: '+ 186ms', text: 'streaming insert · 1 row → iampatterson_raw.events_raw', tag: 'OK' },
-  { t: '+ 412ms', text: 'Dataform staging · 4 stitches, 0 null drops', tag: 'OK' },
-  { t: '+ 611ms', text: 'marts refreshed · session_events, attribution, ltv', tag: 'OK' },
-  { t: '+ 840ms', text: 'dashboard KPIs reflect this order', tag: 'LIVE' },
+  { t: '+ 0ms', text: 'purchase event fired in browser' },
+  { t: '+ 84ms', text: 'sGTM received · consent checked · enriched · routed' },
+  { t: '+ 186ms', text: 'streaming insert · 1 row → iampatterson_raw.events_raw' },
 ];

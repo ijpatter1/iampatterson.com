@@ -73,25 +73,23 @@ describe('OrderConfirmation (Phase 9F D9)', () => {
     expect(screen.getByText(/A real order just landed in production BigQuery/)).toBeInTheDocument();
   });
 
-  it('does NOT render the "Dashboards are not the payoff" closing beat (moved to ConfirmationCloser in UAT r2 item 20)', () => {
-    const { container } = renderConfirmation();
-    // The closing beat lives in ConfirmationCloser, which the page renders
-    // last.
-    expect(container.textContent).not.toMatch(/Dashboards are not the payoff/);
-  });
-
-  it('does NOT render the back-to-shop / return-to-site nav (moved to ConfirmationCloser)', () => {
+  it('does NOT render the closer links, back to the shop or the review (they live in ConfirmationCloser)', () => {
     const { container } = renderConfirmation();
     expect(container.textContent).not.toMatch(/back to the shop/);
-    expect(container.textContent).not.toMatch(/return to iampatterson\.com/);
+    expect(container.querySelector('a[href="/review"]')).toBeNull();
   });
 
-  it('inline-diagnostic title drops the ~840ms specific claim (UAT r2 item 19)', () => {
+  it('marks the journey timings as representative (UAT r2 item 19)', () => {
     renderConfirmation();
     const diag = document.querySelector('[data-inline-diagnostic]');
-    expect(diag?.textContent).not.toContain('840ms end-to-end');
-    expect(diag?.textContent).toContain('from click to dashboard');
     expect(diag?.textContent).toContain('representative cadence');
+  });
+
+  // The pipeline journey keeps a heading, so a screen-reader user moving by
+  // heading can still reach it.
+  it('titles the journey from click to BigQuery', () => {
+    renderConfirmation();
+    expect(screen.getByRole('heading', { name: 'from click to BigQuery' })).toBeInTheDocument();
   });
 
   it('renders item count meta', () => {
@@ -115,41 +113,40 @@ describe('OrderConfirmation (Phase 9F D9)', () => {
     expect(toast?.textContent).toContain('ORD-XYZ987');
   });
 
-  it('renders the 6-step pipeline-journey list in an inline diagnostic', () => {
+  it('renders the 3-step pipeline-journey list in an inline diagnostic', () => {
     renderConfirmation();
     const diag = document.querySelector('[data-inline-diagnostic]');
     expect(diag).not.toBeNull();
     expect(diag?.textContent).toContain('purchase event fired in browser');
     expect(diag?.textContent).toContain('sGTM received');
     expect(diag?.textContent).toContain('iampatterson_raw.events_raw');
-    expect(diag?.textContent).toContain('Dataform staging');
-    expect(diag?.textContent).toContain('marts refreshed');
-    expect(diag?.textContent).toContain('dashboard KPIs reflect this order');
+    expect(diag?.querySelectorAll('li')).toHaveLength(3);
   });
 
-  it('final pipeline step has [LIVE] tag instead of [OK]', () => {
+  // Metabase is retired (18.3), and Dataform runs nightly, not per event. The
+  // journey keeps only the steps that happen in the moment and ends where the
+  // order really lands: one row in events_raw.
+  it('ends the journey at the BigQuery row, with no dashboard and no Dataform step', () => {
     renderConfirmation();
     const diag = document.querySelector('[data-inline-diagnostic]');
-    expect(diag?.textContent).toContain('[LIVE]');
+    const steps = Array.from(diag?.querySelectorAll('li') ?? []).map((li) => li.textContent);
+    expect(steps[steps.length - 1]).toMatch(/1 row → iampatterson_raw\.events_raw/);
+    expect(diag?.textContent).not.toMatch(/dashboard|dataform|mart/i);
   });
 });
 
 describe('ConfirmationCloser (UAT r2 item 20 split)', () => {
-  it('renders the "Dashboards are not the payoff" closing beat', () => {
-    render(<ConfirmationCloser />);
-    expect(
-      screen.getByText(/Dashboards are not the payoff\. Answers are\. The mart layer/),
-    ).toBeInTheDocument();
+  it('no longer claims a dashboard', () => {
+    const { container } = render(<ConfirmationCloser />);
+    expect(container.textContent).not.toMatch(/dashboard/i);
   });
 
-  // /services was deleted in 16.1 and redirects home, so the closer no longer
-  // links to it; the shop and site links remain.
-  it('renders back-to-shop and return-to-site nav, and no link to the deleted /services', () => {
+  // The confirmation page is the end of the shop demo. It ends on the site's
+  // one call to action (the homepage's "Start with a review"), with the way
+  // back to the shop beside it. /services was deleted in 16.1.
+  it('ends the demo on the way back to the shop, then the review call to action', () => {
     render(<ConfirmationCloser />);
-    const links = screen.getAllByRole('link');
-    const hrefs = links.map((l) => l.getAttribute('href'));
-    expect(hrefs).not.toContain('/services');
-    expect(hrefs).toContain('/demo/ecommerce');
-    expect(hrefs).toContain('/');
+    const hrefs = screen.getAllByRole('link').map((l) => l.getAttribute('href'));
+    expect(hrefs).toEqual(['/demo/ecommerce', '/review']);
   });
 });

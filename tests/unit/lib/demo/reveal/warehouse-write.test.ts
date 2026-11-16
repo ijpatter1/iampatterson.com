@@ -224,16 +224,20 @@ describe('bqRowForCart', () => {
 });
 
 describe('FULL_PAGE_DIAGNOSTIC_LINES', () => {
-  it('is the 7-line pipeline-journey sequence', () => {
-    expect(FULL_PAGE_DIAGNOSTIC_LINES).toHaveLength(7);
+  it('is the 5-line pipeline-journey sequence', () => {
+    expect(FULL_PAGE_DIAGNOSTIC_LINES).toHaveLength(5);
   });
 
-  it('first line is the purchase fire, final line is the dashboards refresh (emphasised)', () => {
+  // Metabase is retired (18.3), and Dataform runs nightly, not per event: the
+  // journey ends, emphasised, on the BigQuery row the purchase really writes.
+  it('ends, emphasised, on the BigQuery row, and claims no dashboard or Dataform step', () => {
     expect(FULL_PAGE_DIAGNOSTIC_LINES[0].text).toMatch(/purchase event fired/i);
     const last = FULL_PAGE_DIAGNOSTIC_LINES[FULL_PAGE_DIAGNOSTIC_LINES.length - 1];
-    expect(last.text).toMatch(/dashboards.*revenue kpi/i);
+    expect(last.text).toMatch(/BigQuery · 1 row written/);
     expect(last.emph).toBe(true);
-    expect(last.tag).toBe('LIVE');
+    expect(FULL_PAGE_DIAGNOSTIC_LINES.some((l) => /dashboard|dataform|mart/i.test(l.text))).toBe(
+      false,
+    );
   });
 
   it('includes the Meta CAPI skip line', () => {
@@ -274,10 +278,37 @@ describe('diagnosticLinesForConsent (UAT r1 item 14, real consent data)', () => 
     expect(meta?.text).toMatch(/skipped/);
   });
 
-  it('final line is always the LIVE emph dashboards refresh', () => {
-    const lines = diagnosticLinesForConsent({ analytics: false, marketing: false });
-    const last = lines[lines.length - 1];
-    expect(last.tag).toBe('LIVE');
-    expect(last.emph).toBe(true);
-  });
+  it.each([
+    [true, false],
+    [true, true],
+  ])(
+    'ends on the BigQuery row and claims no dashboard or Dataform step (analytics=%s, marketing=%s)',
+    (analytics, marketing) => {
+      const lines = diagnosticLinesForConsent({ analytics, marketing });
+      expect(lines[lines.length - 1].text).toMatch(/BigQuery · 1 row written/);
+      expect(lines[lines.length - 1].emph).toBe(true);
+      expect(lines.some((l) => /dashboard|dataform|mart/i.test(l.text))).toBe(false);
+    },
+  );
+
+  // Every GA4 tag in web-container.json, purchase included, requires
+  // analytics_storage. With analytics denied the purchase never leaves the
+  // browser: nothing reaches sGTM, so neither Meta CAPI nor BigQuery gets it.
+  it.each([false, true])(
+    'with analytics denied, claims no sGTM routing, no Meta send and no BigQuery row (marketing=%s)',
+    (marketing) => {
+      const lines = diagnosticLinesForConsent({ analytics: false, marketing });
+      const sgtm = lines.find((l) => l.text.includes('sGTM'));
+      const meta = lines.find((l) => l.text.includes('Meta CAPI'));
+      const last = lines[lines.length - 1];
+      expect(sgtm).toMatchObject({ tag: 'SKIP' });
+      expect(sgtm?.text).toMatch(/analytics denied/);
+      expect(meta).toMatchObject({ tag: 'SKIP' });
+      expect(meta?.text).toMatch(/analytics denied/);
+      expect(last.text).toMatch(/BigQuery · no row written \(analytics denied\)/);
+      expect(last.tag).toBe('SKIP');
+      expect(last.emph).toBe(true);
+      expect(lines.some((l) => /1 row written|event sent/.test(l.text))).toBe(false);
+    },
+  );
 });
