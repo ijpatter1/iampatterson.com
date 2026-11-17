@@ -12,6 +12,7 @@
 import { INPUT_CAP } from '@/lib/claudish/limits';
 
 import { CharCounter } from './char-counter';
+import { FOCUS_RING, ICON_BUTTON } from './control-styles';
 import { LanguageTabRow } from './language-tab-row';
 
 export function SourcePanel({
@@ -48,7 +49,7 @@ export function SourcePanel({
         <div
           data-testid="claudish-source-grow"
           data-replicated-value={`${value} `}
-          className="grid min-h-[140px] w-full after:invisible after:whitespace-pre-wrap after:break-words after:px-4 after:py-3 after:pr-10 after:text-lg after:content-[attr(data-replicated-value)] after:[grid-area:1/1/2/2]"
+          className="grid min-h-[140px] w-full after:invisible after:whitespace-pre-wrap after:break-words after:px-4 after:py-3 after:pr-12 after:text-lg after:content-[attr(data-replicated-value)] after:[grid-area:1/1/2/2]"
         >
           <textarea
             value={value}
@@ -56,7 +57,7 @@ export function SourcePanel({
             maxLength={INPUT_CAP}
             placeholder="Enter text"
             aria-label="Source text"
-            className="w-full resize-none overflow-hidden bg-transparent px-4 py-3 pr-10 text-lg text-[var(--gt-text,#202124)] outline-none [grid-area:1/1/2/2] placeholder:text-[var(--gt-text-3,#80868b)]"
+            className={`w-full resize-none overflow-hidden rounded bg-transparent px-4 py-3 pr-12 text-lg text-[var(--gt-text,#202124)] outline-none [grid-area:1/1/2/2] placeholder:text-[var(--gt-text-3,#80868b)] ${FOCUS_RING} focus-visible:ring-inset`}
           />
         </div>
         {value.length > 0 ? (
@@ -64,7 +65,7 @@ export function SourcePanel({
             type="button"
             aria-label="Clear source text"
             onClick={() => onChange('')}
-            className="absolute right-2 top-3 rounded-full p-1.5 text-[var(--gt-text-2,#5f6368)] hover:bg-[var(--gt-surface-alt,#f8f9fa)]"
+            className={`absolute right-1 top-1 ${ICON_BUTTON}`}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="m6 6 12 12M18 6 6 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />

@@ -13,6 +13,8 @@ import { useEffect, useRef, useState } from 'react';
 import { RATE_DOWN_LABEL, RATE_UP_LABEL } from '@/lib/claudish/messages';
 import { trackClaudishRate } from '@/lib/events/track';
 
+import { ICON_BUTTON } from './control-styles';
+
 import type { ClaudishDirection } from '@/hooks/useClaudishTranslation';
 
 const ANALYTICS_DIRECTION = {
@@ -57,7 +59,7 @@ export function RateModal({
         aria-label="Rate translation"
         disabled={output.length === 0}
         onClick={() => setOpen((o) => !o)}
-        className="rounded-full p-2 text-[var(--gt-text-2,#5f6368)] hover:bg-[var(--gt-surface-alt,#f8f9fa)] disabled:opacity-40"
+        className={`${ICON_BUTTON} disabled:opacity-40`}
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path

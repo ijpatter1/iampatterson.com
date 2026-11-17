@@ -12,6 +12,8 @@ import { useState } from 'react';
 
 import { trackClaudishShare } from '@/lib/events/track';
 
+import { ICON_BUTTON } from './control-styles';
+
 import type { ClaudishDirection } from '@/hooks/useClaudishTranslation';
 
 const ANALYTICS_DIRECTION = {
@@ -52,7 +54,7 @@ export function CopyButton({
       aria-label="Copy translation"
       disabled={output.length === 0}
       onClick={onCopy}
-      className="rounded-full p-2 text-[var(--gt-text-2,#5f6368)] hover:bg-[var(--gt-surface-alt,#f8f9fa)] disabled:opacity-40"
+      className={`${ICON_BUTTON} disabled:opacity-40`}
     >
       {copied ? (
         <span className="text-xs">Copied</span>

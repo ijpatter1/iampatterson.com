@@ -14,6 +14,8 @@ import { useState } from 'react';
 import { encodeShare } from '@/lib/claudish/share-codec';
 import { trackClaudishShare } from '@/lib/events/track';
 
+import { ICON_BUTTON } from './control-styles';
+
 import type { ClaudishDirection } from '@/hooks/useClaudishTranslation';
 
 const ANALYTICS_DIRECTION = {
@@ -74,7 +76,7 @@ export function ShareButton({
         aria-label="Share translation"
         disabled={target.length === 0}
         onClick={onShare}
-        className="rounded-full p-2 text-[var(--gt-text-2,#5f6368)] hover:bg-[var(--gt-surface-alt,#f8f9fa)] disabled:opacity-40"
+        className={`${ICON_BUTTON} disabled:opacity-40`}
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <circle cx="6" cy="12" r="2.4" stroke="currentColor" strokeWidth="1.6" />

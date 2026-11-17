@@ -19,7 +19,7 @@
  * seq guards against frames landing between abort() and reader close,
  * the same race useEventStream documents.
  */
-import { useCallback, useEffect, useReducer, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 
 import { streamTranslation, translateEndpoint } from '@/lib/claudish/client';
 import { detectClaudish } from '@/lib/claudish/detect';
@@ -64,7 +64,21 @@ interface Options {
    * tokens no matter how viral it goes. Fires no analytics (the share
    * open is its own event, owned by the caller).
    */
-  initialResolved?: { input: string; direction: ClaudishDirection; text: string };
+  initialResolved?: StoredTranslation;
+  /**
+   * Stored real translations (the page's samples, 21.3). Whenever the
+   * input and direction land on one, by any route, it shows as done at
+   * once: no request, and no claudish_translate, since nothing was
+   * translated. Pass a stable array (a module constant).
+   */
+  stored?: readonly StoredTranslation[];
+}
+
+/** A translation the page already holds: a share payload or a stored sample. */
+export interface StoredTranslation {
+  input: string;
+  direction: ClaudishDirection;
+  text: string;
 }
 
 type Phase = 'resting' | 'streaming' | 'done' | 'refused' | 'capacity' | 'error';
@@ -209,6 +223,18 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
     }
     cacheRef.current = seeded;
   }
+  // The one write path into the client LRU: delete-then-set refreshes
+  // recency, and the oldest entry goes once the cap is passed.
+  const remember = useCallback((cacheKey: string, text: string) => {
+    const cache = cacheRef.current;
+    if (!cache) return;
+    cache.delete(cacheKey);
+    cache.set(cacheKey, text);
+    if (cache.size > CLIENT_CACHE_MAX_ENTRIES) {
+      const oldest = cache.keys().next().value;
+      if (oldest !== undefined) cache.delete(oldest);
+    }
+  }, []);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const manualRef = useRef(false);
   const stateRef = useRef(state);
@@ -218,6 +244,18 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
 
   const normalized = normalizeTranslationInput(input);
   const key = normalized ? `${direction}::${normalized}` : null;
+
+  const { stored } = options;
+  const storedByKey = useMemo(
+    () =>
+      new Map(
+        (stored ?? []).map((entry) => [
+          `${entry.direction}::${normalizeTranslationInput(entry.input)}`,
+          entry.text,
+        ])
+      ),
+    [stored]
+  );
 
   const startTranslation = useCallback(
     (runKey: string, runText: string, runDirection: ClaudishDirection) => {
@@ -231,6 +269,15 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
       abortRef.current = null;
       const sourceMode = manualRef.current ? 'manual' : 'auto';
       manualRef.current = false;
+
+      // A stored translation (21.3): sync the reducer so it becomes the
+      // stale text once the visitor moves off, with no request and no
+      // event. Every route onto a stored key arrives here.
+      const storedText = storedByKey.get(runKey);
+      if (storedText !== undefined) {
+        dispatch({ type: 'cache-hit', key: runKey, text: storedText });
+        return;
+      }
 
       const detection = detectClaudish(runText);
       const baseEventFields = {
@@ -254,9 +301,7 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
       // Client cache short-circuit: instant done, zero network.
       const cached = cacheRef.current?.get(runKey);
       if (cached !== undefined) {
-        // Refresh LRU recency.
-        cacheRef.current?.delete(runKey);
-        cacheRef.current?.set(runKey, cached);
+        remember(runKey, cached); // refresh LRU recency
         dispatch({ type: 'cache-hit', key: runKey, text: cached });
         trackClaudishTranslate({
           ...baseEventFields,
@@ -329,14 +374,7 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
           case 'done':
             terminal = 'complete';
             dispatch({ type: 'done' });
-            const cache = cacheRef.current;
-            if (cache) {
-              cache.set(runKey, accumulated);
-              if (cache.size > CLIENT_CACHE_MAX_ENTRIES) {
-                const oldest = cache.keys().next().value;
-                if (oldest !== undefined) cache.delete(oldest);
-              }
-            }
+            remember(runKey, accumulated);
             finish('complete');
             break;
           case 'refusal':
@@ -379,7 +417,7 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
         finish('error');
       });
     },
-    [endpoint]
+    [endpoint, remember, storedByKey]
   );
 
   // Debounce + abort-on-edit. The skip decisions run BEFORE any abort or
@@ -417,12 +455,14 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
     abortRef.current = null;
     seqRef.current++;
     if (runKey === null) return undefined;
+    // A stored key needs no debounce: nothing will be sent.
+    const delay = storedByKey.has(runKey) ? 0 : debounceMs;
     const timer = setTimeout(() => {
       startTranslation(runKey, normalized, direction);
-    }, debounceMs);
+    }, delay);
     timerRef.current = timer;
     return () => clearTimeout(timer);
-  }, [normalized, direction, debounceMs, startTranslation]);
+  }, [normalized, direction, debounceMs, startTranslation, storedByKey]);
 
   // Unmount: kill the stream so the proxy sees the close.
   useEffect(
@@ -445,7 +485,21 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
     [input, direction, startTranslation]
   );
 
-  // Derived presentation state.
+  // Derived presentation state. A stored key presents as done on the
+  // render that lands on it: no debounce flash before the sync above.
+  const storedText = key !== null ? storedByKey.get(key) : undefined;
+  if (storedText !== undefined) {
+    return {
+      status: 'done',
+      text: storedText,
+      staleText: '',
+      hasFirstToken: true,
+      ttftMs: 0,
+      cache: 'client',
+      translateNow,
+    };
+  }
+
   let status: TranslationStatus;
   const current = key !== null && state.key === key;
   if (!key) {

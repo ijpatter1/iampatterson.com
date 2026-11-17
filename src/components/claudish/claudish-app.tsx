@@ -8,26 +8,50 @@
  * the translation state machine, rehydrates share links at zero token
  * cost, and fires the page's analytics. Detection fires once per
  * session per language via a sessionStorage gate (nav-hint precedent).
+ *
+ * Without a share link the page opens on the first stored sample,
+ * already translated, and the "Try one" cards show the others (21.3).
+ * Samples are stored real output: showing one makes no request and fires
+ * no event. Which card is pressed is derived from the box: any route
+ * onto a sample's exact text and direction (a tap, a tab round trip, an
+ * undo, a swap) shows it as that sample. A sample picks its own source
+ * tab; any edit to it hands the box back to Detect, as on the approved
+ * mockup, and the latch reads the visitor's text as it stands.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useClaudishTranslation } from '@/hooks/useClaudishTranslation';
 import { useScrollToTopOnMount } from '@/hooks/useScrollToTopOnMount';
 import { createDetectionLatch, warmCcld } from '@/lib/claudish/detect';
+import { normalizeTranslationInput } from '@/lib/claudish/normalize';
+import { CLAUDISH_SAMPLES } from '@/lib/claudish/samples';
 import { decodeShare } from '@/lib/claudish/share-codec';
 import { trackClaudishDetected, trackClaudishShare } from '@/lib/events/track';
 
 import { ClaudishFooter } from './claudish-footer';
+import { SamplePhrases } from './sample-phrases';
 import { TranslateSurface } from './translate-surface';
 
 import type { ClaudishDirection } from '@/hooks/useClaudishTranslation';
-import type { DetectionLatch } from '@/lib/claudish/detect';
 import type { LatchState } from '@/lib/claudish/types';
 
 const ANALYTICS_DIRECTION = {
   en2cl: 'en_to_claudish',
   cl2en: 'claudish_to_en',
 } as const;
+
+/** The translation hook's key: direction plus the normalized text. */
+const keyFor = (direction: ClaudishDirection, text: string) =>
+  `${direction}::${normalizeTranslationInput(text)}`;
+
+/** The samples as the hook's stored translations, with each card's index and key. */
+const STORED_SAMPLES = CLAUDISH_SAMPLES.map((sample, index) => ({
+  index,
+  key: keyFor(sample.direction, sample.source),
+  input: sample.source,
+  direction: sample.direction,
+  text: sample.target,
+}));
 
 const NEUTRAL_LATCH: LatchState = {
   detected: false,
@@ -63,14 +87,36 @@ export function ClaudishApp({ shareParam }: { shareParam?: string }) {
     [shareParam]
   );
 
-  const [input, setInput] = useState(share?.source ?? '');
+  // A share link opens on the shared text, and one that fails to decode
+  // opens the translator empty (20.3), never on a sample posing as the
+  // shared translation. Without a share link the page opens on sample 1.
+  const opening = shareParam ? share : CLAUDISH_SAMPLES[0];
+  const [input, setInput] = useState(opening?.source ?? '');
   // 0 = Detect language (auto), 1 = English, 2 = Claudish.
   const [sourceTab, setSourceTab] = useState(
-    share ? (share.direction === 'cl2en' ? 2 : 1) : 0
+    opening ? (opening.direction === 'cl2en' ? 2 : 1) : 0
   );
-  const [latch, setLatch] = useState<LatchState>(NEUTRAL_LATCH);
-  const latchRef = useRef<DetectionLatch | null>(null);
-  if (latchRef.current == null) latchRef.current = createDetectionLatch();
+  // Who set the source tab: a sample (the opening, a tap, a swap onto a
+  // sample) or the visitor. A sample's tab goes back to Detect on any edit
+  // or an emptied box; the visitor's own choice stays, as before 21.3.
+  const [tabFromSample, setTabFromSample] = useState(!shareParam);
+
+  // The detection latch, primed with the opening sample like a tapped one
+  // (no event fires). A lazy initializer keeps that idempotent.
+  const [{ detector, openingVerdict }] = useState(() => {
+    const created = createDetectionLatch();
+    return {
+      detector: created,
+      openingVerdict: shareParam ? NEUTRAL_LATCH : created.update(CLAUDISH_SAMPLES[0].source),
+    };
+  });
+  const [latch, setLatch] = useState<LatchState>(openingVerdict);
+  // The verdict a sample primed the latch with. While the latch still gives
+  // it, the detection is the example's, not the visitor's, so no
+  // claudish_detected fires. Cleared when the box empties or it changes.
+  const primedVerdictRef = useRef<LatchState['lang'] | null>(
+    shareParam ? null : openingVerdict.lang
+  );
   const detectedFiredRef = useRef<Set<string> | null>(null);
   if (detectedFiredRef.current == null) detectedFiredRef.current = new Set();
 
@@ -119,29 +165,70 @@ export function ClaudishApp({ shareParam }: { shareParam?: string }) {
   const claimedClaudish = latch.lang === 'en-x-claudish';
   const direction: ClaudishDirection =
     sourceTab === 0 ? (claimedClaudish ? 'cl2en' : 'en2cl') : sourceTab === 2 ? 'cl2en' : 'en2cl';
+  // A share link's own translation beats a sample with the same text and
+  // direction: the share's target is what the page, Copy and Share show.
+  const storedSamples = useMemo(() => {
+    const shareKey = share ? keyFor(share.direction, share.source) : null;
+    return STORED_SAMPLES.filter((entry) => entry.key !== shareKey);
+  }, [share]);
+  const sampleAt = (text: string, dir: ClaudishDirection) =>
+    storedSamples.find((entry) => entry.key === keyFor(dir, text)) ?? null;
+  // Which sample the panels show; null whenever the text is the visitor's own.
+  const activeSample = sampleAt(input, direction)?.index ?? null;
 
   const translation = useClaudishTranslation({
     input,
     direction,
     // An empty target (tier-6 source-only shares) seeds the INPUT only:
     // the normal debounce then translates it fresh, instead of presenting
-    // a permanently blank 'done' panel.
-    initialResolved: share && share.target
-      ? { input: share.source, direction: share.direction, text: share.target }
-      : undefined,
+    // a permanently blank 'done' panel. The samples (the opening one
+    // included) are served by `stored`.
+    initialResolved:
+      share && share.target
+        ? { input: share.source, direction: share.direction, text: share.target }
+        : undefined,
+    stored: storedSamples,
   });
+
+  // A sample put in the box primes the latch with its text, so Detect
+  // claims the right side later; the hook serves its stored translation.
+  const primeWithSample = (text: string) => {
+    const verdict = detector.update(text);
+    setLatch(verdict);
+    primedVerdictRef.current = verdict.lang;
+  };
+
+  const handleSamplePick = (index: number) => {
+    const sample = CLAUDISH_SAMPLES[index];
+    setInput(sample.source);
+    setSourceTab(sample.direction === 'cl2en' ? 2 : 1);
+    setTabFromSample(true);
+    primeWithSample(sample.source);
+  };
 
   const handleInputChange = (value: string) => {
     setInput(value);
+    if (tabFromSample) {
+      setSourceTab(0);
+      setTabFromSample(false);
+    }
     if (value.trim().length === 0) {
       // An emptied textarea is a fresh start: a held latch would misroute
       // the NEXT input's auto direction (stale cl2en over new English).
-      latchRef.current!.reset();
+      detector.reset();
       setLatch(NEUTRAL_LATCH);
+      primedVerdictRef.current = null;
       return;
     }
-    const next = latchRef.current!.update(value);
+    // The latch's continuation check: an extension or a truncation keeps
+    // its evidence; any other edit (a paste over the example, a mid-text
+    // change) re-reads the whole text from scratch.
+    const next = detector.update(value);
     setLatch(next);
+    if (primedVerdictRef.current !== null) {
+      if (next.lang === primedVerdictRef.current) return; // still the example's verdict
+      primedVerdictRef.current = null;
+    }
     if (next.lang !== 'unknown' && !detectedGateHolds(next.lang, detectedFiredRef.current!)) {
       trackClaudishDetected({
         detected_language: next.lang,
@@ -155,11 +242,25 @@ export function ClaudishApp({ shareParam }: { shareParam?: string }) {
     const output = translation.status === 'done' ? translation.text : '';
     const nextDirection: ClaudishDirection = direction === 'en2cl' ? 'cl2en' : 'en2cl';
     setSourceTab(nextDirection === 'cl2en' ? 2 : 1);
+    // Sample 2's output is sample 3's source: a swap that lands on a
+    // sample's key is that sample (the hook serves it, with no request).
+    const landsOnSample = output !== '' && sampleAt(output, nextDirection) !== null;
+    setTabFromSample(landsOnSample);
     if (output) {
       setInput(output);
-      setLatch(latchRef.current!.update(output));
+      if (landsOnSample) {
+        primeWithSample(output);
+      } else {
+        setLatch(detector.update(output));
+        primedVerdictRef.current = null;
+      }
       translation.translateNow({ input: output, direction: nextDirection });
     }
+  };
+
+  const handleSourceSelect = (index: number) => {
+    setSourceTab(index);
+    setTabFromSample(false);
   };
 
   // What the Detect tab claims. No hedging (user decision): once input
@@ -173,9 +274,7 @@ export function ClaudishApp({ shareParam }: { shareParam?: string }) {
 
   // Target row: 0 = English, 1 = Claudish; choosing one determines direction.
   const targetTab = direction === 'en2cl' ? 1 : 0;
-  const handleTargetSelect = (index: number) => {
-    setSourceTab(index === 0 ? 2 : 1);
-  };
+  const handleTargetSelect = (index: number) => handleSourceSelect(index === 0 ? 2 : 1);
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 pt-6 md:px-6">
@@ -185,7 +284,7 @@ export function ClaudishApp({ shareParam }: { shareParam?: string }) {
           value: input,
           onChange: handleInputChange,
           activeTab: sourceTab,
-          onTabSelect: setSourceTab,
+          onTabSelect: handleSourceSelect,
           detection,
         }}
         targetProps={{
@@ -201,6 +300,11 @@ export function ClaudishApp({ shareParam }: { shareParam?: string }) {
           onTabSelect: handleTargetSelect,
         }}
         onSwap={handleSwap}
+      />
+      <SamplePhrases
+        samples={CLAUDISH_SAMPLES}
+        activeIndex={activeSample}
+        onPick={handleSamplePick}
       />
       <ClaudishFooter />
     </main>

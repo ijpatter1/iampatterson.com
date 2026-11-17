@@ -17,6 +17,8 @@ import {
   TAB_LABELS,
 } from '@/lib/claudish/messages';
 
+import { FOCUS_RING } from './control-styles';
+
 export function LanguageTabRow({
   side,
   activeIndex,
@@ -45,7 +47,7 @@ export function LanguageTabRow({
     <div
       role="tablist"
       aria-label={side === 'source' ? 'Source language' : 'Target language'}
-      className="flex items-center gap-1 border-b border-[var(--gt-border,#dadce0)] px-2"
+      className="flex items-center gap-0 border-b border-[var(--gt-border,#dadce0)] px-1 sm:gap-1 sm:px-2"
     >
       {labels.map((label, index) => {
         const active = index === activeIndex;
@@ -57,7 +59,7 @@ export function LanguageTabRow({
             aria-selected={active}
             onClick={() => onSelect(index)}
             className={
-              'relative px-3 py-3 text-sm font-medium uppercase tracking-wide transition-colors ' +
+              `relative min-h-[44px] px-2 py-3 text-sm font-medium uppercase leading-5 tracking-wide transition-colors sm:px-3 ${FOCUS_RING} focus-visible:ring-inset ` +
               (active
                 ? 'text-[var(--gt-tab-active,#1a73e8)]'
                 : 'text-[var(--gt-text-2,#5f6368)] hover:text-[var(--gt-text,#202124)]')
