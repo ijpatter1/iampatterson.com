@@ -168,9 +168,9 @@ describe('CheckoutForm (Phase 9F D8)', () => {
     expect(sidebar?.textContent).toContain('iampatterson_raw.events_raw');
     // The table's real width (infrastructure/bigquery/schema.json) and only
     // columns that exist in it; no seed for a column the table lacks.
-    expect(sidebar?.textContent).toMatch(/16 of 77 columns/i);
+    expect(sidebar?.textContent).toMatch(/16 of 79 columns/i);
     expect(sidebar?.textContent).not.toMatch(/geo_country/);
-    expect(document.body.textContent).toMatch(/16 of the 77 real columns/);
+    expect(document.body.textContent).toMatch(/16 of the 79 real columns/);
   });
 
   // The preview is the purchase row the form will write: the same order_id,
