@@ -8,7 +8,13 @@
  * counter and the proxy's 413). Clear button appears only with content.
  * The textarea grows with its content (grow-wrap below) so the panel
  * expands like the output panel instead of scrolling inside.
+ *
+ * While the box holds a stored sample, focusing it selects the whole
+ * text, so the first keystroke replaces the example instead of adding to
+ * it (22.2). The visitor's own text is never selected.
  */
+import { useRef } from 'react';
+
 import { INPUT_CAP } from '@/lib/claudish/limits';
 
 import { CharCounter } from './char-counter';
@@ -21,13 +27,20 @@ export function SourcePanel({
   activeTab,
   onTabSelect,
   detection,
+  holdsSample,
 }: {
   value: string;
   onChange: (value: string) => void;
   activeTab: number;
   onTabSelect: (index: number) => void;
   detection: { lang: 'en-x-claudish' | 'en'; tier: 'confident' | 'leaning' } | null;
+  /** The box holds a stored sample's exact text (22.2). */
+  holdsSample: boolean;
 }) {
+  // Set by a focus that selected the sample. Some browsers (Safari) place
+  // the caret on the mouseup that ends the focusing click, which would
+  // undo the selection; that one mouseup keeps its default prevented.
+  const selectedOnFocusRef = useRef(false);
   return (
     <section
       aria-label="Source text"
@@ -54,6 +67,18 @@ export function SourcePanel({
           <textarea
             value={value}
             onChange={(e) => onChange(e.target.value)}
+            onFocus={(e) => {
+              if (!holdsSample) return;
+              e.currentTarget.setSelectionRange(0, e.currentTarget.value.length);
+              selectedOnFocusRef.current = true;
+            }}
+            onMouseUp={(e) => {
+              if (selectedOnFocusRef.current) e.preventDefault();
+              selectedOnFocusRef.current = false;
+            }}
+            onBlur={() => {
+              selectedOnFocusRef.current = false;
+            }}
             maxLength={INPUT_CAP}
             placeholder="Enter text"
             aria-label="Source text"

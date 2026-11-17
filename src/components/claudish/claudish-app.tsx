@@ -300,6 +300,7 @@ export function ClaudishApp({ shareParam }: { shareParam?: string }) {
           activeTab: sourceTab,
           onTabSelect: handleSourceSelect,
           detection,
+          holdsSample: activeSample !== null,
         }}
         targetProps={{
           source: input,

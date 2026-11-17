@@ -268,6 +268,12 @@ describe('ClaudishApp — opening example and sample phrases (21.3)', () => {
   const cards = () =>
     within(screen.getByRole('list', { name: 'Try one' })).getAllByRole('button');
   const pressedCards = () => cards().map((card) => card.getAttribute('aria-pressed'));
+  // A focus selects a sample (22.2), so a test that edits the sample in
+  // place puts the caret at the end first, as a visitor's second click does.
+  const caretAtEnd = (el: HTMLElement) => {
+    const end = (el as HTMLTextAreaElement).value.length;
+    return { initialSelectionStart: end, initialSelectionEnd: end };
+  };
 
   it('opens on the first sample already translated, with no request and no analytics', async () => {
     const [first] = CLAUDISH_SAMPLES;
@@ -318,7 +324,7 @@ describe('ClaudishApp — opening example and sample phrases (21.3)', () => {
     const sample = CLAUDISH_SAMPLES[2];
     render(<ClaudishApp />);
     await user.click(cards()[2]);
-    await user.type(screen.getByRole('textbox'), ' Truly.');
+    await user.type(screen.getByRole('textbox'), ' Truly.', caretAtEnd(screen.getByRole('textbox')));
     expect(pressedCards()).toEqual(['false', 'false', 'false']);
     expect(screen.getByRole('tab', { name: 'Claudish - detected' })).toHaveAttribute(
       'aria-selected',
@@ -338,7 +344,7 @@ describe('ClaudishApp — opening example and sample phrases (21.3)', () => {
     const user = setupUser();
     render(<ClaudishApp />);
     await user.click(cards()[2]);
-    await user.type(screen.getByRole('textbox'), ' x');
+    await user.type(screen.getByRole('textbox'), ' x', caretAtEnd(screen.getByRole('textbox')));
     expect(mockDetected).not.toHaveBeenCalled();
   });
 
@@ -394,7 +400,7 @@ describe('ClaudishApp — opening example and sample phrases (21.3)', () => {
     const sourceTabs = within(screen.getByRole('tablist', { name: 'Source language' }));
     await user.click(sourceTabs.getByRole('tab', { name: 'English' }));
     await user.click(sourceTabs.getByRole('tab', { name: 'Claudish' }));
-    await user.type(screen.getByRole('textbox'), ' x');
+    await user.type(screen.getByRole('textbox'), ' x', caretAtEnd(screen.getByRole('textbox')));
     expect(selectedTab('Source language')).toBe(2);
   });
 
@@ -404,7 +410,7 @@ describe('ClaudishApp — opening example and sample phrases (21.3)', () => {
     await user.click(cards()[1]);
     await user.click(screen.getByRole('button', { name: /swap languages/i })); // lands on sample 3
     expect(selectedTab('Source language')).toBe(2);
-    await user.type(screen.getByRole('textbox'), ' x');
+    await user.type(screen.getByRole('textbox'), ' x', caretAtEnd(screen.getByRole('textbox')));
     expect(selectedTab('Source language')).toBe(0);
   });
 
@@ -428,7 +434,7 @@ describe('ClaudishApp — opening example and sample phrases (21.3)', () => {
     const user = setupUser();
     render(<ClaudishApp />);
     await user.click(cards()[2]);
-    await user.type(screen.getByRole('textbox'), '{Backspace}');
+    await user.type(screen.getByRole('textbox'), '{Backspace}', caretAtEnd(screen.getByRole('textbox')));
     expect(mockDetected).not.toHaveBeenCalled();
   });
 
@@ -496,10 +502,10 @@ describe('ClaudishApp — opening example and sample phrases (21.3)', () => {
     render(<ClaudishApp />);
     await user.click(cards()[1]);
     const box = screen.getByRole('textbox');
-    await user.type(box, ' x');
+    await user.type(box, ' x', caretAtEnd(box));
     await waitPastDebounce();
     expect(mockStream).toHaveBeenCalledTimes(1); // the edited text went live
-    await user.type(box, '{Backspace}{Backspace}');
+    await user.type(box, '{Backspace}{Backspace}', caretAtEnd(box));
     expect(box).toHaveValue(sample.source);
     expect(pressedCards()).toEqual(['false', 'true', 'false']);
     expect(screen.getByTestId('claudish-output')).toHaveTextContent(sample.target);
@@ -674,3 +680,44 @@ describe('ClaudishApp — the samples are measured (22.1)', () => {
     expect(mockRate).toHaveBeenCalledWith(expect.objectContaining({ from_sample: false }));
   });
 });
+
+describe('ClaudishApp — typing replaces a sample (22.2)', () => {
+  // Before 22.2 a visitor who clicked into the opening example and typed
+  // got "We ship on Friday.Hello", and a model call spent on mixed text.
+  const cards = () =>
+    within(screen.getByRole('list', { name: 'Try one' })).getAllByRole('button');
+  const selection = (box: HTMLTextAreaElement) => [box.selectionStart, box.selectionEnd];
+
+  it('clicking into the opening example selects it, so the first keystroke replaces it', async () => {
+    const user = userEvent.setup();
+    render(<ClaudishApp />);
+    const box = screen.getByRole('textbox') as HTMLTextAreaElement;
+    await user.click(box);
+    expect(selection(box)).toEqual([0, CLAUDISH_SAMPLES[0].source.length]);
+    await user.keyboard('Hello');
+    expect(box).toHaveValue('Hello');
+  });
+
+  it('a tapped sample is selected when the box takes focus', async () => {
+    const user = userEvent.setup();
+    render(<ClaudishApp />);
+    await user.click(cards()[2]);
+    const box = screen.getByRole('textbox') as HTMLTextAreaElement;
+    await user.click(box);
+    expect(selection(box)).toEqual([0, CLAUDISH_SAMPLES[2].source.length]);
+  });
+
+  it('the visitor’s own text is never selected on focus', async () => {
+    const user = userEvent.setup();
+    render(<ClaudishApp />);
+    const box = screen.getByRole('textbox') as HTMLTextAreaElement;
+    await user.clear(box);
+    await user.type(box, 'My own words');
+    await user.tab();
+    await user.click(box);
+    const [start, end] = selection(box);
+    expect(start).toBe(end);
+    expect(box).toHaveValue('My own words');
+  });
+});
+

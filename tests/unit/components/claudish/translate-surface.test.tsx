@@ -15,7 +15,7 @@ const noop = () => {};
 function renderSurface() {
   return render(
     <TranslateSurface
-      sourceProps={{ value: 'hello', onChange: noop, activeTab: 0, onTabSelect: noop, detection: null }}
+      sourceProps={{ value: 'hello', onChange: noop, activeTab: 0, onTabSelect: noop, detection: null, holdsSample: false }}
       targetProps={{
         source: 'hello',
         direction: 'en2cl',

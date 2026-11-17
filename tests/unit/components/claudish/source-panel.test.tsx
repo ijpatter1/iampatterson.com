@@ -5,7 +5,7 @@
  * Textarea with native maxLength enforcement (pastes truncate), clear
  * button, char counter wiring, tab row with detection label.
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { SourcePanel } from '@/components/claudish/source-panel';
@@ -22,6 +22,7 @@ describe('SourcePanel', () => {
         activeTab={0}
         onTabSelect={noop}
         detection={null}
+        holdsSample={false}
       />
     );
     expect(screen.getByRole('textbox')).toHaveAttribute('maxLength', String(INPUT_CAP));
@@ -37,6 +38,7 @@ describe('SourcePanel', () => {
         activeTab={0}
         onTabSelect={noop}
         detection={null}
+        holdsSample={false}
       />
     );
     await user.type(screen.getByRole('textbox'), 'hi');
@@ -53,6 +55,7 @@ describe('SourcePanel', () => {
         activeTab={0}
         onTabSelect={noop}
         detection={null}
+        holdsSample={false}
       />
     );
     await user.click(screen.getByRole('button', { name: /clear source text/i }));
@@ -67,6 +70,7 @@ describe('SourcePanel', () => {
         activeTab={0}
         onTabSelect={noop}
         detection={null}
+        holdsSample={false}
       />
     );
     expect(screen.queryByRole('button', { name: /clear source text/i })).not.toBeInTheDocument();
@@ -85,6 +89,7 @@ describe('SourcePanel', () => {
         activeTab={0}
         onTabSelect={noop}
         detection={null}
+        holdsSample={false}
       />
     );
     const wrap = screen.getByTestId('claudish-source-grow');
@@ -102,10 +107,46 @@ describe('SourcePanel', () => {
         activeTab={0}
         onTabSelect={noop}
         detection={null}
+        holdsSample={false}
       />
     );
     const section = screen.getByRole('region', { name: /source text/i });
     expect(section.className).not.toContain('md:border-r-0');
     expect(section.className).not.toContain('md:rounded-r-none');
+  });
+
+  it('keeps the focus selection through the mouseup that ends the focusing click (22.2)', () => {
+    // Safari places the caret on that mouseup, which would undo the
+    // selection; only that one mouseup is held back.
+    render(
+      <SourcePanel
+        value="We ship on Friday."
+        onChange={noop}
+        activeTab={1}
+        onTabSelect={noop}
+        detection={null}
+        holdsSample={true}
+      />
+    );
+    const box = screen.getByRole('textbox');
+    fireEvent.focus(box);
+    expect(fireEvent.mouseUp(box)).toBe(false); // default prevented
+    expect(fireEvent.mouseUp(box)).toBe(true); // a later click places the caret as usual
+  });
+
+  it('leaves the mouseup alone for the visitor’s own text', () => {
+    render(
+      <SourcePanel
+        value="My own words"
+        onChange={noop}
+        activeTab={0}
+        onTabSelect={noop}
+        detection={null}
+        holdsSample={false}
+      />
+    );
+    const box = screen.getByRole('textbox');
+    fireEvent.focus(box);
+    expect(fireEvent.mouseUp(box)).toBe(true);
   });
 });
