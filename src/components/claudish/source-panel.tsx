@@ -37,10 +37,16 @@ export function SourcePanel({
   /** The box holds a stored sample's exact text (22.2). */
   holdsSample: boolean;
 }) {
-  // Set by a focus that selected the sample. Some browsers (Safari) place
-  // the caret on the mouseup that ends the focusing click, which would
-  // undo the selection; that one mouseup keeps its default prevented.
+  // A mousedown on the box while it is not focused: the focus that follows
+  // comes from that click (on touch screens too, whose synthetic mousedown
+  // precedes the focus). Some browsers (Safari) place the caret on that
+  // click's mouseup, undoing the selection, so only that mouseup keeps its
+  // default prevented. A keyboard focus never arms it.
+  const clickFocusRef = useRef(false);
   const selectedOnFocusRef = useRef(false);
+  // The window lost focus while the box had it. Coming back re-fires focus
+  // on the box, and that must not re-select a caret the visitor placed.
+  const leftWithWindowRef = useRef(false);
   return (
     <section
       aria-label="Source text"
@@ -67,17 +73,25 @@ export function SourcePanel({
           <textarea
             value={value}
             onChange={(e) => onChange(e.target.value)}
+            onMouseDown={(e) => {
+              clickFocusRef.current = document.activeElement !== e.currentTarget;
+            }}
             onFocus={(e) => {
-              if (!holdsSample) return;
+              const returning = leftWithWindowRef.current;
+              leftWithWindowRef.current = false;
+              if (!holdsSample || returning) return;
               e.currentTarget.setSelectionRange(0, e.currentTarget.value.length);
               selectedOnFocusRef.current = true;
             }}
             onMouseUp={(e) => {
-              if (selectedOnFocusRef.current) e.preventDefault();
+              if (clickFocusRef.current && selectedOnFocusRef.current) e.preventDefault();
+              clickFocusRef.current = false;
               selectedOnFocusRef.current = false;
             }}
             onBlur={() => {
+              clickFocusRef.current = false;
               selectedOnFocusRef.current = false;
+              leftWithWindowRef.current = !document.hasFocus();
             }}
             maxLength={INPUT_CAP}
             placeholder="Enter text"

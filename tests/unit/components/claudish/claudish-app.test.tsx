@@ -656,6 +656,13 @@ describe('ClaudishApp — the samples are measured (22.1)', () => {
     expect(mockPick).toHaveBeenCalledWith({ sample_index: 3, direction: 'claudish_to_en' });
   });
 
+  it('a tap on the card already showing pushes nothing', async () => {
+    const user = userEvent.setup();
+    render(<ClaudishApp />);
+    await user.click(cards()[0]); // the opening example's own card
+    expect(mockPick).not.toHaveBeenCalled();
+  });
+
   it('a swap that lands on a sample is not a tap and pushes nothing', async () => {
     const user = userEvent.setup();
     render(<ClaudishApp />);

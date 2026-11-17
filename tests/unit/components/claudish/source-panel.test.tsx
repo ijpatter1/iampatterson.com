@@ -129,9 +129,52 @@ describe('SourcePanel', () => {
       />
     );
     const box = screen.getByRole('textbox');
+    fireEvent.mouseDown(box); // the box is not focused yet: this click focuses it
     fireEvent.focus(box);
     expect(fireEvent.mouseUp(box)).toBe(false); // default prevented
     expect(fireEvent.mouseUp(box)).toBe(true); // a later click places the caret as usual
+  });
+
+  it('a keyboard focus never holds back a later click’s mouseup (22.2)', () => {
+    // Tabbing in selects the sample, but no click caused that focus, so a
+    // click afterwards must place the caret normally.
+    render(
+      <SourcePanel
+        value="We ship on Friday."
+        onChange={noop}
+        activeTab={1}
+        onTabSelect={noop}
+        detection={null}
+        holdsSample={true}
+      />
+    );
+    const box = screen.getByRole('textbox') as HTMLTextAreaElement;
+    box.focus();
+    expect([box.selectionStart, box.selectionEnd]).toEqual([0, box.value.length]);
+    fireEvent.mouseDown(box);
+    expect(fireEvent.mouseUp(box)).toBe(true);
+  });
+
+  it('coming back to the window keeps the caret the visitor placed (22.2)', () => {
+    render(
+      <SourcePanel
+        value="We ship on Friday."
+        onChange={noop}
+        activeTab={1}
+        onTabSelect={noop}
+        detection={null}
+        holdsSample={true}
+      />
+    );
+    const box = screen.getByRole('textbox') as HTMLTextAreaElement;
+    box.focus();
+    const end = box.value.length;
+    box.setSelectionRange(end, end); // the visitor clicks again to append
+    const hasFocus = jest.spyOn(document, 'hasFocus').mockReturnValue(false);
+    fireEvent.blur(box); // the window loses focus
+    hasFocus.mockRestore();
+    fireEvent.focus(box); // and gets it back
+    expect([box.selectionStart, box.selectionEnd]).toEqual([end, end]);
   });
 
   it('leaves the mouseup alone for the visitor’s own text', () => {

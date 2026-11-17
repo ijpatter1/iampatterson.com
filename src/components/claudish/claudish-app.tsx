@@ -208,12 +208,15 @@ export function ClaudishApp({ shareParam }: { shareParam?: string }) {
 
   const handleSamplePick = (index: number) => {
     const sample = CLAUDISH_SAMPLES[index];
-    // A tap is the visitor's act, so it is measured (22.1); the opening
-    // example and a swap that lands on a sample are not taps.
-    trackClaudishSamplePick({
-      sample_index: index + 1,
-      direction: ANALYTICS_DIRECTION[sample.direction],
-    });
+    // A tap that shows a sample is measured (22.1). The opening example, a
+    // swap that lands on a sample and a tap on the card already showing
+    // change nothing and push nothing.
+    if (index !== activeSample) {
+      trackClaudishSamplePick({
+        sample_index: index + 1,
+        direction: ANALYTICS_DIRECTION[sample.direction],
+      });
+    }
     setInput(sample.source);
     setSourceTab(sample.direction === 'cl2en' ? 2 : 1);
     setTabFromSample(true);

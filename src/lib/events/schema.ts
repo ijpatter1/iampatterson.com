@@ -137,8 +137,9 @@ export interface ClaudishRateEvent extends BaseEvent {
 
 /**
  * A tap on a "Try one" card (22.1). The sample is identified by its
- * number, never its text. The opening example fires nothing: it is on the
- * page before anyone acts.
+ * number, never its text. The opening example fires nothing (it is on the
+ * page before anyone acts), and neither does a tap on the card already
+ * showing.
  */
 export interface ClaudishSamplePickEvent extends BaseEvent {
   event: 'claudish_sample_pick';
