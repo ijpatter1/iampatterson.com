@@ -10,6 +10,22 @@ export interface FollowStep {
   text: string;
 }
 
+/** The icon each "What it includes" card carries; the component draws it. */
+export type IncludeIcon = 'conversion' | 'tags' | 'attribution' | 'claims' | 'reporting' | 'team';
+
+/** One area the review covers: a short title over Ian's sentence. */
+export interface IncludeItem {
+  icon: IncludeIcon;
+  title: string;
+  text: string;
+}
+
+/** One step of the "How it runs" strip. A caption, never a duration. */
+export interface RunStep {
+  label: string;
+  caption: string;
+}
+
 export const REVIEW_PAGE = {
   eyebrow: 'The review',
   title: 'Start with a review.',
@@ -22,18 +38,57 @@ export const REVIEW_PAGE = {
   /** A turnaround counted from full access, never an effort duration (Ian, 2026-11-03). */
   turnaround: 'About a week, once I have all the required platform and data access.',
   cta: 'Book the review',
-  includesEyebrow: 'What it includes',
-  /** What the review covers (Ian, 2026-11-03). */
+  includesTitle: 'What it includes',
+  /**
+   * What the review covers (Ian, 2026-11-03), under the short titles he
+   * approved on the 21.1 mockup.
+   */
   includes: [
-    'Your conversion definitions and events: what counts as a purchase or a sign-up, and where each one fires.',
-    'Tag Manager, web and server, and your analytics with its warehouse export.',
-    "Each ad platform's attribution settings, deduplication and click IDs.",
-    "Each platform's claims read against your orders: what it claimed, how many match a real order, and how many orders you had.",
-    'How your weekly reporting is built, and who it depends on.',
-    'What your team can change without developers, and what server-side tagging would take.',
-  ],
-  columnsEyebrow: 'What you give me, and what you get',
-  followsEyebrow: 'What can follow',
+    {
+      icon: 'conversion',
+      title: 'What counts as a conversion',
+      text: 'Your conversion definitions and events: what counts as a purchase or a sign-up, and where each one fires.',
+    },
+    {
+      icon: 'tags',
+      title: 'Tag Manager and analytics',
+      text: 'Tag Manager, web and server, and your analytics with its warehouse export.',
+    },
+    {
+      icon: 'attribution',
+      title: 'Attribution settings',
+      text: "Each ad platform's attribution settings, deduplication and click IDs.",
+    },
+    {
+      icon: 'claims',
+      title: 'Claims against your orders',
+      text: "Each platform's claims read against your orders: what it claimed, how many match a real order, and how many orders you had.",
+    },
+    {
+      icon: 'reporting',
+      title: 'Weekly reporting',
+      text: 'How your weekly reporting is built, and who it depends on.',
+    },
+    {
+      icon: 'team',
+      title: 'What your team can change',
+      text: 'What your team can change without developers, and what server-side tagging would take.',
+    },
+  ] satisfies IncludeItem[],
+  columnsTitle: 'What you give me, and what you get',
+  /**
+   * The order the review runs in (21.1 mockup, approved by Ian). The strip's
+   * one timing is `turnaround`; no step states how long it takes.
+   */
+  runsTitle: 'How it runs',
+  runs: [
+    { label: 'Access', caption: 'Read access and an order export.' },
+    { label: 'Kickoff', caption: 'A session with your team.' },
+    { label: 'First summary', caption: 'After the kickoff.' },
+    { label: 'Walkthrough', caption: 'Recorded, with your team.' },
+    { label: 'Written review', caption: 'Findings, evidence and the ranked plan.' },
+  ] satisfies RunStep[],
+  followsTitle: 'What can follow',
   follows: [
     {
       label: 'Build',

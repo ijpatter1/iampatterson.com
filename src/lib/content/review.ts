@@ -46,23 +46,52 @@ export const HOW_WE_WORK = {
   cta: 'Start with a review',
 } as const;
 
+/** One line of a give or get column: a whole sentence, unchanged. */
+export interface ReviewColumnItem {
+  text: string;
+  /** The words that open the sentence, set in bold on the "You get" checklist. */
+  lead?: string;
+}
+
 export interface ReviewColumn {
   label: string;
-  text: string;
+  items: ReviewColumnItem[];
 }
 
 /**
  * The review page's give and get columns (15.10). Signed 2026-10-12;
  * "You give me" and "You get" rewritten by Ian on 2026-11-03; "Then" folded
- * into the page's Build step the same day.
+ * into the page's Build step the same day. Set as lists, one sentence per
+ * item with no word changed, in 21.1.
  */
 export const REVIEW_COLUMNS = [
   {
     label: 'You give me',
-    text: 'Read access to Tag Manager, your analytics and its warehouse, and the ad accounts. An order export from your system of record. A kickoff session with your team.',
+    items: [
+      {
+        text: 'Read access to Tag Manager, your analytics and its warehouse, and the ad accounts.',
+      },
+      { text: 'An order export from your system of record.' },
+      { text: 'A kickoff session with your team.' },
+    ],
   },
   {
     label: 'You get',
-    text: "A first summary after the kickoff. A recorded walkthrough with your team. The written review, with each platform's claims against your orders and the evidence for each finding. The plan as a working tracker: ranked, with owners and estimated effort. Your data back, and deleted on my side when the work ends.",
+    items: [
+      { lead: 'A first summary', text: 'A first summary after the kickoff.' },
+      { lead: 'A recorded walkthrough', text: 'A recorded walkthrough with your team.' },
+      {
+        lead: 'The written review',
+        text: "The written review, with each platform's claims against your orders and the evidence for each finding.",
+      },
+      {
+        lead: 'The plan as a working tracker',
+        text: 'The plan as a working tracker: ranked, with owners and estimated effort.',
+      },
+      {
+        lead: 'Your data back',
+        text: 'Your data back, and deleted on my side when the work ends.',
+      },
+    ],
   },
 ] satisfies ReviewColumn[];

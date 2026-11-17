@@ -1,17 +1,18 @@
-import { BookButton } from '@/components/review/book-button';
 import {
   BODY_CLASSES,
   Eyebrow,
   ITEM_TITLE_CLASSES,
-  LABEL_CLASSES,
   LABEL_STRONG_CLASSES,
   PAGE_TITLE_CLASSES,
   SECTION_PADDING_BOTTOM,
   SMALL_BODY_CLASSES,
   STAT_FIGURE_CLASSES,
-  Section,
 } from '@/components/home/section';
-import { REVIEW_COLUMNS } from '@/lib/content/review';
+import { BookButton } from '@/components/review/book-button';
+import { GiveGet } from '@/components/review/give-get';
+import { HowItRuns } from '@/components/review/how-it-runs';
+import { IncludesGrid } from '@/components/review/includes-grid';
+import { ReviewSection } from '@/components/review/review-section';
 import { REVIEW_PAGE } from '@/lib/content/review-page';
 
 /** The review page: the profile's Featured item "Start with a review". */
@@ -41,30 +42,20 @@ export default function ReviewPage() {
         </div>
       </section>
 
-      <Section tone="alt" eyebrow={REVIEW_PAGE.includesEyebrow} eyebrowAs="h2">
-        <ol className="grid gap-x-10 gap-y-8 md:grid-cols-3">
-          {REVIEW_PAGE.includes.map((item, i) => (
-            <li key={item} className="border-t border-ink pt-5">
-              <div className={LABEL_CLASSES}>{String(i + 1).padStart(2, '0')}</div>
-              <p className={`mt-3 ${BODY_CLASSES}`}>{item}</p>
-            </li>
-          ))}
-        </ol>
-      </Section>
+      <ReviewSection tone="alt" title={REVIEW_PAGE.includesTitle}>
+        <IncludesGrid />
+      </ReviewSection>
 
-      <Section eyebrow={REVIEW_PAGE.columnsEyebrow} eyebrowAs="h2">
-        <div className="grid gap-x-10 gap-y-8 md:grid-cols-2">
-          {REVIEW_COLUMNS.map((column) => (
-            <div key={column.label} className="border-t border-rule pt-4">
-              <h3 className={`${LABEL_CLASSES} font-normal`}>{column.label}</h3>
-              <p className={`mt-3 ${BODY_CLASSES}`}>{column.text}</p>
-            </div>
-          ))}
-        </div>
-      </Section>
+      <ReviewSection title={REVIEW_PAGE.columnsTitle}>
+        <GiveGet />
+      </ReviewSection>
 
-      <Section tone="alt" eyebrow={REVIEW_PAGE.followsEyebrow} eyebrowAs="h2">
-        <div className="grid gap-x-10 gap-y-8 md:grid-cols-2">
+      <ReviewSection tone="alt" title={REVIEW_PAGE.runsTitle}>
+        <HowItRuns />
+      </ReviewSection>
+
+      <ReviewSection title={REVIEW_PAGE.followsTitle}>
+        <div className="mt-7 grid gap-x-10 gap-y-8 md:mt-10 md:grid-cols-2">
           {REVIEW_PAGE.follows.map((step) => (
             <div key={step.label} className="border-t border-ink pt-5">
               <h3 className={ITEM_TITLE_CLASSES}>{step.label}</h3>
@@ -75,7 +66,7 @@ export default function ReviewPage() {
         <div className="mt-12">
           <BookButton ctaLocation="review_page_bottom" />
         </div>
-      </Section>
+      </ReviewSection>
     </main>
   );
 }
