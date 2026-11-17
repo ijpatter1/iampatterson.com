@@ -33,7 +33,6 @@ import { SamplePhrases } from './sample-phrases';
 import { TranslateSurface } from './translate-surface';
 
 import type { ClaudishDirection } from '@/hooks/useClaudishTranslation';
-import type { DetectionLatch } from '@/lib/claudish/detect';
 import type { LatchState } from '@/lib/claudish/types';
 
 const ANALYTICS_DIRECTION = {
@@ -41,22 +40,18 @@ const ANALYTICS_DIRECTION = {
   cl2en: 'claudish_to_en',
 } as const;
 
-/** The samples as the hook's stored translations: a stable module constant. */
-const STORED_SAMPLES = CLAUDISH_SAMPLES.map((sample) => ({
+/** The translation hook's key: direction plus the normalized text. */
+const keyFor = (direction: ClaudishDirection, text: string) =>
+  `${direction}::${normalizeTranslationInput(text)}`;
+
+/** The samples as the hook's stored translations, with each card's index and key. */
+const STORED_SAMPLES = CLAUDISH_SAMPLES.map((sample, index) => ({
+  index,
+  key: keyFor(sample.direction, sample.source),
   input: sample.source,
   direction: sample.direction,
   text: sample.target,
 }));
-
-/** The sample whose exact text (as the hook keys it) and direction the box holds. */
-function sampleIndexFor(input: string, direction: ClaudishDirection): number | null {
-  const normalized = normalizeTranslationInput(input);
-  const index = CLAUDISH_SAMPLES.findIndex(
-    (sample) =>
-      sample.direction === direction && normalizeTranslationInput(sample.source) === normalized
-  );
-  return index === -1 ? null : index;
-}
 
 const NEUTRAL_LATCH: LatchState = {
   detected: false,
@@ -101,16 +96,27 @@ export function ClaudishApp({ shareParam }: { shareParam?: string }) {
   const [sourceTab, setSourceTab] = useState(
     opening ? (opening.direction === 'cl2en' ? 2 : 1) : 0
   );
-  const latchRef = useRef<DetectionLatch | null>(null);
-  // The opening sample feeds the latch like a tapped one (no event fires).
-  // Computed on the first render only, which is the only one useState reads.
-  let openingLatch = NEUTRAL_LATCH;
-  if (latchRef.current == null) {
-    const detector = createDetectionLatch();
-    if (!shareParam) openingLatch = detector.update(CLAUDISH_SAMPLES[0].source);
-    latchRef.current = detector;
-  }
-  const [latch, setLatch] = useState<LatchState>(openingLatch);
+  // Who set the source tab: a sample (the opening, a tap, a swap onto a
+  // sample) or the visitor. A sample's tab goes back to Detect on any edit
+  // or an emptied box; the visitor's own choice stays, as before 21.3.
+  const [tabFromSample, setTabFromSample] = useState(!shareParam);
+
+  // The detection latch, primed with the opening sample like a tapped one
+  // (no event fires). A lazy initializer keeps that idempotent.
+  const [{ detector, openingVerdict }] = useState(() => {
+    const created = createDetectionLatch();
+    return {
+      detector: created,
+      openingVerdict: shareParam ? NEUTRAL_LATCH : created.update(CLAUDISH_SAMPLES[0].source),
+    };
+  });
+  const [latch, setLatch] = useState<LatchState>(openingVerdict);
+  // The verdict a sample primed the latch with. While the latch still gives
+  // it, the detection is the example's, not the visitor's, so no
+  // claudish_detected fires. Cleared when the box empties or it changes.
+  const primedVerdictRef = useRef<LatchState['lang'] | null>(
+    shareParam ? null : openingVerdict.lang
+  );
   const detectedFiredRef = useRef<Set<string> | null>(null);
   if (detectedFiredRef.current == null) detectedFiredRef.current = new Set();
 
@@ -159,8 +165,16 @@ export function ClaudishApp({ shareParam }: { shareParam?: string }) {
   const claimedClaudish = latch.lang === 'en-x-claudish';
   const direction: ClaudishDirection =
     sourceTab === 0 ? (claimedClaudish ? 'cl2en' : 'en2cl') : sourceTab === 2 ? 'cl2en' : 'en2cl';
+  // A share link's own translation beats a sample with the same text and
+  // direction: the share's target is what the page, Copy and Share show.
+  const storedSamples = useMemo(() => {
+    const shareKey = share ? keyFor(share.direction, share.source) : null;
+    return STORED_SAMPLES.filter((entry) => entry.key !== shareKey);
+  }, [share]);
+  const sampleAt = (text: string, dir: ClaudishDirection) =>
+    storedSamples.find((entry) => entry.key === keyFor(dir, text)) ?? null;
   // Which sample the panels show; null whenever the text is the visitor's own.
-  const activeSample = sampleIndexFor(input, direction);
+  const activeSample = sampleAt(input, direction)?.index ?? null;
 
   const translation = useClaudishTranslation({
     input,
@@ -173,44 +187,49 @@ export function ClaudishApp({ shareParam }: { shareParam?: string }) {
       share && share.target
         ? { input: share.source, direction: share.direction, text: share.target }
         : undefined,
-    stored: STORED_SAMPLES,
+    stored: storedSamples,
   });
+
+  // A sample put in the box primes the latch with its text, so Detect
+  // claims the right side later; the hook serves its stored translation.
+  const primeWithSample = (text: string) => {
+    const verdict = detector.update(text);
+    setLatch(verdict);
+    primedVerdictRef.current = verdict.lang;
+  };
 
   const handleSamplePick = (index: number) => {
     const sample = CLAUDISH_SAMPLES[index];
     setInput(sample.source);
     setSourceTab(sample.direction === 'cl2en' ? 2 : 1);
-    // Feed the latch the sample's text, as swap does with its output, so
-    // Detect claims the right side later. No claudish_detected fires: the
-    // visitor typed nothing. The hook serves the stored translation.
-    setLatch(latchRef.current!.update(sample.source));
+    setTabFromSample(true);
+    primeWithSample(sample.source);
   };
 
   const handleInputChange = (value: string) => {
     setInput(value);
-    // Any edit to a sample, and any emptied box, hands the source back to
-    // Detect: the visitor's own text is detected as it stands.
-    if (activeSample !== null || value.trim().length === 0) setSourceTab(0);
+    if (tabFromSample) {
+      setSourceTab(0);
+      setTabFromSample(false);
+    }
     if (value.trim().length === 0) {
       // An emptied textarea is a fresh start: a held latch would misroute
       // the NEXT input's auto direction (stale cl2en over new English).
-      latchRef.current!.reset();
+      detector.reset();
       setLatch(NEUTRAL_LATCH);
+      primedVerdictRef.current = null;
       return;
     }
-    // The latch's continuation check does the rest: a replacement (paste
-    // over the example) starts clean; an extension or trim keeps evidence.
-    const next = latchRef.current!.update(value);
+    // The latch's continuation check: an extension or a truncation keeps
+    // its evidence; any other edit (a paste over the example, a mid-text
+    // change) re-reads the whole text from scratch.
+    const next = detector.update(value);
     setLatch(next);
-    // A detection event reports text the visitor changed: none while the
-    // box still begins with a sample's full, unedited source (the latch
-    // was primed with it, so the verdict would be the example's).
-    const stillTheExample = CLAUDISH_SAMPLES.some((sample) => value.startsWith(sample.source));
-    if (
-      !stillTheExample &&
-      next.lang !== 'unknown' &&
-      !detectedGateHolds(next.lang, detectedFiredRef.current!)
-    ) {
+    if (primedVerdictRef.current !== null) {
+      if (next.lang === primedVerdictRef.current) return; // still the example's verdict
+      primedVerdictRef.current = null;
+    }
+    if (next.lang !== 'unknown' && !detectedGateHolds(next.lang, detectedFiredRef.current!)) {
       trackClaudishDetected({
         detected_language: next.lang,
         detector_source: next.source,
@@ -223,13 +242,25 @@ export function ClaudishApp({ shareParam }: { shareParam?: string }) {
     const output = translation.status === 'done' ? translation.text : '';
     const nextDirection: ClaudishDirection = direction === 'en2cl' ? 'cl2en' : 'en2cl';
     setSourceTab(nextDirection === 'cl2en' ? 2 : 1);
+    // Sample 2's output is sample 3's source: a swap that lands on a
+    // sample's key is that sample (the hook serves it, with no request).
+    const landsOnSample = output !== '' && sampleAt(output, nextDirection) !== null;
+    setTabFromSample(landsOnSample);
     if (output) {
-      // Sample 2's output is sample 3's source: the hook serves a landing
-      // on a sample's key as that sample, with no request.
       setInput(output);
-      setLatch(latchRef.current!.update(output));
+      if (landsOnSample) {
+        primeWithSample(output);
+      } else {
+        setLatch(detector.update(output));
+        primedVerdictRef.current = null;
+      }
       translation.translateNow({ input: output, direction: nextDirection });
     }
+  };
+
+  const handleSourceSelect = (index: number) => {
+    setSourceTab(index);
+    setTabFromSample(false);
   };
 
   // What the Detect tab claims. No hedging (user decision): once input
@@ -243,9 +274,7 @@ export function ClaudishApp({ shareParam }: { shareParam?: string }) {
 
   // Target row: 0 = English, 1 = Claudish; choosing one determines direction.
   const targetTab = direction === 'en2cl' ? 1 : 0;
-  const handleTargetSelect = (index: number) => {
-    setSourceTab(index === 0 ? 2 : 1);
-  };
+  const handleTargetSelect = (index: number) => handleSourceSelect(index === 0 ? 2 : 1);
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 pt-6 md:px-6">
@@ -255,7 +284,7 @@ export function ClaudishApp({ shareParam }: { shareParam?: string }) {
           value: input,
           onChange: handleInputChange,
           activeTab: sourceTab,
-          onTabSelect: setSourceTab,
+          onTabSelect: handleSourceSelect,
           detection,
         }}
         targetProps={{

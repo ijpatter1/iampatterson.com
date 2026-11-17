@@ -358,18 +358,112 @@ describe('ClaudishApp — opening example and sample phrases (21.3)', () => {
     );
   });
 
-  it('clearing after an edit returns to Detect even from a chosen tab', async () => {
+  it('a tab the visitor chose survives Clear, so a short Claudish line still goes cl2en', async () => {
+    // Before 21.3 behaviour: the visitor's own choice is kept. Detect could
+    // not read a line under 24 characters and would send it en2cl.
     const user = setupUser();
     render(<ClaudishApp />);
-    const box = screen.getByRole('textbox');
-    await user.type(box, ' Soon.'); // edit: back to Detect
     const sourceTabs = within(screen.getByRole('tablist', { name: 'Source language' }));
     await user.click(sourceTabs.getByRole('tab', { name: 'Claudish' }));
-    await user.clear(box);
-    expect(screen.getByRole('tab', { name: 'Detect language' })).toHaveAttribute(
+    await user.click(screen.getByRole('button', { name: 'Clear source text' }));
+    expect(sourceTabs.getByRole('tab', { name: 'Claudish' })).toHaveAttribute(
       'aria-selected',
       'true',
     );
+    await user.click(screen.getByRole('textbox'));
+    await user.paste('Not a bug — a choice.');
+    await waitPastDebounce();
+    expect(mockStream).toHaveBeenCalledTimes(1);
+    expect(mockStream.mock.calls[0][1]).toEqual({
+      text: 'Not a bug — a choice.',
+      direction: 'cl2en',
+    });
+  });
+
+  it('a tab the visitor chose survives an edit to a sample', async () => {
+    const user = setupUser();
+    render(<ClaudishApp />);
+    await user.click(cards()[2]);
+    const sourceTabs = within(screen.getByRole('tablist', { name: 'Source language' }));
+    await user.click(sourceTabs.getByRole('tab', { name: 'English' }));
+    await user.click(sourceTabs.getByRole('tab', { name: 'Claudish' }));
+    await user.type(screen.getByRole('textbox'), ' x');
+    expect(selectedTab('Source language')).toBe(2);
+  });
+
+  it('a tab set by a swap onto a sample is the sample’s: an edit returns to Detect', async () => {
+    const user = setupUser();
+    render(<ClaudishApp />);
+    await user.click(cards()[1]);
+    await user.click(screen.getByRole('button', { name: /swap languages/i })); // lands on sample 3
+    expect(selectedTab('Source language')).toBe(2);
+    await user.type(screen.getByRole('textbox'), ' x');
+    expect(selectedTab('Source language')).toBe(0);
+  });
+
+  it('a share link’s own translation beats a stored sample with the same text', async () => {
+    // A share of "We ship on Friday." carries its own output: that is what
+    // the page, Copy and Share must show, matching opened_shared_link.
+    const target = 'Friday is the date — and the date is the promise.';
+    const t = shareParamFor({ direction: 'en2cl', source: CLAUDISH_SAMPLES[0].source, target });
+    render(<ClaudishApp shareParam={t} />);
+    expect(screen.getByTestId('claudish-output')).toHaveTextContent(target);
+    expect(screen.getByTestId('claudish-output')).not.toHaveTextContent(CLAUDISH_SAMPLES[0].target);
+    expect(pressedCards()).toEqual(['false', 'false', 'false']);
+    expect(mockShare).toHaveBeenCalledWith(
+      expect.objectContaining({ share_action: 'opened_shared_link', output_chars: target.length }),
+    );
+    await waitPastDebounce();
+    expect(mockStream).not.toHaveBeenCalled();
+  });
+
+  it('Backspace at the end of the Claudish sample fires no claudish_detected', async () => {
+    const user = setupUser();
+    render(<ClaudishApp />);
+    await user.click(cards()[2]);
+    await user.type(screen.getByRole('textbox'), '{Backspace}');
+    expect(mockDetected).not.toHaveBeenCalled();
+  });
+
+  it('a mid-text typo fix in the Claudish sample fires no claudish_detected', async () => {
+    const user = setupUser();
+    render(<ClaudishApp />);
+    await user.click(cards()[2]);
+    const box = screen.getByRole('textbox') as HTMLTextAreaElement;
+    // Put the caret after "numbers" and insert a stray character.
+    const at = box.value.indexOf('numbers') + 'numbers'.length;
+    await user.click(box);
+    box.setSelectionRange(at, at);
+    await user.keyboard('s');
+    expect(box.value).not.toBe(CLAUDISH_SAMPLES[2].source);
+    expect(mockDetected).not.toHaveBeenCalled();
+  });
+
+  it('an append that flips the sample’s verdict is the visitor’s detection and fires', async () => {
+    // Sample 2 reads as English; the visitor's Claudish addition changes
+    // the verdict, so the detection is theirs. (The reverse, English
+    // appended to sample 3, never flips within the 3,000 cap: the
+    // heuristic still scores 0.509 at 2,879 characters.)
+    const user = setupUser();
+    render(<ClaudishApp />);
+    await user.click(cards()[1]);
+    await waitPastDebounce(); // past the latch's dwell
+    await user.click(screen.getByRole('textbox'));
+    await user.paste(` ${CLAUDISH_SENTENCE} It underscores a robust, seamless tapestry of meaning.`);
+    expect(mockDetected).toHaveBeenCalledWith(
+      expect.objectContaining({ detected_language: 'en-x-claudish' }),
+    );
+  });
+
+  it('Clear, then typing text that starts with a sample’s words, is the visitor’s own and fires', async () => {
+    const user = setupUser();
+    render(<ClaudishApp />);
+    await user.click(screen.getByRole('button', { name: 'Clear source text' }));
+    await user.click(screen.getByRole('textbox'));
+    await user.paste(
+      'We ship on Friday. We moved the standup to nine so the contractors can join before their shift starts.',
+    );
+    expect(mockDetected).toHaveBeenCalledWith(expect.objectContaining({ detected_language: 'en' }));
   });
 
   it('a tab round trip back onto a sample shows it as that sample, with no claudish_translate', async () => {
