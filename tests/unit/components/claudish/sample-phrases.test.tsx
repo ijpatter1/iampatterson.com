@@ -21,7 +21,7 @@ describe('SamplePhrases', () => {
     const buttons = within(list).getAllByRole('button');
     expect(buttons).toHaveLength(3);
     expect(buttons[0]).toHaveTextContent('English → Claudish');
-    expect(buttons[0]).toHaveTextContent('We ship on Friday.');
+    expect(buttons[0]).toHaveTextContent(CLAUDISH_SAMPLES[0].source);
     expect(buttons[2]).toHaveTextContent('Claudish → English');
     expect(buttons[2]).toHaveTextContent(CLAUDISH_SAMPLES[2].source);
   });
@@ -40,7 +40,7 @@ describe('SamplePhrases', () => {
     const user = userEvent.setup();
     const onPick = jest.fn();
     render(<SamplePhrases samples={CLAUDISH_SAMPLES} activeIndex={0} onPick={onPick} />);
-    await user.click(screen.getByRole('button', { name: /Neither expressed/ }));
+    await user.click(screen.getAllByRole('button')[2]);
     expect(onPick).toHaveBeenCalledWith(2);
   });
 });

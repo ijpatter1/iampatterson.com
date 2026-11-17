@@ -64,13 +64,17 @@ export const CLAUDISH_SAMPLES: readonly ClaudishSample[] = [
     direction: 'en2cl',
     source: 'I will post the numbers when we have a full quarter of data.',
     target:
-      'I’ll be sharing the numbers once we have a full quarter’s worth of data — the complete picture, not a partial snapshot, and that distinction matters. Until then, the figures stay in the wings, ready to illuminate the story only when they’re whole.',
+      "I'll be sharing the numbers once we have a full quarter's worth of data — the complete picture, not a partial snapshot, and that distinction matters. Until then, the figures stay in the wings, ready to illuminate the story only when they're whole.",
     provenance: HAIKU_ON_ANTHROPIC_API,
   },
   {
     direction: 'cl2en',
-    source: 'Neither expressed any desire to return, which speaks volumes.',
-    target: 'Neither wanted to come back, which tells you a lot.',
+    // Sample 2's output, fed back through cl2en (2026-11-17): a real Claudish
+    // input that the site's own detector reads as Claudish (0.90).
+    source:
+      "I'll be sharing the numbers once we have a full quarter's worth of data — the complete picture, not a partial snapshot, and that distinction matters. Until then, the figures stay in the wings, ready to illuminate the story only when they're whole.",
+    target:
+      "I will share the numbers when I have a full quarter of data. Partial snapshots are misleading. The figures will wait until they are complete.",
     provenance: FLASH_LITE_ON_GEMINI_LOOP,
   },
 ];

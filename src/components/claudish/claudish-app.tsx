@@ -203,6 +203,16 @@ export function ClaudishApp({ shareParam }: { shareParam?: string }) {
     setSourceTab(nextDirection === 'cl2en' ? 2 : 1);
     setActiveSample(null);
     if (output) {
+      // Sample 2's output is sample 3's source: a swap that lands exactly on
+      // a sample (text AND direction) shows it as that sample, at zero
+      // tokens, the same as tapping its card.
+      const landed = CLAUDISH_SAMPLES.findIndex(
+        (sample) => sample.direction === nextDirection && sample.source === output
+      );
+      if (landed !== -1) {
+        handleSamplePick(landed);
+        return;
+      }
       setInput(output);
       setLatch(latchRef.current!.update(output));
       translation.translateNow({ input: output, direction: nextDirection });

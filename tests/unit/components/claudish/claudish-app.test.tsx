@@ -259,10 +259,9 @@ describe('ClaudishApp — opening example and sample phrases (21.3)', () => {
     within(screen.getByRole('tablist', { name: row }))
       .getAllByRole('tab')
       .findIndex((tab) => tab.getAttribute('aria-selected') === 'true');
-  const pressedCards = () =>
-    within(screen.getByRole('list', { name: 'Try one' }))
-      .getAllByRole('button')
-      .map((card) => card.getAttribute('aria-pressed'));
+  const cards = () =>
+    within(screen.getByRole('list', { name: 'Try one' })).getAllByRole('button');
+  const pressedCards = () => cards().map((card) => card.getAttribute('aria-pressed'));
 
   it('opens on the first sample already translated, with no request and no analytics', async () => {
     const [first] = CLAUDISH_SAMPLES;
@@ -290,7 +289,7 @@ describe('ClaudishApp — opening example and sample phrases (21.3)', () => {
     const user = setupUser();
     const sample = CLAUDISH_SAMPLES[2];
     render(<ClaudishApp />);
-    await user.click(screen.getByRole('button', { name: /Neither expressed/ }));
+    await user.click(cards()[2]);
     expect(screen.getByRole('textbox')).toHaveValue(sample.source);
     // The live mirror carries the finished text at once (the visible
     // panel reveals cl2en text progressively).
@@ -310,7 +309,7 @@ describe('ClaudishApp — opening example and sample phrases (21.3)', () => {
     const user = setupUser();
     const sample = CLAUDISH_SAMPLES[2];
     render(<ClaudishApp />);
-    await user.click(screen.getByRole('button', { name: /Neither expressed/ }));
+    await user.click(cards()[2]);
     await user.type(screen.getByRole('textbox'), ' Truly.');
     expect(pressedCards()).toEqual(['false', 'false', 'false']);
     expect(selectedTab('Source language')).toBe(2); // still Claudish
@@ -322,30 +321,78 @@ describe('ClaudishApp — opening example and sample phrases (21.3)', () => {
     });
   });
 
-  it('Detect after a sample claims the side the latch reads from the sample text, with no event', async () => {
+  it('Detect after the Claudish sample claims Claudish and keeps the stored translation', async () => {
     // The tap feeds the sample's text to the detection latch (as swap does
-    // with its output), so Detect names a side instead of "Detect language"
-    // over a full box, and the direction follows that claim. The tap itself
-    // fires no claudish_detected: the visitor typed nothing. Detector fact
-    // (2026-11-17): this Claudish sentence reads as confident English
-    // (heuristic 0.15), so Detect claims English and translates en2cl.
+    // with its output), so Detect names the side the detector reads
+    // (this sample scores 0.85+, "Claudish - detected") and the direction
+    // stays cl2en: the box still holds the stored source in the stored
+    // direction, so nothing is requested and the card stays pressed. The
+    // tap fires no claudish_detected: the visitor typed nothing.
     const user = setupUser();
-    const sample = CLAUDISH_SAMPLES[2];
     render(<ClaudishApp />);
-    await user.click(screen.getByRole('button', { name: /Neither expressed/ }));
+    await user.click(cards()[2]);
     await user.click(screen.getByRole('tab', { name: 'Detect language' }));
-    expect(selectedTab('Source language')).toBe(0);
-    expect(screen.getByRole('tab', { name: 'English - detected' })).toHaveAttribute(
+    expect(screen.getByRole('tab', { name: 'Claudish - detected' })).toHaveAttribute(
       'aria-selected',
       'true',
     );
-    expect(selectedTab('Target language')).toBe(1); // the claim drives the direction: en2cl
-    // A live translation replaces the stored one, so no card claims it.
+    expect(selectedTab('Target language')).toBe(0); // English: cl2en holds
+    expect(pressedCards()).toEqual(['false', 'false', 'true']);
+    expect(screen.getByTestId('claudish-live-mirror')).toHaveTextContent(
+      CLAUDISH_SAMPLES[2].target,
+    );
+    await waitPastDebounce();
+    expect(mockStream).not.toHaveBeenCalled();
+    expect(mockTranslate).not.toHaveBeenCalled();
+    expect(mockDetected).not.toHaveBeenCalled();
+  });
+
+  it('the Claudish sample on the English tab is translated live, never shown with its cl2en output', async () => {
+    // Sample 3's source is sample 2's output, so the same text has a
+    // stored translation in one direction only. Read the other way it
+    // must go to the translator, not borrow the stored cl2en text.
+    const user = setupUser();
+    const sample = CLAUDISH_SAMPLES[2];
+    render(<ClaudishApp />);
+    await user.click(cards()[2]);
+    const sourceTabs = within(screen.getByRole('tablist', { name: 'Source language' }));
+    await user.click(sourceTabs.getByRole('tab', { name: 'English' }));
     expect(pressedCards()).toEqual(['false', 'false', 'false']);
+    expect(screen.getByTestId('claudish-live-mirror')).not.toHaveTextContent(sample.target);
     await waitPastDebounce();
     expect(mockStream).toHaveBeenCalledTimes(1);
     expect(mockStream.mock.calls[0][1]).toEqual({ text: sample.source, direction: 'en2cl' });
-    expect(mockDetected).not.toHaveBeenCalled();
+  });
+
+  it('swap on sample 2 lands on sample 3 and shows its stored translation, with no request', async () => {
+    // Intended: sample 2's output IS sample 3's source, and sample 3's
+    // target is the real cl2en output for exactly that text, so the swap
+    // shows it as the sample it is (card 3 pressed), at zero tokens and
+    // with no claudish_translate, the same as tapping card 3.
+    const user = setupUser();
+    const [, second, third] = CLAUDISH_SAMPLES;
+    render(<ClaudishApp />);
+    await user.click(cards()[1]);
+    await user.click(screen.getByRole('button', { name: /swap languages/i }));
+    expect(screen.getByRole('textbox')).toHaveValue(second.target);
+    expect(screen.getByRole('textbox')).toHaveValue(third.source);
+    expect(screen.getByTestId('claudish-live-mirror')).toHaveTextContent(third.target);
+    expect(selectedTab('Source language')).toBe(2); // Claudish
+    expect(pressedCards()).toEqual(['false', 'false', 'true']);
+    await waitPastDebounce();
+    expect(mockStream).not.toHaveBeenCalled();
+    expect(mockTranslate).not.toHaveBeenCalled();
+  });
+
+  it('swap on a sample whose output is not another sample translates live, with no card pressed', async () => {
+    const user = setupUser();
+    const [first] = CLAUDISH_SAMPLES;
+    render(<ClaudishApp />);
+    await user.click(screen.getByRole('button', { name: /swap languages/i }));
+    expect(screen.getByRole('textbox')).toHaveValue(first.target);
+    expect(pressedCards()).toEqual(['false', 'false', 'false']);
+    expect(mockStream).toHaveBeenCalledTimes(1);
+    expect(mockStream.mock.calls[0][1]).toEqual({ text: first.target, direction: 'cl2en' });
   });
 
   it('a tab change that keeps the direction keeps the opening sample on show', async () => {

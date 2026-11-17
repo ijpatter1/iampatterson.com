@@ -10,6 +10,8 @@
  */
 import { expect, test } from '@playwright/test';
 
+import { CLAUDISH_SAMPLES } from '../../src/lib/claudish/samples';
+
 const E2E_ENABLED = process.env.E2E_ENABLED === '1';
 
 const CLAUDISH_INPUT =
@@ -97,15 +99,12 @@ test.describe('Claudish translator', () => {
       await route.abort();
     });
     await page.goto('/claudish');
-    await expect(page.getByRole('textbox')).toHaveValue('We ship on Friday.');
-    await expect(page.getByTestId('claudish-output')).toContainText('we ship on Friday —');
-    await page.getByRole('button', { name: /Neither expressed/ }).click();
-    await expect(page.getByRole('textbox')).toHaveValue(
-      'Neither expressed any desire to return, which speaks volumes.',
-    );
-    await expect(page.getByTestId('claudish-output')).toHaveText(
-      'Neither wanted to come back, which tells you a lot.',
-    );
+    const [first, , claudish] = CLAUDISH_SAMPLES;
+    await expect(page.getByRole('textbox')).toHaveValue(first.source);
+    await expect(page.getByTestId('claudish-output')).toHaveText(first.target);
+    await page.getByRole('list', { name: 'Try one' }).getByRole('button').nth(2).click();
+    await expect(page.getByRole('textbox')).toHaveValue(claudish.source);
+    await expect(page.getByTestId('claudish-output')).toHaveText(claudish.target);
     // Well past the 600ms debounce: a late request would have landed.
     await page.waitForTimeout(1500);
     expect(proxyCalls).toBe(0);

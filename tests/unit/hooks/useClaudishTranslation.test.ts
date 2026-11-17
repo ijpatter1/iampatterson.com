@@ -24,6 +24,7 @@ jest.mock('@/lib/events/track', () => ({
 import { streamTranslation } from '@/lib/claudish/client';
 import { trackClaudishTranslate } from '@/lib/events/track';
 import { useClaudishTranslation } from '@/hooks/useClaudishTranslation';
+import { CLAUDISH_SAMPLES } from '@/lib/claudish/samples';
 import type { ClaudishFrame } from '@/lib/claudish/sse';
 
 const mockStream = streamTranslation as jest.Mock;
@@ -457,9 +458,9 @@ describe('stored translations (21.3 sample phrases)', () => {
   // translation in the same handler. Nothing was translated, so nothing
   // may reach the proxy (no spend) and no claudish_translate may fire.
   const STORED = {
-    input: 'Neither expressed any desire to return, which speaks volumes.',
+    input: CLAUDISH_SAMPLES[2].source,
     direction: 'cl2en' as const,
-    text: 'Neither wanted to come back, which tells you a lot.',
+    text: CLAUDISH_SAMPLES[2].target,
   };
 
   interface Tappable {

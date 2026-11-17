@@ -34,13 +34,21 @@ describe('CLAUDISH_SAMPLES', () => {
       {
         source: 'I will post the numbers when we have a full quarter of data.',
         target:
-          'I’ll be sharing the numbers once we have a full quarter’s worth of data — the complete picture, not a partial snapshot, and that distinction matters. Until then, the figures stay in the wings, ready to illuminate the story only when they’re whole.',
+          "I'll be sharing the numbers once we have a full quarter's worth of data — the complete picture, not a partial snapshot, and that distinction matters. Until then, the figures stay in the wings, ready to illuminate the story only when they're whole.",
       },
       {
-        source: 'Neither expressed any desire to return, which speaks volumes.',
-        target: 'Neither wanted to come back, which tells you a lot.',
+        source:
+          "I'll be sharing the numbers once we have a full quarter's worth of data — the complete picture, not a partial snapshot, and that distinction matters. Until then, the figures stay in the wings, ready to illuminate the story only when they're whole.",
+        target:
+          'I will share the numbers when I have a full quarter of data. Partial snapshots are misleading. The figures will wait until they are complete.',
       },
     ]);
+  });
+
+  it('feeds the Claudish sample from real output: its source is sample 2’s translation, verbatim', () => {
+    // Straight apostrophes, exactly as the proxy returned them: the
+    // Claudish sample is the en2cl output put back through cl2en.
+    expect(CLAUDISH_SAMPLES[2].source).toBe(CLAUDISH_SAMPLES[1].target);
   });
 
   it('carries its source on every sample: date, lane, model and prompt version', () => {
