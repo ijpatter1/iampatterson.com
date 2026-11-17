@@ -192,4 +192,28 @@ describe('SourcePanel', () => {
     fireEvent.focus(box);
     expect(fireEvent.mouseUp(box)).toBe(true);
   });
+
+  it('a click into the box after the window came back without returning focus still selects (22.2)', () => {
+    // Phones may not hand focus back to the box after an app switch; the
+    // next real click into it must still select the sample.
+    render(
+      <SourcePanel
+        value="We ship on Friday."
+        onChange={noop}
+        activeTab={1}
+        onTabSelect={noop}
+        detection={null}
+        holdsSample={true}
+      />
+    );
+    const box = screen.getByRole('textbox') as HTMLTextAreaElement;
+    box.focus();
+    const hasFocus = jest.spyOn(document, 'hasFocus').mockReturnValue(false);
+    box.blur(); // the app switch
+    hasFocus.mockRestore();
+    box.setSelectionRange(0, 0);
+    fireEvent.mouseDown(box); // a fresh click, the box not focused
+    box.focus();
+    expect([box.selectionStart, box.selectionEnd]).toEqual([0, box.value.length]);
+  });
 });

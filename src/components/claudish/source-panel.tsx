@@ -75,6 +75,9 @@ export function SourcePanel({
             onChange={(e) => onChange(e.target.value)}
             onMouseDown={(e) => {
               clickFocusRef.current = document.activeElement !== e.currentTarget;
+              // A click that is about to focus the box is a fresh focus, even
+              // if the window's return never handed focus back to it.
+              if (clickFocusRef.current) leftWithWindowRef.current = false;
             }}
             onFocus={(e) => {
               const returning = leftWithWindowRef.current;
