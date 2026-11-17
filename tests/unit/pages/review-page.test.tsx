@@ -11,7 +11,7 @@ import userEvent from '@testing-library/user-event';
 
 import ReviewPage from '@/app/review/page';
 import { REVIEW_PAGE } from '@/lib/content/review-page';
-import { BOOK_REVIEW_HREF, REVIEW_COLUMNS, REVIEW_PRICE } from '@/lib/content/review';
+import { BOOK_REVIEW_HREF, REVIEW_COLUMNS, REVIEW_GET, REVIEW_PRICE } from '@/lib/content/review';
 
 jest.mock('@/lib/events/track', () => ({
   trackClickCta: jest.fn(),
@@ -170,6 +170,23 @@ describe('the review page', () => {
     ]);
     // The tick is decoration; the list is the structure.
     for (const li of items) expect(li.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  // The bold lead is cut from the front of the signed sentence, so a reword
+  // that moved it would garble the copy. Every lead must open its sentence.
+  it('opens every checklist sentence with its own bold lead', () => {
+    for (const item of REVIEW_GET.items) expect(item.text.startsWith(item.lead)).toBe(true);
+  });
+
+  // The accent is dynamic (`--accent`, swapped by the overlay), as on
+  // /contact: the icons and the strip's last node follow it.
+  it('draws the icons and the last step in the dynamic accent, not a fixed colour', () => {
+    const { container } = render(<ReviewPage />);
+    expect(container.innerHTML).not.toMatch(/persimmon/);
+    const cards = within(sectionOf('What it includes')).getAllByRole('listitem');
+    for (const card of cards) expect(card.querySelector('svg')).toHaveClass('text-accent-current');
+    const steps = within(sectionOf('How it runs')).getAllByRole('listitem');
+    expect(steps[steps.length - 1].querySelector('.bg-accent-current')).not.toBeNull();
   });
 
   // The data comes back, and is deleted when the work ends, which may be

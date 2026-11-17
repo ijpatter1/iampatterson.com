@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { CARD_TITLE_CLASSES } from '@/components/home/section';
 import { REVIEW_PAGE, type IncludeIcon } from '@/lib/content/review-page';
 
-/** Line icons on a 24-unit grid, drawn in the persimmon accent. */
+/** Line icons on a 24-unit grid, drawn in the page's dynamic accent. */
 const ICON_PATHS: Record<IncludeIcon, ReactNode> = {
   // A target: what the tracking aims at.
   conversion: (
@@ -68,7 +68,7 @@ export function IncludesGrid() {
             strokeWidth={1.5}
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="h-7 w-7 flex-none text-persimmon md:h-8 md:w-8"
+            className="h-7 w-7 flex-none text-accent-current md:h-8 md:w-8"
           >
             {ICON_PATHS[item.icon]}
           </svg>

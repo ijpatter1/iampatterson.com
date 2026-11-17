@@ -36,7 +36,9 @@ export function HowItRuns() {
                 )}
                 <span
                   className={`relative rounded-full ${
-                    last ? 'h-3.5 w-3.5 bg-persimmon' : 'h-2.5 w-2.5 border-2 border-ink bg-paper'
+                    last
+                      ? 'h-3.5 w-3.5 bg-accent-current'
+                      : 'h-2.5 w-2.5 border-2 border-ink bg-paper'
                   }`}
                 />
               </div>

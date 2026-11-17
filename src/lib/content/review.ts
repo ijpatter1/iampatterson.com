@@ -46,16 +46,16 @@ export const HOW_WE_WORK = {
   cta: 'Start with a review',
 } as const;
 
-/** One line of a give or get column: a whole sentence, unchanged. */
-export interface ReviewColumnItem {
-  text: string;
-  /** The words that open the sentence, set in bold on the "You get" checklist. */
-  lead?: string;
+/** A give or get column: its label, and one item per signed sentence. */
+export interface ReviewColumn<Item extends { text: string } = { text: string }> {
+  label: string;
+  items: Item[];
 }
 
-export interface ReviewColumn {
-  label: string;
-  items: ReviewColumnItem[];
+/** A "You get" line: a whole sentence, unchanged, and the words that open it, set in bold. */
+export interface ReviewGetItem {
+  lead: string;
+  text: string;
 }
 
 /**
@@ -64,34 +64,36 @@ export interface ReviewColumn {
  * into the page's Build step the same day. Set as lists, one sentence per
  * item with no word changed, in 21.1.
  */
-export const REVIEW_COLUMNS = [
-  {
-    label: 'You give me',
-    items: [
-      {
-        text: 'Read access to Tag Manager, your analytics and its warehouse, and the ad accounts.',
-      },
-      { text: 'An order export from your system of record.' },
-      { text: 'A kickoff session with your team.' },
-    ],
-  },
-  {
-    label: 'You get',
-    items: [
-      { lead: 'A first summary', text: 'A first summary after the kickoff.' },
-      { lead: 'A recorded walkthrough', text: 'A recorded walkthrough with your team.' },
-      {
-        lead: 'The written review',
-        text: "The written review, with each platform's claims against your orders and the evidence for each finding.",
-      },
-      {
-        lead: 'The plan as a working tracker',
-        text: 'The plan as a working tracker: ranked, with owners and estimated effort.',
-      },
-      {
-        lead: 'Your data back',
-        text: 'Your data back, and deleted on my side when the work ends.',
-      },
-    ],
-  },
-] satisfies ReviewColumn[];
+export const REVIEW_GIVE = {
+  label: 'You give me',
+  items: [
+    {
+      text: 'Read access to Tag Manager, your analytics and its warehouse, and the ad accounts.',
+    },
+    { text: 'An order export from your system of record.' },
+    { text: 'A kickoff session with your team.' },
+  ],
+} satisfies ReviewColumn;
+
+export const REVIEW_GET = {
+  label: 'You get',
+  items: [
+    { lead: 'A first summary', text: 'A first summary after the kickoff.' },
+    { lead: 'A recorded walkthrough', text: 'A recorded walkthrough with your team.' },
+    {
+      lead: 'The written review',
+      text: "The written review, with each platform's claims against your orders and the evidence for each finding.",
+    },
+    {
+      lead: 'The plan as a working tracker',
+      text: 'The plan as a working tracker: ranked, with owners and estimated effort.',
+    },
+    {
+      lead: 'Your data back',
+      text: 'Your data back, and deleted on my side when the work ends.',
+    },
+  ],
+} satisfies ReviewColumn<ReviewGetItem>;
+
+/** Both columns, give then get. */
+export const REVIEW_COLUMNS = [REVIEW_GIVE, REVIEW_GET];
