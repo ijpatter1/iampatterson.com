@@ -11,7 +11,6 @@
  * state. Aborts never fire analytics.
  */
 import { act, renderHook } from '@testing-library/react';
-import { useState } from 'react';
 
 jest.mock('@/lib/claudish/client', () => ({
   translateEndpoint: (jest.requireActual('@/lib/claudish/client') as { translateEndpoint: (u: string) => string }).translateEndpoint,
@@ -454,95 +453,128 @@ describe('proxy URL shapes (2026-09-03)', () => {
 });
 
 describe('stored translations (21.3 sample phrases)', () => {
-  // The page's sample cards: a tap sets the input and presents a stored
-  // translation in the same handler. Nothing was translated, so nothing
-  // may reach the proxy (no spend) and no claudish_translate may fire.
-  const STORED = {
-    input: CLAUDISH_SAMPLES[2].source,
-    direction: 'cl2en' as const,
-    text: CLAUDISH_SAMPLES[2].target,
-  };
+  // The page's samples are stored real output. Whatever route brings the
+  // box onto a sample's exact text and direction (a tap, the opening
+  // render, a tab round trip, undoing an edit, a swap), the hook shows the
+  // stored translation at once: nothing reaches the proxy (no spend) and
+  // no claudish_translate fires, because nothing was translated.
+  const SAMPLE = CLAUDISH_SAMPLES[2];
+  const STORED = [{ input: SAMPLE.source, direction: SAMPLE.direction, text: SAMPLE.target }];
 
-  interface Tappable {
-    setInput: (value: string) => void;
-    setDirection: (direction: 'en2cl' | 'cl2en') => void;
-    showStored: (stored: typeof STORED) => void;
+  function renderWithStored(initial: { input: string; direction: 'en2cl' | 'cl2en' }) {
+    return renderHook(
+      ({ input, direction }: { input: string; direction: 'en2cl' | 'cl2en' }) =>
+        useClaudishTranslation({ input, direction, proxyUrl: PROXY, stored: STORED }),
+      { initialProps: initial },
+    );
   }
 
-  function renderTappable(initialInput: string) {
-    return renderHook(() => {
-      const [input, setInput] = useState(initialInput);
-      const [direction, setDirection] = useState<'en2cl' | 'cl2en'>('en2cl');
-      const translation = useClaudishTranslation({ input, direction, proxyUrl: PROXY });
-      return { ...translation, setInput, setDirection };
-    });
-  }
-
-  const tap = async (result: { current: Tappable }) =>
-    act(() => {
-      result.current.setInput(STORED.input);
-      result.current.setDirection(STORED.direction);
-      result.current.showStored(STORED);
-    });
-
-  it('presents the stored text as done with no request and no analytics, even past the debounce', async () => {
-    const { result } = renderTappable('');
-    await tap(result);
+  it('opens on a stored key already done: no request, no analytics, even past the debounce', async () => {
+    const { result } = renderWithStored({ input: SAMPLE.source, direction: 'cl2en' });
     expect(result.current.status).toBe('done');
-    expect(result.current.text).toBe(STORED.text);
+    expect(result.current.text).toBe(SAMPLE.target);
+    expect(result.current.cache).toBe('client');
     await advance(2000);
     expect(mockStream).not.toHaveBeenCalled();
     expect(mockTrack).not.toHaveBeenCalled();
-    expect(result.current.text).toBe(STORED.text);
+    expect(result.current.text).toBe(SAMPLE.target);
   });
 
-  it('cancels a pending debounce and an in-flight stream for the text it replaces', async () => {
-    const { result } = renderTappable('Something typed before the tap, long enough.');
+  it('moving onto a stored key shows it at once and cancels the stream it replaces', async () => {
+    const { result, rerender } = renderWithStored({
+      input: 'Something typed before the tap, long enough.',
+      direction: 'en2cl',
+    });
     await advance(600);
     expect(mockStream).toHaveBeenCalledTimes(1);
     const live = streams[0].signal;
-    await tap(result);
-    expect(live.aborted).toBe(true);
+    rerender({ input: SAMPLE.source, direction: 'cl2en' });
+    expect(result.current.status).toBe('done'); // no debounce flash
+    expect(result.current.text).toBe(SAMPLE.target);
     await advance(2000);
+    expect(live.aborted).toBe(true);
     expect(mockStream).toHaveBeenCalledTimes(1);
-    expect(result.current.text).toBe(STORED.text);
     expect(mockTrack).not.toHaveBeenCalled();
   });
 
-  it('stores into the client cache the way a finished stream does: recency refresh and the size cap', async () => {
-    const { result } = renderTappable('');
-    const show = (n: number) =>
-      act(() => {
-        result.current.showStored({ input: `Stored ${n}.`, direction: 'en2cl', text: `Out ${n}.` } as never);
-      });
-    for (let n = 0; n < 50; n++) await show(n); // a full cache, 0 oldest
-    await show(0); // re-shown: now the most recent
-    await show(50); // one over the cap: the oldest (1) goes
-    act(() => {
-      result.current.setDirection('en2cl');
-      result.current.setInput('Stored 0.');
-    });
-    await advance(600);
-    expect(mockStream).not.toHaveBeenCalled(); // 0 survived its refresh
-    act(() => result.current.setInput('Stored 1.'));
-    await advance(600);
-    expect(mockStream).toHaveBeenCalledTimes(1); // 1 was evicted
-  });
-
-  it('an edit after the tap is ordinary input again: debounce, request, analytics', async () => {
-    const { result } = renderTappable('');
-    await tap(result);
-    act(() => result.current.setInput(`${STORED.input} Truly.`));
+  it('serves the stored text for its own direction only', async () => {
+    const { result } = renderWithStored({ input: SAMPLE.source, direction: 'en2cl' });
     expect(result.current.status).toBe('debouncing');
     await advance(600);
     expect(mockStream).toHaveBeenCalledTimes(1);
-    expect(streams[0].req).toEqual({ text: `${STORED.input} Truly.`, direction: 'cl2en' });
-    await frame({ type: 'token', t: 'Nobody wanted back in.' });
+    expect(streams[0].req).toEqual({ text: SAMPLE.source, direction: 'en2cl' });
+  });
+
+  it('a round trip back onto the stored key, after a live result, fires no claudish_translate', async () => {
+    // Before: the LRU cache-hit path answered the return and fired the
+    // event with cache 'client', as if the page had translated something.
+    const { result, rerender } = renderWithStored({ input: SAMPLE.source, direction: 'cl2en' });
+    rerender({ input: SAMPLE.source, direction: 'en2cl' });
+    await advance(600);
+    await frame({ type: 'token', t: 'Re-Claudished.' });
+    await frame({ type: 'done' });
+    await endStream();
+    expect(mockTrack).toHaveBeenCalledTimes(1); // the live en2cl translation
+    rerender({ input: SAMPLE.source, direction: 'cl2en' });
+    expect(result.current.text).toBe(SAMPLE.target);
+    await advance(2000);
+    expect(mockStream).toHaveBeenCalledTimes(1);
+    expect(mockTrack).toHaveBeenCalledTimes(1);
+    // ...and moving off again leaves the stored text as the dimmed stale.
+    rerender({ input: `${SAMPLE.source} More.`, direction: 'cl2en' });
+    expect(result.current.staleText).toBe(SAMPLE.target);
+  });
+
+  it('a manual translateNow onto a stored key (a swap landing) requests nothing', async () => {
+    const { result } = renderWithStored({ input: 'Plain words here, long enough.', direction: 'en2cl' });
+    act(() => result.current.translateNow({ input: SAMPLE.source, direction: 'cl2en' }));
+    await advance(2000);
+    expect(mockStream).not.toHaveBeenCalled();
+    expect(mockTrack).not.toHaveBeenCalled();
+  });
+
+  it('an edit off the stored key is ordinary input again: debounce, request, analytics', async () => {
+    const { result, rerender } = renderWithStored({ input: SAMPLE.source, direction: 'cl2en' });
+    rerender({ input: `${SAMPLE.source} Truly.`, direction: 'cl2en' });
+    expect(result.current.status).toBe('debouncing');
+    await advance(600);
+    expect(mockStream).toHaveBeenCalledTimes(1);
+    expect(streams[0].req).toEqual({ text: `${SAMPLE.source} Truly.`, direction: 'cl2en' });
+    await frame({ type: 'token', t: 'Numbers later.' });
     await frame({ type: 'done' });
     await endStream();
     expect(mockTrack).toHaveBeenCalledTimes(1);
     expect(mockTrack).toHaveBeenLastCalledWith(
       expect.objectContaining({ outcome: 'complete', cache: 'miss' }),
     );
+  });
+});
+
+describe('client cache bounds', () => {
+  it('refreshes recency on a hit and evicts the oldest entry past the cap', async () => {
+    const { rerender } = renderTranslation({ input: 'Entry 0 here.' });
+    const complete = async (input: string) => {
+      rerender({ input, direction: 'en2cl' });
+      await advance(600);
+      await frame({ type: 'token', t: `Out: ${input}` });
+      await frame({ type: 'done' });
+      await endStream();
+    };
+    await advance(600);
+    await frame({ type: 'token', t: 'Out 0' });
+    await frame({ type: 'done' });
+    await endStream();
+    for (let n = 1; n < 50; n++) await complete(`Entry ${n} here.`); // full: 0 oldest
+    rerender({ input: 'Entry 0 here.', direction: 'en2cl' }); // a hit refreshes 0
+    await advance(600);
+    expect(mockStream).toHaveBeenCalledTimes(50);
+    await complete('Entry 50 here.'); // one over the cap: 1 goes
+    expect(mockStream).toHaveBeenCalledTimes(51);
+    rerender({ input: 'Entry 0 here.', direction: 'en2cl' });
+    await advance(600);
+    expect(mockStream).toHaveBeenCalledTimes(51); // 0 survived its refresh
+    rerender({ input: 'Entry 1 here.', direction: 'en2cl' });
+    await advance(600);
+    expect(mockStream).toHaveBeenCalledTimes(52); // 1 was evicted
   });
 });

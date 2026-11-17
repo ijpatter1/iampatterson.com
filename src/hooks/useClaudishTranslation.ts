@@ -19,7 +19,7 @@
  * seq guards against frames landing between abort() and reader close,
  * the same race useEventStream documents.
  */
-import { useCallback, useEffect, useReducer, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 
 import { streamTranslation, translateEndpoint } from '@/lib/claudish/client';
 import { detectClaudish } from '@/lib/claudish/detect';
@@ -59,13 +59,19 @@ interface Options {
   proxyUrl?: string;
   debounceMs?: number;
   /**
-   * Rehydration seed (a share link, or the page's opening sample):
-   * presents as an already-done translation and pre-warms the client
-   * cache, so opening a shared link costs zero tokens no matter how viral
-   * it goes. Fires no analytics (a share open is its own event, owned by
-   * the caller).
+   * Share-link rehydration seed: presents as an already-done translation
+   * and pre-warms the client cache, so opening a shared link costs zero
+   * tokens no matter how viral it goes. Fires no analytics (the share
+   * open is its own event, owned by the caller).
    */
   initialResolved?: StoredTranslation;
+  /**
+   * Stored real translations (the page's samples, 21.3). Whenever the
+   * input and direction land on one, by any route, it shows as done at
+   * once: no request, and no claudish_translate, since nothing was
+   * translated. Pass a stable array (a module constant).
+   */
+  stored?: readonly StoredTranslation[];
 }
 
 /** A translation the page already holds: a share payload or a stored sample. */
@@ -170,11 +176,6 @@ const ANALYTICS_DIRECTION = {
 export function useClaudishTranslation(options: Options): ClaudishTranslationState & {
   /** Immediate manual translation; override lets swap fire before state settles. */
   translateNow: (override?: { input: string; direction: ClaudishDirection }) => void;
-  /**
-   * Present a stored translation as done: no request, no analytics. The
-   * caller sets the matching input and direction in the same handler.
-   */
-  showStored: (stored: StoredTranslation) => void;
 } {
   const {
     input,
@@ -244,6 +245,18 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
   const normalized = normalizeTranslationInput(input);
   const key = normalized ? `${direction}::${normalized}` : null;
 
+  const { stored } = options;
+  const storedByKey = useMemo(
+    () =>
+      new Map(
+        (stored ?? []).map((entry) => [
+          `${entry.direction}::${normalizeTranslationInput(entry.input)}`,
+          entry.text,
+        ])
+      ),
+    [stored]
+  );
+
   const startTranslation = useCallback(
     (runKey: string, runText: string, runDirection: ClaudishDirection) => {
       const seq = ++seqRef.current;
@@ -256,6 +269,15 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
       abortRef.current = null;
       const sourceMode = manualRef.current ? 'manual' : 'auto';
       manualRef.current = false;
+
+      // A stored translation (21.3): sync the reducer so it becomes the
+      // stale text once the visitor moves off, with no request and no
+      // event. Every route onto a stored key arrives here.
+      const storedText = storedByKey.get(runKey);
+      if (storedText !== undefined) {
+        dispatch({ type: 'cache-hit', key: runKey, text: storedText });
+        return;
+      }
 
       const detection = detectClaudish(runText);
       const baseEventFields = {
@@ -395,7 +417,7 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
         finish('error');
       });
     },
-    [endpoint, remember]
+    [endpoint, remember, storedByKey]
   );
 
   // Debounce + abort-on-edit. The skip decisions run BEFORE any abort or
@@ -433,12 +455,14 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
     abortRef.current = null;
     seqRef.current++;
     if (runKey === null) return undefined;
+    // A stored key needs no debounce: nothing will be sent.
+    const delay = storedByKey.has(runKey) ? 0 : debounceMs;
     const timer = setTimeout(() => {
       startTranslation(runKey, normalized, direction);
-    }, debounceMs);
+    }, delay);
     timerRef.current = timer;
     return () => clearTimeout(timer);
-  }, [normalized, direction, debounceMs, startTranslation]);
+  }, [normalized, direction, debounceMs, startTranslation, storedByKey]);
 
   // Unmount: kill the stream so the proxy sees the close.
   useEffect(
@@ -461,25 +485,21 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
     [input, direction, startTranslation]
   );
 
-  // The sample cards (21.3): stored real output, shown at zero tokens.
-  // Whatever was pending or streaming for the replaced text stops; the
-  // cache is warmed like a share seed so the debounce effect, seeing a
-  // done phase for this key, never schedules a request. Nothing was
-  // translated, so no claudish_translate fires.
-  const showStored = useCallback(
-    (stored: StoredTranslation) => {
-      const storedKey = `${stored.direction}::${normalizeTranslationInput(stored.input)}`;
-      if (timerRef.current) clearTimeout(timerRef.current);
-      abortRef.current?.abort();
-      abortRef.current = null;
-      seqRef.current++;
-      remember(storedKey, stored.text);
-      dispatch({ type: 'cache-hit', key: storedKey, text: stored.text });
-    },
-    [remember]
-  );
+  // Derived presentation state. A stored key presents as done on the
+  // render that lands on it: no debounce flash before the sync above.
+  const storedText = key !== null ? storedByKey.get(key) : undefined;
+  if (storedText !== undefined) {
+    return {
+      status: 'done',
+      text: storedText,
+      staleText: '',
+      hasFirstToken: true,
+      ttftMs: 0,
+      cache: 'client',
+      translateNow,
+    };
+  }
 
-  // Derived presentation state.
   let status: TranslationStatus;
   const current = key !== null && state.key === key;
   if (!key) {
@@ -508,6 +528,5 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
     ttftMs: current ? state.ttftMs : null,
     cache: current ? state.cache : 'miss',
     translateNow,
-    showStored,
   };
 }

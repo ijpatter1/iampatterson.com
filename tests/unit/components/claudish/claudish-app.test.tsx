@@ -303,22 +303,108 @@ describe('ClaudishApp — opening example and sample phrases (21.3)', () => {
     expect(mockDetected).not.toHaveBeenCalled();
   });
 
-  it('an edit after a tap is ordinary input on the sample’s own tab, translated live', async () => {
-    // The sample named its side; editing Claudish must not flip the box
-    // to Detect and risk translating Claudish into Claudish.
+  it('an edit to a sample returns the box to Detect, which reads the edited text', async () => {
+    // The approved mockup's behaviour: the visitor's text is detected
+    // afresh. The Claudish sample plus a few words still reads as Claudish,
+    // so Detect translates it into English.
     const user = setupUser();
     const sample = CLAUDISH_SAMPLES[2];
     render(<ClaudishApp />);
     await user.click(cards()[2]);
     await user.type(screen.getByRole('textbox'), ' Truly.');
     expect(pressedCards()).toEqual(['false', 'false', 'false']);
-    expect(selectedTab('Source language')).toBe(2); // still Claudish
+    expect(screen.getByRole('tab', { name: 'Claudish - detected' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
     await waitPastDebounce();
     expect(mockStream).toHaveBeenCalledTimes(1);
     expect(mockStream.mock.calls[0][1]).toEqual({
       text: `${sample.source} Truly.`,
       direction: 'cl2en',
     });
+  });
+
+  it('typing after a sample fires no claudish_detected for the sample’s own language', async () => {
+    // The latch was primed with the sample; a detection event must reflect
+    // text the visitor changed, not the example they were handed.
+    const user = setupUser();
+    render(<ClaudishApp />);
+    await user.click(cards()[2]);
+    await user.type(screen.getByRole('textbox'), ' x');
+    expect(mockDetected).not.toHaveBeenCalled();
+  });
+
+  it('select-all and paste of Claudish over the opening sample is detected afresh as Claudish', async () => {
+    // The commonest first action: replace the example with your own text.
+    const user = setupUser();
+    render(<ClaudishApp />);
+    const box = screen.getByRole('textbox') as HTMLTextAreaElement;
+    await user.click(box);
+    await user.keyboard('{Control>}a{/Control}');
+    await user.paste(CLAUDISH_SENTENCE);
+    expect(box).toHaveValue(CLAUDISH_SENTENCE);
+    expect(screen.getByRole('tab', { name: 'Claudish - detected' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(selectedTab('Target language')).toBe(0); // English
+    await waitPastDebounce();
+    expect(mockStream).toHaveBeenCalledTimes(1);
+    expect(mockStream.mock.calls[0][1]).toEqual({ text: CLAUDISH_SENTENCE, direction: 'cl2en' });
+    // The visitor's own text: this detection is theirs and is reported.
+    expect(mockDetected).toHaveBeenCalledWith(
+      expect.objectContaining({ detected_language: 'en-x-claudish' }),
+    );
+  });
+
+  it('clearing after an edit returns to Detect even from a chosen tab', async () => {
+    const user = setupUser();
+    render(<ClaudishApp />);
+    const box = screen.getByRole('textbox');
+    await user.type(box, ' Soon.'); // edit: back to Detect
+    const sourceTabs = within(screen.getByRole('tablist', { name: 'Source language' }));
+    await user.click(sourceTabs.getByRole('tab', { name: 'Claudish' }));
+    await user.clear(box);
+    expect(screen.getByRole('tab', { name: 'Detect language' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+  });
+
+  it('a tab round trip back onto a sample shows it as that sample, with no claudish_translate', async () => {
+    const user = setupUser();
+    const sample = CLAUDISH_SAMPLES[2];
+    render(<ClaudishApp />);
+    await user.click(cards()[2]);
+    const sourceTabs = within(screen.getByRole('tablist', { name: 'Source language' }));
+    await user.click(sourceTabs.getByRole('tab', { name: 'English' }));
+    await waitPastDebounce();
+    expect(mockStream).toHaveBeenCalledTimes(1); // the visitor's en2cl request
+    await user.click(sourceTabs.getByRole('tab', { name: 'Claudish' }));
+    expect(pressedCards()).toEqual(['false', 'false', 'true']);
+    expect(screen.getByTestId('claudish-live-mirror')).toHaveTextContent(sample.target);
+    await waitPastDebounce();
+    expect(mockStream).toHaveBeenCalledTimes(1);
+    expect(mockTranslate).not.toHaveBeenCalled();
+  });
+
+  it('undoing an edit back to a sample’s exact text shows it as that sample again', async () => {
+    const user = setupUser();
+    const sample = CLAUDISH_SAMPLES[1];
+    render(<ClaudishApp />);
+    await user.click(cards()[1]);
+    const box = screen.getByRole('textbox');
+    await user.type(box, ' x');
+    await waitPastDebounce();
+    expect(mockStream).toHaveBeenCalledTimes(1); // the edited text went live
+    await user.type(box, '{Backspace}{Backspace}');
+    expect(box).toHaveValue(sample.source);
+    expect(pressedCards()).toEqual(['false', 'true', 'false']);
+    expect(screen.getByTestId('claudish-output')).toHaveTextContent(sample.target);
+    await waitPastDebounce();
+    expect(mockStream).toHaveBeenCalledTimes(1);
+    expect(mockTranslate).not.toHaveBeenCalled();
   });
 
   it('Detect after the Claudish sample claims Claudish and keeps the stored translation', async () => {
