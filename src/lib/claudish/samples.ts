@@ -7,6 +7,8 @@
  * translator, generated once on 2026-11-17 from the production proxy and
  * stored here with where they came from. Never reword a target by hand;
  * regenerate it and update its provenance in the same change.
+ * Their em dashes are the translator's: the site's no-em-dash copy rule
+ * does not apply to them (Ian, 2026-11-17).
  *
  * Provenance caveat: `model` is the proxy's configured default for the
  * lane that served the request (DEFAULT_ANTHROPIC_MODEL_ID and the
