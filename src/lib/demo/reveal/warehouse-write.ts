@@ -35,7 +35,7 @@ export interface BQColumn {
  * the browser bundle does not carry the whole schema for one number; the
  * test above fails if it drifts from the schema.
  */
-export const RAW_EVENTS_COLUMN_COUNT = 77;
+export const RAW_EVENTS_COLUMN_COUNT = 79;
 
 /** Seed for `products`: the cart as JSON, as the purchase event sends it. */
 const SEED_PRODUCTS =
