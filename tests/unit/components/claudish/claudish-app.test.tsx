@@ -461,8 +461,11 @@ describe('ClaudishApp — opening example and sample phrases (21.3)', () => {
     render(<ClaudishApp />);
     await user.click(cards()[1]);
     await waitPastDebounce(); // past the latch's dwell
-    await user.click(screen.getByRole('textbox'));
+    const box = screen.getByRole('textbox') as HTMLTextAreaElement;
+    await user.click(box); // selects the sample (22.2); put the caret at the end to append
+    box.setSelectionRange(box.value.length, box.value.length);
     await user.paste(` ${CLAUDISH_SENTENCE} It underscores a robust, seamless tapestry of meaning.`);
+    expect(box.value.startsWith(CLAUDISH_SAMPLES[1].source)).toBe(true);
     expect(mockDetected).toHaveBeenCalledWith(
       expect.objectContaining({ detected_language: 'en-x-claudish' }),
     );
@@ -656,11 +659,12 @@ describe('ClaudishApp — the samples are measured (22.1)', () => {
     expect(mockPick).toHaveBeenCalledWith({ sample_index: 3, direction: 'claudish_to_en' });
   });
 
-  it('a tap on the card already showing pushes nothing', async () => {
+  it('a tap on the card already showing still counts as a try', async () => {
+    // Card 1 is pressed at load; a visitor tapping it is trying the samples.
     const user = userEvent.setup();
     render(<ClaudishApp />);
-    await user.click(cards()[0]); // the opening example's own card
-    expect(mockPick).not.toHaveBeenCalled();
+    await user.click(cards()[0]);
+    expect(mockPick).toHaveBeenCalledWith({ sample_index: 1, direction: 'en_to_claudish' });
   });
 
   it('a swap that lands on a sample is not a tap and pushes nothing', async () => {
@@ -677,6 +681,66 @@ describe('ClaudishApp — the samples are measured (22.1)', () => {
     render(<ClaudishApp />);
     await rate(user);
     expect(mockRate).toHaveBeenCalledWith(expect.objectContaining({ from_sample: true }));
+  });
+
+  it('a shared sample is still a sample: the open and a rating send from_sample true', async () => {
+    // The commonest share is probably the opening example; the sender's
+    // copy_link says true, so the recipient's side must agree.
+    const user = userEvent.setup();
+    const [first] = CLAUDISH_SAMPLES;
+    const t = shareParamFor({ direction: first.direction, source: first.source, target: first.target });
+    render(<ClaudishApp shareParam={t} />);
+    expect(mockShare).toHaveBeenCalledWith(
+      expect.objectContaining({ share_action: 'opened_shared_link', from_sample: true }),
+    );
+    await rate(user);
+    expect(mockRate).toHaveBeenCalledWith(expect.objectContaining({ from_sample: true }));
+  });
+
+  it('a translation the visitor ran sends from_sample false', async () => {
+    // The case the flag exists for: replace the example, get a live
+    // translation, rate it. A flag derived from anything but the text on
+    // screen (for example, "no share link") would send true here.
+    mockStream.mockImplementation(
+      async (_url: string, _req: unknown, _signal: AbortSignal, onFrame: (f: unknown) => void) => {
+        onFrame({ type: 'meta', lane: 'anthropic-api', cached: false });
+        onFrame({ type: 'token', t: 'A live, ornate rendering.' });
+        onFrame({ type: 'done', chars: 25 });
+        return { kind: 'ended' };
+      },
+    );
+    const user = userEvent.setup();
+    render(<ClaudishApp />);
+    const box = screen.getByRole('textbox');
+    await user.click(box); // selects the opening example (22.2)
+    await user.paste('Plain words that I wrote myself this morning.');
+    expect(
+      await screen.findByTestId('claudish-output', {}, { timeout: 3000 }),
+    ).toHaveTextContent('A live, ornate rendering.');
+    await rate(user);
+    expect(mockRate).toHaveBeenCalledWith(expect.objectContaining({ from_sample: false }));
+  });
+
+  it('an edit undone back to the sample is the sample again: from_sample true', async () => {
+    const user = userEvent.setup();
+    render(<ClaudishApp />);
+    await user.click(cards()[1]);
+    const box = screen.getByRole('textbox') as HTMLTextAreaElement;
+    await user.click(box);
+    box.setSelectionRange(box.value.length, box.value.length);
+    await user.keyboard(' x{Backspace}{Backspace}');
+    expect(box).toHaveValue(CLAUDISH_SAMPLES[1].source);
+    await rate(user);
+    expect(mockRate).toHaveBeenCalledWith(expect.objectContaining({ from_sample: true }));
+  });
+
+  it('copying the opening example sends from_sample true', async () => {
+    const user = userEvent.setup();
+    render(<ClaudishApp />);
+    await user.click(screen.getByRole('button', { name: 'Copy translation' }));
+    expect(mockShare).toHaveBeenCalledWith(
+      expect.objectContaining({ share_action: 'copy_output', from_sample: true }),
+    );
   });
 
   it('rating a shared (live) translation sends from_sample false', async () => {
@@ -712,6 +776,18 @@ describe('ClaudishApp — typing replaces a sample (22.2)', () => {
     const box = screen.getByRole('textbox') as HTMLTextAreaElement;
     await user.click(box);
     expect(selection(box)).toEqual([0, CLAUDISH_SAMPLES[2].source.length]);
+  });
+
+  it('the example is still selected after a tab change makes it a live translation', async () => {
+    // A visitor with Claudish to paste picks the Claudish tab first; the
+    // example is still in the box and must not be prepended to their text.
+    const user = userEvent.setup();
+    render(<ClaudishApp />);
+    const sourceTabs = within(screen.getByRole('tablist', { name: 'Source language' }));
+    await user.click(sourceTabs.getByRole('tab', { name: 'Claudish' }));
+    const box = screen.getByRole('textbox') as HTMLTextAreaElement;
+    await user.click(box);
+    expect(selection(box)).toEqual([0, CLAUDISH_SAMPLES[0].source.length]);
   });
 
   it('the visitor’s own text is never selected on focus', async () => {

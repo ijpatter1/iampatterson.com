@@ -119,7 +119,7 @@ describe('schema-diff decides on the schemas, not on a column count', () => {
   });
 
   it('agrees the committed schema matches itself', () => {
-    // Guards the differ against the real file's shape — 77 columns, mixed
+    // Guards the differ against the real file's shape — 79 columns, mixed
     // modes and types — rather than only hand-made fixtures.
     const declared = JSON.parse(
       fs.readFileSync(path.join(root, 'infrastructure/bigquery/schema.json'), 'utf-8'),
