@@ -304,20 +304,85 @@ describe('ClaudishApp — opening example and sample phrases (21.3)', () => {
     expect(mockDetected).not.toHaveBeenCalled();
   });
 
-  it('an edit after a tap is ordinary input: back to Detect, and the live flow translates it', async () => {
+  it('an edit after a tap is ordinary input on the sample’s own tab, translated live', async () => {
+    // The sample named its side; editing Claudish must not flip the box
+    // to Detect and risk translating Claudish into Claudish.
     const user = setupUser();
-    const sample = CLAUDISH_SAMPLES[1];
+    const sample = CLAUDISH_SAMPLES[2];
     render(<ClaudishApp />);
-    await user.click(screen.getByRole('button', { name: /full quarter of data/ }));
-    await user.type(screen.getByRole('textbox'), ' Soon.');
+    await user.click(screen.getByRole('button', { name: /Neither expressed/ }));
+    await user.type(screen.getByRole('textbox'), ' Truly.');
     expect(pressedCards()).toEqual(['false', 'false', 'false']);
-    expect(selectedTab('Source language')).toBe(0); // the Detect tab, under whatever label it claims
+    expect(selectedTab('Source language')).toBe(2); // still Claudish
     await waitPastDebounce();
     expect(mockStream).toHaveBeenCalledTimes(1);
     expect(mockStream.mock.calls[0][1]).toEqual({
-      text: `${sample.source} Soon.`,
-      direction: 'en2cl',
+      text: `${sample.source} Truly.`,
+      direction: 'cl2en',
     });
+  });
+
+  it('Detect after a sample claims the side the latch reads from the sample text, with no event', async () => {
+    // The tap feeds the sample's text to the detection latch (as swap does
+    // with its output), so Detect names a side instead of "Detect language"
+    // over a full box, and the direction follows that claim. The tap itself
+    // fires no claudish_detected: the visitor typed nothing. Detector fact
+    // (2026-11-17): this Claudish sentence reads as confident English
+    // (heuristic 0.15), so Detect claims English and translates en2cl.
+    const user = setupUser();
+    const sample = CLAUDISH_SAMPLES[2];
+    render(<ClaudishApp />);
+    await user.click(screen.getByRole('button', { name: /Neither expressed/ }));
+    await user.click(screen.getByRole('tab', { name: 'Detect language' }));
+    expect(selectedTab('Source language')).toBe(0);
+    expect(screen.getByRole('tab', { name: 'English - detected' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(selectedTab('Target language')).toBe(1); // the claim drives the direction: en2cl
+    // A live translation replaces the stored one, so no card claims it.
+    expect(pressedCards()).toEqual(['false', 'false', 'false']);
+    await waitPastDebounce();
+    expect(mockStream).toHaveBeenCalledTimes(1);
+    expect(mockStream.mock.calls[0][1]).toEqual({ text: sample.source, direction: 'en2cl' });
+    expect(mockDetected).not.toHaveBeenCalled();
+  });
+
+  it('a tab change that keeps the direction keeps the opening sample on show', async () => {
+    const user = setupUser();
+    render(<ClaudishApp />);
+    // "We ship on Friday." is too short to detect, so Detect stays en2cl.
+    await user.click(screen.getByRole('tab', { name: 'Detect language' }));
+    expect(pressedCards()).toEqual(['true', 'false', 'false']);
+    await waitPastDebounce();
+    expect(mockStream).not.toHaveBeenCalled();
+  });
+
+  it('a tab change that flips the direction replaces the sample with a live translation', async () => {
+    const user = setupUser();
+    render(<ClaudishApp />);
+    const sourceTabs = within(screen.getByRole('tablist', { name: 'Source language' }));
+    await user.click(sourceTabs.getByRole('tab', { name: 'Claudish' }));
+    expect(pressedCards()).toEqual(['false', 'false', 'false']);
+    await waitPastDebounce();
+    expect(mockStream).toHaveBeenCalledTimes(1);
+    expect(mockStream.mock.calls[0][1]).toEqual({
+      text: CLAUDISH_SAMPLES[0].source,
+      direction: 'cl2en',
+    });
+  });
+
+  it('a share link that fails to decode opens the translator empty, with no sample claimed', async () => {
+    render(<ClaudishApp shareParam="!!not-a-share!!" />);
+    expect(screen.getByRole('textbox')).toHaveValue('');
+    expect(screen.queryByTestId('claudish-output')).not.toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Detect language' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(pressedCards()).toEqual(['false', 'false', 'false']);
+    await waitPastDebounce();
+    expect(mockStream).not.toHaveBeenCalled();
   });
 
   it('clearing a sample leaves an empty box on the Detect tab', async () => {

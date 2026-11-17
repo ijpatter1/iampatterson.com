@@ -222,6 +222,18 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
     }
     cacheRef.current = seeded;
   }
+  // The one write path into the client LRU: delete-then-set refreshes
+  // recency, and the oldest entry goes once the cap is passed.
+  const remember = useCallback((cacheKey: string, text: string) => {
+    const cache = cacheRef.current;
+    if (!cache) return;
+    cache.delete(cacheKey);
+    cache.set(cacheKey, text);
+    if (cache.size > CLIENT_CACHE_MAX_ENTRIES) {
+      const oldest = cache.keys().next().value;
+      if (oldest !== undefined) cache.delete(oldest);
+    }
+  }, []);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const manualRef = useRef(false);
   const stateRef = useRef(state);
@@ -267,9 +279,7 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
       // Client cache short-circuit: instant done, zero network.
       const cached = cacheRef.current?.get(runKey);
       if (cached !== undefined) {
-        // Refresh LRU recency.
-        cacheRef.current?.delete(runKey);
-        cacheRef.current?.set(runKey, cached);
+        remember(runKey, cached); // refresh LRU recency
         dispatch({ type: 'cache-hit', key: runKey, text: cached });
         trackClaudishTranslate({
           ...baseEventFields,
@@ -342,14 +352,7 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
           case 'done':
             terminal = 'complete';
             dispatch({ type: 'done' });
-            const cache = cacheRef.current;
-            if (cache) {
-              cache.set(runKey, accumulated);
-              if (cache.size > CLIENT_CACHE_MAX_ENTRIES) {
-                const oldest = cache.keys().next().value;
-                if (oldest !== undefined) cache.delete(oldest);
-              }
-            }
+            remember(runKey, accumulated);
             finish('complete');
             break;
           case 'refusal':
@@ -392,7 +395,7 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
         finish('error');
       });
     },
-    [endpoint]
+    [endpoint, remember]
   );
 
   // Debounce + abort-on-edit. The skip decisions run BEFORE any abort or
@@ -463,15 +466,18 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
   // cache is warmed like a share seed so the debounce effect, seeing a
   // done phase for this key, never schedules a request. Nothing was
   // translated, so no claudish_translate fires.
-  const showStored = useCallback((stored: StoredTranslation) => {
-    const storedKey = `${stored.direction}::${normalizeTranslationInput(stored.input)}`;
-    if (timerRef.current) clearTimeout(timerRef.current);
-    abortRef.current?.abort();
-    abortRef.current = null;
-    seqRef.current++;
-    cacheRef.current?.set(storedKey, stored.text);
-    dispatch({ type: 'cache-hit', key: storedKey, text: stored.text });
-  }, []);
+  const showStored = useCallback(
+    (stored: StoredTranslation) => {
+      const storedKey = `${stored.direction}::${normalizeTranslationInput(stored.input)}`;
+      if (timerRef.current) clearTimeout(timerRef.current);
+      abortRef.current?.abort();
+      abortRef.current = null;
+      seqRef.current++;
+      remember(storedKey, stored.text);
+      dispatch({ type: 'cache-hit', key: storedKey, text: stored.text });
+    },
+    [remember]
+  );
 
   // Derived presentation state.
   let status: TranslationStatus;

@@ -25,6 +25,8 @@ export interface ClaudishSampleProvenance {
   model: string;
   /** The proxy's PROMPT_VERSION at the time. */
   promptVersion: string;
+  /** The meta frame's `cached`: false means generated fresh, not a cache replay. */
+  cached: boolean;
 }
 
 export interface ClaudishSample {
@@ -39,6 +41,7 @@ const HAIKU_ON_ANTHROPIC_API: ClaudishSampleProvenance = {
   lane: 'anthropic-api',
   model: 'claude-haiku-5-5',
   promptVersion: 'v11',
+  cached: false,
 };
 
 const FLASH_LITE_ON_GEMINI_LOOP: ClaudishSampleProvenance = {
@@ -46,6 +49,7 @@ const FLASH_LITE_ON_GEMINI_LOOP: ClaudishSampleProvenance = {
   lane: 'gemini-loop',
   model: 'gemini-3.5-flash-lite',
   promptVersion: 'v11',
+  cached: false,
 };
 
 export const CLAUDISH_SAMPLES: readonly ClaudishSample[] = [

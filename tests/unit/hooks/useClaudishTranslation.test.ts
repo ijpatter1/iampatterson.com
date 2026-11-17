@@ -508,6 +508,26 @@ describe('stored translations (21.3 sample phrases)', () => {
     expect(mockTrack).not.toHaveBeenCalled();
   });
 
+  it('stores into the client cache the way a finished stream does: recency refresh and the size cap', async () => {
+    const { result } = renderTappable('');
+    const show = (n: number) =>
+      act(() => {
+        result.current.showStored({ input: `Stored ${n}.`, direction: 'en2cl', text: `Out ${n}.` } as never);
+      });
+    for (let n = 0; n < 50; n++) await show(n); // a full cache, 0 oldest
+    await show(0); // re-shown: now the most recent
+    await show(50); // one over the cap: the oldest (1) goes
+    act(() => {
+      result.current.setDirection('en2cl');
+      result.current.setInput('Stored 0.');
+    });
+    await advance(600);
+    expect(mockStream).not.toHaveBeenCalled(); // 0 survived its refresh
+    act(() => result.current.setInput('Stored 1.'));
+    await advance(600);
+    expect(mockStream).toHaveBeenCalledTimes(1); // 1 was evicted
+  });
+
   it('an edit after the tap is ordinary input again: debounce, request, analytics', async () => {
     const { result } = renderTappable('');
     await tap(result);

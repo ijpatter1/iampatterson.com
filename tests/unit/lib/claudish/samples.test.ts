@@ -46,6 +46,9 @@ describe('CLAUDISH_SAMPLES', () => {
   it('carries its source on every sample: date, lane, model and prompt version', () => {
     for (const sample of CLAUDISH_SAMPLES) {
       expect(sample.provenance.generatedOn).toBe('2026-11-17');
+      // Generated fresh, not replayed from the proxy's response cache:
+      // the stream's meta frame reported cached: false for all three.
+      expect(sample.provenance.cached).toBe(false);
       expect(sample.provenance.promptVersion).toBe('v11');
       // The model is the lane's configured default, so the pair must agree.
       expect(sample.provenance.model).toBe(LANE_DEFAULT_MODEL[sample.provenance.lane]);

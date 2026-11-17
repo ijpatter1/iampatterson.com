@@ -45,6 +45,9 @@ test.describe('Claudish translator', () => {
 
   test('detects Claudish while typing and streams a translation', async ({ page }) => {
     await page.goto('/claudish');
+    // The page opens on an example with its English tab; clearing it
+    // hands the box back to Detect, as a visitor starting fresh would.
+    await page.getByRole('button', { name: 'Clear source text' }).click();
     await page.getByRole('textbox').fill(CLAUDISH_INPUT);
     await expect(page.getByRole('tab', { name: 'Claudish - detected' })).toBeVisible();
     await expect(page.getByTestId('claudish-output')).toContainText(
@@ -56,6 +59,9 @@ test.describe('Claudish translator', () => {
   test('copy and share produce a rehydratable link', async ({ page, context }) => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
     await page.goto('/claudish');
+    // The page opens on an example with its English tab; clearing it
+    // hands the box back to Detect, as a visitor starting fresh would.
+    await page.getByRole('button', { name: 'Clear source text' }).click();
     await page.getByRole('textbox').fill(CLAUDISH_INPUT);
     await expect(page.getByTestId('claudish-output')).toContainText('Nothing more.');
 
