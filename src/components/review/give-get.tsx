@@ -48,9 +48,15 @@ export function GiveGet() {
                 />
               </svg>
               <span className="text-[15px] leading-[1.55] text-ink-2 md:text-base">
-                {/* The lead opens the sentence; a test holds every lead to that. */}
-                <strong className="font-semibold text-ink">{item.lead}</strong>
-                {item.text.slice(item.lead.length)}
+                {/* A lead that no longer opens its sentence is dropped, never cut. */}
+                {item.text.startsWith(item.lead) ? (
+                  <>
+                    <strong className="font-semibold text-ink">{item.lead}</strong>
+                    {item.text.slice(item.lead.length)}
+                  </>
+                ) : (
+                  item.text
+                )}
               </span>
             </li>
           ))}
