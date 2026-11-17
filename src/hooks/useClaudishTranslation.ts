@@ -59,12 +59,20 @@ interface Options {
   proxyUrl?: string;
   debounceMs?: number;
   /**
-   * Share-link rehydration seed: presents as an already-done translation
-   * and pre-warms the client cache, so opening a shared link costs zero
-   * tokens no matter how viral it goes. Fires no analytics (the share
-   * open is its own event, owned by the caller).
+   * Rehydration seed (a share link, or the page's opening sample):
+   * presents as an already-done translation and pre-warms the client
+   * cache, so opening a shared link costs zero tokens no matter how viral
+   * it goes. Fires no analytics (a share open is its own event, owned by
+   * the caller).
    */
-  initialResolved?: { input: string; direction: ClaudishDirection; text: string };
+  initialResolved?: StoredTranslation;
+}
+
+/** A translation the page already holds: a share payload or a stored sample. */
+export interface StoredTranslation {
+  input: string;
+  direction: ClaudishDirection;
+  text: string;
 }
 
 type Phase = 'resting' | 'streaming' | 'done' | 'refused' | 'capacity' | 'error';
@@ -162,6 +170,11 @@ const ANALYTICS_DIRECTION = {
 export function useClaudishTranslation(options: Options): ClaudishTranslationState & {
   /** Immediate manual translation; override lets swap fire before state settles. */
   translateNow: (override?: { input: string; direction: ClaudishDirection }) => void;
+  /**
+   * Present a stored translation as done: no request, no analytics. The
+   * caller sets the matching input and direction in the same handler.
+   */
+  showStored: (stored: StoredTranslation) => void;
 } {
   const {
     input,
@@ -445,6 +458,21 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
     [input, direction, startTranslation]
   );
 
+  // The sample cards (21.3): stored real output, shown at zero tokens.
+  // Whatever was pending or streaming for the replaced text stops; the
+  // cache is warmed like a share seed so the debounce effect, seeing a
+  // done phase for this key, never schedules a request. Nothing was
+  // translated, so no claudish_translate fires.
+  const showStored = useCallback((stored: StoredTranslation) => {
+    const storedKey = `${stored.direction}::${normalizeTranslationInput(stored.input)}`;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    abortRef.current?.abort();
+    abortRef.current = null;
+    seqRef.current++;
+    cacheRef.current?.set(storedKey, stored.text);
+    dispatch({ type: 'cache-hit', key: storedKey, text: stored.text });
+  }, []);
+
   // Derived presentation state.
   let status: TranslationStatus;
   const current = key !== null && state.key === key;
@@ -474,5 +502,6 @@ export function useClaudishTranslation(options: Options): ClaudishTranslationSta
     ttftMs: current ? state.ttftMs : null,
     cache: current ? state.cache : 'miss',
     translateNow,
+    showStored,
   };
 }

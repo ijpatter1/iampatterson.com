@@ -17,7 +17,7 @@ export function OutputActions({
   direction: ClaudishDirection;
 }) {
   return (
-    <div className="flex items-center justify-end gap-1 px-3 pb-2">
+    <div className="flex items-center justify-end gap-0.5 px-1.5 pb-1">
       <CopyButton output={target} direction={direction} />
       <RateModal output={target} direction={direction} />
       <ShareButton source={source} target={target} direction={direction} />

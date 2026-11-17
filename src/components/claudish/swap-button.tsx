@@ -5,13 +5,15 @@
  * The swap itself (output→input, direction flip) lives in the app
  * orchestrator; this is the affordance.
  */
+import { ICON_BUTTON } from './control-styles';
+
 export function SwapButton({ onSwap }: { onSwap: () => void }) {
   return (
     <button
       type="button"
       aria-label="Swap languages"
       onClick={onSwap}
-      className="rounded-full p-2 text-[var(--gt-text-2,#5f6368)] hover:bg-[var(--gt-surface-alt,#f8f9fa)]"
+      className={ICON_BUTTON}
     >
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path

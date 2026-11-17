@@ -11,6 +11,7 @@
  * state. Aborts never fire analytics.
  */
 import { act, renderHook } from '@testing-library/react';
+import { useState } from 'react';
 
 jest.mock('@/lib/claudish/client', () => ({
   translateEndpoint: (jest.requireActual('@/lib/claudish/client') as { translateEndpoint: (u: string) => string }).translateEndpoint,
@@ -448,5 +449,79 @@ describe('proxy URL shapes (2026-09-03)', () => {
     await advance(700);
     expect(streams.length).toBe(1);
     expect(streams[0].url).toBe('https://proxy.example/translate');
+  });
+});
+
+describe('stored translations (21.3 sample phrases)', () => {
+  // The page's sample cards: a tap sets the input and presents a stored
+  // translation in the same handler. Nothing was translated, so nothing
+  // may reach the proxy (no spend) and no claudish_translate may fire.
+  const STORED = {
+    input: 'Neither expressed any desire to return, which speaks volumes.',
+    direction: 'cl2en' as const,
+    text: 'Neither wanted to come back, which tells you a lot.',
+  };
+
+  interface Tappable {
+    setInput: (value: string) => void;
+    setDirection: (direction: 'en2cl' | 'cl2en') => void;
+    showStored: (stored: typeof STORED) => void;
+  }
+
+  function renderTappable(initialInput: string) {
+    return renderHook(() => {
+      const [input, setInput] = useState(initialInput);
+      const [direction, setDirection] = useState<'en2cl' | 'cl2en'>('en2cl');
+      const translation = useClaudishTranslation({ input, direction, proxyUrl: PROXY });
+      return { ...translation, setInput, setDirection };
+    });
+  }
+
+  const tap = async (result: { current: Tappable }) =>
+    act(() => {
+      result.current.setInput(STORED.input);
+      result.current.setDirection(STORED.direction);
+      result.current.showStored(STORED);
+    });
+
+  it('presents the stored text as done with no request and no analytics, even past the debounce', async () => {
+    const { result } = renderTappable('');
+    await tap(result);
+    expect(result.current.status).toBe('done');
+    expect(result.current.text).toBe(STORED.text);
+    await advance(2000);
+    expect(mockStream).not.toHaveBeenCalled();
+    expect(mockTrack).not.toHaveBeenCalled();
+    expect(result.current.text).toBe(STORED.text);
+  });
+
+  it('cancels a pending debounce and an in-flight stream for the text it replaces', async () => {
+    const { result } = renderTappable('Something typed before the tap, long enough.');
+    await advance(600);
+    expect(mockStream).toHaveBeenCalledTimes(1);
+    const live = streams[0].signal;
+    await tap(result);
+    expect(live.aborted).toBe(true);
+    await advance(2000);
+    expect(mockStream).toHaveBeenCalledTimes(1);
+    expect(result.current.text).toBe(STORED.text);
+    expect(mockTrack).not.toHaveBeenCalled();
+  });
+
+  it('an edit after the tap is ordinary input again: debounce, request, analytics', async () => {
+    const { result } = renderTappable('');
+    await tap(result);
+    act(() => result.current.setInput(`${STORED.input} Truly.`));
+    expect(result.current.status).toBe('debouncing');
+    await advance(600);
+    expect(mockStream).toHaveBeenCalledTimes(1);
+    expect(streams[0].req).toEqual({ text: `${STORED.input} Truly.`, direction: 'cl2en' });
+    await frame({ type: 'token', t: 'Nobody wanted back in.' });
+    await frame({ type: 'done' });
+    await endStream();
+    expect(mockTrack).toHaveBeenCalledTimes(1);
+    expect(mockTrack).toHaveBeenLastCalledWith(
+      expect.objectContaining({ outcome: 'complete', cache: 'miss' }),
+    );
   });
 });

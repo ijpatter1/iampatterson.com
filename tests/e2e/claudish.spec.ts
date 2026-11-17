@@ -83,9 +83,34 @@ test.describe('Claudish translator', () => {
       .not.toContain('t=');
   });
 
+  test('opens on a translated example and a sample tap makes no proxy call', async ({ page }) => {
+    // The samples are stored real output (21.3): showing one costs nothing.
+    let proxyCalls = 0;
+    await page.route('**/translate', async (route) => {
+      proxyCalls++;
+      await route.abort();
+    });
+    await page.goto('/claudish');
+    await expect(page.getByRole('textbox')).toHaveValue('We ship on Friday.');
+    await expect(page.getByTestId('claudish-output')).toContainText('we ship on Friday —');
+    await page.getByRole('button', { name: /Neither expressed/ }).click();
+    await expect(page.getByRole('textbox')).toHaveValue(
+      'Neither expressed any desire to return, which speaks volumes.',
+    );
+    await expect(page.getByTestId('claudish-output')).toHaveText(
+      'Neither wanted to come back, which tells you a lot.',
+    );
+    // Well past the 600ms debounce: a late request would have landed.
+    await page.waitForTimeout(1500);
+    expect(proxyCalls).toBe(0);
+  });
+
   test('suppressed chrome: no site footer, no LiveStrip marquee', async ({ page }) => {
     await page.goto('/claudish');
-    await expect(page.getByTestId('claudish-output').or(page.getByRole('textbox'))).toBeVisible();
+    // The page opens on a translated example (21.3), so both match: take the first.
+    await expect(
+      page.getByTestId('claudish-output').or(page.getByRole('textbox')).first(),
+    ).toBeVisible();
     await expect(page.locator('[data-testid="home-bar"]')).toHaveCount(0);
     // The page's own footer exists.
     await expect(page.getByText('Not affiliated with Google. Yet.')).toBeVisible();

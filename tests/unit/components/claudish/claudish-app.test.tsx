@@ -10,7 +10,7 @@
  * arrows move output→input, flip direction, and fire an immediate
  * manual translation; scroll-to-top applies on mount.
  */
-import { render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 jest.mock('@/lib/claudish/client', () => ({
@@ -28,12 +28,18 @@ jest.mock('@/hooks/useScrollToTopOnMount', () => ({
 import { ClaudishApp } from '@/components/claudish/claudish-app';
 import { streamTranslation } from '@/lib/claudish/client';
 import { encodeShare } from '@/lib/claudish/share-codec';
-import { trackClaudishDetected, trackClaudishShare } from '@/lib/events/track';
+import { CLAUDISH_SAMPLES } from '@/lib/claudish/samples';
+import {
+  trackClaudishDetected,
+  trackClaudishShare,
+  trackClaudishTranslate,
+} from '@/lib/events/track';
 import { useScrollToTopOnMount } from '@/hooks/useScrollToTopOnMount';
 
 const mockStream = streamTranslation as jest.Mock;
 const mockShare = trackClaudishShare as jest.Mock;
 const mockDetected = trackClaudishDetected as jest.Mock;
+const mockTranslate = trackClaudishTranslate as jest.Mock;
 
 const CLAUDISH_SENTENCE =
   "This isn't just a refactor — it's a fundamental shift in how the pipeline thinks about state.";
@@ -106,7 +112,7 @@ describe('ClaudishApp', () => {
   it('shows "Claudish - detected" and flips the target to English while latched', async () => {
     const user = userEvent.setup();
     render(<ClaudishApp />);
-    await user.click(screen.getByRole('textbox'));
+    await user.clear(screen.getByRole('textbox'));
     await user.paste(CLAUDISH_SENTENCE);
     expect(
       screen.getByRole('tab', { name: 'Claudish - detected' })
@@ -121,7 +127,7 @@ describe('ClaudishApp', () => {
   it('labels confident plain English as "English - detected" (GT names its guess)', async () => {
     const user = userEvent.setup();
     render(<ClaudishApp />);
-    await user.click(screen.getByRole('textbox'));
+    await user.clear(screen.getByRole('textbox'));
     await user.paste(
       // Scores ~0.09 with the shipped model (r7d): confidently English.
       'We moved the standup to nine so the contractors can join before their shift starts.'
@@ -135,7 +141,7 @@ describe('ClaudishApp', () => {
   it('claims a leaning side in the mid band instead of hedging (user decision)', async () => {
     const user = userEvent.setup();
     render(<ClaudishApp />);
-    await user.click(screen.getByRole('textbox'));
+    await user.clear(screen.getByRole('textbox'));
     // Soft-register Claude: the leaning tier that makes the no-hedging
     // design pay off. Under the register model (r28, loop 3) the plain
     // version of this sentence scores 0.00, by design; one contrastive
@@ -156,7 +162,7 @@ describe('ClaudishApp', () => {
     const user = userEvent.setup();
     render(<ClaudishApp />);
     const box = screen.getByRole('textbox');
-    await user.click(box);
+    await user.clear(box);
     await user.paste(CLAUDISH_SENTENCE);
     const claudishFires = () =>
       mockDetected.mock.calls.filter((c) => c[0].detected_language === 'en-x-claudish');
@@ -170,7 +176,7 @@ describe('ClaudishApp', () => {
     const user = userEvent.setup();
     render(<ClaudishApp />);
     const box = screen.getByRole('textbox');
-    await user.click(box);
+    await user.clear(box);
     await user.paste(CLAUDISH_SENTENCE);
     expect(screen.getByRole('tab', { name: 'Claudish - detected' })).toBeInTheDocument();
     await user.clear(box);
@@ -194,7 +200,7 @@ describe('ClaudishApp', () => {
     try {
       const user = userEvent.setup();
       render(<ClaudishApp />);
-      await user.click(screen.getByRole('textbox'));
+      await user.clear(screen.getByRole('textbox'));
       await user.paste(CLAUDISH_SENTENCE);
       await user.paste(' and it underscores a robust, seamless tapestry of meaning.');
       const claudishFires = mockDetected.mock.calls.filter(
@@ -228,5 +234,101 @@ describe('ClaudishApp', () => {
       text: 'Ornate — words; not plain.',
       direction: 'cl2en',
     });
+  });
+});
+
+describe('ClaudishApp — opening example and sample phrases (21.3)', () => {
+  // A visitor sees the translator working before typing anything. The
+  // examples are stored real output, so showing one must cost nothing:
+  // no proxy request (no spend), and no claudish_translate, because
+  // nothing was translated. Fake timers let the test run well past the
+  // 600ms debounce and prove no request is merely late.
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  const setupUser = () => userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+  const waitPastDebounce = () =>
+    act(async () => {
+      jest.advanceTimersByTime(2000);
+    });
+  const selectedTab = (row: 'Source language' | 'Target language') =>
+    within(screen.getByRole('tablist', { name: row }))
+      .getAllByRole('tab')
+      .findIndex((tab) => tab.getAttribute('aria-selected') === 'true');
+  const pressedCards = () =>
+    within(screen.getByRole('list', { name: 'Try one' }))
+      .getAllByRole('button')
+      .map((card) => card.getAttribute('aria-pressed'));
+
+  it('opens on the first sample already translated, with no request and no analytics', async () => {
+    const [first] = CLAUDISH_SAMPLES;
+    render(<ClaudishApp />);
+    expect(screen.getByRole('textbox')).toHaveValue(first.source);
+    expect(screen.getByTestId('claudish-output')).toHaveTextContent(first.target);
+    expect(selectedTab('Source language')).toBe(1); // English
+    expect(selectedTab('Target language')).toBe(1); // Claudish
+    expect(pressedCards()).toEqual(['true', 'false', 'false']);
+    await waitPastDebounce();
+    expect(mockStream).not.toHaveBeenCalled();
+    expect(mockTranslate).not.toHaveBeenCalled();
+    expect(mockDetected).not.toHaveBeenCalled();
+    expect(mockShare).not.toHaveBeenCalled();
+  });
+
+  it('a share link opens on the shared translation, not the sample', () => {
+    const t = shareParamFor({ direction: 'en2cl', source: 'Shared.', target: 'Shared — truly.' });
+    render(<ClaudishApp shareParam={t} />);
+    expect(screen.getByRole('textbox')).toHaveValue('Shared.');
+    expect(pressedCards()).toEqual(['false', 'false', 'false']);
+  });
+
+  it('tapping the Claudish sample fills the box and shows its stored translation without calling the proxy', async () => {
+    const user = setupUser();
+    const sample = CLAUDISH_SAMPLES[2];
+    render(<ClaudishApp />);
+    await user.click(screen.getByRole('button', { name: /Neither expressed/ }));
+    expect(screen.getByRole('textbox')).toHaveValue(sample.source);
+    // The live mirror carries the finished text at once (the visible
+    // panel reveals cl2en text progressively).
+    expect(screen.getByTestId('claudish-live-mirror')).toHaveTextContent(sample.target);
+    expect(selectedTab('Source language')).toBe(2); // Claudish
+    expect(selectedTab('Target language')).toBe(0); // English
+    expect(pressedCards()).toEqual(['false', 'false', 'true']);
+    await waitPastDebounce();
+    expect(mockStream).not.toHaveBeenCalled();
+    expect(mockTranslate).not.toHaveBeenCalled();
+    expect(mockDetected).not.toHaveBeenCalled();
+  });
+
+  it('an edit after a tap is ordinary input: back to Detect, and the live flow translates it', async () => {
+    const user = setupUser();
+    const sample = CLAUDISH_SAMPLES[1];
+    render(<ClaudishApp />);
+    await user.click(screen.getByRole('button', { name: /full quarter of data/ }));
+    await user.type(screen.getByRole('textbox'), ' Soon.');
+    expect(pressedCards()).toEqual(['false', 'false', 'false']);
+    expect(selectedTab('Source language')).toBe(0); // the Detect tab, under whatever label it claims
+    await waitPastDebounce();
+    expect(mockStream).toHaveBeenCalledTimes(1);
+    expect(mockStream.mock.calls[0][1]).toEqual({
+      text: `${sample.source} Soon.`,
+      direction: 'en2cl',
+    });
+  });
+
+  it('clearing a sample leaves an empty box on the Detect tab', async () => {
+    const user = setupUser();
+    render(<ClaudishApp />);
+    await user.click(screen.getByRole('button', { name: 'Clear source text' }));
+    expect(screen.getByRole('textbox')).toHaveValue('');
+    expect(screen.getByRole('tab', { name: 'Detect language' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(pressedCards()).toEqual(['false', 'false', 'false']);
   });
 });
