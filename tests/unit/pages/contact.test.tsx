@@ -1,13 +1,14 @@
 /**
  * @jest-environment jsdom
  */
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import ContactPage from '@/app/contact/page';
 import { ContactForm } from '@/components/contact/contact-form';
 import { CONTACT_COPY, CONTACT_EMAIL, CONTACT_INTROS, PRINCIPLES } from '@/lib/content/contact';
 import { DONE_WHERE } from '@/lib/content/done-where';
+import { NETWORKS_LABEL } from '@/lib/content/networks';
 import { REVIEW_PAGE_HREF, REVIEW_PRICE } from '@/lib/content/review';
 import { REVIEW_PAGE } from '@/lib/content/review-page';
 import { RENDERABLE_EVENT_NAMES } from '@/lib/events/schema';
@@ -141,16 +142,79 @@ describe('ContactPage, the merged contact and about page (16.2)', () => {
     );
   });
 
-  it('carries the about page: the three principles and the "Where I\'ve done it" cards', async () => {
+  // 21.2: the three principles become short cards. The wording is the
+  // profile's (15.9) and stays exactly as it was; only the layout changes.
+  it('shows the three principles as cards, each with its title, its text and an icon', async () => {
     await renderPage();
-    expect(PRINCIPLES.items).toHaveLength(3);
-    for (const principle of PRINCIPLES.items) {
-      expect(screen.getByRole('heading', { name: principle.title })).toBeInTheDocument();
-    }
-    expect(screen.getByRole('heading', { name: DONE_WHERE.eyebrow })).toBeInTheDocument();
+    const list = screen.getByRole('list', { name: PRINCIPLES.title });
+    const cards = within(list).getAllByRole('listitem');
+    expect(cards).toHaveLength(3);
+    cards.forEach((card, i) => {
+      const principle = PRINCIPLES.items[i];
+      expect(within(card).getByRole('heading', { level: 3 })).toHaveTextContent(principle.title);
+      expect(within(card).getByText(principle.body)).toBeInTheDocument();
+      // The icon is decoration: hidden from screen readers.
+      expect(card.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+    });
+  });
+
+  it("keeps the principles' wording as approved", () => {
+    expect(PRINCIPLES.items.map((p) => p.title)).toEqual([
+      'I look before I change anything.',
+      "You'll know whether it worked.",
+      'What I build stays yours.',
+    ]);
+  });
+
+  // 21.2: "Where I've done it" is cut to the four names with their years or
+  // role. The full cards stay on the homepage; here they would push the page
+  // past what a visitor about to write needs.
+  it('cuts "Where I\'ve done it" to the four names with their years or role', async () => {
+    await renderPage();
+    const list = screen.getByRole('list', { name: DONE_WHERE.eyebrow });
+    const items = within(list).getAllByRole('listitem');
+    expect(items.map((item) => item.textContent)).toEqual(
+      DONE_WHERE.cards.map((card) => `${card.name}${card.when}`),
+    );
+    expect(items).toHaveLength(4);
+  });
+
+  it('leaves the long cards, the networks and the closing paragraph on the homepage', async () => {
+    await renderPage();
     for (const card of DONE_WHERE.cards) {
-      expect(screen.getByRole('heading', { name: card.name })).toBeInTheDocument();
+      expect(screen.queryByText(card.text)).not.toBeInTheDocument();
     }
+    expect(screen.queryByText(DONE_WHERE.closing)).not.toBeInTheDocument();
+    expect(screen.queryByText(NETWORKS_LABEL)).not.toBeInTheDocument();
+  });
+
+  // Headings in order, with no level skipped, for both intents: the page
+  // title, the form, then the two sections, with the principles under theirs.
+  it.each([
+    [{}, 'default'],
+    [{ intent: 'review' }, 'review'],
+  ] as const)('keeps its headings in order for %j', async (params, intent) => {
+    await renderPage(params);
+    const outline = screen.getAllByRole('heading').map((h) => `${h.tagName}:${h.textContent}`);
+    expect(outline).toEqual([
+      `H1:${CONTACT_INTROS[intent].title}`,
+      `H2:${CONTACT_COPY.formTitle}`,
+      `H2:${PRINCIPLES.title}`,
+      ...PRINCIPLES.items.map((p) => `H3:${p.title}`),
+      `H2:${DONE_WHERE.eyebrow}`,
+    ]);
+  });
+
+  // 21.2: the heading moved into the left column, beside the form, so the
+  // form starts at the top of the page rather than under a full-width title.
+  // (The fold itself is checked by the 1440 by 900 screenshot.)
+  it('puts the heading in the column beside the form, not above it', async () => {
+    await renderPage();
+    const h1 = screen.getByRole('heading', { level: 1 });
+    const form = screen.getByRole('heading', { name: CONTACT_COPY.formTitle }).closest('form')!;
+    // The form's column and the heading's column share one row.
+    const row = form.parentElement!.parentElement!;
+    expect(row).toContainElement(h1);
   });
 
   it('keeps the form on the page, so both intents reach the same inquiry endpoint', async () => {

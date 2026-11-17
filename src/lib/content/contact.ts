@@ -1,5 +1,6 @@
 import { CONTACT_CONFIG } from '@/lib/contact/config';
 import type { ContactIntent } from '@/lib/contact/validate';
+import { DONE_WHERE } from '@/lib/content/done-where';
 import { REVIEW_PAGE_HREF, REVIEW_PRICE } from '@/lib/content/review';
 import { REVIEW_PAGE } from '@/lib/content/review-page';
 
@@ -58,27 +59,44 @@ export const CONTACT_COPY = {
   failed: "Your message didn't send. Please email me at",
 } as const;
 
+/** Each principle's card icon (21.2): an eye, a tick, a padlock. */
+export type PrincipleIcon = 'look' | 'measure' | 'own';
+
 export interface Principle {
   title: string;
   body: string;
+  icon: PrincipleIcon;
 }
 
 export const PRINCIPLES = {
-  eyebrow: 'How I work',
+  title: 'How I work',
   items: [
     {
+      icon: 'look',
       title: 'I look before I change anything.',
       body: "The review comes first, and it's read-only. I document what your tracking captures and what it misses, rank what I find by impact, and you decide what gets fixed and who fixes it.",
     },
     {
+      icon: 'measure',
       title: "You'll know whether it worked.",
       body: "Builds have a fixed scope, and before one starts we agree how we'll measure the change it makes.",
     },
     {
+      icon: 'own',
       title: 'What I build stays yours.',
       body: 'The warehouse, the server container and the reports sit in accounts in your name, and you get a runbook at handoff. If we stop working together, it all keeps running.',
     },
   ] satisfies Principle[],
+} as const;
+
+/**
+ * "Where I've done it", cut to the names with their years or role (21.2).
+ * The full cards stay on the homepage; this reads them, so the two pages
+ * can't disagree on a name or a date.
+ */
+export const CONTACT_DONE_WHERE = {
+  title: DONE_WHERE.eyebrow,
+  names: DONE_WHERE.cards.map(({ name, when }) => ({ name, when })),
 } as const;
 
 /** /contact/thanks: its own metadata, so it never borrows the contact page's. */

@@ -420,6 +420,44 @@ describe('SessionStateRideAlong', () => {
     });
   });
 
+  // 21.2: a visitor who lands straight on /contact has seen one page, and
+  // the line they read before sharing it should be plain English, not
+  // "visited 1 pages". Both variants that show the count are covered: the
+  // granted default and the visitor who overrides a denied consent.
+  describe('page count, singular and plural (21.2)', () => {
+    it.each([
+      [0, 'visited 0 pages.'],
+      [1, 'visited 1 page.'],
+      [2, 'visited 2 pages.'],
+    ])('says %i as "%s" when marketing is granted', (pageCount, phrase) => {
+      mockState = makeState({ page_count: pageCount });
+      render(<SessionStateRideAlong />);
+      expect(screen.getByTestId('ride-along-summary').textContent).toContain(phrase);
+    });
+
+    it.each([
+      [1, 'visited 1 page.'],
+      [2, 'visited 2 pages.'],
+    ])('says %i as "%s" when the visitor overrides denied consent', async (pageCount, phrase) => {
+      mockState = makeState({
+        page_count: pageCount,
+        consent_snapshot: { analytics: 'granted', marketing: 'denied', preferences: 'granted' },
+      });
+      const user = userEvent.setup();
+      render(<SessionStateRideAlong />);
+      await user.click(screen.getByRole('checkbox'));
+      expect(screen.getByTestId('ride-along-summary').textContent).toContain(phrase);
+    });
+  });
+
+  // 21.2: the label row is the checkbox's tap area, so it is a full touch
+  // target, not the 16px box alone.
+  it('gives the checkbox a 44px tap target through its label', () => {
+    mockState = makeState();
+    render(<SessionStateRideAlong />);
+    expect(screen.getByRole('checkbox').closest('label')).toHaveClass('min-h-[44px]');
+  });
+
   describe('a11y, aria-describedby', () => {
     it('links the checkbox to the summary paragraph so screen readers hear the payload on focus', () => {
       mockState = makeState();

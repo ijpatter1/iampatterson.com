@@ -12,7 +12,7 @@ import { CONTACT_COPY, CONTACT_EMAIL } from '@/lib/content/contact';
 import { trackFormFieldFocus, trackFormStart, trackFormSubmit } from '@/lib/events/track';
 
 const FIELD_CLASSES =
-  'mt-1.5 block w-full rounded-sm border border-rule-soft bg-paper px-4 py-2.5 text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/20';
+  'mt-1.5 block min-h-[44px] w-full rounded-sm border border-rule-soft bg-paper px-4 py-2.5 text-base text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/20';
 const FIELD_LABEL_CLASSES = 'block font-mono text-[11px] uppercase tracking-[0.14em] text-ink-2';
 
 interface ContactFormProps {
@@ -75,33 +75,36 @@ export function ContactForm({ intent = 'default' }: ContactFormProps) {
         {CONTACT_COPY.formTitle}
       </h2>
       <div className="space-y-5">
-        <div>
-          <label htmlFor="name" className={FIELD_LABEL_CLASSES}>
-            Name
-          </label>
-          <input
-            type="text"
-            id="name"
-            name="name"
-            maxLength={CONTACT_CONFIG.limits.name}
-            required
-            onFocus={() => handleFieldFocus('name')}
-            className={FIELD_CLASSES}
-          />
-        </div>
-        <div>
-          <label htmlFor="email" className={FIELD_LABEL_CLASSES}>
-            Email
-          </label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            maxLength={CONTACT_CONFIG.limits.email}
-            required
-            onFocus={() => handleFieldFocus('email')}
-            className={FIELD_CLASSES}
-          />
+        {/* Name and Email side by side from tablet width up (21.2). */}
+        <div className="grid gap-5 sm:grid-cols-2 sm:gap-4">
+          <div>
+            <label htmlFor="name" className={FIELD_LABEL_CLASSES}>
+              Name
+            </label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              maxLength={CONTACT_CONFIG.limits.name}
+              required
+              onFocus={() => handleFieldFocus('name')}
+              className={FIELD_CLASSES}
+            />
+          </div>
+          <div>
+            <label htmlFor="email" className={FIELD_LABEL_CLASSES}>
+              Email
+            </label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              maxLength={CONTACT_CONFIG.limits.email}
+              required
+              onFocus={() => handleFieldFocus('email')}
+              className={FIELD_CLASSES}
+            />
+          </div>
         </div>
         <div>
           <label htmlFor="message" className={FIELD_LABEL_CLASSES}>

@@ -7,6 +7,11 @@ import { toRideAlongPayload } from '@/lib/session-state/ride-along';
 
 const SUMMARY_ID = 'session-state-ride-along-summary';
 
+/** "1 page", "2 pages": a visitor who lands straight here has seen one (21.2). */
+function pagesPhrase(count: number): string {
+  return `${count} ${count === 1 ? 'page' : 'pages'}`;
+}
+
 /**
  * Phase 9E D8, Contact-form session-state ride-along.
  *
@@ -67,9 +72,9 @@ export function SessionStateRideAlong() {
   // demo leaves the site.
   let summary: string;
   if (checked && marketingGranted) {
-    summary = `You've triggered ${payload.event_types_triggered} of ${payload.event_types_total} event types and visited ${payload.pages_visited} pages. Your consent state and session ID will ride along.`;
+    summary = `You've triggered ${payload.event_types_triggered} of ${payload.event_types_total} event types and visited ${pagesPhrase(payload.pages_visited)}. Your consent state and session ID will ride along.`;
   } else if (checked && !marketingGranted) {
-    summary = `Overriding your denied marketing consent. You've triggered ${payload.event_types_triggered} of ${payload.event_types_total} event types and visited ${payload.pages_visited} pages. Your consent state and session ID will ride along.`;
+    summary = `Overriding your denied marketing consent. You've triggered ${payload.event_types_triggered} of ${payload.event_types_total} event types and visited ${pagesPhrase(payload.pages_visited)}. Your consent state and session ID will ride along.`;
   } else if (!checked && marketingGranted) {
     summary =
       'Session state will not be included with this message. Check the box above to share it.';
@@ -80,14 +85,14 @@ export function SessionStateRideAlong() {
 
   return (
     <div className="mt-5 rounded-card border border-border bg-surface-alt p-4">
-      <label className="flex cursor-pointer items-start gap-3">
+      <label className="-my-2 flex min-h-[44px] cursor-pointer items-center gap-3">
         <input
           type="checkbox"
           name="session_state_include"
           checked={checked}
           onChange={(e) => setUserOverride(e.target.checked)}
           aria-describedby={SUMMARY_ID}
-          className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-ink"
+          className="h-4 w-4 shrink-0 cursor-pointer accent-ink"
         />
         <span className="text-sm font-medium text-content">
           Share my session state with this message
