@@ -274,6 +274,17 @@ describe('ContactForm', () => {
     expect(message).toHaveAccessibleDescription(CONTACT_COPY.messageHint);
   });
 
+  // 21.2: Name and Email split into two columns only at lg. From md the form
+  // column sits beside the intro and is about 340px wide, so a split there
+  // would leave each field about 160px.
+  it('puts Name and Email side by side only from lg, where the form column has room', () => {
+    render(<ContactForm />);
+    const row = screen.getByLabelText(/^name$/i).parentElement!.parentElement!;
+    expect(row).toContainElement(screen.getByLabelText(/^email$/i));
+    expect(row).toHaveClass('lg:grid-cols-2');
+    expect(row.className).not.toMatch(/\b(sm|md):grid-cols-2\b/);
+  });
+
   it('renders a submit button', () => {
     render(<ContactForm />);
     expect(screen.getByRole('button', { name: /send/i })).toBeInTheDocument();

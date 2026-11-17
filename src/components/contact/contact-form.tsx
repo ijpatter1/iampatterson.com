@@ -75,8 +75,10 @@ export function ContactForm({ intent = 'default' }: ContactFormProps) {
         {CONTACT_COPY.formTitle}
       </h2>
       <div className="space-y-5">
-        {/* Name and Email side by side from tablet width up (21.2). */}
-        <div className="grid gap-5 sm:grid-cols-2 sm:gap-4">
+        {/* Name and Email side by side once the form's column has room (21.2).
+            From md up the column sits beside the intro and is only about
+            340px wide until lg, too narrow for two fields. */}
+        <div className="grid gap-5 lg:grid-cols-2 lg:gap-4">
           <div>
             <label htmlFor="name" className={FIELD_LABEL_CLASSES}>
               Name
