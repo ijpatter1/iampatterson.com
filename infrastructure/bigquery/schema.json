@@ -460,5 +460,17 @@
     "type": "STRING",
     "mode": "NULLABLE",
     "description": "Thumb rating: holds_up or absolutely_right (claudish_rate)."
+  },
+  {
+    "name": "from_sample",
+    "type": "BOOL",
+    "mode": "NULLABLE",
+    "description": "Whether the output shared or rated was a stored sample (the opening example or a \"Try one\" card), not a live translation (claudish_share / claudish_rate, 22.1)."
+  },
+  {
+    "name": "sample_index",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "1-based position of the \"Try one\" card the visitor tapped (claudish_sample_pick, 22.1). Never the sample's text."
   }
 ]

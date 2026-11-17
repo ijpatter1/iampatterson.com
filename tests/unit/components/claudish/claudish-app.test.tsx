@@ -20,6 +20,7 @@ jest.mock('@/lib/events/track', () => ({
   trackClaudishDetected: jest.fn(),
   trackClaudishShare: jest.fn(),
   trackClaudishRate: jest.fn(),
+  trackClaudishSamplePick: jest.fn(),
 }));
 jest.mock('@/hooks/useScrollToTopOnMount', () => ({
   useScrollToTopOnMount: jest.fn(),
@@ -31,15 +32,20 @@ import { encodeShare } from '@/lib/claudish/share-codec';
 import { CLAUDISH_SAMPLES } from '@/lib/claudish/samples';
 import {
   trackClaudishDetected,
+  trackClaudishRate,
+  trackClaudishSamplePick,
   trackClaudishShare,
   trackClaudishTranslate,
 } from '@/lib/events/track';
+import { RATE_UP_LABEL } from '@/lib/claudish/messages';
 import { useScrollToTopOnMount } from '@/hooks/useScrollToTopOnMount';
 
 const mockStream = streamTranslation as jest.Mock;
 const mockShare = trackClaudishShare as jest.Mock;
 const mockDetected = trackClaudishDetected as jest.Mock;
 const mockTranslate = trackClaudishTranslate as jest.Mock;
+const mockRate = trackClaudishRate as jest.Mock;
+const mockPick = trackClaudishSamplePick as jest.Mock;
 
 const CLAUDISH_SENTENCE =
   "This isn't just a refactor — it's a fundamental shift in how the pipeline thinks about state.";
@@ -276,6 +282,7 @@ describe('ClaudishApp — opening example and sample phrases (21.3)', () => {
     expect(mockTranslate).not.toHaveBeenCalled();
     expect(mockDetected).not.toHaveBeenCalled();
     expect(mockShare).not.toHaveBeenCalled();
+    expect(mockPick).not.toHaveBeenCalled();
   });
 
   it('a share link opens on the shared translation, not the sample', () => {
@@ -622,5 +629,48 @@ describe('ClaudishApp — opening example and sample phrases (21.3)', () => {
       'true',
     );
     expect(pressedCards()).toEqual(['false', 'false', 'false']);
+  });
+});
+
+describe('ClaudishApp — the samples are measured (22.1)', () => {
+  // Without these, nobody can tell whether visitors use the cards, and a
+  // rating of the opening example reads as a rating of the model.
+  const cards = () =>
+    within(screen.getByRole('list', { name: 'Try one' })).getAllByRole('button');
+  const rate = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByRole('button', { name: /rate translation/i }));
+    await user.click(screen.getByRole('button', { name: RATE_UP_LABEL }));
+  };
+
+  it('a card tap pushes claudish_sample_pick with its number and direction', async () => {
+    const user = userEvent.setup();
+    render(<ClaudishApp />);
+    await user.click(cards()[2]);
+    expect(mockPick).toHaveBeenCalledTimes(1);
+    expect(mockPick).toHaveBeenCalledWith({ sample_index: 3, direction: 'claudish_to_en' });
+  });
+
+  it('a swap that lands on a sample is not a tap and pushes nothing', async () => {
+    const user = userEvent.setup();
+    render(<ClaudishApp />);
+    await user.click(cards()[1]);
+    mockPick.mockClear();
+    await user.click(screen.getByRole('button', { name: /swap languages/i }));
+    expect(mockPick).not.toHaveBeenCalled();
+  });
+
+  it('rating the opening example sends from_sample true', async () => {
+    const user = userEvent.setup();
+    render(<ClaudishApp />);
+    await rate(user);
+    expect(mockRate).toHaveBeenCalledWith(expect.objectContaining({ from_sample: true }));
+  });
+
+  it('rating a shared (live) translation sends from_sample false', async () => {
+    const user = userEvent.setup();
+    const t = shareParamFor({ direction: 'en2cl', source: 'Plain.', target: 'Plain — ornate.' });
+    render(<ClaudishApp shareParam={t} />);
+    await rate(user);
+    expect(mockRate).toHaveBeenCalledWith(expect.objectContaining({ from_sample: false }));
   });
 });

@@ -44,7 +44,7 @@ describe('ShareButton', () => {
   it('copies a decodable share link and fires copy_link with the length only', async () => {
     const { user, writeText } = setupClipboard();
     render(
-      <ShareButton source="Plain input." target="Ornate — output." direction="en2cl" />
+      <ShareButton source="Plain input." target="Ornate — output." direction="en2cl" fromSample={false} />
     );
     await user.click(screen.getByRole('button', { name: /share translation/i }));
     expect(writeText).toHaveBeenCalledTimes(1);
@@ -62,7 +62,15 @@ describe('ShareButton', () => {
       output_chars: 'Ornate — output.'.length,
       share_truncated: false,
       share_url_chars: url.length,
+      from_sample: false,
     });
+  });
+
+  it('says when the shared output is a stored sample (22.1)', async () => {
+    const { user } = setupClipboard();
+    render(<ShareButton source="src" target="stored" direction="en2cl" fromSample={true} />);
+    await user.click(screen.getByRole('button', { name: /share translation/i }));
+    expect(mockTrack).toHaveBeenCalledWith(expect.objectContaining({ from_sample: true }));
   });
 
   it('prefers the Web Share sheet when the browser offers one', async () => {
@@ -72,7 +80,7 @@ describe('ShareButton', () => {
       value: share,
       configurable: true,
     });
-    render(<ShareButton source="src text" target="out text" direction="cl2en" />);
+    render(<ShareButton source="src text" target="out text" direction="cl2en" fromSample={false} />);
     await user.click(screen.getByRole('button', { name: /share translation/i }));
     expect(share).toHaveBeenCalledTimes(1);
     expect(mockTrack).toHaveBeenCalledWith(
@@ -81,7 +89,7 @@ describe('ShareButton', () => {
   });
 
   it('is disabled with no output', () => {
-    render(<ShareButton source="text" target="" direction="en2cl" />);
+    render(<ShareButton source="text" target="" direction="en2cl" fromSample={false} />);
     expect(screen.getByRole('button', { name: /share translation/i })).toBeDisabled();
   });
 });

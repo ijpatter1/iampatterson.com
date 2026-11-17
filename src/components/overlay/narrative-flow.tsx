@@ -73,6 +73,8 @@ function describeAction(event: PipelineEvent): string {
       return params.rating === 'absolutely_right'
         ? 'You rated a translation "You\u2019re absolutely right."'
         : 'You rated a translation "Holds up."';
+    case 'claudish_sample_pick':
+      return 'You tried one of the sample phrases';
     default:
       return `Event: ${event.event_name}`;
   }

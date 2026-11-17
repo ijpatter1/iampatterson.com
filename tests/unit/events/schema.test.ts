@@ -426,6 +426,7 @@ describe('Event schema types', () => {
       claudish_detected: true,
       claudish_share: true,
       claudish_rate: true,
+      claudish_sample_pick: true,
     };
     // Runtime assertion derives the expected count from the schema's own source of truth,
     // extending DATA_LAYER_EVENT_NAMES is the single edit needed; this test re-derives.

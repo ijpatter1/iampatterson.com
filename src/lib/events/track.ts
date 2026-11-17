@@ -17,6 +17,7 @@ import type {
   ClaudishDetectedEvent,
   ClaudishShareEvent,
   ClaudishRateEvent,
+  ClaudishSamplePickEvent,
 } from './schema';
 import { getSessionId } from './session';
 
@@ -610,6 +611,7 @@ export function trackClaudishShare(params: {
   output_chars: number;
   share_truncated: boolean;
   share_url_chars: number;
+  from_sample: boolean;
 }): void {
   pushEvent({ ...baseFields(), event: 'claudish_share', ...params });
 }
@@ -618,6 +620,14 @@ export function trackClaudishRate(params: {
   rating: ClaudishRateEvent['rating'];
   direction: ClaudishRateEvent['direction'];
   output_chars: number;
+  from_sample: boolean;
 }): void {
   pushEvent({ ...baseFields(), event: 'claudish_rate', ...params });
+}
+
+export function trackClaudishSamplePick(params: {
+  sample_index: number;
+  direction: ClaudishSamplePickEvent['direction'];
+}): void {
+  pushEvent({ ...baseFields(), event: 'claudish_sample_pick', ...params });
 }

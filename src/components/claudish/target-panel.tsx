@@ -30,6 +30,7 @@ export function TargetPanel({
   hasFirstToken,
   activeTab,
   onTabSelect,
+  fromSample,
 }: {
   source: string;
   direction: ClaudishDirection;
@@ -41,6 +42,8 @@ export function TargetPanel({
   cache: 'miss' | 'client' | 'server';
   activeTab: number;
   onTabSelect: (index: number) => void;
+  /** The text on show is a stored sample, not a live translation (22.1). */
+  fromSample: boolean;
 }) {
   const streaming = status === 'streaming';
   // The cl2en refinement loop is invisible by design (Ian, 2026-09-01):
@@ -99,6 +102,7 @@ export function TargetPanel({
         source={source}
         target={status === 'done' ? text : ''}
         direction={direction}
+        fromSample={fromSample}
       />
     </section>
   );

@@ -723,6 +723,7 @@ describe('anonymous_id follows analytics consent', () => {
         'trackBeginCheckout',
         'trackClaudishDetected',
         'trackClaudishRate',
+        'trackClaudishSamplePick',
         'trackClaudishShare',
         'trackClaudishTranslate',
         'trackClickCta',

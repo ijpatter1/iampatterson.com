@@ -24,7 +24,7 @@ beforeEach(() => mockTrack.mockReset());
 describe('RateModal', () => {
   it('opens on the rate button and shows both verbatim thumb labels', async () => {
     const user = userEvent.setup();
-    render(<RateModal output="translated text" direction="en2cl" />);
+    render(<RateModal output="translated text" direction="en2cl" fromSample={false} />);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /rate translation/i }));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
@@ -34,32 +34,44 @@ describe('RateModal', () => {
 
   it('fires holds_up and closes on the up thumb', async () => {
     const user = userEvent.setup();
-    render(<RateModal output="translated text" direction="en2cl" />);
+    render(<RateModal output="translated text" direction="en2cl" fromSample={false} />);
     await user.click(screen.getByRole('button', { name: /rate translation/i }));
     await user.click(screen.getByRole('button', { name: RATE_UP_LABEL }));
     expect(mockTrack).toHaveBeenCalledWith({
       rating: 'holds_up',
       direction: 'en_to_claudish',
       output_chars: 15,
+      from_sample: false,
     });
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('fires absolutely_right for the down thumb', async () => {
     const user = userEvent.setup();
-    render(<RateModal output="xy" direction="cl2en" />);
+    render(<RateModal output="xy" direction="cl2en" fromSample={false} />);
     await user.click(screen.getByRole('button', { name: /rate translation/i }));
     await user.click(screen.getByRole('button', { name: RATE_DOWN_LABEL }));
     expect(mockTrack).toHaveBeenCalledWith({
       rating: 'absolutely_right',
       direction: 'claudish_to_en',
       output_chars: 2,
+      from_sample: false,
     });
+  });
+
+  it('says when the rated output is a stored sample (22.1)', async () => {
+    // A rating of the opening example grades fixed text, not the model;
+    // the flag keeps it out of the translation numbers.
+    const user = userEvent.setup();
+    render(<RateModal output="stored" direction="en2cl" fromSample={true} />);
+    await user.click(screen.getByRole('button', { name: /rate translation/i }));
+    await user.click(screen.getByRole('button', { name: RATE_UP_LABEL }));
+    expect(mockTrack).toHaveBeenCalledWith(expect.objectContaining({ from_sample: true }));
   });
 
   it('closes on Escape without firing', async () => {
     const user = userEvent.setup();
-    render(<RateModal output="text" direction="en2cl" />);
+    render(<RateModal output="text" direction="en2cl" fromSample={false} />);
     await user.click(screen.getByRole('button', { name: /rate translation/i }));
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -67,7 +79,7 @@ describe('RateModal', () => {
   });
 
   it('is disabled with no output', () => {
-    render(<RateModal output="" direction="en2cl" />);
+    render(<RateModal output="" direction="en2cl" fromSample={false} />);
     expect(screen.getByRole('button', { name: /rate translation/i })).toBeDisabled();
   });
 });

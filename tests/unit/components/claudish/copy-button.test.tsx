@@ -34,7 +34,7 @@ const setupWithClipboard = (writeText = jest.fn().mockResolvedValue(undefined)) 
 describe('CopyButton', () => {
   it('writes the output to the clipboard and fires copy_output', async () => {
     const { user, writeText } = setupWithClipboard();
-    render(<CopyButton output="Le résultat traduit" direction="en2cl" />);
+    render(<CopyButton output="Le résultat traduit" direction="en2cl" fromSample={false} />);
     await user.click(screen.getByRole('button', { name: /copy translation/i }));
     expect(writeText).toHaveBeenCalledWith('Le résultat traduit');
     expect(mockTrack).toHaveBeenCalledWith({
@@ -43,19 +43,27 @@ describe('CopyButton', () => {
       output_chars: 19,
       share_truncated: false,
       share_url_chars: 0,
+      from_sample: false,
     });
+  });
+
+  it('says when the copied output is a stored sample (22.1)', async () => {
+    const { user } = setupWithClipboard();
+    render(<CopyButton output="stored" direction="en2cl" fromSample={true} />);
+    await user.click(screen.getByRole('button', { name: /copy translation/i }));
+    expect(mockTrack).toHaveBeenCalledWith(expect.objectContaining({ from_sample: true }));
   });
 
   it('shows a transient Copied confirmation', async () => {
     const { user } = setupWithClipboard();
-    render(<CopyButton output="text" direction="cl2en" />);
+    render(<CopyButton output="text" direction="cl2en" fromSample={false} />);
     await user.click(screen.getByRole('button', { name: /copy translation/i }));
     expect(await screen.findByText(/copied/i)).toBeInTheDocument();
   });
 
   it('is disabled with no output and fires nothing', async () => {
     const { user } = setupWithClipboard();
-    render(<CopyButton output="" direction="en2cl" />);
+    render(<CopyButton output="" direction="en2cl" fromSample={false} />);
     const button = screen.getByRole('button', { name: /copy translation/i });
     expect(button).toBeDisabled();
     await user.click(button).catch(() => undefined);
@@ -64,7 +72,7 @@ describe('CopyButton', () => {
 
   it('does not crash when the clipboard API rejects', async () => {
     const { user } = setupWithClipboard(jest.fn().mockRejectedValue(new Error('denied')));
-    render(<CopyButton output="text" direction="en2cl" />);
+    render(<CopyButton output="text" direction="en2cl" fromSample={false} />);
     await act(async () => {
       await user.click(screen.getByRole('button', { name: /copy translation/i }));
     });

@@ -25,9 +25,12 @@ const ANALYTICS_DIRECTION = {
 export function RateModal({
   output,
   direction,
+  fromSample,
 }: {
   output: string;
   direction: ClaudishDirection;
+  /** The output is a stored sample, not a live translation (22.1). */
+  fromSample: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const dialogRef = useRef<HTMLDivElement | null>(null);
@@ -48,6 +51,7 @@ export function RateModal({
       rating,
       direction: ANALYTICS_DIRECTION[direction],
       output_chars: output.length,
+      from_sample: fromSample,
     });
     setOpen(false);
   };

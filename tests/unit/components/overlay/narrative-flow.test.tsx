@@ -212,6 +212,15 @@ describe('NarrativeFlow', () => {
     expect(screen.getByText(/rated a translation/i)).toBeInTheDocument();
   });
 
+  it('describes claudish_sample_pick as a sentence, not the generic fallback (22.1)', () => {
+    // The live stream carries no sample number (it is not on the Pub/Sub
+    // allow-list), so the sentence must not need one.
+    render(
+      <NarrativeFlow event={makeEvent({ event_name: 'claudish_sample_pick', parameters: {} })} />,
+    );
+    expect(screen.getByText('You tried one of the sample phrases')).toBeInTheDocument();
+  });
+
   it('shows destination names from routing', () => {
     render(
       <NarrativeFlow

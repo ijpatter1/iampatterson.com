@@ -11,12 +11,14 @@
  *
  * Without a share link the page opens on the first stored sample,
  * already translated, and the "Try one" cards show the others (21.3).
- * Samples are stored real output: showing one makes no request and fires
- * no event. Which card is pressed is derived from the box: any route
- * onto a sample's exact text and direction (a tap, a tab round trip, an
- * undo, a swap) shows it as that sample. A sample picks its own source
- * tab; any edit to it hands the box back to Detect, as on the approved
- * mockup, and the latch reads the visitor's text as it stands.
+ * Samples are stored real output: showing one makes no request. A card
+ * tap fires claudish_sample_pick, and Copy, Rate and Share on a sample's
+ * output say so with from_sample (22.1). Which card is pressed is
+ * derived from the box: any route onto a sample's exact text and
+ * direction (a tap, a tab round trip, an undo, a swap) shows it as that
+ * sample. A sample picks its own source tab; any edit to it hands the
+ * box back to Detect, as on the approved mockup, and the latch reads the
+ * visitor's text as it stands.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -26,7 +28,11 @@ import { createDetectionLatch, warmCcld } from '@/lib/claudish/detect';
 import { normalizeTranslationInput } from '@/lib/claudish/normalize';
 import { CLAUDISH_SAMPLES } from '@/lib/claudish/samples';
 import { decodeShare } from '@/lib/claudish/share-codec';
-import { trackClaudishDetected, trackClaudishShare } from '@/lib/events/track';
+import {
+  trackClaudishDetected,
+  trackClaudishSamplePick,
+  trackClaudishShare,
+} from '@/lib/events/track';
 
 import { ClaudishFooter } from './claudish-footer';
 import { SamplePhrases } from './sample-phrases';
@@ -157,6 +163,8 @@ export function ClaudishApp({ shareParam }: { shareParam?: string }) {
       output_chars: share.target.length,
       share_truncated: share.excerpt,
       share_url_chars: shareParam?.length ?? 0,
+      // A share link carries the sender's translation, never a sample.
+      from_sample: false,
     });
   }, [share, shareParam]);
 
@@ -200,6 +208,12 @@ export function ClaudishApp({ shareParam }: { shareParam?: string }) {
 
   const handleSamplePick = (index: number) => {
     const sample = CLAUDISH_SAMPLES[index];
+    // A tap is the visitor's act, so it is measured (22.1); the opening
+    // example and a swap that lands on a sample are not taps.
+    trackClaudishSamplePick({
+      sample_index: index + 1,
+      direction: ANALYTICS_DIRECTION[sample.direction],
+    });
     setInput(sample.source);
     setSourceTab(sample.direction === 'cl2en' ? 2 : 1);
     setTabFromSample(true);
@@ -298,6 +312,7 @@ export function ClaudishApp({ shareParam }: { shareParam?: string }) {
           cache: translation.cache,
           activeTab: targetTab,
           onTabSelect: handleTargetSelect,
+          fromSample: activeSample !== null,
         }}
         onSwap={handleSwap}
       />

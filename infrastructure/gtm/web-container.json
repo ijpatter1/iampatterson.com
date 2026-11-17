@@ -286,6 +286,16 @@
       "dataLayerVariable": "rating"
     },
     {
+      "name": "dlv - from_sample",
+      "type": "dataLayer",
+      "dataLayerVariable": "from_sample"
+    },
+    {
+      "name": "dlv - sample_index",
+      "type": "dataLayer",
+      "dataLayerVariable": "sample_index"
+    },
+    {
       "name": "ga4 - shared_event_settings",
       "type": "eventSettings",
       "parameters": {
@@ -451,6 +461,12 @@
       "type": "customEvent",
       "eventName": "claudish_rate",
       "note": "Fires when the /claudish app pushes { event: 'claudish_rate' } to the data layer (feat/claudish). Params are counts/durations/enums only — no text by design."
+    },
+    {
+      "name": "ce - claudish_sample_pick",
+      "type": "customEvent",
+      "eventName": "claudish_sample_pick",
+      "note": "Fires when a visitor taps a \"Try one\" card on /claudish (22.1). Params are the card's number and the direction, never the sample's text."
     },
     {
       "name": "ce - web_vital",
@@ -803,7 +819,8 @@
         "direction": "{{dlv - direction}}",
         "output_chars": "{{dlv - output_chars}}",
         "share_truncated": "{{dlv - share_truncated}}",
-        "share_url_chars": "{{dlv - share_url_chars}}"
+        "share_url_chars": "{{dlv - share_url_chars}}",
+        "from_sample": "{{dlv - from_sample}}"
       },
       "firingTrigger": "ce - claudish_share",
       "consentSettings": {
@@ -819,9 +836,25 @@
       "parameters": {
         "rating": "{{dlv - rating}}",
         "direction": "{{dlv - direction}}",
-        "output_chars": "{{dlv - output_chars}}"
+        "output_chars": "{{dlv - output_chars}}",
+        "from_sample": "{{dlv - from_sample}}"
       },
       "firingTrigger": "ce - claudish_rate",
+      "consentSettings": {
+        "analytics_storage": "required"
+      },
+      "measurementId": "{{const - ga4_measurement_id}}",
+      "sharedEventSettings": "{{ga4 - shared_event_settings}}"
+    },
+    {
+      "name": "GA4 - claudish_sample_pick",
+      "type": "GA4 Event (gaawe)",
+      "eventName": "claudish_sample_pick",
+      "parameters": {
+        "sample_index": "{{dlv - sample_index}}",
+        "direction": "{{dlv - direction}}"
+      },
+      "firingTrigger": "ce - claudish_sample_pick",
       "consentSettings": {
         "analytics_storage": "required"
       },

@@ -63,8 +63,10 @@ const CLAUDISH_EVENTS: Record<string, string[]> = {
     'output_chars',
     'share_truncated',
     'share_url_chars',
+    'from_sample',
   ],
-  claudish_rate: ['rating', 'direction', 'output_chars'],
+  claudish_rate: ['rating', 'direction', 'output_chars', 'from_sample'],
+  claudish_sample_pick: ['sample_index', 'direction'],
 };
 
 describe.each(Object.entries(CLAUDISH_EVENTS))('web container: %s', (eventName, params) => {
@@ -214,6 +216,8 @@ describe('BigQuery schema columns (lock-step with the event schema)', () => {
     ['share_truncated', 'BOOL'],
     ['share_url_chars', 'INT64'],
     ['rating', 'STRING'],
+    ['from_sample', 'BOOL'],
+    ['sample_index', 'INT64'],
   ])('includes %s as %s', (name, type) => {
     expect(names).toContain(name);
     expect(bqSchema.find((c) => c.name === name)?.type).toBe(type);

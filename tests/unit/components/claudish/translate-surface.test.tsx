@@ -27,6 +27,7 @@ function renderSurface() {
         cache: 'miss',
         activeTab: 0,
         onTabSelect: noop,
+        fromSample: false,
       }}
       onSwap={noop}
     />
