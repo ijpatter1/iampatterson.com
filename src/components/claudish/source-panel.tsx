@@ -8,7 +8,13 @@
  * counter and the proxy's 413). Clear button appears only with content.
  * The textarea grows with its content (grow-wrap below) so the panel
  * expands like the output panel instead of scrolling inside.
+ *
+ * While the box holds a stored sample, focusing it selects the whole
+ * text, so the first keystroke replaces the example instead of adding to
+ * it (22.2). The visitor's own text is never selected.
  */
+import { useRef } from 'react';
+
 import { INPUT_CAP } from '@/lib/claudish/limits';
 
 import { CharCounter } from './char-counter';
@@ -21,13 +27,26 @@ export function SourcePanel({
   activeTab,
   onTabSelect,
   detection,
+  holdsSample,
 }: {
   value: string;
   onChange: (value: string) => void;
   activeTab: number;
   onTabSelect: (index: number) => void;
   detection: { lang: 'en-x-claudish' | 'en'; tier: 'confident' | 'leaning' } | null;
+  /** The box holds a stored sample's exact text (22.2). */
+  holdsSample: boolean;
 }) {
+  // A mousedown on the box while it is not focused: the focus that follows
+  // comes from that click (on touch screens too, whose synthetic mousedown
+  // precedes the focus). Some browsers (Safari) place the caret on that
+  // click's mouseup, undoing the selection, so only that mouseup keeps its
+  // default prevented. A keyboard focus never arms it.
+  const clickFocusRef = useRef(false);
+  const selectedOnFocusRef = useRef(false);
+  // The window lost focus while the box had it. Coming back re-fires focus
+  // on the box, and that must not re-select a caret the visitor placed.
+  const leftWithWindowRef = useRef(false);
   return (
     <section
       aria-label="Source text"
@@ -54,6 +73,29 @@ export function SourcePanel({
           <textarea
             value={value}
             onChange={(e) => onChange(e.target.value)}
+            onMouseDown={(e) => {
+              clickFocusRef.current = document.activeElement !== e.currentTarget;
+              // A click that is about to focus the box is a fresh focus, even
+              // if the window's return never handed focus back to it.
+              if (clickFocusRef.current) leftWithWindowRef.current = false;
+            }}
+            onFocus={(e) => {
+              const returning = leftWithWindowRef.current;
+              leftWithWindowRef.current = false;
+              if (!holdsSample || returning) return;
+              e.currentTarget.setSelectionRange(0, e.currentTarget.value.length);
+              selectedOnFocusRef.current = true;
+            }}
+            onMouseUp={(e) => {
+              if (clickFocusRef.current && selectedOnFocusRef.current) e.preventDefault();
+              clickFocusRef.current = false;
+              selectedOnFocusRef.current = false;
+            }}
+            onBlur={() => {
+              clickFocusRef.current = false;
+              selectedOnFocusRef.current = false;
+              leftWithWindowRef.current = !document.hasFocus();
+            }}
             maxLength={INPUT_CAP}
             placeholder="Enter text"
             aria-label="Source text"

@@ -29,6 +29,7 @@ const base = {
   hasFirstToken: false,
   ttftMs: null,
   cache: 'miss' as const,
+  fromSample: false,
 };
 
 describe('TargetPanel', () => {

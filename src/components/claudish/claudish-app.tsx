@@ -11,12 +11,14 @@
  *
  * Without a share link the page opens on the first stored sample,
  * already translated, and the "Try one" cards show the others (21.3).
- * Samples are stored real output: showing one makes no request and fires
- * no event. Which card is pressed is derived from the box: any route
- * onto a sample's exact text and direction (a tap, a tab round trip, an
- * undo, a swap) shows it as that sample. A sample picks its own source
- * tab; any edit to it hands the box back to Detect, as on the approved
- * mockup, and the latch reads the visitor's text as it stands.
+ * Samples are stored real output: showing one makes no request. A card
+ * tap fires claudish_sample_pick, and Copy, Rate and Share on a sample's
+ * output say so with from_sample (22.1). Which card is pressed is
+ * derived from the box: any route onto a sample's exact text and
+ * direction (a tap, a tab round trip, an undo, a swap) shows it as that
+ * sample. A sample picks its own source tab; any edit to it hands the
+ * box back to Detect, as on the approved mockup, and the latch reads the
+ * visitor's text as it stands.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -26,7 +28,11 @@ import { createDetectionLatch, warmCcld } from '@/lib/claudish/detect';
 import { normalizeTranslationInput } from '@/lib/claudish/normalize';
 import { CLAUDISH_SAMPLES } from '@/lib/claudish/samples';
 import { decodeShare } from '@/lib/claudish/share-codec';
-import { trackClaudishDetected, trackClaudishShare } from '@/lib/events/track';
+import {
+  trackClaudishDetected,
+  trackClaudishSamplePick,
+  trackClaudishShare,
+} from '@/lib/events/track';
 
 import { ClaudishFooter } from './claudish-footer';
 import { SamplePhrases } from './sample-phrases';
@@ -145,6 +151,15 @@ export function ClaudishApp({ shareParam }: { shareParam?: string }) {
     }
   }, [shareParam]);
 
+  // The share link holds a stored sample's exact text and translation.
+  const shareIsSample =
+    share !== null &&
+    STORED_SAMPLES.some(
+      (entry) =>
+        entry.key === keyFor(share.direction, share.source) &&
+        (share.target === '' || entry.text === share.target)
+    );
+
   // A share open is a distribution event — exactly once, even under
   // StrictMode's double-invoked effects.
   const shareOpenFiredRef = useRef(false);
@@ -157,8 +172,11 @@ export function ClaudishApp({ shareParam }: { shareParam?: string }) {
       output_chars: share.target.length,
       share_truncated: share.excerpt,
       share_url_chars: shareParam?.length ?? 0,
+      // A shared sample (most likely the opening example) is still the
+      // stored text, so it says so, as the sender's copy_link did.
+      from_sample: shareIsSample,
     });
-  }, [share, shareParam]);
+  }, [share, shareParam, shareIsSample]);
 
   // The claimed side drives the auto direction (no hedging): a tab that
   // says "Leaning Claudish" must translate INTO English, latched or not.
@@ -167,14 +185,25 @@ export function ClaudishApp({ shareParam }: { shareParam?: string }) {
     sourceTab === 0 ? (claimedClaudish ? 'cl2en' : 'en2cl') : sourceTab === 2 ? 'cl2en' : 'en2cl';
   // A share link's own translation beats a sample with the same text and
   // direction: the share's target is what the page, Copy and Share show.
+  // A share of the sample itself (same target, or a source-only share) is
+  // the sample, served from the stored list.
   const storedSamples = useMemo(() => {
-    const shareKey = share ? keyFor(share.direction, share.source) : null;
-    return STORED_SAMPLES.filter((entry) => entry.key !== shareKey);
+    if (!share || !share.target) return STORED_SAMPLES;
+    const shareKey = keyFor(share.direction, share.source);
+    return STORED_SAMPLES.filter(
+      (entry) => entry.key !== shareKey || entry.text === share.target
+    );
   }, [share]);
   const sampleAt = (text: string, dir: ClaudishDirection) =>
     storedSamples.find((entry) => entry.key === keyFor(dir, text)) ?? null;
   // Which sample the panels show; null whenever the text is the visitor's own.
   const activeSample = sampleAt(input, direction)?.index ?? null;
+  // The box still holds a sample's text, in either direction: a tab change
+  // that turns it into a live translation leaves the example in the box,
+  // and typing should still replace it (22.2).
+  const holdsSampleText = STORED_SAMPLES.some(
+    (entry) => normalizeTranslationInput(entry.input) === normalizeTranslationInput(input)
+  );
 
   const translation = useClaudishTranslation({
     input,
@@ -200,6 +229,13 @@ export function ClaudishApp({ shareParam }: { shareParam?: string }) {
 
   const handleSamplePick = (index: number) => {
     const sample = CLAUDISH_SAMPLES[index];
+    // Every tap on a card is measured (22.1), the card already showing
+    // included: a visitor trying card 1 at load is trying the samples. The
+    // opening example and a swap that lands on a sample are not taps.
+    trackClaudishSamplePick({
+      sample_index: index + 1,
+      direction: ANALYTICS_DIRECTION[sample.direction],
+    });
     setInput(sample.source);
     setSourceTab(sample.direction === 'cl2en' ? 2 : 1);
     setTabFromSample(true);
@@ -286,6 +322,7 @@ export function ClaudishApp({ shareParam }: { shareParam?: string }) {
           activeTab: sourceTab,
           onTabSelect: handleSourceSelect,
           detection,
+          holdsSample: holdsSampleText,
         }}
         targetProps={{
           source: input,
@@ -298,6 +335,7 @@ export function ClaudishApp({ shareParam }: { shareParam?: string }) {
           cache: translation.cache,
           activeTab: targetTab,
           onTabSelect: handleTargetSelect,
+          fromSample: activeSample !== null,
         }}
         onSwap={handleSwap}
       />

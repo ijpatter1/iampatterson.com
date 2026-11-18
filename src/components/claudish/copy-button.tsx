@@ -24,9 +24,12 @@ const ANALYTICS_DIRECTION = {
 export function CopyButton({
   output,
   direction,
+  fromSample,
 }: {
   output: string;
   direction: ClaudishDirection;
+  /** The output is a stored sample, not a live translation (22.1). */
+  fromSample: boolean;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -39,6 +42,7 @@ export function CopyButton({
         output_chars: output.length,
         share_truncated: false,
         share_url_chars: 0,
+        from_sample: fromSample,
       });
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1500);

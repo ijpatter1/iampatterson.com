@@ -27,10 +27,13 @@ export function ShareButton({
   source,
   target,
   direction,
+  fromSample,
 }: {
   source: string;
   target: string;
   direction: ClaudishDirection;
+  /** The output is a stored sample, not a live translation (22.1). */
+  fromSample: boolean;
 }) {
   const [note, setNote] = useState<'copied' | 'excerpt' | null>(null);
 
@@ -47,6 +50,7 @@ export function ShareButton({
         output_chars: target.length,
         share_truncated: truncated,
         share_url_chars: urlChars,
+        from_sample: fromSample,
       });
 
     if (typeof navigator.share === 'function') {

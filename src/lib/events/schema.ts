@@ -121,6 +121,8 @@ export interface ClaudishShareEvent extends BaseEvent {
   output_chars: number;
   share_truncated: boolean;
   share_url_chars: number;
+  /** True when the output on screen is a stored sample (the opening example included), not a live translation (22.1). */
+  from_sample: boolean;
 }
 
 /** The rate-modal thumbs: "Holds up." / "You're absolutely right." */
@@ -129,6 +131,21 @@ export interface ClaudishRateEvent extends BaseEvent {
   rating: 'holds_up' | 'absolutely_right';
   direction: 'en_to_claudish' | 'claudish_to_en';
   output_chars: number;
+  /** True when the rated output is a stored sample, not a live translation (22.1). */
+  from_sample: boolean;
+}
+
+/**
+ * A tap on a "Try one" card (22.1). The sample is identified by its
+ * number, never its text. Every tap counts, the card already showing
+ * included; the opening example fires nothing, since it is on the page
+ * before anyone acts.
+ */
+export interface ClaudishSamplePickEvent extends BaseEvent {
+  event: 'claudish_sample_pick';
+  /** 1-based position of the card, in the order the page shows them. */
+  sample_index: number;
+  direction: 'en_to_claudish' | 'claudish_to_en';
 }
 
 /** Fired when a navigation link is clicked. */
@@ -461,7 +478,8 @@ export type DataLayerEvent =
   | ClaudishTranslateEvent
   | ClaudishDetectedEvent
   | ClaudishShareEvent
-  | ClaudishRateEvent;
+  | ClaudishRateEvent
+  | ClaudishSamplePickEvent;
 
 /**
  * Runtime array of every distinct `event` string literal in the `DataLayerEvent`
@@ -506,6 +524,7 @@ export const DATA_LAYER_EVENT_NAMES = [
   'claudish_detected',
   'claudish_share',
   'claudish_rate',
+  'claudish_sample_pick',
 ] as const;
 
 /**

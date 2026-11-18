@@ -56,6 +56,17 @@ test.describe('Claudish translator', () => {
     );
   });
 
+  test('clicking into the opening example and typing replaces it (22.2)', async ({ page }) => {
+    // The real-browser half of the unit test: Safari and Chrome place the
+    // caret on click, so this checks the selection survives the click.
+    await page.goto('/claudish');
+    const box = page.getByRole('textbox');
+    await expect(box).toHaveValue(CLAUDISH_SAMPLES[0].source);
+    await box.click();
+    await page.keyboard.type('Hello');
+    await expect(box).toHaveValue('Hello');
+  });
+
   test('copy and share produce a rehydratable link', async ({ page, context }) => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
     await page.goto('/claudish');

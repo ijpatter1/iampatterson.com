@@ -16,7 +16,7 @@ import { OutputActions } from '@/components/claudish/output-actions';
 describe('OutputActions', () => {
   it('renders copy, rate, and share buttons', () => {
     render(
-      <OutputActions source="in" target="out text" direction="en2cl" />
+      <OutputActions source="in" target="out text" direction="en2cl" fromSample={false} />
     );
     expect(screen.getByRole('button', { name: /copy translation/i })).toBeEnabled();
     expect(screen.getByRole('button', { name: /rate translation/i })).toBeEnabled();
@@ -24,7 +24,7 @@ describe('OutputActions', () => {
   });
 
   it('disables all three without output', () => {
-    render(<OutputActions source="in" target="" direction="en2cl" />);
+    render(<OutputActions source="in" target="" direction="en2cl" fromSample={false} />);
     expect(screen.getByRole('button', { name: /copy translation/i })).toBeDisabled();
     expect(screen.getByRole('button', { name: /rate translation/i })).toBeDisabled();
     expect(screen.getByRole('button', { name: /share translation/i })).toBeDisabled();

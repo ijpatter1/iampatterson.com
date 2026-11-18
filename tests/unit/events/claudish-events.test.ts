@@ -15,6 +15,7 @@
 import {
   trackClaudishDetected,
   trackClaudishRate,
+  trackClaudishSamplePick,
   trackClaudishShare,
   trackClaudishTranslate,
 } from '@/lib/events/track';
@@ -103,6 +104,7 @@ describe('trackClaudishShare', () => {
       output_chars: 240,
       share_truncated: false,
       share_url_chars: 0,
+      from_sample: false,
     });
     expect(window.dataLayer[0]).toMatchObject({
       event: 'claudish_share',
@@ -118,6 +120,7 @@ describe('trackClaudishShare', () => {
       output_chars: 512,
       share_truncated: true,
       share_url_chars: 1720,
+      from_sample: false,
     });
     expect(window.dataLayer[0]).toMatchObject({
       event: 'claudish_share',
@@ -133,11 +136,47 @@ describe('trackClaudishRate', () => {
       rating: 'absolutely_right',
       direction: 'en_to_claudish',
       output_chars: 300,
+      from_sample: false,
     });
     expect(window.dataLayer[0]).toMatchObject({
       event: 'claudish_rate',
       rating: 'absolutely_right',
     });
+  });
+});
+
+describe('the samples are measured apart from live translations (22.1)', () => {
+  // Without this, every visitor's first rating can be of a fixed example,
+  // and the share and rate numbers would credit the model for stored text.
+  it('a card tap pushes its number and direction, and nothing else of its own', () => {
+    trackClaudishSamplePick({ sample_index: 3, direction: 'claudish_to_en' });
+    expect(window.dataLayer).toHaveLength(1);
+    expect(window.dataLayer[0]).toMatchObject({
+      event: 'claudish_sample_pick',
+      sample_index: 3,
+      direction: 'claudish_to_en',
+    });
+  });
+
+  it('share and rate carry from_sample, so a stored example is told apart', () => {
+    trackClaudishShare({
+      share_action: 'copy_output',
+      direction: 'en_to_claudish',
+      output_chars: 120,
+      share_truncated: false,
+      share_url_chars: 0,
+      from_sample: true,
+    });
+    trackClaudishRate({
+      rating: 'holds_up',
+      direction: 'en_to_claudish',
+      output_chars: 120,
+      from_sample: true,
+    });
+    expect(window.dataLayer.map((e) => (e as { from_sample?: boolean }).from_sample)).toEqual([
+      true,
+      true,
+    ]);
   });
 });
 
@@ -171,12 +210,16 @@ describe('guardrail: no text in any claudish payload', () => {
       output_chars: TARGET.length,
       share_truncated: false,
       share_url_chars: 400,
+      from_sample: false,
     });
     trackClaudishRate({
       rating: 'holds_up',
       direction: 'en_to_claudish',
       output_chars: TARGET.length,
+      from_sample: false,
     });
+
+    trackClaudishSamplePick({ sample_index: 1, direction: 'en_to_claudish' });
 
     const allJson = JSON.stringify(window.dataLayer);
     expect(allJson).not.toContain('secret');
